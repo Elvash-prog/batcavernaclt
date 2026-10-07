@@ -941,8 +941,9 @@ body.dashboard #profilebar{display:none!important}body.dashboard #home{display:n
 @media(max-width:760px){
 .mobile-library-fab{display:grid;position:fixed;right:16px;bottom:calc(78px + var(--mobile-safe));width:56px;height:56px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:linear-gradient(135deg,#7c3aed,#e50914);color:#fff;place-items:center;font-size:23px;box-shadow:0 14px 38px rgba(0,0,0,.42);z-index:10001;cursor:pointer}
 body.mobile-library-tools-open .mobile-library-fab{transform:rotate(45deg)}
-body:not(.mobile-library-tools-open) #toolbar{display:none!important}
-body.mobile-library-tools-open #toolbar{display:block!important;position:fixed!important;left:10px!important;right:10px!important;top:62px!important;z-index:10000!important;margin:0!important;max-height:calc(100dvh - 145px)!important;overflow:auto!important;box-shadow:0 25px 70px rgba(0,0,0,.55)!important}
+/* Patch 1.22: a barra da biblioteca permanece no fluxo da página no mobile.
+   O atributo hidden e as regras de cada aba controlam sua visibilidade. */
+.toolbar-main #add{min-height:44px;touch-action:manipulation}
 body.mobile-chat-active .mobile-library-fab,body.profile-view .mobile-library-fab,body.mobile-home-active .mobile-library-fab,body.mobile-friends-active .mobile-library-fab,body.mobile-social-active .mobile-library-fab{display:none!important}
 }
 
