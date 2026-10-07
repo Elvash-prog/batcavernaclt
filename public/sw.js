@@ -1,15 +1,44 @@
-const CACHE='batcaverna-shell-v2';
-self.addEventListener('install',event=>{event.waitUntil(self.skipWaiting())});
-self.addEventListener('activate',event=>{event.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
+// Patch 1.21 — cache restrito aos arquivos públicos do aplicativo.
+const CACHE='batcaverna-shell-v3';
+const SHELL=['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./push-icon.png','./push-badge.png'];
+const SHELL_URLS=new Set(SHELL.map(path=>new URL(path,self.registration.scope).href));
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(CACHE).then(async cache=>{
+    await Promise.all(SHELL.map(async path=>{
+      try { const response=await fetch(new Request(new URL(path,self.registration.scope),{cache:'reload'}));
+        if(response.ok)await cache.put(new URL(path,self.registration.scope).href,response);
+      } catch (_) {} // Uma falha isolada não bloqueia a atualização.
+    }));
+    await self.skipWaiting();
+  }));
+});
+self.addEventListener('activate',event=>{
+  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('batcaverna-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+});
 self.addEventListener('fetch',event=>{
-  const req=event.request;
-  if(req.method!=='GET') return;
-  if(new URL(req.url).origin!==self.location.origin) return;
-  event.respondWith(fetch(req).then(res=>{
-    const copy=res.clone();
-    caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{});
-    return res;
-  }).catch(()=>caches.match(req).then(r=>r||caches.match('./index.html'))));
+  const req=event.request,url=new URL(req.url);
+  if(req.method!=='GET'||url.origin!==self.location.origin)return;
+  const navigation=req.mode==='navigate';
+  const shell=SHELL_URLS.has(url.href);
+  if(!navigation&&!shell)return;
+  event.respondWith((async()=>{
+    const cache=await caches.open(CACHE);
+    try {
+      const response=await fetch(req);
+      // Navegações com query podem conter tokens. Somente URLs fixas entram no cache.
+      if(response.ok&&shell)await cache.put(req,response.clone()).catch(()=>{});
+      return response;
+    } catch (_) {
+      const cached=await cache.match(req);
+      if(cached)return cached;
+      if(navigation){
+        const index=await cache.match(new URL('./index.html',self.registration.scope).href);
+        if(index)return index;
+        return new Response('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BatCaverna — sem conexão</title><body style="background:#07070b;color:#f2f2f7;font-family:system-ui;padding:32px"><h1>Você está sem conexão</h1><p>Reconecte-se à internet e recarregue para abrir a BatCaverna.</p></body></html>',{status:503,headers:{'Content-Type':'text/html; charset=utf-8'}});
+      }
+      return Response.error();
+    }
+  })());
 });
 self.addEventListener('push',event=>{
   let data={title:'BatCaverna dos CLTs',body:'Você tem uma nova notificação.',url:'./'};
