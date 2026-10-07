@@ -1803,6 +1803,15 @@ header.top .live,
   body.desktop-ui-ready main .grid.poster{grid-template-columns:repeat(auto-fill,minmax(165px,210px))!important}
 }
 </style>
+<style id="bc-patch-121-accessibility">
+/* Patch 1.21: foco visível sem alterar a composição do layout. */
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #b5a1ff!important;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto!important}
+ *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+</style>
 </head>
 <script>
 (function(){
@@ -3012,6 +3021,9 @@ function socialTexto(r){
 }
 var FRIENDS_HUB_TAB='friends';
 function friendsHubSetTab(tabName){
+  clearTimeout(FRIENDS_SEARCH_TIMER);
+  FRIENDS_SEARCH_SEQ++;
+  FRIENDS_SEARCH_REMOTE=[];
   FRIENDS_HUB_TAB=tabName||'friends';
   document.querySelectorAll('[data-friends-tab]').forEach(function(b){b.classList.toggle('on',b.dataset.friendsTab===FRIENDS_HUB_TAB)});
   var input=$('#friendsSearch');if(input)input.value='';
@@ -3053,6 +3065,8 @@ function friendsSearchRemote(q){
 function friendsSearchInput(){
   var input=$('#friendsSearch'),q=input?input.value.trim():'';
   clearTimeout(FRIENDS_SEARCH_TIMER);
+  FRIENDS_SEARCH_SEQ++; // Invalida respostas do texto anterior imediatamente.
+  FRIENDS_SEARCH_REMOTE=[];
   renderFriendsHub();
   if(q.length<2){FRIENDS_SEARCH_REMOTE=[];renderFriendsHub();return}
   FRIENDS_SEARCH_TIMER=setTimeout(function(){friendsSearchRemote(q)},250);
@@ -4044,7 +4058,8 @@ function sairConta(){
   MODO_EDICAO=false;
   try{localStorage.removeItem("batcaverna_modo_edicao")}catch(e){}
   selLigar(false);fechar();
-  sb.auth.signOut().then(function(){
+  return sb.auth.signOut({scope:"local"}).then(function(result){
+    if(result&&result.error)throw result.error;
     SESS=null;P=null;D=null;PERFIL_ABERTO=false;
     try{sessionStorage.clear()}catch(e){}
     /* Recarrega o app já sem sessão: garante que a tela pública de login seja reconstruída por completo. */
@@ -5565,7 +5580,11 @@ else sb.auth.getSession()
   .then(function(){return carregarFundoLoginPublico()})
   .then(function(){return SESS&&SESS.user?carregarAmigos():null})
   .then(function(){if(SESS&&SESS.user)chatInit();return null})
-  .then(iniciar);
+  .then(iniciar).catch(function(e){
+    console.warn("BatCaverna: falha ao iniciar",e);
+    mostrarHome();bcReveal();
+    toast("Não foi possível carregar sua sessão. Verifique a conexão e tente entrar novamente.");
+  });
 window.addEventListener("beforeunload",pararPresenca);
 timer=setInterval(tick,INTERVALO);
 setInterval(function(){if(!document.hidden)agoraBuscar()},30000);
@@ -5636,7 +5655,7 @@ function chatEnviar(texto){texto=String(texto||'').trim();var uid=CHAT_ACTIVE;if
 function chatRenderPreview(){var b=$('#chatPreview');if(!b)return;if(!CHAT_SELECTED_FILE){b.hidden=true;b.innerHTML='';return}b.hidden=false;var u=URL.createObjectURL(CHAT_SELECTED_FILE);b.innerHTML='<img src="'+u+'" alt="Prévia"><button type="button" id="chatPreviewRemove">×</button>';var im=b.querySelector('img');if(im)im.onload=function(){URL.revokeObjectURL(u)};var x=$('#chatPreviewRemove');if(x)x.onclick=function(){CHAT_SELECTED_FILE=null;var f=$('#chatFile');if(f)f.value='';chatRenderPreview()}}
 function chatAssinarRealtime(){if(!sb||CHAT_CHANNEL)return;CHAT_CHANNEL=sb.channel('chat-'+euId()).on('postgres_changes',{event:'INSERT',schema:'public',table:'clt_chat_messages',filter:'destinatario_id=eq.'+euId()},function(payload){var m=payload.new;if(!m)return;CHAT_PREVIEWS[String(m.remetente_id)]=m;if(String(m.remetente_id)===String(CHAT_ACTIVE)){CHAT_MESSAGES.push(m);chatRenderMain();chatRenderFriends();chatMarcarLidas(m.remetente_id)}else{var k=String(m.remetente_id);CHAT_UNREAD_MAP[k]=(CHAT_UNREAD_MAP[k]||0)+1;CHAT_UNREAD++;chatSyncButton();chatRenderFriends();toast('💬 Nova mensagem de '+((chatAmigo(k)||{}).nome||'um amigo'))}}).subscribe()}
 function chatParar(){if(CHAT_TIMER){clearInterval(CHAT_TIMER);CHAT_TIMER=null}if(CHAT_CHANNEL&&sb){try{sb.removeChannel(CHAT_CHANNEL)}catch(e){}CHAT_CHANNEL=null}CHAT_UNREAD=0;CHAT_UNREAD_MAP={};chatSyncButton()}
-function chatInit(){chatSyncButton();if(SESS&&P&&sb){chatContarNaoLidas();chatAssinarRealtime();if(CHAT_TIMER)clearInterval(CHAT_TIMER);CHAT_TIMER=setInterval(function(){if(SESS&&P&&sb)chatContarNaoLidas()},15000)}}
+function chatInit(){chatSyncButton();if(SESS&&P&&sb){chatContarNaoLidas();chatAssinarRealtime();if(CHAT_TIMER)clearInterval(CHAT_TIMER);CHAT_TIMER=setInterval(function(){if(!document.hidden&&SESS&&P&&sb)chatContarNaoLidas()},15000)}}
 $('#chatTop')&&$('#chatTop').addEventListener('click',abrirChat);$('#chatClose')&&$('#chatClose').addEventListener('click',fecharChat);$('#chatClose2')&&$('#chatClose2').addEventListener('click',fecharChat);$('#chatBack')&&$('#chatBack').addEventListener('click',function(){var c=$('#chatCard');if(c)c.classList.remove('chat-conversation');CHAT_ACTIVE=null;chatRenderMain();chatRenderFriends()});
 $('#chatModal')&&$('#chatModal').addEventListener('click',function(e){if(e.target===this){fecharChat();return}var cp=e.target.closest('[data-chat-profile]');if(cp){var uid=cp.dataset.chatProfile;if(uid&&typeof verPerfil==='function')verPerfil(uid);return}var f=e.target.closest('[data-chat-friend]');if(f){carregarChatMensagens(f.dataset.chatFriend).then(function(){var c=$('#chatCard');if(c)c.classList.add('chat-conversation')});return}var react=e.target.closest('[data-chat-react]');if(react){e.preventDefault();e.stopPropagation();chatToggleReaction(react.dataset.chatReact,react.dataset.emoji);return}var d=e.target.closest('[data-chat-delete]');if(d){siteConfirm('Apagar esta mensagem?',function(){sb.from('clt_chat_messages').delete().eq('id',d.dataset.chatDelete).eq('remetente_id',euId()).then(function(r){if(r.error)throw r.error;CHAT_MESSAGES=CHAT_MESSAGES.filter(function(x){return String(x.id)!==String(d.dataset.chatDelete)});chatRenderMain()}).catch(function(err){toast('Não foi possível apagar: '+erroTxt(err))})});}});
 $('#chatMessages')&&$('#chatMessages').addEventListener('mouseleave',function(){if(window.CHAT_REACTION_SUPPRESS){window.CHAT_REACTION_SUPPRESS=null;chatRenderMain()}});
@@ -5951,7 +5970,7 @@ function desktopUiGo(name){
   setTimeout(syncDesktop,300);
   setTimeout(syncDesktop,1000);
   setTimeout(syncDesktop,2500);
-  setInterval(function(){try{desktopUiRender()}catch(e){}},1200);
+  setInterval(function(){if(!document.hidden){try{desktopUiRender()}catch(e){}}},1200);
 })();
 
 
