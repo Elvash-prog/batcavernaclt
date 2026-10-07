@@ -1813,6 +1813,23 @@ textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #b5a1ff!import
  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
 </style>
+<style id="bc-patch-123">
+.gamify-extra{background:#11121c;border-color:#34364b;box-shadow:0 12px 30px #0005}
+.gamify-extra .gx-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px}
+.gamify-extra .gx-badge{background:#1b1d2b;border-color:#3c4058;min-width:0;padding:14px}
+.gamify-extra .gx-badge.off{opacity:1;filter:none}
+.gamify-extra .gx-badge.off>span{filter:grayscale(.75);opacity:.8}
+.gamify-extra .gx-badge.on{background:#29251c;border-color:#82703a}
+.gamify-extra .gx-badge b{font-size:13px;color:#f4f4fa}
+.gamify-extra .gx-badge small,.gamify-extra .gx-head small,.gamify-extra .gx-streak span{font-size:12px;color:#c2c5d6}
+.gamify-extra .gx-badge>div{min-width:0;overflow-wrap:anywhere}
+.gamify-extra .gx-week{color:#c2c5d6;flex-wrap:wrap}
+.gamify-extra .gx-day{display:block;flex:none;background:#393d51;border-color:#777e9b}
+.gamify-extra .gx-day.active{background:#aa86ff;border-color:#d7c6ff}
+.steam-friend-cover{position:relative;display:grid;place-items:center;flex:0 0 64px;width:64px;height:38px;overflow:hidden;border-radius:7px;background:#242638;border:1px solid #ffffff20}
+.steam-friend-cover img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+.steam-friend-row .desktop-list-copy{min-width:0}
+</style>
 </head>
 <script>
 (function(){
@@ -3507,17 +3524,17 @@ function gamificacaoExtras(a,j,f){
     ['🔥','Sequência de 3 dias','Registre atividade em 3 dias seguidos',streak>=3],
     ['⚡','Sequência de 7 dias','Registre atividade em 7 dias seguidos',streak>=7],
     ['📅','Semana ativa','Tenha atividade em pelo menos 5 dos últimos 7 dias',diasAtivos>=5],
-    ['🎮','Gamer completo','Tenha jogos, filmes e séries/animes na biblioteca',j.length>0 && f.length>=2],
+    ['🎮','Gamer completo','Tenha jogos, filmes e séries/animes na biblioteca',j.length>0 && f.some(function(x){return tipoMidia(x)==='filme'}) && f.some(function(x){return tipoMidia(x)==='serie'||tipoMidia(x)==='anime'})],
     ['💎','Coleção de elite','Tenha pelo menos 5 jogos com nota 10',j.filter(function(x){return notaNum(x.nota)>=10}).length>=5],
     ['🚀','Ritmo acelerado','Tenha 10 ou mais jogos finalizados',j.filter(function(x){return /zerado|platina/i.test(String(x.status||''))}).length>=10],
     ['📚','Sempre crescendo','Tenha 25 itens adicionados ao acervo',total>=25],
     ['👑','Lenda em construção','Alcance nível 20 ou mais',Number((RANKING.find(function(x){return x.id===P.uid})||{}).nivel||1)>=20]
   ];
-  return {streak:streak,diasAtivos:diasAtivos,especiais:especiais};
+  return {streak:streak,diasAtivos:diasAtivos,recentes:recentes,especiais:especiais};
 }
 function gamificacaoExtrasHtml(a,j,f){
   var ex=gamificacaoExtras(a,j,f),cards=ex.especiais.map(function(x){return '<div class="gx-badge '+(x[3]?'on':'off')+'"><span>'+x[0]+'</span><div><b>'+esc(x[1])+'</b><small>'+esc(x[2])+'</small></div></div>'}).join('');
-  var dots='';for(var i=6;i>=0;i--)dots+='<i class="gx-day '+(ex.diasAtivos && (i<ex.diasAtivos)?'active':'')+'"></i>';
+  var dots='';for(var i=6;i>=0;i--)dots+='<i class="gx-day '+(ex.recentes[i]?'active':'')+'"></i>';
   return '<section class="gamify-extra"><div class="gx-head"><div><h3>🔥 Desafios especiais</h3><small>Conquistas extras baseadas na sua atividade</small></div><div class="gx-streak"><b>'+ex.streak+'</b><span>dias seguidos</span></div></div><div class="gx-week"><span>Últimos 7 dias</span><div>'+dots+'</div><strong>'+ex.diasAtivos+'/7 ativos</strong></div><div class="gx-grid">'+cards+'</div></section>';
 }
 function gamificacaoPerfil(a,j,f,horas,fin,plat,rk){
@@ -4490,6 +4507,17 @@ function steamAmigosLista(){
   return out;
 }
 function renderSteamFriendsDesktop(){steamAmigosRender();}
+// Patch 1.23: capa dimensionada e alternativas quando o CDN falha.
+function steamAmigoCapaHtml(x){
+  var id=/^[1-9][0-9]*$/.test(String(x.appid||''))?String(x.appid):'';
+  var urls=[safeUrl(x.capa),id?steamImg(id):'',id?steamImg2(id):'',id?steamImg3(id):''].filter(function(u,i,a){return u&&a.indexOf(u)===i});
+  return '<span class="steam-friend-cover" role="img" aria-label="'+esc(x.jogo||'Jogo na Steam')+'"><span aria-hidden="true">🎮</span>'+(urls.length?'<img src="'+esc(urls[0])+'" alt="" decoding="async" data-steam-covers="'+esc(JSON.stringify(urls.slice(1)))+'" onerror="steamAmigoCapaErro(this)">':'')+'</span>';
+}
+function steamAmigoCapaErro(img){
+  var urls=[];try{urls=JSON.parse(img.getAttribute('data-steam-covers')||'[]')}catch(e){}
+  if(urls.length){var next=urls.shift();img.setAttribute('data-steam-covers',JSON.stringify(urls));img.src=next;}
+  else{img.onerror=null;img.remove();}
+}
 function steamAmigosRender(){
   var list=$('#deskSteamFriendsList'),count=$('#deskSteamFriendsCount');
   var ativos=(STEAM_AMIGOS_ATIVOS||[]).slice().sort(function(a,b){return String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR')});
@@ -4498,8 +4526,7 @@ function steamAmigosRender(){
   if(!ativos.length){list.innerHTML='<div class="desktop-activity-row">Nenhum amigo está jogando na Steam agora.</div>';return;}
   list.innerHTML=ativos.slice(0,8).map(function(x){
     var jogo=x.jogo||'Jogando na Steam';
-    var capa=x.capa||steamImg(x.appid||0);
-    return '<div class="desktop-list-row steam-friend-row"><span class="desktop-mini-avatar steam-friend-cover" style="background-image:url(\''+esc(capa)+'\')"></span><span class="desktop-list-copy"><b>'+esc(x.nome||'Amigo')+'</b><small>🟦 '+esc(jogo)+'</small></span><i class="desktop-dot"></i></div>';
+    return '<div class="desktop-list-row steam-friend-row">'+steamAmigoCapaHtml(x)+'<span class="desktop-list-copy"><b>'+esc(x.nome||'Amigo')+'</b><small>🟦 '+esc(jogo)+'</small></span><i class="desktop-dot"></i></div>';
   }).join('');
 }
 function carregarSteamAmigos(force){
@@ -5850,7 +5877,7 @@ function mobileHomeRender(){
   var fc=$('#mhFriends');if(fc)fc.textContent=String(AMIGOS.length||0);var fs=$('#mhFriendsSub');if(fs)fs.textContent=online+' online agora';
   var oc=$('#mhOnlineCount');if(oc)oc.textContent=String(online);
   var fl=$('#mhFriendsList');
-  if(fl){var steamRows=steamFriends.slice(0,8).map(function(f){return '<div class="mh-friend"><span class="mh-friend-av">'+avatarHtml(f,'')+'</span><span class="mh-friend-main"><b>'+esc(f.nome||'Amigo')+'</b><small>🟦 Jogando na Steam: '+esc(f.jogo||'jogo')+'</small></span><i class="mh-online"></i></div>'}).join('');var arr=onlineFriends.filter(function(x){return !steamFriends.some(function(s){return String(s.uid)===String(x.id)})}).slice(0,8);var onlineRows=arr.map(function(f){var jogo=String(f.jogo||'').trim(),fonte=String(f.jogo_fonte||'');var status=String(f.status||'online');var info=jogo?(fonte==='steam'?'🟦 Jogando na Steam: '+jogo:'🎮 Jogando: '+jogo):(status==='jogando'?'🎮 Jogando':'Online agora');return '<div class="mh-friend"><span class="mh-friend-av">'+avatarHtml(f,'')+'</span><span class="mh-friend-main"><b>'+esc(f.nome||f.slug||'Usuário')+'</b><small>'+esc(info)+'</small></span><i class="mh-online"></i></div>'}).join('');fl.innerHTML=steamRows+onlineRows||'<div class="mh-empty">Nenhum amigo online agora.</div>'}
+  if(fl){var steamRows=steamFriends.slice(0,8).map(function(f){return '<div class="mh-friend">'+steamAmigoCapaHtml(f)+'<span class="mh-friend-main"><b>'+esc(f.nome||'Amigo')+'</b><small>🟦 Jogando na Steam: '+esc(f.jogo||'jogo')+'</small></span><i class="mh-online"></i></div>'}).join('');var arr=onlineFriends.filter(function(x){return !steamFriends.some(function(s){return String(s.uid)===String(x.id)})}).slice(0,8);var onlineRows=arr.map(function(f){var jogo=String(f.jogo||'').trim(),fonte=String(f.jogo_fonte||'');var status=String(f.status||'online');var info=jogo?(fonte==='steam'?'🟦 Jogando na Steam: '+jogo:'🎮 Jogando: '+jogo):(status==='jogando'?'🎮 Jogando':'Online agora');return '<div class="mh-friend"><span class="mh-friend-av">'+avatarHtml(f,'')+'</span><span class="mh-friend-main"><b>'+esc(f.nome||f.slug||'Usuário')+'</b><small>'+esc(info)+'</small></span><i class="mh-online"></i></div>'}).join('');fl.innerHTML=steamRows+onlineRows||'<div class="mh-empty">Nenhum amigo online agora.</div>'}
   var al=$('#mhActivity');
   if(al){var aa=(SOCIAL_ATIVIDADE||[]).slice(0,4);if(!aa.length)al.innerHTML='<div class="mh-empty">Nada novo por enquanto. Seus amigos poderão aparecer aqui.</div>';else al.innerHTML=aa.map(function(a){var p=perfilPorId(a.user_id)||{nome:'Usuário',avatar:''};return '<div class="mh-activity"><span class="mh-friend-av">'+avatarHtml(p,'')+'</span><span><b>'+esc(p.nome||'Usuário')+'</b><small>'+esc(socialTexto(a))+' · '+esc(socialTempo(a.updated_at||a.created_at))+'</small></span></div>'}).join('')}
 }
