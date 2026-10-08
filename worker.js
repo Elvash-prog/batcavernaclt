@@ -1,3 +1,4 @@
+import {secureResponse,guardRequest,filterCatalog,authenticate,safePublicKey,secureLogin,mediaUpload,mediaVideoReview,mediaPrepare} from './security-worker.js';
 import images from './image-assets.js';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 async function catalog(request,env,url){
@@ -13,9 +14,7 @@ async function catalog(request,env,url){
   if(!/^Bearer \S+$/.test(auth))return json({error:'Entre na conta para pesquisar'},401);
   let etapa='auth';
   try{
-    const user=await fetch(new URL('/auth/v1/user',env.SUPABASE_URL),{headers:{Authorization:auth,apikey:env.SUPABASE_ANON_KEY},redirect:'manual',signal:AbortSignal.timeout(10000)});
-    if(user.status>=300&&user.status<400)return json({error:'Não foi possível validar a conexão da conta.',code:'AUTH_REDIRECT'},502);
-    if(!user.ok)return json({error:'Sessão inválida. Entre novamente.'},401);
+    await authenticate(request,env);
     etapa='catalog';
     const upstream=new URL(path,provider==='rawg'?'https://api.rawg.io/api/':'https://api.themoviedb.org/3/');
     const params=new Set(['search','query','page','page_size','ordering','language','sort_by','vote_count.gte','with_genres','without_genres','with_original_language','with_keywords','without_keywords']);
@@ -36,9 +35,9 @@ async function catalog(request,env,url){
     const data=await response.json();
     // RAWG inclui URLs de paginação com a chave; o cliente não precisa delas.
     if(provider==='rawg'&&data&&typeof data==='object'){delete data.next;delete data.previous;}
-    return json(data);
+    const filtered=filterCatalog(data);return filtered instanceof Response?filtered:json(filtered);
   }catch(e){
-    const timeout=e&&['TimeoutError','AbortError'].includes(e.name);
+    if(e.message==='UNAUTHORIZED')return json({error:'Sessão inválida. Entre novamente.'},401);if(e.message==='RATE_LIMIT')return json({error:'Aguarde um minuto antes de pesquisar novamente.'},429);const timeout=e&&['TimeoutError','AbortError'].includes(e.name);
     return json({error:timeout?'A consulta demorou demais. Tente novamente.':etapa==='auth'?'Não foi possível validar a conexão da conta.':etapa==='response'?'O catálogo retornou uma resposta inválida.':'Não foi possível conectar ao catálogo. Tente novamente.',code:timeout?'CATALOG_TIMEOUT':etapa==='auth'?'AUTH_CONNECTION_FAILED':etapa==='response'?'CATALOG_INVALID_RESPONSE':'CATALOG_CONNECTION_FAILED'},502);
   }
 }
@@ -88,11 +87,15 @@ async function steamCover(request,ctx,id){
     if(cache&&ctx)ctx.waitUntil(cache.put(key,res.clone()));return res;
   }catch(e){return json({error:'Capa indisponível na Steam'},502);}
 }
-export default {
+const app = {
   async fetch(request,env,ctx){
     const url=new URL(request.url);
+    if(url.pathname==='/api/account/login')return secureLogin(request,env);
+    if(url.pathname==='/api/media/upload')return mediaUpload(request,env);
+    if(url.pathname==='/api/media/video-review')return mediaVideoReview(request,env);
+    if(url.pathname==='/api/media/prepare')return mediaPrepare(request,env);
     if(url.pathname==='/config.js'){
-      const config={SUPABASE_URL:env.SUPABASE_URL||'',SUPABASE_ANON_KEY:env.SUPABASE_ANON_KEY||'',RAWG_ENABLED:!!env.RAWG_KEY,TMDB_ENABLED:!!env.TMDB_KEY};
+      const config={SUPABASE_URL:env.SUPABASE_URL||'',SUPABASE_ANON_KEY:safePublicKey(env.SUPABASE_ANON_KEY),RAWG_ENABLED:!!env.RAWG_KEY,TMDB_ENABLED:!!env.TMDB_KEY,SECURE_LOGIN_ENABLED:!!env.SUPABASE_SERVICE_ROLE_KEY,MEDIA_MODERATION_ENABLED:!!(env.SUPABASE_SERVICE_ROLE_KEY&&env.SIGHTENGINE_API_USER&&env.SIGHTENGINE_API_SECRET)};
       return new Response('window.BC_CONFIG='+JSON.stringify(config)+';',{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
     }
     if(url.pathname.startsWith('/api/steam-cover/'))return steamCover(request,ctx,url.pathname.slice('/api/steam-cover/'.length));
@@ -106,3 +109,5 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
+
+export default {async fetch(request,env,ctx){const nonce=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24))));try{const denied=await guardRequest(request,env);if(denied)return secureResponse(denied,nonce,env);if(!['GET','HEAD','POST'].includes(request.method))return secureResponse(json({error:'Método não permitido.'},405),nonce,env);const path=new URL(request.url).pathname;if(request.method==='GET'&&!path.startsWith('/api/')&&(path==='/'||path.endsWith('.html')||!path.includes('.'))){const headers=new Headers(request.headers);headers.delete('If-None-Match');headers.delete('If-Modified-Since');request=new Request(request,{headers})}const result=await app.fetch(request,env,ctx);return secureResponse(result,nonce,env)}catch{return secureResponse(json({error:'Não foi possível concluir a solicitação.'},503),nonce,env)}}};
