@@ -2096,19 +2096,20 @@ textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #b5a1ff!import
 <div class="toasts" id="toasts"></div>
 <div class="selbar" id="selbar" hidden><b id="selcount">0 selecionados</b><button class="btn sm" id="selall" type="button">Selecionar todos</button><button class="btn sm primary" id="selstatus" type="button">🔁 Mudar status</button><button class="btn sm primary" id="selfix" type="button">✨ Corrigir dados</button><button class="btn sm danger" id="seldel" type="button">🗑️ Excluir</button><button class="btn sm primary" id="selimp" type="button" hidden>⬇️ Importar para a biblioteca</button><button class="btn sm" id="selcancel" type="button">Cancelar</button></div>
 
+<script src="/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* =====================================================
    CONFIGURAÇÃO — edite só esta parte
    ===================================================== */
-var SUPABASE_URL = "https://luoqlhgfmixvfqbfcdoc.supabase.co";        // Supabase > Project Settings > API > Project URL (ex.: https://abcd1234.supabase.co)
-var SUPABASE_ANON_KEY = "sb_publishable_g_dTf0TrTXy_p8PjjHip2Q_ByqI2r_e";   // Supabase > Project Settings > API > anon / publishable key (pode ficar no site: quem protege os dados são as regras RLS do supabase.sql)
-var RAWG_KEY = "2fd2a58b426042fd99407c9ebde7c298";            // opcional: busca de jogos (capa, ano, gêneros). Chave grátis em rawg.io/apidocs
-var TMDB_KEY = "723efc0a793aea574ecb02b8ac102847";            // opcional: busca de filmes e séries. Chave "API Key (v3)" grátis em themoviedb.org
+var SUPABASE_URL = (window.BC_CONFIG||{}).SUPABASE_URL||"";
+var SUPABASE_ANON_KEY = (window.BC_CONFIG||{}).SUPABASE_ANON_KEY||"";
+var RAWG_KEY = (window.BC_CONFIG||{}).RAWG_ENABLED?"configured":"";
+var TMDB_KEY = (window.BC_CONFIG||{}).TMDB_ENABLED?"configured":"";
 /* cada perfil = um usuário criado em Supabase > Authentication > Users, com o e-mail abaixo.
    urlLegado = link /exec da planilha antiga (só serve para o botão "Importar"; pode apagar depois) */
 var PERFIS = [
-  { id: "Elvash", nome: "Elvash", email: "elvash@platinados.app", urlLegado: "https://script.google.com/macros/s/AKfycbynmaYSz-e3L3I2eX9Ib40FdEkq6x35f5qkxHd9Q-lDe1yFnvwbmt4F8PR6CgEQ1QW8/exec" },
+  { id: "Elvash", nome: "Elvash", email: "elvash@platinados.app", urlLegado: "" },
   { id: "LEKAO",  nome: "LEKAO",  email: "lekao@platinados.app",  urlLegado: "" }
 ];
 var NOME_SITE = "BatCaverna dos CLTs";   // nome do site: aba do navegador, topo e tela de login
@@ -2197,6 +2198,7 @@ var D=null, tab="jogos", P=null, SESS=null, LEMBRAR=false, PREV=null, FEED=[], F
 var PRESENCA=null, ONLINE=[], NOTIFICACOES=[], CONVITES_ENVIADOS=[];
 
 /* ===== Presença: quem está online ===== */
+function renderHtmlEstavel(el,html){if(el.__bcRenderedHtml!==html){el.innerHTML=html;el.__bcRenderedHtml=html;}}
 function onlineRender(){
   var els=document.querySelectorAll("#onlineBox");
   var nomes=ONLINE.map(function(x){return esc(x.nome||x.slug||"Usuário")});
@@ -2210,13 +2212,13 @@ function pararPresenca(){
   PRESENCA=null;ONLINE=[];onlineRender();
 }
 function presencaDados(){
-  var eu=euId(),meu=perfilPorId(eu)||P||{};
+  var eu=euId(),meu=perfilPorId(eu)||(P&&String(P.uid)===String(eu)?P:null)||{};
   var jogandoSteam=AGORA&&AGORA.nome?String(AGORA.nome):"";
   var status=String((meu&&meu.statusPersonalizado)||"online");
   return {
-    nome:(meu&&meu.nome)||P&&P.nome||"Usuário",
-    slug:(meu&&meu.id)||P&&P.id||"",
-    avatar:(meu&&meu.avatar)||P&&P.avatar||"",
+    nome:meu.nome||"Usuário",
+    slug:meu.id||"",
+    avatar:meu.avatar||"",
     status:status,
     jogo:jogandoSteam,
     jogo_fonte:jogandoSteam?"steam":(status==="jogando"?"outro":"")
@@ -2233,8 +2235,9 @@ function iniciarPresenca(){
   PRESENCA.on("presence",{event:"sync"},function(){
     var state=PRESENCA.presenceState(),map={};
     Object.keys(state||{}).forEach(function(k){
-      var entries=state[k]||[],v=entries[entries.length-1]||{};
-      map[k]={id:k,nome:v.nome||v.slug||k,slug:v.slug||"",avatar:v.avatar||"",status:v.status||"online",jogo:v.jogo||"",jogo_fonte:v.jogo_fonte||""};
+      var entries=(state[k]||[]).slice().sort(function(a,b){return String(a.presence_ref||"").localeCompare(String(b.presence_ref||""))}),v=entries[0]||{};
+      var profile=perfilPorId(k);
+      map[k]={id:k,nome:profile?profile.nome:(v.nome||v.slug||k),slug:profile?profile.id:(v.slug||""),avatar:profile?profile.avatar:(v.avatar||""),status:v.status||"online",jogo:v.jogo||"",jogo_fonte:v.jogo_fonte||""};
     });
     ONLINE=Object.keys(map).map(function(k){return map[k]}).sort(function(a,b){return norm(a.nome).localeCompare(norm(b.nome))});
     onlineRender();
@@ -2411,7 +2414,7 @@ var PROV=[[/netflix/i,/netflix/i],[/\bmax\b|hbo/i,/\bmax\b/i],[/crunchyroll/i,/c
 /* filmes e séries: busca no TMDB a duração e onde assistir no Brasil */
 function completarFilme(res,c){
   if(!res||res.fonte!=="tmdb"||!res.tmdbId||!TMDB_KEY)return Promise.resolve();
-  var ep=res.midia==="tv"?"tv":"movie",base="https://api.themoviedb.org/3/"+ep+"/"+res.tmdbId,k="?api_key="+encodeURIComponent(TMDB_KEY);
+  var ep=res.midia==="tv"?"tv":"movie",base="/api/catalog/tmdb/"+ep+"/"+res.tmdbId,k="?api_key="+encodeURIComponent(TMDB_KEY);
   var a=(c.duracao||res.duracao)?Promise.resolve():getJson(base+k+"&language=pt-BR").then(function(d){
     if(ep==="movie"&&d.runtime)res.duracao=Math.floor(d.runtime/60)+"h "+(d.runtime%60)+"min";
     else if(ep==="tv"&&d.number_of_seasons)res.duracao=d.number_of_seasons+(d.number_of_seasons===1?" temporada":" temporadas");
@@ -2452,7 +2455,12 @@ function dbAdicionar(tipo,res,campos){
 
 /* ===== busca de capa, ano e gêneros (feita direto do navegador) ===== */
 function semChave(n){var e=new Error("Falta a chave "+n+" no topo do script. Enquanto isso, use “Só o nome”.");e.semChave=true;return e}
-function getJson(u,opt){return fetch(u,opt).then(function(r){if(!r.ok)throw new Error("A busca falhou ("+r.status+")");return r.json()})}
+function getJson(u,opt){
+  if(String(u).indexOf('/api/catalog/')===0){
+    opt=Object.assign({},opt||{});opt.headers=new Headers(opt.headers||{});
+    if(SESS&&SESS.access_token)opt.headers.set('Authorization','Bearer '+SESS.access_token);
+  }
+  return fetch(u,opt).then(function(r){if(!r.ok)throw new Error("A busca falhou ("+r.status+")");return r.json()})}
 function gens(lista,mapa){var o=[];(lista||[]).forEach(function(g){[].concat(mapa[g]||[]).forEach(function(m){if(o.indexOf(m)<0)o.push(m)})});return o}
 var GEN_JOGO={"Action":"⚔️ Ação","Adventure":"🧭 Aventura","RPG":"📜 RPG","Strategy":"♟️ Estratégia","Shooter":"🔫 Tiro","Simulation":"🏗️ Simulação","Puzzle":"🧩 Puzzle","Platformer":"🕹️ Plataforma","Racing":"🏎️ Corrida","Sports":"⚽ Esporte","Fighting":"🥊 Luta","Indie":"🎨 Indie","Arcade":"👾 Arcade","Massively Multiplayer":"🌐 MMO","Casual":"🎲 Casual","Family":"👨‍👩‍👧 Família","Open World":"🌍 Mundo Aberto","Roguelike":"🔄 Roguelike","Metroidvania":"🗺️ Metroidvania","Horror":"👻 Terror","Souls-like":"💀 Soulslike"};
 var GEN_TMDB={28:"⚔️ Ação",12:"🧭 Aventura",16:"🎨 Animação",35:"😂 Comédia",80:"🕵️ Crime",99:"🎥 Documentário",18:"🎭 Drama",10751:"👨‍👩‍👧 Família",14:"🐉 Fantasia",36:"🏛️ História",27:"👻 Terror",10402:"🎵 Música",9648:"🔍 Mistério",10749:"💕 Romance",878:"🚀 Ficção Científica",53:"😰 Suspense",10752:"🪖 Guerra",37:"🤠 Faroeste",10759:["⚔️ Ação","🧭 Aventura"],10765:["🚀 Ficção Científica","🐉 Fantasia"],10768:"🪖 Guerra"};
@@ -2490,7 +2498,7 @@ LISTAS.filmes.generos=uniq(valores(Object.assign({},GEN_TMDB,GEN_ANI,{anime:"�
 ["🟧 Ubisoft Connect","🟥 EA App","🟦 Battle.net","🟩 Xbox Game Pass","🟦 PlayStation Plus","🌐 Outra loja","🎁 Presente / Cortesia"].forEach(function(p){if(LISTAS.jogos.lojas.indexOf(p)<0)LISTAS.jogos.lojas.push(p)});
 function buscarJogosBase(nome){
   if(!RAWG_KEY)return Promise.reject(semChave("RAWG_KEY"));
-  return getJson("https://api.rawg.io/api/games?key="+encodeURIComponent(RAWG_KEY)+"&search="+encodeURIComponent(nome)+"&page_size=8").then(function(r){
+  return getJson("/api/catalog/rawg/games?key="+encodeURIComponent(RAWG_KEY)+"&search="+encodeURIComponent(nome)+"&page_size=8").then(function(r){
     var n=function(x){return x.name};
     return (r.results||[]).map(function(g){
       return {nome:g.name,ano:g.released?g.released.slice(0,4):"",capa:g.background_image||"",generos:gens([].concat((g.genres||[]).map(n),(g.tags||[]).map(n)),GEN_JOGO).slice(0,10),tempoEst:g.playtime||"",plataforma:rawgPlat(g.platforms),loja:rawgLoja(g.stores),fonte:"rawg"};
@@ -2520,7 +2528,7 @@ function buscarJogos(nome){
 function buscarTmdb(nome,midia){
   if(!TMDB_KEY)return Promise.reject(semChave("TMDB_KEY"));
   var ep=midia==="movie"?"movie":midia==="tv"?"tv":"multi";
-  return getJson("https://api.themoviedb.org/3/search/"+ep+"?api_key="+encodeURIComponent(TMDB_KEY)+"&language=pt-BR&include_adult=false&query="+encodeURIComponent(nome)).then(function(r){
+  return getJson("/api/catalog/tmdb/search/"+ep+"?api_key="+encodeURIComponent(TMDB_KEY)+"&language=pt-BR&include_adult=false&query="+encodeURIComponent(nome)).then(function(r){
     return (r.results||[]).filter(function(x){return ep!=="multi"||x.media_type==="movie"||x.media_type==="tv"}).slice(0,8).map(function(x){
       var m=ep==="multi"?x.media_type:ep,d=x.release_date||x.first_air_date||"";
       return {tmdbId:x.id,nome:x.title||x.name,ano:d.slice(0,4),capa:x.poster_path?"https://image.tmdb.org/t/p/w500"+x.poster_path:"",generos:gens(x.genre_ids,GEN_TMDB),fonte:"tmdb",midia:m};
@@ -2577,7 +2585,7 @@ function trocarPerfil(i,abrir){
   if(typeof desktopUiRender==="function")desktopUiRender();
   if(!sb){
     D=DEMO;$("#demo").hidden=false;
-    $("#demo").innerHTML="Modo demonstração: preencha <b>SUPABASE_URL</b> e <b>SUPABASE_ANON_KEY</b> no topo do script do index.html para ver os dados reais.";
+    $("#demo").innerHTML="Modo demonstração: configure <b>SUPABASE_URL</b> e <b>SUPABASE_ANON_KEY</b> nas variáveis do Cloudflare para ver os dados reais.";
     setLive("demo");montarFiltros();render();return;
   }
   if(!P.uid){
@@ -3260,15 +3268,15 @@ function abrirRecomendacao(i){
   var b=document.querySelector('[data-rec-add-detail]');if(b)b.dataset.recIndex=String(i);
   var atualizar=function(extra){if(!extra)return;ATUAL=recParaAdicionar(Object.assign({},base,extra));var box=document.querySelector('#box');if(!box)return;box.innerHTML=recDetalheHtml(base,Object.assign({},base,extra));var bb=document.querySelector('[data-rec-add-detail]');if(bb)bb.dataset.recIndex=String(i);traduzirSePreciso(extra)};
   traduzirSePreciso(base);
-  if(RAWG_KEY && x.id){getJson('https://api.rawg.io/api/games/'+encodeURIComponent(x.id)+'?key='+encodeURIComponent(RAWG_KEY)+'&language=pt-BR').then(atualizar).catch(function(){traduzirSePreciso(base)})}
-  else if(RAWG_KEY){getJson('https://api.rawg.io/api/games?key='+encodeURIComponent(RAWG_KEY)+'&search='+encodeURIComponent(x.name||'')+'&page_size=1').then(function(r){var first=r&&r.results&&r.results[0];if(first&&first.id)return getJson('https://api.rawg.io/api/games/'+encodeURIComponent(first.id)+'?key='+encodeURIComponent(RAWG_KEY)+'&language=pt-BR').then(atualizar);}).catch(function(){})}
+  if(RAWG_KEY && x.id){getJson('/api/catalog/rawg/games/'+encodeURIComponent(x.id)+'?key='+encodeURIComponent(RAWG_KEY)+'&language=pt-BR').then(atualizar).catch(function(){traduzirSePreciso(base)})}
+  else if(RAWG_KEY){getJson('/api/catalog/rawg/games?key='+encodeURIComponent(RAWG_KEY)+'&search='+encodeURIComponent(x.name||'')+'&page_size=1').then(function(r){var first=r&&r.results&&r.results[0];if(first&&first.id)return getJson('/api/catalog/rawg/games/'+encodeURIComponent(first.id)+'?key='+encodeURIComponent(RAWG_KEY)+'&language=pt-BR').then(atualizar);}).catch(function(){})}
 }
 function traduzirSePreciso(x){var d=(x&&x.description_raw)||x&&x.description||'';if(!d)return;traduzirPt(String(d).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()).then(function(t){var el=document.querySelector('#recDescText');if(el&&t){el.textContent=t+(t.length>=1800?'…':'');var h=el.parentElement&&el.parentElement.querySelector('small');if(h)h.textContent='(português)'}})}
 function adicionarRecomendacao(i){
   var x=RECOMENDACOES[+i];if(!x)return;
   var pre=recParaAdicionar(x);
   if(RAWG_KEY && (!pre.ano||!pre.generos.length||!pre.capa||!pre.steamAppid)){
-    getJson('https://api.rawg.io/api/games?key='+encodeURIComponent(RAWG_KEY)+'&search='+encodeURIComponent(x.name||'')+'&page_size=1').then(function(r){var y=r&&r.results&&r.results[0];if(y)pre=Object.assign({},pre,recParaAdicionar(y),{nome:pre.nome});abrirAdicionarRecomendacao(pre)}).catch(function(){abrirAdicionarRecomendacao(pre)});
+    getJson('/api/catalog/rawg/games?key='+encodeURIComponent(RAWG_KEY)+'&search='+encodeURIComponent(x.name||'')+'&page_size=1').then(function(r){var y=r&&r.results&&r.results[0];if(y)pre=Object.assign({},pre,recParaAdicionar(y),{nome:pre.nome});abrirAdicionarRecomendacao(pre)}).catch(function(){abrirAdicionarRecomendacao(pre)});
   }else abrirAdicionarRecomendacao(pre);
 }
 function abrirAdicionarRecomendacao(pre){
@@ -3345,7 +3353,7 @@ function carregarRecomendacoes(force){
   var seed=bcHashSeed(bcDiaId()+'|games-pages|'+REC_REFRESH);
   var base=1+(seed%12);
   var ords=['-added','-rating','-metacritic'];
-  var urls=ords.map(function(ord,i){var page=1+((base+i*4)%15);return 'https://api.rawg.io/api/games?key='+encodeURIComponent(RAWG_KEY)+'&ordering='+encodeURIComponent(ord)+'&page_size=24&page='+page});
+  var urls=ords.map(function(ord,i){var page=1+((base+i*4)%15);return '/api/catalog/rawg/games?key='+encodeURIComponent(RAWG_KEY)+'&ordering='+encodeURIComponent(ord)+'&page_size=24&page='+page});
   Promise.all(urls.map(getJson)).then(function(rs){
     var seen={},out=[];
     rs.forEach(function(r){(r&&r.results||[]).forEach(function(x){
@@ -3750,7 +3758,7 @@ function mediaResolverCapasFaltantes(){
       if(x.capa||x._capaTentada)return;
       x._capaTentada=true;
       var ep=kind==='serie'?'tv':'movie';
-      var u='https://api.themoviedb.org/3/search/'+ep+'?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&include_adult=false&query='+encodeURIComponent(x.nome);
+      var u='/api/catalog/tmdb/search/'+ep+'?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&include_adult=false&query='+encodeURIComponent(x.nome);
       jobs.push(getJson(u).then(function(r){
         var hit=(r.results||[]).find(function(a){return !!a.poster_path})||(r.results||[])[0];
         if(hit&&hit.poster_path){
@@ -3774,14 +3782,14 @@ function carregarMediaRecomendacoes(force){
   var lib=mediaBibliotecaNomes(),prefs=[];MEDIA_RECS_BUSY=true;var b0=$('#mediaRecsRefresh');if(b0)b0.disabled=true;MEDIA_REC_GROUPS={filme:[],serie:[],anime:[]};mediaRecRender();
   var seed=bcHashSeed(bcDiaId()+'|media-pages|'+MEDIA_REC_REFRESH),base=1+(seed%10);
   var movieUrls=[
-    'https://api.themoviedb.org/3/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=popularity.desc&include_adult=false&page='+(1+(base%12)),
-    'https://api.themoviedb.org/3/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=vote_average.desc&vote_count.gte=300&include_adult=false&page='+(1+((base+3)%8)),
-    'https://api.themoviedb.org/3/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=primary_release_date.desc&vote_count.gte=80&include_adult=false&page='+(1+((base+6)%6))
+    '/api/catalog/tmdb/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=popularity.desc&include_adult=false&page='+(1+(base%12)),
+    '/api/catalog/tmdb/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=vote_average.desc&vote_count.gte=300&include_adult=false&page='+(1+((base+3)%8)),
+    '/api/catalog/tmdb/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=primary_release_date.desc&vote_count.gte=80&include_adult=false&page='+(1+((base+6)%6))
   ];
   var serieUrls=[
-    'https://api.themoviedb.org/3/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=popularity.desc&page='+(1+(base%12)),
-    'https://api.themoviedb.org/3/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=vote_average.desc&vote_count.gte=150&page='+(1+((base+4)%8)),
-    'https://api.themoviedb.org/3/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=first_air_date.desc&vote_count.gte=50&page='+(1+((base+7)%6))
+    '/api/catalog/tmdb/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=popularity.desc&page='+(1+(base%12)),
+    '/api/catalog/tmdb/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=vote_average.desc&vote_count.gte=150&page='+(1+((base+4)%8)),
+    '/api/catalog/tmdb/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=first_air_date.desc&vote_count.gte=50&page='+(1+((base+7)%6))
   ];
   var aniPage=1+((base+MEDIA_REC_REFRESH)%8);
   var aniQuery='query($p:Int!){Page(page:$p,perPage:30){media(type:ANIME,isAdult:false,sort:TRENDING_DESC){title{romaji english}startDate{year}coverImage{large}genres description(asHtml:false) isAdult}}}';
@@ -4719,9 +4727,9 @@ function notifTempo(iso){
 }
 function carregarNotificacoes(){
   var eu=euId();if(!eu||!sb){NOTIFICACOES=[];notificacoesRender();return Promise.resolve()}
-  return sb.from("notificacoes").select("id,tipo,mensagem,actor_id,referencia_id,read,created_at").eq("destinatario_id",eu).order("created_at",{ascending:false}).limit(50).then(function(r){
+  return sb.from("notificacoes").select("id,tipo,mensagem,actor_id,referencia_id,read,created_at").eq("destinatario_id",eu).not("tipo","in","(chat_message,chat_group_message)").order("created_at",{ascending:false}).limit(50).then(function(r){
     if(r.error)throw new Error(r.error.message);
-    NOTIFICACOES=r.data||[];
+    NOTIFICACOES=(r.data||[]).filter(function(n){return n.tipo!=="chat_message"&&n.tipo!=="chat_group_message"});
     NOTIFICACOES.forEach(function(n){if(n.actor_id)carregarPerfilSilencioso(n.actor_id)});
     notificacoesRender();
   }).catch(function(){notificacoesRender()});
@@ -4785,7 +4793,7 @@ function abrirDestinoNotificacao(n){if(!n)return;marcarNotificacao(n.id);if(n.ti
 function abrirCentralNotificacoes(cat){
   cat=cat||'todas';
   var html='<div class="body notif-center">'+
-    '<div class="notif-center-head"><div><h2>🔔 Central de notificações</h2><p>Suas interações, amizades, mensagens e conquistas.</p></div><div class="notif-center-head-actions"><button type="button" class="btn sm" data-center-action="push">🔔 Ativar no celular</button><button type="button" class="btn sm notif-center-close" data-center-action="close" aria-label="Fechar">✕</button></div></div>'+
+    '<div class="notif-center-head"><div><h2>🔔 Central de notificações</h2><p>Suas interações, amizades e conquistas. Mensagens ficam na aba Chat.</p></div><div class="notif-center-head-actions"><button type="button" class="btn sm" data-center-action="push">🔔 Ativar no celular</button><button type="button" class="btn sm notif-center-close" data-center-action="close" aria-label="Fechar">✕</button></div></div>'+
     '<div class="notif-center-tools">'+
       '<button class="notif-filter '+(cat==='todas'?'on':'')+'" data-center-action="filter" data-cat="todas">Tudo</button>'+
       '<button class="notif-filter '+(cat==='nao_lidas'?'on':'')+'" data-center-action="filter" data-cat="nao_lidas">🔴 Não lidas</button>'+
@@ -5877,7 +5885,7 @@ function mobileHomeRender(){
   var fc=$('#mhFriends');if(fc)fc.textContent=String(AMIGOS.length||0);var fs=$('#mhFriendsSub');if(fs)fs.textContent=online+' online agora';
   var oc=$('#mhOnlineCount');if(oc)oc.textContent=String(online);
   var fl=$('#mhFriendsList');
-  if(fl){var steamRows=steamFriends.slice(0,8).map(function(f){return '<div class="mh-friend">'+steamAmigoCapaHtml(f)+'<span class="mh-friend-main"><b>'+esc(f.nome||'Amigo')+'</b><small>🟦 Jogando na Steam: '+esc(f.jogo||'jogo')+'</small></span><i class="mh-online"></i></div>'}).join('');var arr=onlineFriends.filter(function(x){return !steamFriends.some(function(s){return String(s.uid)===String(x.id)})}).slice(0,8);var onlineRows=arr.map(function(f){var jogo=String(f.jogo||'').trim(),fonte=String(f.jogo_fonte||'');var status=String(f.status||'online');var info=jogo?(fonte==='steam'?'🟦 Jogando na Steam: '+jogo:'🎮 Jogando: '+jogo):(status==='jogando'?'🎮 Jogando':'Online agora');return '<div class="mh-friend"><span class="mh-friend-av">'+avatarHtml(f,'')+'</span><span class="mh-friend-main"><b>'+esc(f.nome||f.slug||'Usuário')+'</b><small>'+esc(info)+'</small></span><i class="mh-online"></i></div>'}).join('');fl.innerHTML=steamRows+onlineRows||'<div class="mh-empty">Nenhum amigo online agora.</div>'}
+  if(fl){var steamRows=steamFriends.slice(0,8).map(function(f){return '<div class="mh-friend">'+steamAmigoCapaHtml(f)+'<span class="mh-friend-main"><b>'+esc(f.nome||'Amigo')+'</b><small>🟦 Jogando na Steam: '+esc(f.jogo||'jogo')+'</small></span><i class="mh-online"></i></div>'}).join('');var arr=onlineFriends.filter(function(x){return !steamFriends.some(function(s){return String(s.uid)===String(x.id)})}).slice(0,8);var onlineRows=arr.map(function(f){var jogo=String(f.jogo||'').trim(),fonte=String(f.jogo_fonte||'');var status=String(f.status||'online');var info=jogo?(fonte==='steam'?'🟦 Jogando na Steam: '+jogo:'🎮 Jogando: '+jogo):(status==='jogando'?'🎮 Jogando':'Online agora');return '<div class="mh-friend"><span class="mh-friend-av">'+avatarHtml(f,'')+'</span><span class="mh-friend-main"><b>'+esc(f.nome||f.slug||'Usuário')+'</b><small>'+esc(info)+'</small></span><i class="mh-online"></i></div>'}).join('');renderHtmlEstavel(fl,steamRows+onlineRows||'<div class="mh-empty">Nenhum amigo online agora.</div>')}
   var al=$('#mhActivity');
   if(al){var aa=(SOCIAL_ATIVIDADE||[]).slice(0,4);if(!aa.length)al.innerHTML='<div class="mh-empty">Nada novo por enquanto. Seus amigos poderão aparecer aqui.</div>';else al.innerHTML=aa.map(function(a){var p=perfilPorId(a.user_id)||{nome:'Usuário',avatar:''};return '<div class="mh-activity"><span class="mh-friend-av">'+avatarHtml(p,'')+'</span><span><b>'+esc(p.nome||'Usuário')+'</b><small>'+esc(socialTexto(a))+' · '+esc(socialTempo(a.updated_at||a.created_at))+'</small></span></div>'}).join('')}
 }
@@ -5940,7 +5948,7 @@ function desktopUiRender(){
   var fc=$('#deskFriendsBadge'),fn=Number((CONVITES||[]).length||0);if(fc){fc.hidden=!fn;fc.textContent=fn>99?'99+':String(fn)}
   var cb=$('#deskChatBadge'),cu=Number(CHAT_UNREAD||0);if(cb){cb.hidden=!cu;cb.textContent=cu>99?'99+':String(cu)}
   var online=(ONLINE||[]).filter(function(x){return x&&String(x.id)!==String(euId())&&AMIGOS.map(String).indexOf(String(x.id))>=0});var oc=$('#deskOnlineCount');if(oc)oc.textContent=String(online.length);
-  var ol=$('#deskOnlineList');if(ol){var a=online.slice(0,7);ol.innerHTML=a.length?a.map(function(f){var info=f.jogo?'🎮 '+f.jogo:'Online agora';return '<div class="desktop-list-row"><span class="desktop-mini-avatar">'+avatarHtml(f,'')+'</span><span class="desktop-list-copy"><b>'+esc(f.nome||f.slug||'Usuário')+'</b><small>'+esc(info)+'</small></span><i class="desktop-dot"></i></div>'}).join(''):'<div class="desktop-activity-row">Nenhum amigo online agora.</div>'}
+  var ol=$('#deskOnlineList');if(ol){var a=online.slice(0,7);renderHtmlEstavel(ol,a.length?a.map(function(f){var info=f.jogo?'🎮 '+f.jogo:'Online agora';return '<div class="desktop-list-row"><span class="desktop-mini-avatar">'+avatarHtml(f,'')+'</span><span class="desktop-list-copy"><b>'+esc(f.nome||f.slug||'Usuário')+'</b><small>'+esc(info)+'</small></span><i class="desktop-dot"></i></div>'}).join(''):'<div class="desktop-activity-row">Nenhum amigo online agora.</div>')}
   var ml=$('#deskMissionList');if(ml){var ms=(MISSOES_ATIVAS||[]).slice(0,3);ml.innerHTML=ms.length?ms.map(function(m){var nome=m.titulo||m.nome||m.descricao||'Missão';var prog=Number(m.progresso||m.atual||0),meta=Number(m.meta||m.objetivo||0);return '<div class="desktop-activity-row"><b>'+esc(nome)+'</b><br><span>'+esc(String(prog))+(meta?' / '+esc(String(meta)):'')+' · '+esc(String(m.xp||m.recompensa_xp||0))+' XP</span></div>'}).join(''):'<div class="desktop-activity-row">Nenhuma missão carregada.</div>'}
   var rl=$('#deskRankList');if(rl){var rs=(RANKING||[]).slice(0,5);rl.innerHTML=rs.length?rs.map(function(r,i){return '<div class="desktop-list-row"><span style="width:18px;text-align:center;font:800 9px Sora;color:#aaa">'+(i+1)+'</span><span class="desktop-mini-avatar">'+(r.avatar?'<img src="'+esc(r.avatar)+'" alt="">':'👤')+'</span><span class="desktop-list-copy"><b>'+esc(r.nome||r.slug||'CLT')+'</b><small>'+esc(String(r.xp||0))+' XP · Nv.'+esc(String(r.nivel||1))+'</small></span></div>'}).join(''):'<div class="desktop-activity-row">Ranking indisponível.</div>'}
   renderSteamFriendsDesktop();
