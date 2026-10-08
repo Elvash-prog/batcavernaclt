@@ -1,5 +1,5 @@
 // Patch 1.21 — cache restrito aos arquivos públicos do aplicativo.
-const CACHE='batcaverna-shell-v143';
+const CACHE='batcaverna-shell-v144';
 const SHELL=['./index.html','./performance-client.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./push-icon.png','./push-badge.png','./notification-icon-v141.png','./notification-badge-v141.png'];
 const SHELL_URLS=new Set(SHELL.map(path=>new URL(path,self.registration.scope).href));
 self.addEventListener('install',event=>{
@@ -23,11 +23,24 @@ self.addEventListener('fetch',event=>{
   if(!navigation&&!shell)return;
   event.respondWith((async()=>{
     const cache=await caches.open(CACHE);
-    try {
+    // Only immutable public shell routes get the fast path. Auth links with query/hash,
+    // APIs, profiles and all private data continue through the existing network path.
+    const root=new URL('./',self.registration.scope);
+    const publicNavigation=navigation&&!url.search&&!url.hash&&(url.pathname===root.pathname||url.pathname===new URL('./index.html',root).pathname);
+    const cacheKey=publicNavigation?new URL('./index.html',root).href:req;
+    const cachedShell=(publicNavigation||shell)?await cache.match(cacheKey):null;
+    async function refresh(){
       const response=await fetch(req);
-      // Navegações com query podem conter tokens. Somente URLs fixas entram no cache.
-      if(response.ok&&shell)await cache.put(req,response.clone()).catch(()=>{});
+      // Never cache redirects, errors, API data, or token-bearing navigation.
+      if(response.ok&&!response.redirected&&(shell||publicNavigation))await cache.put(cacheKey,response.clone()).catch(()=>{});
       return response;
+    }
+    if(cachedShell){
+      event.waitUntil(refresh().catch(()=>{}));
+      return cachedShell;
+    }
+    try {
+      return await refresh();
     } catch (_) {
       const cached=await cache.match(req);
       if(cached)return cached;
