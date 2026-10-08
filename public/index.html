@@ -3372,15 +3372,15 @@ function recCacheCarregar(){
   try{var raw=localStorage.getItem(recCacheKey());if(!raw)return false;var obj=JSON.parse(raw);if(!obj||!Array.isArray(obj.items)||!obj.items.length)return false;RECOMENDACOES=obj.items.slice();atualizarContextoRecs();return RECOMENDACOES.length>0}catch(e){return false}
 }
 var REC_PAGE=1,REC_HAS_MORE=true,REC_OWNER='',REC_ERROR='',REC_LAST_ATTEMPT=0,REC_SEEN={};
-function recCacheKey(){return 'batcaverna_recomendacoes_v3_'+String(P&&P.uid||'anon')+'_'+bcDiaId()}
+function recCacheKey(){return 'batcaverna_recomendacoes_v4_'+String(P&&P.uid||'anon')+'_'+bcDiaId()}
 function recCacheSalvar(){try{localStorage.setItem(recCacheKey(),JSON.stringify({items:RECOMENDACOES,page:REC_PAGE,more:REC_HAS_MORE,updatedAt:Date.now()}))}catch(e){}}
 function recCacheCarregar(){
-  try{var ob=JSON.parse(localStorage.getItem(recCacheKey())||'null');if(!ob||!Array.isArray(ob.items)||!ob.items.length||!ob.items.every(function(x){return x.id})||Date.now()-ob.updatedAt>6*3600000)return false;RECOMENDACOES=recFiltrarBiblioteca(ob.items);REC_PAGE=Number(ob.page)||1;REC_HAS_MORE=ob.more!==false;RECOMENDACOES.forEach(function(x){REC_SEEN[norm(x.name)]=true});return !!RECOMENDACOES.length}catch(e){return false}
+  try{var ob=JSON.parse(localStorage.getItem(recCacheKey())||'null');if(!ob||!Array.isArray(ob.items)||!ob.items.length||!ob.items.every(function(x){return x.id})||Date.now()-ob.updatedAt>6*3600000)return false;RECOMENDACOES=recFiltrarBiblioteca(ob.items).slice(0,6);REC_PAGE=Number(ob.page)||1;REC_HAS_MORE=ob.more!==false;RECOMENDACOES.forEach(function(x){REC_SEEN[norm(x.name)]=true});return !!RECOMENDACOES.length}catch(e){return false}
 }
 function carregarRecomendacoes(force){
   var sec=$('#recommendationsHome');if(!sec)return Promise.resolve();var ok=tab==='jogos'&&!PERFIL_ABERTO&&!!P;sec.hidden=!ok;if(!ok||RECS_BUSY||!sb)return Promise.resolve();
   var owner=String(P.uid),day=bcDiaId();
-  if(REC_OWNER!==owner||window.__BC_REC_DAY!==day){REC_OWNER=owner;window.__BC_REC_DAY=day;RECOMENDACOES=[];REC_SEEN={};REC_PAGE=1+bcHashSeed(day+'|games-pages')%20;REC_HAS_MORE=true;REC_LAST_ATTEMPT=0;REC_ERROR=''}
+  if(REC_OWNER!==owner||window.__BC_REC_DAY!==day){REC_OWNER=owner;window.__BC_REC_DAY=day;RECOMENDACOES=[];REC_SEEN={};REC_PAGE=1+(Math.floor(Date.parse(day+'T12:00:00Z')/86400000)%100);REC_HAS_MORE=true;REC_LAST_ATTEMPT=0;REC_ERROR=''}
   if(force){REC_REFRESH++;REC_PAGE+=3;REC_HAS_MORE=true;RECOMENDACOES=[];REC_ERROR='';REC_LAST_ATTEMPT=0}
   else if(RECOMENDACOES.length||recCacheCarregar()){renderRecomendacoes();return Promise.resolve()}
   if(!force&&REC_LAST_ATTEMPT&&Date.now()-REC_LAST_ATTEMPT<60000){renderRecomendacoes();return Promise.resolve()}
@@ -3397,14 +3397,14 @@ async function carregarMaisRecomendacoes(){
       var r=await getJson('/api/catalog/rawg/games?ordering=-added&page_size=40&page='+REC_PAGE);
       if(!P||String(P.uid)!==owner||bcDiaId()!==day)return;
       REC_PAGE++;REC_HAS_MORE=!!(r.results&&r.results.length)&&(!Number.isFinite(r.count)||(REC_PAGE-1)*40<r.count);
-      var items=recFiltrarBiblioteca(r.results||[]);items.forEach(function(x){var n=norm(x.name);if(!REC_SEEN[n]){REC_SEEN[n]=true;RECOMENDACOES.push(x);added++}});
+      var items=bcShuffleDia(recFiltrarBiblioteca(r.results||[]),'compact-games-'+REC_REFRESH).filter(function(x){return !REC_SEEN[norm(x.name)]}).slice(0,6);items.forEach(function(x){var n=norm(x.name);if(!REC_SEEN[n]){REC_SEEN[n]=true;RECOMENDACOES.push(x);added++}});
     }
     recCacheSalvar();
   }catch(e){REC_ERROR=erroTxt(e)}finally{RECS_BUSY=false;if(refresh)refresh.disabled=false;renderRecomendacoes()}
 }
 function renderRecomendacoes(){
   var box=$('#recommendationsList');if(!box)return;
-  box.innerHTML=RECOMENDACOES.map(recCard).join('')+(REC_ERROR?'<div class="rec-empty" role="status">'+esc(REC_ERROR)+'</div>':'')+(!RECOMENDACOES.length&&!REC_ERROR?'<div class="rec-empty">'+(RECS_BUSY?'Carregando recomendações…':'Nenhuma recomendação disponível agora.')+'</div>':'')+(REC_HAS_MORE?'<div class="rec-more"><button type="button" class="btn" data-rec-more '+(RECS_BUSY?'disabled':'')+'>'+(RECS_BUSY?'Carregando…':REC_ERROR?'Tentar novamente':'Carregar mais jogos')+'</button></div>':'');
+  box.innerHTML=RECOMENDACOES.map(recCard).join('')+(REC_ERROR?'<div class="rec-empty" role="status">'+esc(REC_ERROR)+'</div>':'')+(!RECOMENDACOES.length&&!REC_ERROR?'<div class="rec-empty">'+(RECS_BUSY?'Carregando recomendações…':'Nenhuma recomendação disponível agora.')+'</div>':'');
 }
 
 function prepararBuscaRecomendacao(nome){tab='jogos';var b=document.querySelector('#tabs [data-t="jogos"]');if(b){document.querySelectorAll('#tabs button').forEach(function(x){x.classList.toggle('on',x===b)})}DESTAQUE=null;adminUI();montarFiltros();abrirAdicionar();setTimeout(function(){var inp=$('#box [name="nome"]');if(inp){inp.value=nome;inp.focus()}},50)}
@@ -5671,19 +5671,41 @@ setInterval(function(){if(!document.hidden&&SESS&&P&&sb){carregarAmigos();carreg
 /* ===== FASE 5 — MISSÕES ===== */
 var MISSOES_ATIVAS=[],MISSOES_TAB='diarias';
 function periodoMissao(tipo){var d=new Date();if(tipo==='diaria')return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');var x=new Date(d);var day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return 'semana:'+x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}
+var MISSOES_V2=false,MISSOES_VERSION_CHECK=null;
+function verificarVersaoMissoes(){
+  if(!MISSOES_VERSION_CHECK)MISSOES_VERSION_CHECK=sb.rpc('missoes_clt_versao').then(function(r){MISSOES_V2=!r.error&&Number(r.data)>=2}).catch(function(){MISSOES_V2=false});
+  return MISSOES_VERSION_CHECK;
+}
 function definicoesMissoes(){
-  var pool=[
+  var games=[
     {id:'add_game_1',tipo:'diaria',ico:'🎮',nome:'Descoberta do dia',desc:'Adicione 1 jogo à sua biblioteca.',meta:1,xp:25},
-    {id:'add_game_3',tipo:'diaria',ico:'📚',nome:'Expanda sua coleção',desc:'Adicione 3 jogos à sua biblioteca.',meta:3,xp:80},
+    {id:'add_game_2',tipo:'diaria',ico:'🕹️',nome:'Dupla de novidades',desc:'Adicione 2 jogos à sua biblioteca.',meta:2,xp:50},
+    {id:'add_game_3',tipo:'diaria',ico:'📚',nome:'Expanda sua coleção',desc:'Adicione 3 jogos à sua biblioteca.',meta:3,xp:80}
+  ],media=[
+    {id:'media_1',tipo:'diaria',ico:'🍿',nome:'Próxima sessão',desc:'Adicione 1 filme ou série.',meta:1,xp:25},
+    {id:'media_2',tipo:'diaria',ico:'📺',nome:'Duas histórias',desc:'Adicione 2 filmes ou séries.',meta:2,xp:50},
     {id:'media_3',tipo:'diaria',ico:'🎬',nome:'Sessão de novidades',desc:'Adicione 3 filmes ou séries.',meta:3,xp:70}
   ];
-  var day=Math.floor(Date.parse(periodoMissao('diaria')+'T12:00:00Z')/86400000),skip=day%pool.length;
-  return pool.filter(function(x,i){return i!==skip}).concat([
+  var day=Math.floor(Date.parse(periodoMissao('diaria')+'T12:00:00Z')/86400000);
+  var daily=MISSOES_V2?[games[day%3],media[(day+1)%3],day%2?media[(day+2)%3]:games[(day+1)%3]]:[games[0],games[2],media[2]];
+  return daily.concat([
     {id:'add_game_3',tipo:'semanal',ico:'🎮',nome:'Coleção crescendo',desc:'Adicione 3 jogos nesta semana.',meta:3,xp:80},
     {id:'media_3',tipo:'semanal',ico:'🎬',nome:'Novas histórias',desc:'Adicione 3 filmes ou séries nesta semana.',meta:3,xp:70}
   ]);
 }
-function prepararMissoes(){if(!sb||!P||!P.uid||String(P.uid)!==String(euId()))return Promise.resolve();var defs=definicoesMissoes(),d=defs.filter(function(x){return x.tipo==='diaria'}).map(function(x){return x.id}),w=defs.filter(function(x){return x.tipo==='semanal'}).map(function(x){return x.id});return Promise.all([sb.rpc('preparar_missoes_clt',{p_periodo:periodoMissao('diaria'),p_missoes:d}),sb.rpc('preparar_missoes_clt',{p_periodo:periodoMissao('semanal'),p_missoes:w})]).then(function(){return sb.rpc('missoes_clt')}).then(function(r){if(r.error)throw r.error;MISSOES_ATIVAS=r.data||[];renderMissoes()}).catch(function(){MISSOES_ATIVAS=[];renderMissoes()})}
+async function prepararMissoes(){
+  if(!sb||!P||!P.uid||String(P.uid)!==String(euId()))return;
+  var uid=euId();
+  try{
+    await verificarVersaoMissoes();if(!P||String(P.uid)!==String(uid))return;
+    var defs=definicoesMissoes();
+    var rs=await Promise.all(['diaria','semanal'].map(function(tipo){return sb.rpc('preparar_missoes_clt',{p_periodo:periodoMissao(tipo),p_missoes:defs.filter(function(x){return x.tipo===tipo}).map(function(x){return x.id})})}));
+    if(rs.some(function(r){return r.error}))throw new Error('Não foi possível carregar as missões.');
+    var r=await sb.rpc('missoes_clt');if(r.error)throw r.error;if(!P||String(P.uid)!==String(uid))return;
+    MISSOES_ATIVAS=r.data||[];renderMissoes();
+  }catch(e){MISSOES_ATIVAS=[];renderMissoes()}
+}
+
 function renderMissoes(){
   var box=document.getElementById("missionBox");if(!box)return;
   if(String(P&&P.uid||"")!==String(euId()||"")){box.hidden=true;box.innerHTML="";return;}
@@ -7322,3 +7344,12 @@ function conquistasAtuaisPerfil(){var j=D&&D.jogos||[],f=D&&D.filmes||[];return 
 document.addEventListener('click',function(e){if(e.target.closest('[data-rec-more]'))carregarMaisRecomendacoes()});
 document.addEventListener('change',function(e){var x=e.target;if(!x.matches('input[name="jogosDestaque"],input[name="conquistasDestaque"]'))return;var limit=x.name==='jogosDestaque'?8:4;if(x.checked&&x.form.querySelectorAll('input[name="'+x.name+'"]:checked').length>limit){x.checked=false;toast('Selecione até '+limit+' destaques.')}});
 </script>
+
+<script>
+/* Amigos deve continuar visível mesmo quando o perfil oculta main. */
+var friendsPortal=document.getElementById('friendsModal');if(friendsPortal&&friendsPortal.parentNode!==document.body)document.body.appendChild(friendsPortal);
+</script>
+<style id="patch131-friends">
+#friendsModal{z-index:2147483400!important;isolation:isolate;position:fixed!important;inset:0!important}
+#friendsModal.on{display:flex!important}
+</style>
