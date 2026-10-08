@@ -11,9 +11,12 @@ async function catalog(request,env,url){
   if(!env.SUPABASE_URL||!env.SUPABASE_ANON_KEY||!key)return json({error:'Integração não configurada'},503);
   const auth=request.headers.get('Authorization')||'';
   if(!/^Bearer \S+$/.test(auth))return json({error:'Entre na conta para pesquisar'},401);
+  let etapa='auth';
   try{
-    const user=await fetch(new URL('/auth/v1/user',env.SUPABASE_URL),{headers:{Authorization:auth,apikey:env.SUPABASE_ANON_KEY},redirect:'error',signal:AbortSignal.timeout(10000)});
+    const user=await fetch(new URL('/auth/v1/user',env.SUPABASE_URL),{headers:{Authorization:auth,apikey:env.SUPABASE_ANON_KEY},redirect:'manual',signal:AbortSignal.timeout(10000)});
+    if(user.status>=300&&user.status<400)return json({error:'Não foi possível validar a conexão da conta.',code:'AUTH_REDIRECT'},502);
     if(!user.ok)return json({error:'Sessão inválida. Entre novamente.'},401);
+    etapa='catalog';
     const upstream=new URL(path,provider==='rawg'?'https://api.rawg.io/api/':'https://api.themoviedb.org/3/');
     const params=new Set(['search','query','page','page_size','ordering','language','sort_by','vote_count.gte','with_genres','without_genres','with_original_language','with_keywords','without_keywords']);
     for(const [k,v] of url.searchParams){if(params.has(k)&&v.length<=500)upstream.searchParams.set(k,v);}
@@ -22,17 +25,22 @@ async function catalog(request,env,url){
       upstream.searchParams.set('page_size',String(Math.min(40,Math.max(1,Number(upstream.searchParams.get('page_size'))||20))));
     }else{if(!key.includes('.'))upstream.searchParams.set('api_key',key);upstream.searchParams.set('include_adult','false');}
     const headers={Accept:'application/json'};if(provider==='tmdb'&&key.includes('.'))headers.Authorization='Bearer '+key;
-    let response=await fetch(upstream,{headers,redirect:'error',signal:AbortSignal.timeout(15000)});
-    if([500,502,503,504].includes(response.status))response=await fetch(upstream,{headers,redirect:'error',signal:AbortSignal.timeout(15000)});
+    let response=await fetch(upstream,{headers,redirect:'manual',signal:AbortSignal.timeout(15000)});
+    if([500,502,503,504].includes(response.status))response=await fetch(upstream,{headers,redirect:'manual',signal:AbortSignal.timeout(15000)});
+    if(response.status>=300&&response.status<400)return json({error:'O catálogo redirecionou a consulta. Tente novamente.',code:'CATALOG_REDIRECT'},502);
     if(!response.ok){
       const invalid=response.status===401||response.status===403;
       return json({error:invalid?'O catálogo '+(provider==='rawg'?'de jogos':'de filmes e séries')+' recusou a chave de acesso.':response.status===429?'O catálogo atingiu o limite de consultas. Tente novamente em instantes.':'O catálogo está indisponível. Tente novamente.',code:invalid?'CATALOG_AUTH_FAILED':response.status===429?'CATALOG_RATE_LIMIT':'CATALOG_UNAVAILABLE'},invalid?503:response.status===429?429:502);
     }
+    etapa='response';
     const data=await response.json();
     // RAWG inclui URLs de paginação com a chave; o cliente não precisa delas.
     if(provider==='rawg'&&data&&typeof data==='object'){delete data.next;delete data.previous;}
     return json(data);
-  }catch(_){return json({error:'Não foi possível consultar o catálogo'},502);}
+  }catch(e){
+    const timeout=e&&['TimeoutError','AbortError'].includes(e.name);
+    return json({error:timeout?'A consulta demorou demais. Tente novamente.':etapa==='auth'?'Não foi possível validar a conexão da conta.':etapa==='response'?'O catálogo retornou uma resposta inválida.':'Não foi possível conectar ao catálogo. Tente novamente.',code:timeout?'CATALOG_TIMEOUT':etapa==='auth'?'AUTH_CONNECTION_FAILED':etapa==='response'?'CATALOG_INVALID_RESPONSE':'CATALOG_CONNECTION_FAILED'},502);
+  }
 }
 export default {
   async fetch(request,env,ctx){
