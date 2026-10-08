@@ -42,6 +42,38 @@ async function catalog(request,env,url){
     return json({error:timeout?'A consulta demorou demais. Tente novamente.':etapa==='auth'?'Não foi possível validar a conexão da conta.':etapa==='response'?'O catálogo retornou uma resposta inválida.':'Não foi possível conectar ao catálogo. Tente novamente.',code:timeout?'CATALOG_TIMEOUT':etapa==='auth'?'AUTH_CONNECTION_FAILED':etapa==='response'?'CATALOG_INVALID_RESPONSE':'CATALOG_CONNECTION_FAILED'},502);
   }
 }
+function steamFreeRows(html){
+  const games=[],seen=new Set();
+  for(const match of html.matchAll(/<a\b[^>]*\bclass="[^"]*\bsearch_result_row\b[^"]*"[^>]*>[\s\S]*?<\/a>/g)){
+    const row=match[0],id=(row.match(/data-ds-appid="(\d+)"/)||[])[1];
+    const title=(row.match(/<span\b[^>]*class="title"[^>]*>([\s\S]*?)<\/span>/)||[])[1];
+    if(!id||!title||seen.has(id)||!(/data-discount="100"/.test(row)&&/data-price-final="0"/.test(row)))continue;
+    const tags=(row.match(/data-ds-tagids="([^"]*)"/)||[])[1]||'';
+    if(/\b(?:5611|6650|12095)\b/.test(tags))continue;
+    seen.add(id);
+    const nome=title.replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
+    games.push({appid:Number(id),nome,capa:'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/'+id+'/header.jpg',url:'https://store.steampowered.com/app/'+id+'/',agora:true});
+  }
+  return games;
+}
+async function steamFree(request,ctx){
+  if(request.method!=='GET')return json({error:'Método não permitido'},405);
+  const cacheKey=new Request(new URL('/api/steam-free',request.url));
+  const cache=globalThis.caches&&caches.default;
+  if(cache){const hit=await cache.match(cacheKey);if(hit)return hit;}
+  try{
+    const url='https://store.steampowered.com/search/results/?query&start=0&count=100&maxprice=free&specials=1&category1=998&cc=br&l=brazilian&infinite=1';
+    const res=await fetch(url,{redirect:'manual',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
+    if(!res.ok||res.status>=300)throw new Error('upstream');
+    const data=await res.json();
+    if(!data.success||typeof data.results_html!=='string')throw new Error('invalid');
+    const games=steamFreeRows(data.results_html);
+    if(Number(data.total_count)>0&&!games.length&&!data.results_html.includes('search_result_row'))throw new Error('markup');
+    const response=new Response(JSON.stringify({steam:games,updatedAt:new Date().toISOString()}),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=300'}});
+    if(cache&&ctx)ctx.waitUntil(cache.put(cacheKey,response.clone()));
+    return response;
+  }catch(e){return json({error:'Não foi possível atualizar as ofertas da Steam. Tente novamente.'},502);}
+}
 export default {
   async fetch(request,env,ctx){
     const url=new URL(request.url);
@@ -49,6 +81,7 @@ export default {
       const config={SUPABASE_URL:env.SUPABASE_URL||'',SUPABASE_ANON_KEY:env.SUPABASE_ANON_KEY||'',RAWG_ENABLED:!!env.RAWG_KEY,TMDB_ENABLED:!!env.TMDB_KEY};
       return new Response('window.BC_CONFIG='+JSON.stringify(config)+';',{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
     }
+    if(url.pathname==='/api/steam-free')return steamFree(request,ctx);
     if(url.pathname.startsWith('/api/catalog/'))return catalog(request,env,url);
     if(Object.prototype.hasOwnProperty.call(images,url.pathname)){
       const bytes=Uint8Array.from(atob(images[url.pathname]),c=>c.charCodeAt(0));
