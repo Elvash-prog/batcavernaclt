@@ -2262,7 +2262,7 @@ function limparSessao(){try{[sessionStorage,localStorage].forEach(function(s){Ob
 var sb=null;
 if(SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase){
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{storage:STORE,persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
-  sb.auth.onAuthStateChange(function(ev,s){SESS=s;if(ev==="SIGNED_OUT"){pararPresenca();NOTIFICACOES=[];CONVITES_ENVIADOS=[];chatParar();CHAT_UNREAD=0;CHAT_UNREAD_MAP={};chatSyncButton();setTimeout(function(){AMIGOS=[];BLOQUEADOS=[];adminUI();montarPerfis();notificacoesRender();desktopUiRender&&desktopUiRender()},0)}else if(ev==="SIGNED_IN")setTimeout(function(){carregarAmigos();carregarNotificacoes();iniciarPresenca();chatInit();desktopUiRender&&desktopUiRender()},0)});
+  sb.auth.onAuthStateChange(function(ev,s){SESS=s;if(ev==="SIGNED_OUT"){pararPresenca();NOTIFICACOES=[];CONVITES_ENVIADOS=[];chatParar();CHAT_UNREAD=0;CHAT_UNREAD_MAP={};chatSyncButton();setTimeout(function(){AMIGOS=[];BLOQUEADOS=[];adminUI();montarPerfis();notificacoesRender();desktopUiRender&&desktopUiRender()},0)}else if(ev==="SIGNED_IN")setTimeout(function(){carregarAmigos();carregarNotificacoes();iniciarPresenca();chatInit();assinarDadosRealtime();desktopUiRender&&desktopUiRender()},0)});
 }
 function edit(){return !!(MODO_EDICAO&&sb&&SESS&&SESS.user&&P&&P.uid&&SESS.user.id===P.uid)}
 function garantirEdicao(){
@@ -2376,9 +2376,23 @@ function novoPerfil(row){return {id:row.slug,nome:row.nome||row.slug,email:Strin
 /* ===== escrita ===== */
 function exec(q){return q.then(function(r){if(r.error)throw new Error(r.error.message);return r.data})}
 function semAcesso(d){if(!d||!d.length)throw new Error("Não foi possível salvar (sem permissão). Entre de novo no modo edição.")}
+function emProgresso(status){return secIdx(status||"","jogos")===0}
+function devolverAoBacklog(id,uid){
+  var anteriores=((D&&D.jogos)||[]).filter(function(x){return x.linha&&String(x.linha)!==String(id)&&emProgresso(x.status)});
+  if(!anteriores.length)return Promise.resolve();
+  var backlog=achar(((D&&D.listas&&D.listas.jogos)||{}).status,/backlog/i)||"⏳ Backlog";
+  return exec(sb.from("itens").update({status:backlog}).in("id",anteriores.map(function(x){return x.linha})).eq("user_id",uid).select("id")).then(function(rows){
+    if((rows||[]).length!==anteriores.length)throw new Error("O jogo novo foi salvo, mas não foi possível devolver todos os anteriores ao Backlog. Atualize a biblioteca e tente novamente.");
+    anteriores.forEach(function(x){x.status=backlog});
+  });
+}
 function dbEditar(id,campos){
   if("nome" in campos&&!String(campos.nome).trim())return Promise.reject(new Error("O nome não pode ficar vazio."));
-  return exec(sb.from("itens").update(itemParaLinha(campos)).eq("id",id).eq("user_id",P.uid).select("id")).then(semAcesso);
+  var uid=P.uid,jogo=((D&&D.jogos)||[]).find(function(x){return String(x.linha)===String(id)});
+  return exec(sb.from("itens").update(itemParaLinha(campos)).eq("id",id).eq("user_id",uid).select("id")).then(function(rows){
+    semAcesso(rows);
+    if(jogo&&"status" in campos&&emProgresso(campos.status)){DESTAQUE=null;return devolverAoBacklog(id,uid)}
+  });
 }
 function dbExcluir(id){return exec(sb.from("itens").delete().eq("id",id).eq("user_id",P.uid).select("id")).then(semAcesso)}
 function dbFundo(f){return exec(sb.from("perfis").update({fundo:f}).eq("id",P.uid).select("id")).then(semAcesso)}
@@ -2449,7 +2463,11 @@ function dbAdicionar(tipo,res,campos){
     if(!daSteamLib(c))padroes(tipo,res,c);
     if(!c.status)c.status=achar(L().status,/backlog|para assistir/i)||(tipo==="jogos"?"📌 Backlog":"⏳ Para Assistir");
     var row=itemParaLinha(c);row.user_id=P.uid;row.categoria=tipo;
-    return exec(sb.from("itens").insert(row).select("id"));
+    var uid=P.uid;
+    return exec(sb.from("itens").insert(row).select("id")).then(function(rows){
+      semAcesso(rows);
+      if(tipo==="jogos"&&emProgresso(c.status)){DESTAQUE=null;return devolverAoBacklog(rows[0].id,uid)}
+    });
   });
 }
 
@@ -2663,12 +2681,12 @@ function montarFiltros(){
   fsEl.innerHTML='<option value="">Todos os status</option>'+statuses.map(function(x){return '<option value="'+esc(x)+'">'+esc(x)+'</option>'}).join('');
   var gs=contar([].concat.apply([],itens().map(function(x){return Array.isArray(x.generos)?x.generos:String(x.generos||'').split(/[|,]/)}))).map(function(g){return g[0]});
   fgEl.innerHTML='<option value="">Todos os gêneros</option>'+gs.map(function(g){return '<option value="'+esc(g)+'">'+esc(g)+'</option>'}).join('');
-  if(tab==="steam"){fpEl.style.display="";foEl.style.display="none";fpEl.innerHTML=[['horas','Mais jogados'],['nome','A–Z'],['pouco','Menos jogados'],['zero','Nunca jogados']].map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>'}).join('');}
+  if(tab==="steam"){fpEl.style.display="";foEl.style.display="none";fsEl.style.display='none';fgEl.style.display='none';ordEl.style.display='none';fpEl.innerHTML=[['horas','Mais jogados'],['nome','A–Z'],['pouco','Menos jogados'],['zero','Nunca jogados'],['novos','Fora da minha biblioteca'],['salvos','Já na minha biblioteca']].map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>'}).join('');}
   else{var campo=tab==="jogos"?"plataforma":"tipo";var ps=contar(itens().map(function(x){return x[campo]})).map(function(g){return g[0]});fpEl.innerHTML='<option value="">'+(tab==="jogos"?"Todas as plataformas":"Todos os tipos")+'</option>'+ps.map(function(g){return '<option value="'+esc(g)+'">'+esc(g)+'</option>'}).join('');foEl.innerHTML='<option value="">Todas as origens</option><option value="steam">🟦 Steam</option><option value="outros">Fora da Steam</option>';foEl.style.display=tab==="jogos"?"":"none";}
   if(mediaOnde){mediaOnde.style.display=tab==="filmes"?"":"none";if(tab==="filmes"){var os={};itens().forEach(function(x){String(x.onde||"").split(/•|,|\n/).map(function(v){return v.trim()}).filter(Boolean).forEach(function(v){os[v]=1})});var ov=Object.keys(os).sort(function(a,b){return a.localeCompare(b,"pt-BR")});var oldOnde=mediaOnde.value;mediaOnde.innerHTML='<option value="">📺 Onde assistir</option>'+ov.map(function(v){return '<option value="'+esc(v)+'">'+esc(v)+'</option>'}).join("");if(ov.indexOf(oldOnde)>=0)mediaOnde.value=oldOnde}}
   var opts=tab==="jogos"?[['padrao','Padrão'],['nome','A–Z'],['nome_desc','Z–A'],['ano_desc','Lançamento: recentes'],['ano','Lançamento: antigos'],['nota','Melhor nota'],['horas','Mais horas'],['atualizado','Atualizados recentemente']]:[['padrao','Padrão'],['nome','A–Z'],['nome_desc','Z–A'],['ano_desc','Lançamento: recentes'],['ano','Lançamento: antigos'],['nota','Melhor nota'],['data_desc','Assistidos recentemente']];
   ordEl.innerHTML=opts.map(function(o){return '<option value="'+o[0]+'">↕ '+o[1]+'</option>'}).join('');
-  if(statuses.indexOf(oldS)>=0)fsEl.value=oldS;if(gs.indexOf(oldG)>=0)fgEl.value=oldG;if(tab!=="steam"&&ps.indexOf(oldP)>=0)fpEl.value=oldP;else if(tab!=="steam")fpEl.value="";if(tab==="jogos")foEl.value=['','steam','outros'].indexOf(oldO)>=0?oldO:"";if(opts.some(function(o){return o[0]===oldOrd}))ordEl.value=oldOrd;else ordEl.value="padrao";renderLibrarySummary();
+  if(statuses.indexOf(oldS)>=0)fsEl.value=oldS;if(gs.indexOf(oldG)>=0)fgEl.value=oldG;if(tab!=="steam"&&ps.indexOf(oldP)>=0)fpEl.value=oldP;else if(tab!=="steam")fpEl.value="";if(tab==="steam"&&["horas","nome","pouco","zero","novos","salvos"].indexOf(oldP)>=0)fpEl.value=oldP;if(tab==="jogos")foEl.value=['','steam','outros'].indexOf(oldO)>=0?oldO:"";if(opts.some(function(o){return o[0]===oldOrd}))ordEl.value=oldOrd;else ordEl.value="padrao";renderLibrarySummary();
 }
 var MEDIA_TIPO_FILTER="";
 function tipoMidia(x){var t=String(x&&x.tipo||"").toLowerCase();if(t.indexOf("anime")>=0||t.indexOf("🍥")>=0)return "anime";if(t.indexOf("série")>=0||t.indexOf("serie")>=0||t.indexOf("📺")>=0)return "serie";return "filme"}
@@ -2681,7 +2699,7 @@ function filtrados(){
   var arr=itens().filter(function(x){var gens=Array.isArray(x.generos)?x.generos:String(x.generos||'').split(/[|,]/).map(function(v){return v.trim()}).filter(Boolean);var campo=tab==="jogos"?String(x.plataforma||''):String(x.tipo||'');return (tab!=="filmes"||!MEDIA_TIPO_FILTER||tipoMidia(x)===MEDIA_TIPO_FILTER)&&(!q||String(x.nome||'').toLowerCase().indexOf(q)>=0)&&(!st||statusSelecionado(x)===st)&&(!g||gens.indexOf(g)>=0)&&(!p||campo.toLowerCase().indexOf(String(p).toLowerCase())>=0)&&(!onde||String(x.onde||"").toLowerCase().indexOf(String(onde).toLowerCase())>=0)&&(!o||(o==="steam")===ehSteam(x));});
   arr.sort(function(a,b){if(ord==='nome')return String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR');if(ord==='nome_desc')return String(b.nome||'').localeCompare(String(a.nome||''),'pt-BR');if(ord==='ano_desc'||ord==='ano'){var d=valorNum(a.ano)-valorNum(b.ano);return ord==='ano_desc'?-d:d}if(ord==='nota')return notaNum(b.nota)-notaNum(a.nota);if(ord==='horas')return valorNum(b.horas)-valorNum(a.horas);if(ord==='atualizado')return String(b.updated_at||b.created_at||'').localeCompare(String(a.updated_at||a.created_at||''));if(ord==='data_desc')return String(b.data||b.updated_at||'').localeCompare(String(a.data||a.updated_at||''));return valorNum(a.id)-valorNum(b.id)});return arr;
 }
-function renderLibrarySummary(){var el=$("#librarySummary");if(!el)return;if(tab!=="jogos"&&tab!=="filmes"){el.hidden=true;return}var base=itens(),fil=filtrados(),jog=tab==="jogos",done=base.filter(function(x){return /zerado|platina|assistido/i.test(String(x.status||''))}).length,playing=base.filter(function(x){return /jogando|assistindo/i.test(String(x.status||''))}).length,back=base.filter(function(x){return /backlog|pretendo|a considerar/i.test(String(x.status||''))}).length;var parts=['<span class="ls-chip">📚 <b>'+base.length+'</b> '+(jog?'jogos':'itens')+'</span>','<span class="ls-chip">🎯 <b>'+fil.length+'</b> filtrados</span>'];if(jog)parts.push('<span class="ls-chip">🎮 <b>'+playing+'</b> jogando</span>','<span class="ls-chip">✅ <b>'+done+'</b> finalizados</span>','<span class="ls-chip">📌 <b>'+back+'</b> backlog</span>');else parts.push('<span class="ls-chip">▶️ <b>'+playing+'</b> em andamento</span>','<span class="ls-chip">✅ <b>'+done+'</b> assistidos</span>');el.innerHTML=parts.join('');el.hidden=false;renderMediaSubnav()}
+function renderLibrarySummary(){var el=$("#librarySummary");if(!el)return;if(tab!=="jogos"&&tab!=="filmes"){el.hidden=true;return}var base=itens(),fil=filtrados(),jog=tab==="jogos",done=base.filter(function(x){return /zerado|platina|assistido/i.test(String(x.status||''))}).length,playing=base.filter(function(x){return /em progresso|jogando|assistindo/i.test(String(x.status||''))}).length,back=base.filter(function(x){return /backlog|pretendo|a considerar/i.test(String(x.status||''))}).length;var parts=['<span class="ls-chip">📚 <b>'+base.length+'</b> '+(jog?'jogos':'itens')+'</span>','<span class="ls-chip">🎯 <b>'+fil.length+'</b> filtrados</span>'];if(jog)parts.push('<span class="ls-chip">🎮 <b>'+playing+'</b> jogando</span>','<span class="ls-chip">✅ <b>'+done+'</b> finalizados</span>','<span class="ls-chip">📌 <b>'+back+'</b> backlog</span>');else parts.push('<span class="ls-chip">▶️ <b>'+playing+'</b> em andamento</span>','<span class="ls-chip">✅ <b>'+done+'</b> assistidos</span>');el.innerHTML=parts.join('');el.hidden=false;renderMediaSubnav()}
 function calcularNivel(xp){xp=Math.max(0,Number(xp)||0);return Math.floor(Math.sqrt(xp/100))+1}
 function nivelInfo(xp){
   xp=Math.max(0,Number(xp)||0);var n=calcularNivel(xp),base=Math.pow(n-1,2)*100,next=Math.pow(n,2)*100;
@@ -3144,13 +3162,34 @@ function renderAtividadeSocial(){
   if(!SOCIAL_ATIVIDADE.length){box.innerHTML='<div class="social-empty">Nenhuma atividade recente dos seus amigos.</div>';return}
   box.innerHTML=SOCIAL_ATIVIDADE.slice(0,15).map(function(r){var p=perfilPorId(r.user_id)||{uid:r.user_id,nome:"Amigo",avatar:""};return '<button class="activity-row" data-social-profile="'+esc(r.user_id)+'"><span>'+avatarHtml(p,"activity-avatar")+'</span><span class="activity-copy"><b>'+esc(p.nome)+'</b><p>'+esc(socialTexto(r))+'</p></span><span class="activity-time">'+esc(socialTempo(r.updated_at||r.created_at))+'</span></button>'}).join('');
 }
+var AMIZADES_INICIO={},ATIVIDADE_SEQ=0;
+function atualizarInicioAmizades(rows,eu){
+  var key="batcaverna:amizades-inicio:"+eu,saved={};
+  try{saved=JSON.parse(localStorage.getItem(key)||"{}")||{}}catch(e){}
+  var map={},now=Date.now();
+  (rows||[]).forEach(function(r){var id=String(r.amigo_id),stamp=Date.parse(r.created_at||r.aceito_em||r.accepted_at||"");map[id]=isFinite(stamp)?stamp:(Number(saved[id])||now)});
+  AMIZADES_INICIO=map;
+  try{localStorage.setItem(key,JSON.stringify(map))}catch(e){}
+}
+function atividadesRecentes(rows,now){
+  var seen={},min=(now||Date.now())-7*86400000;
+  return filtrarSocialAmigos(rows).filter(function(x){
+    var uid=String(x.user_id),when=Date.parse(x.created_at||""),since=AMIZADES_INICIO[uid];
+    if(uid===String(euId())||!since||!isFinite(when)||when<=since||when<min)return false;
+    var key=uid+":"+x.categoria+":"+(x.item_id||x.nome);
+    if(seen[key])return false;seen[key]=true;return true;
+  }).slice(0,12);
+}
 function carregarAtividadeSocial(){
-  renderAmigosHome();renderAtividadeSocial();
-  if(!sb||!euId()||!AMIGOS.length){SOCIAL_ATIVIDADE=[];renderAtividadeSocial();return Promise.resolve()}
-  return sb.from("clt_activity_events").select("id,user_id,categoria,nome,status,meta,created_at").order("created_at",{ascending:false}).limit(40).then(function(r){
-    if(!r.error&&r.data&&r.data.length){SOCIAL_ATIVIDADE=filtrarSocialAmigos(r.data).filter(function(x){return String(x.user_id)!==String(euId())});renderAtividadeSocial();return}
-    return sb.from("itens").select("id,user_id,categoria,nome,status,tipo,updated_at,created_at").in("user_id",AMIGOS).order("updated_at",{ascending:false}).limit(30).then(function(r2){if(r2.error)throw new Error(r2.error.message);SOCIAL_ATIVIDADE=r2.data||[];renderAtividadeSocial()});
-  }).catch(function(){SOCIAL_ATIVIDADE=[];renderAtividadeSocial()});
+  var eu=euId(),seq=++ATIVIDADE_SEQ;
+  renderAmigosHome();
+  if(!sb||!eu||!AMIGOS.length){SOCIAL_ATIVIDADE=[];renderAtividadeSocial();return Promise.resolve()}
+  return sb.from("clt_activity_events").select("id,user_id,item_id,categoria,nome,status,meta,created_at").in("user_id",AMIGOS).gte("created_at",new Date(Date.now()-7*86400000).toISOString()).order("created_at",{ascending:false}).limit(100).then(function(r){
+    if(seq!==ATIVIDADE_SEQ||eu!==euId())return;
+    if(r.error)throw r.error;
+    SOCIAL_ATIVIDADE=atividadesRecentes(r.data||[]);
+    renderAtividadeSocial();if(typeof mobileHomeRender==="function")mobileHomeRender();
+  }).catch(function(){if(seq===ATIVIDADE_SEQ){SOCIAL_ATIVIDADE=[];renderAtividadeSocial()}});
 }
 function abrirPerfilSocial(uid){var p=perfilPorId(uid);if(!p||uid===euId()||AMIGOS.indexOf(uid)>=0){var i=PERFIS.findIndex(function(x){return x.uid===uid});if(i>=0){fechar();trocarPerfil(i,true)}}}
 $("#socialRefresh")&&$("#socialRefresh").addEventListener("click",function(){carregarAtividadeSocial().then(function(){toast("Atividade atualizada ✓")})});
@@ -3382,7 +3421,7 @@ document.addEventListener('keydown',function(e){var b=e.target.closest&&e.target
 
 function sincronizarPainelJogos(){
   var soJogos=(tab==="jogos"&&!PERFIL_ABERTO&&!!P);
-  var soMidia=(tab==="jogos"||tab==="filmes")&&!PERFIL_ABERTO&&!!P;
+  var soMidia=(tab==="jogos"||tab==="filmes"||tab==="steam")&&!PERFIL_ABERTO&&!!P;
   var soSocial=(tab==="social"&&!PERFIL_ABERTO&&!!P);
 
   /* A aba Social é uma página própria: escondemos também todos os
@@ -3394,7 +3433,7 @@ function sincronizarPainelJogos(){
     if(el)el.style.display=soSocial?"none":"";
   });
 
-  $("#homeSocial").hidden=!soJogos;
+  $("#homeSocial").hidden=!(soJogos&&String(P.uid)===String(euId()));
   $("#recommendationsHome").hidden=!soJogos;
   var mrs=$("#mediaRecommendations");if(mrs)mrs.hidden=!(tab==="filmes"&&!PERFIL_ABERTO&&!!P);
   $("#socialHome").hidden=!soSocial;
@@ -3547,7 +3586,7 @@ function gamificacaoExtrasHtml(a,j,f){
 }
 function gamificacaoPerfil(a,j,f,horas,fin,plat,rk){
   var b=nivelInfo(rk?Number(rk.xp||0):0),xp=rk?Number(rk.xp||0):0,idx=RANKING.findIndex(function(x){return x.id===P.uid}),pos=idx<0?'—':'#'+(idx+1);
-  var ti=tituloCLT(b.nivel),det=xpDetalhes(a,j,f,fin,plat,horas);
+  var ti=tituloCLT(b.nivel),det=xpDetalhes(a,j,f,fin,plat,horas),mostrarPosicao=String(P&&P.uid)===String(euId());
   var ach=conquistasPerfil(a,j,f,horas,fin,plat),done=ach.filter(function(x){return x[3]}).length;
   var achHtml=ach.map(function(x){return '<div class="achievement '+(x[3]?'on':'off')+'"><div class="ico">'+x[0]+'</div><b>'+esc(x[1])+'</b><small>'+esc(x[2])+'</small></div>'}).join('');
   var rewards='<div class="reward-list">'+
@@ -3563,7 +3602,7 @@ function gamificacaoPerfil(a,j,f,horas,fin,plat,rk){
     '<div class="xp-breakdown-row"><span>🎬 Filmes e séries</span><span>+'+det.extras+' XP</span></div>'+
     '<div class="xp-breakdown-row"><span>🏅 Bônus de conquistas</span><span>+'+det.bonus+' XP</span></div>'+
   '</div>';
-  return '<section class="profile-gamify"><div class="pg-card pg-progress"><div class="pg-kicker">Progressão do CLT</div><div class="pg-title"><div class="pg-medal">'+ti.ico+'</div><div><b>Nível '+b.nivel+'</b><small>'+xp+' XP acumulado</small></div></div><div class="pg-title-extra"><span class="clt-title">'+ti.ico+' '+esc(ti.nome)+'</span></div><div class="pg-xp"><i style="width:'+b.prog.toFixed(1)+'%"></i></div><div class="pg-xpmeta"><span>'+Math.max(0,xp-b.base)+' / '+(b.next-b.base)+' XP</span><span>'+Math.max(0,b.next-xp)+' para o nível '+(b.nivel+1)+'</span></div><div class="pg-rank">🏆 Posição no ranking: <b>'+pos+'</b> de <b>'+RANKING.length+'</b></div>'+breakdown+'</div><div class="pg-card pg-ach"><div class="pg-ach-head"><h3>🏅 Conquistas</h3><span>'+done+'/'+ach.length+' desbloqueadas</span></div><div class="achievement-grid">'+achHtml+'</div><div class="pg-ach-head" style="margin-top:20px"><h3>🎁 Títulos</h3><span>desbloqueados por nível</span></div>'+rewards+'</div></section>'+gamificacaoExtrasHtml(a,j,f)+'<section class="missions-wrap" id="missionBox"></section>';
+  return '<section class="profile-gamify"><div class="pg-card pg-progress"><div class="pg-kicker">Progressão do CLT</div><div class="pg-title"><div class="pg-medal">'+ti.ico+'</div><div><b>Nível '+b.nivel+'</b><small>'+xp+' XP acumulado</small></div></div><div class="pg-title-extra"><span class="clt-title">'+ti.ico+' '+esc(ti.nome)+'</span></div><div class="pg-xp"><i style="width:'+b.prog.toFixed(1)+'%"></i></div><div class="pg-xpmeta"><span>'+Math.max(0,xp-b.base)+' / '+(b.next-b.base)+' XP</span><span>'+Math.max(0,b.next-xp)+' para o nível '+(b.nivel+1)+'</span></div>'+(mostrarPosicao?'<div class="pg-rank">🏆 Posição no ranking: <b>'+pos+'</b> de <b>'+RANKING.length+'</b></div>':'')+breakdown+'</div><div class="pg-card pg-ach"><div class="pg-ach-head"><h3>🏅 Conquistas</h3><span>'+done+'/'+ach.length+' desbloqueadas</span></div><div class="achievement-grid">'+achHtml+'</div><div class="pg-ach-head" style="margin-top:20px"><h3>🎁 Títulos</h3><span>desbloqueados por nível</span></div>'+rewards+'</div></section>'+gamificacaoExtrasHtml(a,j,f)+'<section class="missions-wrap" id="missionBox"></section>';
 }
 
 
@@ -3935,7 +3974,7 @@ function listaR(){
   SEC[tab].forEach(function(s,si){
     /* PATCH 1.19: o painel antigo “Jogando agora” foi removido da biblioteca.
        A atividade atual da Steam continua sendo exibida pelo componente próprio. */
-    if(tab==="jogos" && si===0)return;
+    // Jogos em progresso continuam acessíveis na lista. O destaque é apenas uma visualização.
     var g=f.filter(function(x){return secIdx(x.status,tab)===si});
     if(!g.length)return;
     if(tab==="filmes" && /assistido/i.test(s[0])){
@@ -3943,7 +3982,7 @@ function listaR(){
       renderSec('🎬 Filmes assistidos', '#6aa84f', filmes);
       renderSec('📺 Séries assistidas', '#45818e', series);
       renderSec('🍥 Animes assistidos', '#ff4081', animes);
-    }else renderSec(s[1],s[2],g);
+    }else renderSec(tab==="jogos"&&si===0?"🎮 Em progresso":s[1],s[2],g);
   });
   $("#list").innerHTML=h||'<div class="empty">Nada encontrado 🤷</div>';lazyBg($("#list"));
   if(SELMODE){var ok={};VIS.forEach(function(x){if(x.linha&&SEL[x.linha])ok[x.linha]=x.linha});SEL=ok;selUI()}
@@ -4574,7 +4613,7 @@ function carregarAmigos(){
   AMIGOS=[];CONVITES=[];CONVITES_ENVIADOS=[];var eu=euId();
   if(!eu||!sb){montarPerfis();return Promise.resolve()}
   return Promise.all([
-    sb.from("amigos").select("amigo_id").eq("user_id",eu),
+    sb.from("amigos").select("*").eq("user_id",eu),
     sb.from("convites_amizade").select("id,remetente_id,created_at").eq("destinatario_id",eu).eq("status","pending").order("created_at",{ascending:false}),
     sb.from("convites_amizade").select("id,destinatario_id,created_at").eq("remetente_id",eu).eq("status","pending").order("created_at",{ascending:false}),
     sb.from("bloqueios_clt").select("bloqueado_id").eq("bloqueador_id",eu)
@@ -4584,6 +4623,7 @@ function carregarAmigos(){
     if(rs[2].error)throw new Error(rs[2].error.message);
     if(rs[3].error)throw new Error(rs[3].error.message);
     AMIGOS=(rs[0].data||[]).map(function(x){return x.amigo_id});
+    atualizarInicioAmizades(rs[0].data||[],eu);
     CONVITES=rs[1].data||[];
     CONVITES_ENVIADOS=rs[2].data||[];
     BLOQUEADOS=(rs[3].data||[]).map(function(x){return x.bloqueado_id});
@@ -4989,7 +5029,7 @@ function steamR(){
   var m=mapaBib(),q=$("#q").value.toLowerCase().trim(),ord=$("#fp").value||"horas";
   var horas=lib.reduce(function(a,g){return a+(g.horas||0)},0),nunca=lib.filter(function(g){return !g.horas}).length,na=lib.filter(function(g){return naBib(g,m)}).length;
   $("#stats").innerHTML=[["Jogos na Steam",lib.length,"#fff"],["Horas jogadas",Math.round(horas).toLocaleString("pt-BR")+"h","#6fa8dc"],["Nunca jogados",nunca,"#e69138"],["Já na biblioteca",na,"#93c47d"]].map(function(x){return '<div class="kpi" style="--c:'+x[2]+'"><span>'+x[0]+'</span><strong>'+x[1]+'</strong></div>'}).join("");
-  var f=lib.filter(function(g){if(q&&g.nome.toLowerCase().indexOf(q)<0)return false;if(ord==="zero"&&g.horas)return false;return true});
+  var f=lib.filter(function(g){if(q&&g.nome.toLowerCase().indexOf(q)<0)return false;if(ord==="zero"&&g.horas)return false;if(ord==="novos"&&naBib(g,m))return false;if(ord==="salvos"&&!naBib(g,m))return false;return true});
   f.sort(function(a,b){return ord==="nome"?a.nome.localeCompare(b.nome,"pt-BR"):ord==="pouco"?a.horas-b.horas:b.horas-a.horas});
   STEAMVIS=f.slice(0,STEAMN);STEAMF=f.filter(function(g){return !naBib(g,m)});
   var rec=STEAMREC[P.steam]||[];
@@ -5615,7 +5655,7 @@ else sb.auth.getSession()
   })
   .then(function(){return carregarFundoLoginPublico()})
   .then(function(){return SESS&&SESS.user?carregarAmigos():null})
-  .then(function(){if(SESS&&SESS.user)chatInit();return null})
+  .then(function(){if(SESS&&SESS.user){chatInit();assinarDadosRealtime()}return null})
   .then(iniciar).catch(function(e){
     console.warn("BatCaverna: falha ao iniciar",e);
     mostrarHome();bcReveal();
@@ -5679,7 +5719,7 @@ function chatClearReply(){window.CHAT_REPLY=null;var b=$('#chatReplying');if(b)b
 function chatEditStart(m){if(String(m.remetente_id)!==String(euId()))return;window.CHAT_EDIT={id:String(m.id),text:String(m.texto||'')};var t=$('#chatText');if(t){t.value=window.CHAT_EDIT.text;t.classList.add('chat-editing');t.focus();t.selectionStart=t.value.length}var b=$('#chatReplying');if(!b){var form=$('#chatCompose');b=document.createElement('div');b.id='chatReplying';b.className='chat-replying';form.parentNode.insertBefore(b,form)}b.innerHTML='<span>✏️ Editando</span><b>Altere a mensagem e envie novamente</b><button type="button" id="chatEditCancel">×</button>'}
 function chatClearEdit(){window.CHAT_EDIT=null;var t=$('#chatText');if(t){t.value='';t.classList.remove('chat-editing')}var b=$('#chatReplying');if(b)b.remove()}
 function chatToggleReaction(id,emoji){var meta=chatMeta(id),r=meta.reactions||{};r[emoji]=r[emoji]===String(euId())?null:String(euId());if(!r[emoji])delete r[emoji];chatSetMeta(id,{reactions:r});window.CHAT_REACTION_SUPPRESS=String(id);chatRenderMain()}
-function chatRenderMain(){var p=chatAmigo(CHAT_ACTIVE),title=$('#chatTitle'),st=$('#chatStatus'),dot=$('#chatDot'),box=$('#chatMessages'),db=$('#chatDetailsBody');if(db){if(p){var av=p.avatar_url||p.avatar||'';db.innerHTML=(av?'<img class="chat-details-avatar" src="'+esc(av)+'" alt="">':'<div class="chat-details-avatar" style="display:grid;place-items:center;font-size:30px">👤</div>')+'<b>'+esc(p.nome||p.slug||'Usuário')+'</b><span class="chat-details-status">'+(chatStatus(p)==='online'?'🟢 Online agora':'⚪ Offline')+'</span><div class="chat-details-actions"><button type="button" data-chat-profile="'+esc(p.uid||p.id)+'">👤 Ver perfil</button></div><div class="chat-details-note">Conversa privada entre amigos. Mensagens, imagens e status de leitura continuam protegidos pelas regras atuais.</div>'}else db.innerHTML='<div class="chat-empty">Selecione uma conversa para ver os detalhes.</div>';}if(title)title.textContent=p?p.nome:'Selecione um amigo';if(st)st.textContent=window.CHAT_TYPING_TEXT||(p?(chatStatus(p)==='online'?'online':'offline'):'Nenhuma conversa selecionada');if(dot)dot.className='chat-dot'+(p&&chatStatus(p)==='online'?' online':'');if(!box)return;if(!p){box.innerHTML='<div class="chat-empty">Escolha um amigo à esquerda para começar uma conversa. 💜</div>';return}if(!CHAT_MESSAGES.length){box.innerHTML='<div class="chat-empty">Nenhuma mensagem ainda.<br>Comece a conversa! 👋</div>';return}box.innerHTML=CHAT_MESSAGES.map(function(m){var mine=String(m.remetente_id)===String(euId()),src=CHAT_MEDIA_URLS[String(m.id)]||'',meta=chatMeta(m.id),img=src?'<img class="chat-image" data-chat-image="'+esc(src)+'" src="'+esc(src)+'" alt="Imagem enviada">':'';var del=mine?'<button class="chat-msg-tool" type="button" data-chat-delete="'+esc(m.id)+'">🗑️</button>':'';var edit=mine&&m.texto?'<button class="chat-msg-tool" type="button" data-chat-edit="'+esc(m.id)+'">✏️</button>':'';var pin='<button class="chat-msg-tool" type="button" data-chat-pin="'+esc(m.id)+'">'+(meta.pinned?'📌':'📍')+'</button>';var rep='<button class="chat-msg-tool" type="button" data-chat-reply="'+esc(m.id)+'">↩️</button>';var emojis=['❤️','😂','🔥','👍'];var current=emojis.filter(function(em){return meta.reactions&&meta.reactions[em]===String(euId())}).map(function(em){return '<span class="chat-reaction on">'+em+' 1</span>'}).join('');var picker=emojis.map(function(em){return '<button type="button" data-chat-react="'+esc(m.id)+'" data-emoji="'+em+'" title="Reagir com '+em+'">'+em+'</button>'}).join('');var reactionRow='<div class="chat-reaction-row">'+(current?'<div class="chat-reactions">'+current+'</div>':'')+'<div class="chat-reaction-picker">'+picker+'</div></div>';var pin=meta.pinned?'<div class="chat-pin-label">📌 Fixada nesta conversa</div>':'';var edited=(m.updated_at&&m.updated_at!==m.created_at)?'<span class="chat-edited">(editada)</span>':'';var read=mine?(m.lida?' <span class="chat-read">✓✓ lida</span>':' <span class="chat-read">✓ enviada</span>'):'';return '<div class="chat-msg '+(mine?'mine':'theirs')+' '+(meta.pinned?'chat-pinned':'')+' '+(window.CHAT_REACTION_SUPPRESS===String(m.id)?'chat-reaction-suppressed':'')+'"><div class="chat-msg-tools">'+rep+edit+pin+del+'</div><div class="chat-bubble">'+pin+chatFormatText(m)+img+reactionRow+'</div><span class="chat-time">'+esc(socialTempo(m.created_at))+' '+edited+read+'</span></div>'}).join('');box.scrollTop=box.scrollHeight;CHAT_MESSAGES.filter(function(m){return m.midia_url&&!CHAT_MEDIA_URLS[String(m.id)]}).forEach(function(m){sb.storage.from('chat-media').createSignedUrl(m.midia_url,3600).then(function(r){if(!r.error&&r.data&&r.data.signedUrl){CHAT_MEDIA_URLS[String(m.id)]=r.data.signedUrl;chatRenderMain()}})})}
+function chatRenderMain(){var p=chatAmigo(CHAT_ACTIVE),title=$('#chatTitle'),st=$('#chatStatus'),dot=$('#chatDot'),box=$('#chatMessages'),db=$('#chatDetailsBody');if(db){if(p){var av=p.avatar_url||p.avatar||'';db.innerHTML=(av?'<img class="chat-details-avatar" src="'+esc(av)+'" alt="">':'<div class="chat-details-avatar" style="display:grid;place-items:center;font-size:30px">👤</div>')+'<b>'+esc(p.nome||p.slug||'Usuário')+'</b><span class="chat-details-status">'+(chatStatus(p)==='online'?'🟢 Online agora':'⚪ Offline')+'</span><div class="chat-details-actions"><button type="button" data-chat-profile="'+esc(p.uid||p.id)+'">👤 Ver perfil</button></div><div class="chat-details-note">Conversa privada entre amigos. Mensagens, imagens e status de leitura continuam protegidos pelas regras atuais.</div>'}else db.innerHTML='<div class="chat-empty">Selecione uma conversa para ver os detalhes.</div>';}if(title)title.textContent=p?p.nome:'Selecione um amigo';if(st)st.textContent=window.CHAT_TYPING_TEXT||(p?(chatStatus(p)==='online'?'online':'offline'):'Nenhuma conversa selecionada');if(dot)dot.className='chat-dot'+(p&&chatStatus(p)==='online'?' online':'');if(!box)return;if(!p){box.innerHTML='<div class="chat-empty">Escolha um amigo à esquerda para começar uma conversa. 💜</div>';return}if(!CHAT_MESSAGES.length){box.innerHTML='<div class="chat-empty">Nenhuma mensagem ainda.<br>Comece a conversa! 👋</div>';return}var chatPrevTop=box.scrollTop,chatNewThread=box.dataset.thread!==String(CHAT_ACTIVE),chatWasBottom=box.scrollHeight-box.clientHeight-box.scrollTop<=24;box.dataset.thread=String(CHAT_ACTIVE);box.innerHTML=CHAT_MESSAGES.map(function(m){var mine=String(m.remetente_id)===String(euId()),src=CHAT_MEDIA_URLS[String(m.id)]||'',meta=chatMeta(m.id),img=src?'<img class="chat-image" data-chat-image="'+esc(src)+'" src="'+esc(src)+'" alt="Imagem enviada">':'';var del=mine?'<button class="chat-msg-tool" type="button" data-chat-delete="'+esc(m.id)+'">🗑️</button>':'';var edit=mine&&m.texto?'<button class="chat-msg-tool" type="button" data-chat-edit="'+esc(m.id)+'">✏️</button>':'';var pin='<button class="chat-msg-tool" type="button" data-chat-pin="'+esc(m.id)+'">'+(meta.pinned?'📌':'📍')+'</button>';var rep='<button class="chat-msg-tool" type="button" data-chat-reply="'+esc(m.id)+'">↩️</button>';var emojis=['❤️','😂','🔥','👍'];var current=emojis.filter(function(em){return meta.reactions&&meta.reactions[em]===String(euId())}).map(function(em){return '<span class="chat-reaction on">'+em+' 1</span>'}).join('');var picker=emojis.map(function(em){return '<button type="button" data-chat-react="'+esc(m.id)+'" data-emoji="'+em+'" title="Reagir com '+em+'">'+em+'</button>'}).join('');var reactionRow='<div class="chat-reaction-row">'+(current?'<div class="chat-reactions">'+current+'</div>':'')+'<div class="chat-reaction-picker">'+picker+'</div></div>';var pin=meta.pinned?'<div class="chat-pin-label">📌 Fixada nesta conversa</div>':'';var edited=(m.updated_at&&m.updated_at!==m.created_at)?'<span class="chat-edited">(editada)</span>':'';var read=mine?(m.lida?' <span class="chat-read">✓✓ lida</span>':' <span class="chat-read">✓ enviada</span>'):'';return '<div class="chat-msg '+(mine?'mine':'theirs')+' '+(meta.pinned?'chat-pinned':'')+' '+(window.CHAT_REACTION_SUPPRESS===String(m.id)?'chat-reaction-suppressed':'')+'"><div class="chat-msg-tools">'+rep+edit+pin+del+'</div><div class="chat-bubble">'+pin+chatFormatText(m)+img+reactionRow+'</div><span class="chat-time">'+esc(socialTempo(m.created_at))+' '+edited+read+'</span></div>'}).join('');box.scrollTop=chatNewThread||chatWasBottom?box.scrollHeight:chatPrevTop;CHAT_MESSAGES.filter(function(m){return m.midia_url&&!CHAT_MEDIA_URLS[String(m.id)]}).forEach(function(m){sb.storage.from('chat-media').createSignedUrl(m.midia_url,3600).then(function(r){if(!r.error&&r.data&&r.data.signedUrl){CHAT_MEDIA_URLS[String(m.id)]=r.data.signedUrl;chatRenderMain()}})})}
 
 function carregarChatAmigos(){if(!sb||!euId())return;var ids=(AMIGOS||[]).map(String);if(!ids.length){CHAT_FRIENDS=[];chatRenderFriends();return}sb.from('perfis').select('id,slug,nome,avatar_url,codigo_convite').in('id',ids).then(function(r){if(r.error)throw r.error;CHAT_FRIENDS=(r.data||[]).map(function(x){garantirPerfil(x);return perfilPorId(x.id)||{uid:x.id,id:x.slug,nome:x.nome,avatar:x.avatar_url||''}});chatRenderFriends();chatRenderMain()}).catch(function(e){toast('Não foi possível carregar o chat: '+erroTxt(e))})}
 function carregarChatMensagens(uid){if(!sb||!euId()||!chatIsFriend(uid))return Promise.resolve();CHAT_ACTIVE=String(uid);CHAT_MESSAGES=[];CHAT_MEDIA_URLS={};chatRenderFriends();chatRenderMain();var eu=euId();return sb.from('clt_chat_messages').select('id,remetente_id,destinatario_id,texto,midia_url,created_at').or('and(remetente_id.eq.'+eu+',destinatario_id.eq.'+uid+'),and(remetente_id.eq.'+uid+',destinatario_id.eq.'+eu+')').order('created_at',{ascending:true}).limit(300).then(function(r){if(r.error)throw r.error;CHAT_MESSAGES=r.data||[];if(CHAT_MESSAGES.length)CHAT_PREVIEWS[String(uid)]=CHAT_MESSAGES[CHAT_MESSAGES.length-1];chatRenderMain();chatRenderFriends();return chatMarcarLidas(uid)}).catch(function(e){toast('Não foi possível carregar a conversa: '+erroTxt(e))})}
@@ -5812,7 +5852,7 @@ function groupContarNaoLidas(){if(!sb||!euId()||!GROUPS.length)return Promise.re
 
 function groupRenderList(){var b=$('#groupList');if(!b)return;var term=String($('#chatSearch')&&$('#chatSearch').value||'').trim().toLowerCase();var rows=(GROUPS||[]).filter(function(g){return !term||String(g.nome||'').toLowerCase().indexOf(term)>=0});if(!rows.length){b.innerHTML='<div class="chat-empty">'+(GROUPS.length?'Nenhum grupo encontrado.':'Você ainda não participa de nenhum grupo.<br><br>Crie um grupo com seus amigos. 👥')+'</div>';return}b.innerHTML=rows.map(function(g){var on=String(GROUP_ACTIVE)===String(g.id);var unread=Number(GROUP_UNREAD_MAP[String(g.id)]||0);return '<button type="button" class="group-item '+(on?'on':'')+'" data-group-open="'+esc(g.id)+'">'+groupAvatar(g)+'<span class="group-copy"><b>'+esc(g.nome)+'</b><small>Conversa em grupo</small></span>'+(unread?'<span class="chat-unread">'+(unread>99?'99+':unread)+'</span>':'')+'</button>'}).join('')}
 function abrirGrupos(){GROUP_MODE='groups';GROUP_ACTIVE=null;GROUP_MESSAGES=[];GROUP_MEDIA_URLS={};groupSyncMode();groupRenderList();carregarGrupos();chatRenderMain();}
-function groupRenderMain(){var g=groupGet(GROUP_ACTIVE),title=$('#chatTitle'),st=$('#chatStatus'),dot=$('#chatDot'),box=$('#chatMessages'),info=$('#groupInfo'),it=$('#groupInfoText'),manage=$('#groupManage');if(GROUP_MODE!=='groups'||!g)return;if(title)title.textContent=g.nome;var typing=window.CHAT_TYPING_TEXT||'';if(st)st.textContent=typing||'Grupo • mensagens em tempo real';if(dot)dot.className='chat-dot online';if(it)it.textContent='👥 Grupo privado';if(manage)manage.hidden=!g.admin;if(info)info.hidden=false;if(!box)return;if(!GROUP_MESSAGES.length){box.innerHTML='<div class="chat-empty">Nenhuma mensagem ainda.<br>Comece a conversa! 👋</div>';return}box.innerHTML=GROUP_MESSAGES.map(function(m){var mine=String(m.remetente_id)===String(euId()),src=GROUP_MEDIA_URLS[String(m.id)]||'',img=src?'<img class="chat-image" src="'+esc(src)+'" alt="Imagem enviada">':'';var del=mine?'<button class="chat-delete" type="button" data-group-delete="'+esc(m.id)+'">apagar</button>':'';return '<div class="chat-msg '+(mine?'mine':'theirs')+'"><div class="chat-bubble">'+(m.texto?'<div>'+esc(m.texto)+'</div>':'')+img+'</div><span class="chat-time">'+esc(socialTempo(m.created_at))+' '+del+'</span></div>'}).join('');box.scrollTop=box.scrollHeight;GROUP_MESSAGES.filter(function(m){return m.midia_path&&!GROUP_MEDIA_URLS[String(m.id)]}).forEach(function(m){sb.storage.from('group-chat-media').createSignedUrl(m.midia_path,3600).then(function(r){if(!r.error&&r.data&&r.data.signedUrl){GROUP_MEDIA_URLS[String(m.id)]=r.data.signedUrl;groupRenderMain()}})})}
+function groupRenderMain(){var g=groupGet(GROUP_ACTIVE),title=$('#chatTitle'),st=$('#chatStatus'),dot=$('#chatDot'),box=$('#chatMessages'),info=$('#groupInfo'),it=$('#groupInfoText'),manage=$('#groupManage');if(GROUP_MODE!=='groups'||!g)return;if(title)title.textContent=g.nome;var typing=window.CHAT_TYPING_TEXT||'';if(st)st.textContent=typing||'Grupo • mensagens em tempo real';if(dot)dot.className='chat-dot online';if(it)it.textContent='👥 Grupo privado';if(manage)manage.hidden=!g.admin;if(info)info.hidden=false;if(!box)return;if(!GROUP_MESSAGES.length){box.innerHTML='<div class="chat-empty">Nenhuma mensagem ainda.<br>Comece a conversa! 👋</div>';return}var groupPrevTop=box.scrollTop,groupNewThread=box.dataset.thread!=='group:'+GROUP_ACTIVE,groupWasBottom=box.scrollHeight-box.clientHeight-box.scrollTop<=24;box.dataset.thread='group:'+GROUP_ACTIVE;box.innerHTML=GROUP_MESSAGES.map(function(m){var mine=String(m.remetente_id)===String(euId()),src=GROUP_MEDIA_URLS[String(m.id)]||'',img=src?'<img class="chat-image" src="'+esc(src)+'" alt="Imagem enviada">':'';var del=mine?'<button class="chat-delete" type="button" data-group-delete="'+esc(m.id)+'">apagar</button>':'';return '<div class="chat-msg '+(mine?'mine':'theirs')+'"><div class="chat-bubble">'+(m.texto?'<div>'+esc(m.texto)+'</div>':'')+img+'</div><span class="chat-time">'+esc(socialTempo(m.created_at))+' '+del+'</span></div>'}).join('');box.scrollTop=groupNewThread||groupWasBottom?box.scrollHeight:groupPrevTop;GROUP_MESSAGES.filter(function(m){return m.midia_path&&!GROUP_MEDIA_URLS[String(m.id)]}).forEach(function(m){sb.storage.from('group-chat-media').createSignedUrl(m.midia_path,3600).then(function(r){if(!r.error&&r.data&&r.data.signedUrl){GROUP_MEDIA_URLS[String(m.id)]=r.data.signedUrl;groupRenderMain()}})})}
 function abrirGrupo(gid){if(!groupGet(gid))return;GROUP_ACTIVE=String(gid);GROUP_MESSAGES=[];GROUP_MEDIA_URLS={};groupRenderList();groupSyncMode();groupRenderMain();carregarGrupoMensagens(gid).then(function(){var c=$('#chatCard');if(c)c.classList.add('chat-conversation')})}
 function carregarGrupoMensagens(gid){if(!sb||!euId()||!groupIsMember(gid))return Promise.resolve();return sb.from('clt_chat_group_messages').select('id,group_id,remetente_id,texto,midia_path,created_at').eq('group_id',gid).order('created_at',{ascending:true}).limit(400).then(function(r){if(r.error)throw r.error;GROUP_MESSAGES=r.data||[];groupRenderMain();return sb.from('clt_chat_group_reads').upsert({group_id:gid,user_id:euId(),last_read_at:new Date().toISOString()},{onConflict:'group_id,user_id'}).then(function(){GROUP_UNREAD_MAP[String(gid)]=0;groupRenderList()})}).catch(function(e){toast('Não foi possível carregar o grupo: '+erroTxt(e))})}
 function groupUpload(file){if(!file||!/^image\//i.test(file.type))return Promise.reject(new Error('Escolha uma imagem válida.'));if(file.size>5*1024*1024)return Promise.reject(new Error('A imagem ultrapassa 5 MB.'));var ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg',path=euId()+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,9)+'.'+ext;return sb.storage.from('group-chat-media').upload(path,file,{upsert:false,contentType:file.type}).then(function(r){if(r.error)throw r.error;return path})}
@@ -7102,3 +7142,44 @@ body.modal-open{overflow:visible!important;}
   backdrop-filter:blur(8px);font:700 9px Inter;white-space:nowrap
 }
 </style>
+
+<style id="patch125-final">
+#chatModal{z-index:2147483500!important;isolation:isolate!important;inset:0!important;overflow:hidden!important}
+@media(min-width:761px){#chatModal .chat-card{position:relative!important;inset:auto!important;left:auto!important;top:auto!important;transform:none!important;margin:0!important}}
+#chatModal .chat-messages{overscroll-behavior:contain;overflow-anchor:none}
+#socialHome{width:100%!important;max-width:1060px!important;gap:12px!important;grid-template-columns:minmax(220px,280px) minmax(0,1fr)!important;align-items:start!important}
+#socialHome .social-card-head{padding:12px 14px 8px!important}#socialHome .social-card-head h2{font-size:15px!important}
+#socialHome .activity-list{padding:0 10px 10px!important;gap:5px!important;max-height:430px!important;overflow:auto!important}#socialHome .activity-row{padding:8px!important}
+#socialHome .social-feed{min-width:0!important;max-height:680px!important}#socialHome .feed-compose textarea{min-height:68px!important;height:68px!important}#socialHome #socialFeedList{max-height:490px!important;overflow:auto!important}
+@media(max-width:800px){#socialHome{grid-template-columns:1fr!important}#socialHome .social-feed{max-height:none!important}#socialHome #socialFeedList{max-height:none!important}}
+</style>
+<script>
+/* Patch 1.25: sincronização agrupada, reconexão e limpeza por sessão. */
+var APP_DATA_CHANNEL=null,APP_DATA_UID=null,APP_DATA_PENDING={},APP_DATA_TIMER=null,APP_DATA_BUSY=false;
+function pararDadosRealtime(){clearTimeout(APP_DATA_TIMER);APP_DATA_PENDING={};if(APP_DATA_CHANNEL&&sb)sb.removeChannel(APP_DATA_CHANNEL);APP_DATA_CHANNEL=null;APP_DATA_UID=null}
+function atualizarDadosRealtime(scope){APP_DATA_PENDING[scope||'all']=true;clearTimeout(APP_DATA_TIMER);APP_DATA_TIMER=setTimeout(sincronizarDadosRealtime,250)}
+function sincronizarDadosRealtime(){
+  if(!sb||!euId()||document.hidden||APP_DATA_BUSY||ocupado){if(euId()&&(APP_DATA_BUSY||ocupado))APP_DATA_TIMER=setTimeout(sincronizarDadosRealtime,500);return}
+  var pending=APP_DATA_PENDING;APP_DATA_PENDING={};APP_DATA_BUSY=true;var uid=euId(),view=P,work=[];
+  if(pending.library||pending.all){if(P&&D)work.push(buscarDados().then(function(d){if(P!==view||euId()!==uid)return;setDados(d,true);cachePut(d);montarFiltros();render()}))}
+  if(pending.friends||pending.all)work.push(carregarAmigos().then(function(){if(euId()===uid){carregarChatAmigos();carregarFeedSocial()}}));
+  else if(pending.activity)work.push(carregarAtividadeSocial());
+  if(pending.notifications||pending.all)work.push(carregarNotificacoes());
+  Promise.allSettled(work).then(function(){APP_DATA_BUSY=false;if(Object.keys(APP_DATA_PENDING).length)atualizarDadosRealtime('activity')});
+}
+function assinarDadosRealtime(){
+  if(!sb||!euId())return;var uid=euId();if(APP_DATA_CHANNEL&&APP_DATA_UID===uid)return;pararDadosRealtime();APP_DATA_UID=uid;
+  APP_DATA_CHANNEL=sb.channel('app-data-'+uid)
+    .on('postgres_changes',{event:'*',schema:'public',table:'itens'},function(payload){var row=payload.new||{};if(!row.user_id||P&&String(row.user_id)===String(P.uid))atualizarDadosRealtime('library')})
+    .on('postgres_changes',{event:'*',schema:'public',table:'clt_activity_events'},function(){atualizarDadosRealtime('activity')})
+    .on('postgres_changes',{event:'*',schema:'public',table:'amigos',filter:'user_id=eq.'+uid},function(){atualizarDadosRealtime('friends')})
+    .on('postgres_changes',{event:'*',schema:'public',table:'convites_amizade',filter:'destinatario_id=eq.'+uid},function(){atualizarDadosRealtime('friends')})
+    .on('postgres_changes',{event:'*',schema:'public',table:'notificacoes',filter:'destinatario_id=eq.'+uid},function(){atualizarDadosRealtime('notifications')})
+    .subscribe(function(status){if(status==='SUBSCRIBED')atualizarDadosRealtime('all')});
+  assinarFeedSocialRealtime();
+}
+if(sb){sb.auth.onAuthStateChange(function(event,session){setTimeout(function(){if(!session){pararDadosRealtime();if(SOCIAL_CHANNEL){sb.removeChannel(SOCIAL_CHANNEL);SOCIAL_CHANNEL=null}}else assinarDadosRealtime()},0)});if(euId())assinarDadosRealtime()}
+window.addEventListener('online',function(){assinarDadosRealtime();atualizarDadosRealtime('all')});
+document.addEventListener('visibilitychange',function(){if(!document.hidden){assinarDadosRealtime();atualizarDadosRealtime('all')}});
+var chatPortal=document.getElementById('chatModal');if(chatPortal&&chatPortal.parentNode!==document.body)document.body.appendChild(chatPortal);
+</script>
