@@ -5061,6 +5061,16 @@ function irSteam(){fechar();var b=document.querySelector('#tabs [data-t="steam"]
 
 /* ===== aba Grátis: Epic e Steam (a função do Supabase busca; veja index.ts, op "gratis") ===== */
 var GRATIS=null,GRATISERR="",GRATISBUSY=false,GRATISTS=0;
+function buscarGratisAtualizados(){
+  return Promise.allSettled([api("gratis"),fetch('/api/steam-free').then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Steam indisponível');return d})})]).then(function(rs){
+    if(rs[0].status==='rejected'&&rs[1].status==='rejected')throw new Error('Não foi possível atualizar as ofertas. Tente novamente.');
+    var base=rs[0].status==='fulfilled'?rs[0].value:{epic:[]};
+    return {epic:base.epic||[],steam:rs[1].status==='fulfilled'?rs[1].value.steam||[]:[],steamErro:rs[1].status==='rejected'?'Não foi possível atualizar as ofertas da Steam.':'',epicErro:rs[0].status==='rejected'?'Não foi possível atualizar as ofertas da Epic Games.':''};
+  });
+}
+function gratisAtualizarSeAberto(){if(tab==='gratis'&&!document.hidden&&!document.body.classList.contains('profile-view')&&!GRATISBUSY&&Date.now()-GRATISTS>=300000){GRATISERR='';gratisR()}}
+setInterval(gratisAtualizarSeAberto,30000);
+document.addEventListener('visibilitychange',gratisAtualizarSeAberto);
 function dBR(s){var d=new Date(s);return isNaN(d)?"":d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}
 function cartaoGratis(g,i,cor,rot){
   var u=safeUrl(g.url);
@@ -5068,19 +5078,21 @@ function cartaoGratis(g,i,cor,rot){
 }
 function gratisR(){
   $("#hero").innerHTML="";$("#charts").innerHTML="";$("#feedbox").innerHTML="";$("#stats").innerHTML="";
-  if(GRATIS&&Date.now()-GRATISTS>1800000)GRATIS=null;
+  if(GRATIS&&Date.now()-GRATISTS>=300000)GRATIS=null;
   if(!GRATIS){
     if(GRATISERR){$("#list").innerHTML='<div class="empty">Não consegui buscar os jogos grátis.<br><small>'+esc(GRATISERR)+'</small><br><br><button class="btn" data-gratisretry="1">Tentar de novo</button></div>';return}
     $("#list").innerHTML='<div class="empty">Buscando jogos grátis…</div>';
-    if(!GRATISBUSY){GRATISBUSY=true;api("gratis").then(function(r){GRATIS=r;GRATISTS=Date.now();GRATISERR=""}).catch(function(e){var m=erroTxt(e);GRATISERR=m+(/desconhecida/i.test(m)?" — atualize a função no Supabase com o index.ts novo.":"")}).then(function(){GRATISBUSY=false;if(tab==="gratis")gratisR()})}
+    if(!GRATISBUSY){GRATISBUSY=true;buscarGratisAtualizados().then(function(r){GRATIS=r;GRATISTS=Date.now();GRATISERR=""}).catch(function(e){var m=erroTxt(e);GRATISERR=m+(/desconhecida/i.test(m)?" — atualize a função no Supabase com o index.ts novo.":"")}).then(function(){GRATISBUSY=false;if(tab==="gratis")gratisR()})}
     return;
   }
   var q=$("#q").value.toLowerCase().trim(),ok=function(g){return !q||g.nome.toLowerCase().indexOf(q)>=0};
-  var ep=(GRATIS.epic||[]).filter(ok),ea=ep.filter(function(g){return g.agora}),eb=ep.filter(function(g){return !g.agora}),sd=(GRATIS.steam||[]).filter(ok);
+  var now=Date.now(),ep=(GRATIS.epic||[]).filter(function(g){return ok(g)&&(!g.fim||!isFinite(Date.parse(g.fim))||Date.parse(g.fim)>now)}),ea=ep.filter(function(g){return g.inicio&&isFinite(Date.parse(g.inicio))?Date.parse(g.inicio)<=now:g.agora}),eb=ep.filter(function(g){return ea.indexOf(g)<0}),sd=(GRATIS.steam||[]).filter(ok);
   function sec(t,cor,l,rot){return l.length?'<section class="sec" style="--c:'+cor+'"><div class="sec-h"><h2>'+t+'</h2><span class="n">'+l.length+'</span><span class="ln"></span></div><div class="grid">'+l.map(function(g,i){return cartaoGratis(g,i,cor,rot(g))}).join("")+'</div></section>':""}
   var h=sec("🟪 Epic Games — grátis agora","#a78bfa",ea,function(g){return g.fim?"até "+dBR(g.fim):"grátis"})+
         sec("⏭️ Epic Games — em breve","#7c5cff",eb,function(g){return g.inicio?"a partir de "+dBR(g.inicio):"em breve"})+
-        sec("🟦 Steam — grátis agora","#1a9fff",sd,function(g){return g.fim?"até "+dBR(g.fim):"grátis"});
+        sec("🟦 Steam — 100% de desconto","#1a9fff",sd,function(g){return "100% de desconto"})+
+        (!sd.length?'<section class="sec" style="--c:#1a9fff"><div class="sec-h"><h2>🟦 Steam — 100% de desconto</h2></div><div class="empty">'+(GRATIS.steamErro?esc(GRATIS.steamErro):q?'Nenhuma oferta encontrada para essa busca.':'Nenhum jogo com 100% de desconto disponível no momento.')+'</div></section>':'')+
+        (GRATIS.epicErro?'<div class="empty">'+esc(GRATIS.epicErro)+'</div>':'');
   $("#list").innerHTML=(h||'<div class="empty">Nenhum jogo grátis no momento 🤷</div>')+'<p style="text-align:center;color:var(--mut);font-size:12px;margin:18px 0">Promoções “100% off” para resgatar na loja. Confira o preço na página antes de resgatar.</p>';
   lazyBg($("#list"));
 }
