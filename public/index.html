@@ -1830,6 +1830,28 @@ textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #b5a1ff!import
 .steam-friend-cover img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
 .steam-friend-row .desktop-list-copy{min-width:0}
 </style>
+
+<style id="patch144-fluid-surface">
+/* No scroll interception: native touch momentum and mouse-wheel behavior. */
+html.bc-boot::after{content:"BatCaverna dos CLTs";position:fixed;inset:0;z-index:2147483600;display:grid;place-content:center;text-align:center;color:#f2f2f7;font:700 24px Sora,system-ui,sans-serif;letter-spacing:-.02em;background:linear-gradient(#242432,#242432) center calc(50% + 42px)/160px 3px no-repeat,#07070b;pointer-events:none}
+body{transition:opacity .16s ease}
+.mobile-notif-modal .notif-center-head{padding-right:56px!important}
+/* Cards no longer replay entrance effects when background data updates. */
+.card,.social-card,.recent-card,.bar .fl,.col i{animation:none!important}
+body:not(.home)::after{display:none!important}
+body:not(.home) header.top,body:not(.home) #toolbar,body:not(.home) .mobile-nav,
+body:not(.home) .desktop-left-rail,.mobile-notif-modal .notif-center-head,
+.editor-footer{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background-color:#101019!important}
+#modal.modal,.chat-modal,.ranking-modal,#groupManageModal,#groupCreateModal,.global-search{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.card,.social-post{transition:border-color .14s ease,background-color .14s ease!important}
+@media(hover:none){.card:hover,.social-post:hover,.recent-card:hover{transform:none!important;box-shadow:none!important}}
+@media(prefers-reduced-motion:no-preference){
+ body:not(.bc-noanim) #mobileHome.on,body:not(.bc-noanim) #socialHome,
+ body:not(.bc-noanim) .box,body:not(.bc-noanim) .chat-card{animation:bc144-enter .14s ease-out!important}
+ @keyframes bc144-enter{from{opacity:.72}to{opacity:1}}
+}
+@media(prefers-reduced-motion:reduce){body{transition:none!important}html{scroll-behavior:auto!important}}
+</style>
 </head>
 <script>
 (function(){
@@ -4083,7 +4105,7 @@ function modal(html,cls){
   $("#box").innerHTML=html;
   lockPageScroll();
   $("#modal").classList.add("open");
-  var mx=$("#mx");if(mx)mx.style.display=cls&&String(cls).indexOf("mobile-notif-modal")>=0?"none":"";
+  var mx=$("#mx");if(mx)mx.style.display="";
   setTimeout(function(){positionMainModal()},0);
 }
 var SITE_CONFIRM_YES=null,SITE_CONFIRM_NO=null;
@@ -4874,7 +4896,7 @@ function abrirDestinoNotificacao(n){if(!n)return;marcarNotificacao(n.id);if(n.ti
 function abrirCentralNotificacoes(cat){
   cat=cat||'todas';
   var html='<div class="body notif-center">'+
-    '<div class="notif-center-head"><div><h2>🔔 Central de notificações</h2><p>Suas interações, amizades e conquistas. Mensagens ficam na aba Chat.</p></div><div class="notif-center-head-actions"><button type="button" class="btn sm" data-center-action="push">🔔 Ativar no celular</button><button type="button" class="btn sm notif-center-close" data-center-action="close" aria-label="Fechar">✕</button></div></div>'+
+    '<div class="notif-center-head"><div><h2>🔔 Central de notificações</h2><p>Suas interações, amizades e conquistas. Mensagens ficam na aba Chat.</p></div><div class="notif-center-head-actions"><button type="button" class="btn sm" data-center-action="push">🔔 Ativar no celular</button></div></div>'+
     '<div class="notif-center-tools">'+
       '<button class="notif-filter '+(cat==='todas'?'on':'')+'" data-center-action="filter" data-cat="todas">Tudo</button>'+
       '<button class="notif-filter '+(cat==='nao_lidas'?'on':'')+'" data-center-action="filter" data-cat="nao_lidas">🔴 Não lidas</button>'+
