@@ -88,7 +88,7 @@ export async function mediaUpload(request,env){
   const typed=new Blob([blob],{type});await moderate(env,typed);await uploadApproved(env,bucket,path,typed,type,user.id);return response({data:{path},error:null});
  }catch(e){return mediaError(e)}
 }
-async function signedServiceUrl(env,bucket,path){const d=await service(env,'/storage/v1/object/sign/'+bucket+'/'+path,{expiresIn:600});if(!d.signedURL)throw new Error('UPLOAD');const u=new URL('/storage/v1'+d.signedURL,env.SUPABASE_URL);if(u.origin!==new URL(env.SUPABASE_URL).origin)throw new Error('TARGET');return u.href;}
+async function signedServiceUrl(env,bucket,path,expiresIn=600){const d=await service(env,'/storage/v1/object/sign/'+bucket+'/'+path,{expiresIn});if(!d.signedURL)throw new Error('UPLOAD');const u=new URL('/storage/v1'+d.signedURL,env.SUPABASE_URL);if(u.origin!==new URL(env.SUPABASE_URL).origin)throw new Error('TARGET');return u.href;}
 export async function mediaVideoReview(request,env){
  if(request.method!=='POST')return response({error:'Método não permitido.'},405);if(!moderationReady(env))return response({error:'Ative a moderação automática antes de enviar vídeos.'},503);
  try{
@@ -100,13 +100,29 @@ export async function mediaVideoReview(request,env){
   await moderate(env,signed,true);const source=await fetch(signed,{redirect:'manual',signal:AbortSignal.timeout(15000)});if(!source.ok)throw new Error('UPLOAD');await uploadApproved(env,'feed-media',path,source.body,mp4?'video/mp4':'video/webm',user.id);return response({data:{path},error:null});
  }catch(e){return mediaError(e)}
 }
+// Only the current directory avatar is visible to other authenticated accounts.
+// Banners, previous photos and message attachments keep their existing ACL.
+async function currentDirectoryAvatar(env,userId,path){
+ const owner=path.split('/')[0];
+ const [profiles,blocks]=await Promise.all([
+  service(env,'/rest/v1/perfis?select=avatar_url&id=eq.'+owner+'&limit=1',undefined,'GET'),
+  service(env,'/rest/v1/bloqueios_clt?select=bloqueador_id&or=(and(bloqueador_id.eq.'+userId+',bloqueado_id.eq.'+owner+'),and(bloqueador_id.eq.'+owner+',bloqueado_id.eq.'+userId+'))&limit=1',undefined,'GET')
+ ]);
+ if(!profiles?.[0]?.avatar_url||blocks?.length)return false;
+ try{
+  const url=new URL(profiles[0].avatar_url),base=new URL(env.SUPABASE_URL);
+  return url.origin===base.origin&&decodeURIComponent(url.pathname)==='/storage/v1/object/public/avatars/'+path;
+ }catch{return false}
+}
 export async function mediaPrepare(request,env){
  if(request.method!=='POST')return response({error:'Método não permitido.'},405);if(!moderationReady(env))return response({error:'Moderação não configurada.'},503);
  try{
   const user=await authenticate(request,env),b=JSON.parse(await limitedText(request,1024)),bucket=String(b.bucket||''),path=String(b.path||'');if(!validTarget(bucket,path))throw new Error('TARGET');
-  const allowed=await service(env,'/rest/v1/rpc/clt_can_view_media',{p_user:user.id,p_bucket:bucket,p_path:path});if(allowed!==true)throw new Error('UNAUTHORIZED');
+  const allowed=await service(env,'/rest/v1/rpc/clt_can_view_media',{p_user:user.id,p_bucket:bucket,p_path:path});
+  const directoryAvatar=allowed!==true&&bucket==='avatars'&&await currentDirectoryAvatar(env,user.id,path);
+  if(allowed!==true&&!directoryAvatar)throw new Error('UNAUTHORIZED');
   const rows=await service(env,'/rest/v1/clt_media_reviews?select=status&bucket=eq.'+bucket+'&path=eq.'+encodeURIComponent(path),undefined,'GET');if(rows?.[0]?.status==='rejected')throw new Error('ADULT_CONTENT');
   if(rows?.[0]?.status!=='approved'){const signed=await signedServiceUrl(env,bucket,path);await moderate(env,signed,/\.(mp4|webm)$/i.test(path));var owner=path.split('/')[0];if(bucket==='group-avatars'){var groups=await service(env,'/rest/v1/clt_chat_groups?select=criado_por&id=eq.'+owner,undefined,'GET');owner=groups[0]?.criado_por;if(!owner)throw new Error('TARGET')}await record(env,bucket,path,owner,'approved')}
-  return response({approved:true});
+  return response(directoryAvatar?{approved:true,signedUrl:await signedServiceUrl(env,bucket,path,300)}:{approved:true});
  }catch(e){return mediaError(e)}
 }
