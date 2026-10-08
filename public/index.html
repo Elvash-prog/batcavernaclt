@@ -1852,6 +1852,12 @@ body:not(.home) .desktop-left-rail,.mobile-notif-modal .notif-center-head,
 }
 @media(prefers-reduced-motion:reduce){body{transition:none!important}html{scroll-behavior:auto!important}}
 </style>
+
+<style id="patch145-home-avatars">
+/* The inner avatar frame contains absolutely positioned children and needs its own size. */
+.mh-friend-av>[data-avatar-frame]{display:block;width:100%;height:100%;border-radius:inherit}
+.mh-friend-av>[data-avatar-frame]>.avatar-fallback{background:#242335;color:#f2f2f7;font-weight:700}
+</style>
 </head>
 <script>
 (function(){
