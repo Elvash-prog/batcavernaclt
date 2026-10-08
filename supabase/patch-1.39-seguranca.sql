@@ -244,10 +244,11 @@ alter default privileges for role postgres in schema public revoke execute on fu
 -- Limites de tamanho e frequência no banco: não dependem do JavaScript do navegador.
 create or replace function clt_private.limit_social_write()
 returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
-declare j jsonb:=to_jsonb(new);n bigint;actor uuid:=auth.uid();max_count int;
+declare j jsonb:=to_jsonb(new);n bigint;actor uuid:=auth.uid();max_count int;max_length int;
 begin
  if actor is null then return new; end if;
- if length(coalesce(j->>'texto',''))>case when tg_table_name='clt_posts' then 2000 when tg_table_name='clt_post_comments' then 240 else 4000 end then raise exception 'Texto ultrapassa o limite permitido.'; end if;
+ max_length:=case when tg_table_name='clt_posts' then 2000 when tg_table_name='clt_post_comments' then 240 else 4000 end;
+ if length(coalesce(j->>'texto',''))>max_length then raise exception 'Texto ultrapassa o limite permitido.'; end if;
  if tg_op='INSERT' then
   perform pg_advisory_xact_lock(hashtextextended('bc139:'||tg_table_name||':'||actor::text,0));
   if tg_table_name in ('clt_posts','clt_post_comments') then
