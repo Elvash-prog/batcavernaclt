@@ -1890,7 +1890,7 @@ textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #b5a1ff!import
 <div class="desktop-shell" id="desktopShell" aria-hidden="true">
   <aside class="desktop-left-rail">
     <div class="desktop-rail-card">
-      <div class="desktop-brand"><div class="desktop-brand-icon">🎮</div><div><b>BatCaverna</b><small>Comunidade dos CLTs</small></div></div>
+      <button type="button" class="desktop-brand" data-own-games aria-label="Voltar para meus jogos"><span class="desktop-brand-icon">🎮</span><span><b>BatCaverna</b><small>Comunidade dos CLTs</small></span></button>
       <div class="desktop-nav" id="desktopNav">
         <button type="button" data-desk="jogos"><span class="di">🎮</span>Jogos</button>
         <button type="button" data-desk="social"><span class="di">📰</span>Social</button>
@@ -2799,7 +2799,7 @@ function renderFeedComposer(){
   if(!euId()){b.innerHTML='';b.dataset.owner='';limparFeedPreview();FEED_SELECTED_FILES=[];return}
   if(b.dataset.owner===String(euId())&&b.querySelector('#feedText'))return;
   b.dataset.owner=String(euId());FEED_SELECTED_FILES=[];
-  b.innerHTML='<div class="feed-compose">'+avatarHtml(P,'activity-avatar')+'<div class="feed-compose-main"><textarea id="feedText" maxlength="500" placeholder="Compartilhe algo com seus amigos…"></textarea><div class="feed-upload"><label class="feed-photo-btn">📷 Fotos / vídeos<input id="feedFiles" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" multiple></label><span class="feed-upload-note">Até 4 arquivos · fotos 10 MB · vídeos 50 MB</span></div><div id="feedPreview" class="feed-preview"></div><div class="feed-compose-foot"><span class="feed-muted">Até 500 caracteres</span><button class="btn primary sm" id="feedPublish">Publicar</button></div></div></div>';
+  b.innerHTML='<div class="feed-compose">'+avatarHtml(P,'activity-avatar')+'<div class="feed-compose-main"><textarea id="feedText" maxlength="500" placeholder="Compartilhe algo com seus amigos…"></textarea><div class="feed-upload"><label class="feed-photo-btn">📷 Fotos / vídeos<input id="feedFiles" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" multiple></label><span class="feed-upload-note">Até 4 arquivos · fotos 10 MB · vídeos 200 MB</span></div><div id="feedPreview" class="feed-preview"></div><div class="feed-compose-foot"><span class="feed-muted">Até 500 caracteres</span><button class="btn primary sm" id="feedPublish">Publicar</button></div></div></div>';
   $('#feedPublish').onclick=publicarFeed;
   $('#feedFiles').onchange=function(){adicionarArquivosFeed(this.files)};
   renderFeedPreview();
@@ -2812,7 +2812,7 @@ function sincronizarFeedInput(){
 function validarMidiaFeed(f){
   var video=/^video\/(mp4|webm)$/i.test(f.type||""),image=/^image\/(png|jpe?g|webp)$/i.test(f.type||"");
   if(!video&&!image)return "Escolha uma foto JPG, PNG, WEBP ou um vídeo MP4/WebM.";
-  if(f.size>(video?50:10)*1024*1024)return video?"O vídeo ultrapassa 50 MB.":"A foto ultrapassa 10 MB.";
+  if(f.size>(video?200:10)*1024*1024)return video?"O vídeo ultrapassa 200 MB.":"A foto ultrapassa 10 MB.";
   return "";
 }
 function adicionarArquivosFeed(files){
@@ -2866,7 +2866,7 @@ function publicarFeed(){
       var video=/^video\//i.test(f.type),ext=video?(f.type==='video/webm'?'webm':'mp4'):'webp';
       return (video?Promise.resolve(f):otimizarFeedImagem(f)).then(function(blob){
         var path=uid+'/'+Date.now()+'-'+i+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
-        return sb.storage.from('feed-media').upload(path,blob,{contentType:video?f.type:'image/webp',upsert:false}).then(function(r){
+        return enviarMidiaFeed(path,blob,video?f.type:'image/webp',video).then(function(r){
           if(r.error)throw r.error;uploaded.push(path);urls.push(sb.storage.from('feed-media').getPublicUrl(path).data.publicUrl);
         });
       });
@@ -2875,7 +2875,7 @@ function publicarFeed(){
     if(r.error)throw r.error;uploaded=[];
     if(!SOCIAL_POSTS.some(function(p){return String(p.id)===String(r.data.id)}))SOCIAL_POSTS.unshift(r.data);
     limparFeedPreview();FEED_SELECTED_FILES=[];var b=$('#feedComposer');if(b)b.innerHTML='';renderFeedComposer();carregarFeedMeta().then(renderFeedSocial);toast('Publicado ✓');
-  }).catch(function(e){if(uploaded.length)sb.storage.from('feed-media').remove(uploaded).catch(function(){});toast('Não foi possível publicar: '+erroTxt(e))}).finally(function(){FEED_PUBLISH_BUSY=false;var b=$('#feedPublish');if(b){b.disabled=false;b.textContent='Publicar'}});
+  }).catch(function(e){if(uploaded.length)sb.storage.from('feed-media').remove(uploaded).catch(function(){});toast('Não foi possível publicar: '+erroMidiaFeed(e))}).finally(function(){FEED_PUBLISH_BUSY=false;var b=$('#feedPublish');if(b){b.disabled=false;b.textContent='Publicar'}});
 }
 function assinarFeedSocialRealtime(){
   if(!sb||!euId()||SOCIAL_CHANNEL)return;
@@ -7230,4 +7230,37 @@ async function enviarFormularioConta(f){
 document.addEventListener('click',function(e){if(e.target.closest('[data-forgot-password]'))abrirRecuperacaoSenha();var more=e.target.closest('[data-feed-more]');if(more){more.disabled=true;FEED_LIMIT+=30;carregarFeedSocial()}});
 document.addEventListener('submit',function(e){var f=e.target;if(f.matches('[data-account-form]')){e.preventDefault();enviarFormularioConta(f)}});
 if(sb)sb.auth.onAuthStateChange(function(event,session){if(event==='PASSWORD_RECOVERY'){BC_PASSWORD_RECOVERY=true;setTimeout(function(){abrirSenha(true)},0)}});
+</script>
+
+<style id="patch127-logo">
+button.desktop-brand{width:100%;border:0;background:transparent;text-align:left;color:inherit;cursor:pointer;box-sizing:border-box}
+button.desktop-brand:hover{background:rgba(139,92,246,.10)}button.desktop-brand:focus-visible{outline:2px solid var(--acc2);outline-offset:-3px}
+</style>
+<script>
+function voltarMeusJogos(){
+  fecharChat();fecharAmigosModal();fechar();
+  var uid=euId(),index=PERFIS.findIndex(function(p){return String(p.uid)===String(uid)});
+  if(!uid||index<0){mostrarHome();return}
+  tab='jogos';DESTAQUE=null;var q=document.getElementById('q');if(q)q.value='';
+  document.querySelectorAll('#tabs [data-t]').forEach(function(b){b.classList.toggle('on',b.dataset.t==='jogos')});
+  trocarPerfil(index,false);resetPaginaScroll();if(typeof mobileNavSync==='function')mobileNavSync();
+}
+document.addEventListener('click',function(e){if(e.target.closest('[data-own-games]'))voltarMeusJogos()});
+var FEED_TUS_MODULE=null;
+function carregarUploadVideo(){if(!FEED_TUS_MODULE)FEED_TUS_MODULE=import('https://cdn.jsdelivr.net/npm/tus-js-client@4/+esm').catch(function(e){FEED_TUS_MODULE=null;throw new Error('Não foi possível carregar o envio de vídeos. Tente novamente.')});return FEED_TUS_MODULE}
+async function enviarMidiaFeed(path,blob,type,video){
+  if(!video)return sb.storage.from('feed-media').upload(path,blob,{contentType:type,upsert:false});
+  var module=await carregarUploadVideo(),session=await sb.auth.getSession();if(session.error)throw session.error;
+  var token=session.data&&session.data.session&&session.data.session.access_token;if(!token)throw new Error('Entre novamente para enviar o vídeo.');
+  var endpoint=new URL(SUPABASE_URL);if(endpoint.hostname.endsWith('.supabase.co'))endpoint.hostname=endpoint.hostname.replace('.supabase.co','.storage.supabase.co');endpoint.pathname='/storage/v1/upload/resumable';
+  return new Promise(function(resolve,reject){
+    var upload=new module.Upload(blob,{endpoint:endpoint.href,headers:{authorization:'Bearer '+token,'x-upsert':'false'},chunkSize:6*1024*1024,retryDelays:[0,3000,5000,10000],uploadDataDuringCreation:true,removeFingerprintOnSuccess:true,storeFingerprintForResuming:false,metadata:{bucketName:'feed-media',objectName:path,contentType:type,cacheControl:'3600'},onProgress:function(sent,total){var b=document.getElementById('feedPublish');if(b&&total)b.textContent='Enviando vídeo '+Math.round(sent/total*100)+'%'},onSuccess:function(){resolve({error:null})},onError:reject});upload.start();
+  });
+}
+function erroMidiaFeed(e){
+  var m=String(e&&e.message||e||'');
+  if(/mime.*not supported|mime.*not allowed|invalid.*mime/i.test(m))return 'O armazenamento ainda não permite esse formato de vídeo.';
+  if(/exceeded.*size|maximum.*size|too large|413|PayloadTooLarge/i.test(m))return 'O vídeo ultrapassa o limite configurado no armazenamento.';
+  return erroTxt(e);
+}
 </script>
