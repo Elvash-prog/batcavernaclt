@@ -7631,3 +7631,54 @@ async function stickerRead(){var uid=String(euId()||'');if(!sb||!uid)return [];v
 }
 
 </script>
+
+<script id="patch143-app-navigation">
+(function(){
+ 'use strict';
+ var level=0,handling=false,pending=false,scheduled=false;
+ function enabled(){return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||innerWidth<=600;}
+ function el(id){return document.getElementById(id);}
+ function on(id,cls){var e=el(id);return !!e&&e.classList.contains(cls||'on');}
+ function authenticated(){return typeof euId==='function'&&!!euId()&&typeof P!=='undefined'&&!!P&&!document.body.classList.contains('home');}
+ function layers(){if(!authenticated())return [];var a=[],body=document.body.classList;
+  if(!body.contains('mobile-home-active'))a.push('page');
+  if(on('chatModal')&&on('chatCard','chat-conversation'))a.push('conversation');
+  if(on('friendsModal')&&!body.contains('mobile-friends-active'))a.push('friends');
+  if(on('groupManageModal'))a.push('groupManage');if(on('groupCreateModal'))a.push('groupCreate');
+  if(el('chatGifPanel'))a.push('stickers');
+  if(on('feedLightbox'))a.push('feedImage');
+  if(el('chatImageLightbox')&&el('chatImageLightbox').getAttribute('aria-hidden')==='false')a.push('chatImage');
+  if(on('modal','open'))a.push('modal');return a;
+ }
+ function home(){fecharChat();mobileFriendsClose();mobileSocialClose();voltarMeusJogos();mobileNavOpenTab('home');}
+ function back(){var list=layers(),top=list[list.length-1];
+  if(top==='modal'){var cancel=on('modal','site-confirm-modal')&&typeof SITE_CONFIRM_NO==='function'?SITE_CONFIRM_NO:null;if(on('modal','site-confirm-modal')){SITE_CONFIRM_YES=SITE_CONFIRM_NO=null;}fechar();if(cancel)cancel();}
+  else if(top==='chatImage'){var b=el('chatImageLightboxClose');if(b)b.click();}
+  else if(top==='feedImage'){var b=el('feedLightbox').querySelector('.feed-lightbox-close');if(b)b.click();}
+  else if(top==='stickers')fecharFigurinhas();
+  else if(top==='groupCreate')fecharCriarGrupo();else if(top==='groupManage')fecharGroupManage();
+  else if(top==='friends')fecharAmigosModal();
+  else if(top==='conversation'){if(typeof GROUP_ACTIVE!=='undefined')GROUP_ACTIVE=null;CHAT_ACTIVE=null;CHAT_MESSAGES=[];GROUP_MESSAGES=[];CHAT_SELECTED_FILE=null;chatClearReply();chatClearEdit();var c=el('chatCard');if(c)c.classList.remove('chat-conversation');chatRenderPreview();chatRenderMain();chatRenderFriends();if(typeof groupRenderList==='function')groupRenderList();}
+  else if(top==='page')home();return !!top;
+ }
+ function stamp(depth){if(history.state&&history.state.bcAppNavigation&&history.state.bcAppNavigation.depth===depth)return true;var state=Object.assign({},history.state||{});state.bcAppNavigation={depth:depth};try{history.replaceState(state,'');return true;}catch(e){return false;}}
+ function sync(){scheduled=false;if(!enabled()||handling||pending)return;var depth=layers().length;
+  if(depth<level){var delta=depth-level;level=depth;pending=true;history.go(delta);return;}
+  if(!stamp(level))return;while(level<depth){var next=level+1,state=Object.assign({},history.state||{});state.bcAppNavigation={depth:next};try{history.pushState(state,'');level=next;}catch(e){return;}}
+ }
+ function schedule(){if(scheduled)return;scheduled=true;setTimeout(sync,0);}
+ function pop(e){if(!enabled())return;var marker=e.state&&e.state.bcAppNavigation,target=marker&&Number.isInteger(marker.depth)?Math.max(0,marker.depth):0;
+  if(pending){pending=false;level=target;sync();return;}
+  handling=true;for(var i=0;i<10&&layers().length>target;i++){if(!back())break;}level=Math.min(target,layers().length);handling=false;stamp(level);schedule();
+ }
+ function start(){if(!enabled())return;var state=history.state&&history.state.bcAppNavigation;level=state&&Number.isInteger(state.depth)?Math.max(0,state.depth):0;
+  window.addEventListener('popstate',pop);document.addEventListener('click',schedule);document.addEventListener('keydown',schedule);
+  var observer=new MutationObserver(schedule);observer.observe(document.body,{attributes:true,attributeFilter:['class']});
+  ['modal','chatModal','chatCard','friendsModal','groupManageModal','groupCreateModal','feedLightbox','chatImageLightbox'].forEach(function(id){var node=el(id);if(node)observer.observe(node,{attributes:true,attributeFilter:['class','aria-hidden']});});
+  sync();
+ }
+ window.bcAppNavigation={layers:layers,back:back,sync:sync};
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+
+</script>
