@@ -1861,7 +1861,7 @@ textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #b5a1ff!import
 <div id="feedLightbox" class="feed-lightbox" aria-hidden="true"><button class="feed-lightbox-close" type="button">×</button><img id="feedLightboxImg" alt="Imagem ampliada"></div>
 <div id="wall" hidden aria-hidden="true"></div>
 <header class="top"><div class="wrap">
-  <div class="logo" id="logo"><i>🎮</i><span>BatCaverna dos CLTs</span></div>
+  <button type="button" class="logo" id="logo" aria-label="Voltar para meus jogos"><i>🎮</i><span>BatCaverna dos CLTs</span></button>
   <button class="top-home-btn" id="topHomeBtn" type="button" hidden title="Voltar para o início">🏠 <span>Início</span></button>
   <div class="quemw" id="quemw"><button class="quem" id="quem" type="button" hidden title="Meu perfil"></button><div class="dd" id="qdd"><div class="pnl"><div id="qpanel"></div></div></div></div>
   <div class="spacer"></div>
@@ -1928,6 +1928,7 @@ textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #b5a1ff!import
 
 <div class="wrap" id="profilebar" hidden></div>
 <div class="toolbar-wrap wrap" id="toolbar">
+  <nav id="mobileGameTabs" class="mobile-game-tabs" aria-label="Biblioteca de jogos" hidden><button type="button" data-library-tab="jogos">🎮 Meus jogos</button><button type="button" data-library-tab="steam">🟦 Steam</button></nav>
   <div class="toolbar-main">
     <div class="search"><input id="q" type="search" placeholder="Buscar por nome…"></div>
     <button class="btn" id="filtertoggle" type="button">⚙️ Filtros</button>
@@ -3202,7 +3203,7 @@ $("#socialHome")&&$("#socialHome").addEventListener("click",function(e){var b=e.
 $("#friendsOpen")&&$("#friendsOpen").addEventListener("click",abrirAmigosModal);
 $("#friendsTop")&&$("#friendsTop").addEventListener("click",abrirAmigosModal);
 $("#topHomeBtn")&&$("#topHomeBtn").addEventListener("click",irPaginaInicial);
-$("#logo")&&$("#logo").addEventListener("click",function(){if(P&&P.uid)irPaginaInicial();});
+$("#logo")&&$("#logo").addEventListener("click",function(){if(P&&P.uid)voltarMeusJogos();});
 $('#friendsClose')&&$('#friendsClose').addEventListener('click',fecharAmigosModal);
 $('#friendsModal')&&$('#friendsModal').addEventListener('click',function(e){
   if(e.target===this){fecharAmigosModal();return}
@@ -3735,14 +3736,14 @@ var MEDIA_GENRE_ANI={"Action":"Action","Adventure":"Adventure","Comedy":"Comedy"
 function mediaTipoRec(x){return x&&x.tipo==='anime'||x&&x.midia==='anime'?'anime':x&&x.midia==='tv'?'serie':'filme'}
 function mediaBibliotecaNomes(){return (D&&D.filmes||[]).map(function(x){return norm(x.nome)}).filter(Boolean)}
 function mediaGenerosPreferidos(){var f=D&&D.filmes||[],c={};f.forEach(function(x){(x.generos||[]).forEach(function(g){var clean=limpa(String(g)).replace(/^🍥\s*/,'').trim();if(clean)c[clean]=(c[clean]||0)+1})});return Object.keys(c).sort(function(a,b){return c[b]-c[a]})}
-function mediaRecCacheKey(){return 'batcaverna_media_recs_v4_'+String(P&&P.uid||'anon')+'_'+bcDiaId()}
+function mediaRecCacheKey(){return 'batcaverna_media_recs_v6_'+String(P&&P.uid||'anon')+'_'+bcDiaId()}
 function mediaRecSetTab(tipo){if(!MEDIA_REC_GROUPS[tipo])tipo='filme';MEDIA_REC_TAB=tipo;MEDIA_RECS=MEDIA_REC_GROUPS[tipo]||[];document.querySelectorAll('#mediaRecTabs [data-media-rec-tab]').forEach(function(b){var on=b.dataset.mediaRecTab===tipo;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false')});mediaRecRender()}
 function mediaRecRender(){
   var sec=$('#mediaRecommendations'),box=$('#mediaRecommendationsList'),ctx=$('#mediaRecsContext');if(!sec||!box)return;
   var ok=tab==='filmes'&&!PERFIL_ABERTO&&!!P;sec.hidden=!ok;if(!ok)return;
   if(ctx)ctx.innerHTML='Seleção variada entre <b>todos os gêneros</b>, separada por filmes, séries e animes. A lista muda todos os dias e conteúdo adulto é filtrado.';
   MEDIA_RECS=MEDIA_REC_GROUPS[MEDIA_REC_TAB]||[];
-  if(!MEDIA_RECS.length){box.innerHTML='<div class="rec-empty">Ainda não encontrei recomendações suficientes nesta categoria. Clique em ↻ Atualizar para tentar novamente.</div>';return}
+  if(!MEDIA_RECS.length){box.innerHTML='<div class="rec-empty" role="status">'+(MEDIA_RECS_BUSY?'Carregando recomendações…':'Não foi possível carregar recomendações agora. Tente atualizar.')+'</div>';return}
   box.innerHTML=MEDIA_RECS.map(function(x,i){var c=safeUrl(x.capa),tipo=mediaTipoRec(x),label=tipo==='filme'?'🎬 Filme':tipo==='serie'?'📺 Série':'🍥 Anime';return '<article class="rec-item" data-media-rec-open="'+i+'" tabindex="0"><div class="rec-cover"'+(c?' style="background-image:url(\''+esc(c)+'\')"':'')+'>'+(!c?(tipo==='serie'?'📺':tipo==='anime'?'🍥':'🎬'):'')+'</div><div class="rec-copy"><b title="'+esc(x.nome)+'">'+esc(x.nome)+'</b><small>'+esc(x.ano||'')+(x.generos&&x.generos.length?' · '+esc(x.generos.slice(0,2).join(', ')):'')+'</small><span class="rec-type">'+label+'</span></div><div class="rec-actions"><button class="btn" type="button" data-media-rec-add="'+i+'">➕ Adicionar</button><button class="btn" type="button" data-media-rec-details="'+i+'">🔎 Detalhes</button></div></article>'}).join('');
 }
 function mediaRecAdd(i){var x=MEDIA_RECS[Number(i)];if(!x)return;var oldTab=tab;tab='filmes';RES=[{nome:x.nome,ano:x.ano||'',capa:x.capa||'',generos:x.generos||[],fonte:x.fonte||'tmdb',midia:x.midia||'movie',duracao:x.duracao||'',tipo:mediaTipoRec(x)}];ESC=RES[0];escolher(0);tab=oldTab;}
@@ -3815,41 +3816,41 @@ function mediaResolverCapasFaltantes(){
     mediaRecRender();
   });
 }
+var MEDIA_REC_OWNER='',MEDIA_REC_LAST_ATTEMPT=0;
+function mediaRecCacheValido(ob){
+  return !!(ob&&ob.date===bcDiaId()&&Date.now()-ob.updatedAt<6*60*60*1000&&ob.groups&&['filme','serie','anime'].every(function(k){return Array.isArray(ob.groups[k])&&ob.groups[k].length&&ob.groups[k].every(function(x){return !!safeUrl(x.capa)&&x.fonte!=='fallback'&&!mediaConteudoAdulto(x)})}));
+}
+function mediaEscolherNovos(items,old,kind){
+  var pool=bcShuffleDia(mediaDedup(items.filter(function(x){return !!safeUrl(x.capa)}),mediaBibliotecaNomes()),kind+'-'+MEDIA_REC_REFRESH);
+  var seen=(old||[]).map(function(x){return norm(x.nome)});
+  return pool.filter(function(x){return seen.indexOf(norm(x.nome))<0}).concat(pool.filter(function(x){return seen.indexOf(norm(x.nome))>=0})).slice(0,8);
+}
 function carregarMediaRecomendacoes(force){
-  var hojeMedia=bcDiaId();if(window.__BC_MEDIA_REC_DAY!==hojeMedia){window.__BC_MEDIA_REC_DAY=hojeMedia;MEDIA_REC_GROUPS={filme:[],serie:[],anime:[]};MEDIA_RECS=[];MEDIA_REC_REFRESH=0}
-  var sec=$('#mediaRecommendations');if(!sec||tab!=='filmes'||PERFIL_ABERTO||!P)return;
-  if(MEDIA_RECS_BUSY)return;
-  if(!force&&Object.keys(MEDIA_REC_GROUPS).some(function(k){return MEDIA_REC_GROUPS[k].length})){mediaRecRender();return}
-  if(!force){try{var raw=localStorage.getItem(mediaRecCacheKey());if(raw){var ob=JSON.parse(raw);if(ob&&ob.groups){MEDIA_REC_GROUPS=Object.assign({filme:[],serie:[],anime:[]},ob.groups);mediaRecSetTab(MEDIA_REC_TAB);mediaResolverCapasFaltantes();return}}}catch(e){}}
-  var lib=mediaBibliotecaNomes(),prefs=[];MEDIA_RECS_BUSY=true;var b0=$('#mediaRecsRefresh');if(b0)b0.disabled=true;MEDIA_REC_GROUPS={filme:[],serie:[],anime:[]};mediaRecRender();
-  var seed=bcHashSeed(bcDiaId()+'|media-pages|'+MEDIA_REC_REFRESH),base=1+(seed%10);
-  var movieUrls=[
-    '/api/catalog/tmdb/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=popularity.desc&include_adult=false&page='+(1+(base%12)),
-    '/api/catalog/tmdb/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=vote_average.desc&vote_count.gte=300&include_adult=false&page='+(1+((base+3)%8)),
-    '/api/catalog/tmdb/discover/movie?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=primary_release_date.desc&vote_count.gte=80&include_adult=false&page='+(1+((base+6)%6))
-  ];
-  var serieUrls=[
-    '/api/catalog/tmdb/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=popularity.desc&page='+(1+(base%12)),
-    '/api/catalog/tmdb/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=vote_average.desc&vote_count.gte=150&page='+(1+((base+4)%8)),
-    '/api/catalog/tmdb/discover/tv?api_key='+encodeURIComponent(TMDB_KEY)+'&language=pt-BR&sort_by=first_air_date.desc&vote_count.gte=50&page='+(1+((base+7)%6))
-  ];
-  var aniPage=1+((base+MEDIA_REC_REFRESH)%8);
+  var sec=$('#mediaRecommendations');if(!sec||tab!=='filmes'||PERFIL_ABERTO||!P)return Promise.resolve();
+  var owner=String(P.uid),hoje=bcDiaId();
+  if(MEDIA_RECS_BUSY)return Promise.resolve();
+  if(MEDIA_REC_OWNER!==owner||window.__BC_MEDIA_REC_DAY!==hoje){MEDIA_REC_OWNER=owner;window.__BC_MEDIA_REC_DAY=hoje;MEDIA_REC_GROUPS={filme:[],serie:[],anime:[]};MEDIA_RECS=[];MEDIA_REC_REFRESH=0;MEDIA_REC_LAST_ATTEMPT=0}
+  if(!force&&MEDIA_REC_LAST_ATTEMPT&&Date.now()-MEDIA_REC_LAST_ATTEMPT<60000){mediaRecRender();return Promise.resolve()}
+  if(!force){try{var ob=JSON.parse(localStorage.getItem(mediaRecCacheKey())||'null');if(mediaRecCacheValido(ob)){MEDIA_REC_GROUPS=ob.groups;MEDIA_REC_REFRESH=Number(ob.refresh)||0;mediaRecSetTab(MEDIA_REC_TAB);return Promise.resolve()}}catch(e){}}
+  var previous=MEDIA_REC_GROUPS;MEDIA_RECS_BUSY=true;MEDIA_REC_LAST_ATTEMPT=Date.now();var refresh=$('#mediaRecsRefresh');if(refresh)refresh.disabled=true;
+  MEDIA_REC_GROUPS={filme:[],serie:[],anime:[]};mediaRecRender();
+  var base=bcHashSeed(hoje+'|media-pages')%12;
+  function catalogo(kind){
+    if(!TMDB_KEY)return Promise.resolve([]);
+    var ep=kind==='serie'?'tv':'movie',sorts=['popularity.desc','vote_average.desc',kind==='serie'?'first_air_date.desc':'primary_release_date.desc'];
+    return Promise.allSettled(sorts.map(function(sort,i){
+      var page=1+((base+MEDIA_REC_REFRESH*3+i*4)%20);
+      return getJson('/api/catalog/tmdb/discover/'+ep+'?language=pt-BR&include_adult=false&sort_by='+sort+'&vote_count.gte='+(i===1?150:40)+'&page='+page);
+    })).then(function(rs){var out=[];rs.forEach(function(r){if(r.status==='fulfilled')(r.value.results||[]).forEach(function(x){out.push(mediaNormalizeTmdb(x,kind))})});return out});
+  }
   var aniQuery='query($p:Int!){Page(page:$p,perPage:30){media(type:ANIME,isAdult:false,sort:TRENDING_DESC){title{romaji english}startDate{year}coverImage{large}genres description(asHtml:false) isAdult}}}';
-  var aniPromise=fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({query:aniQuery,variables:{p:aniPage}})}).then(function(r){return r.json()}).then(function(r){return ((r.data&&r.data.Page&&r.data.Page.media)||[]).filter(function(m){return !m.isAdult}).map(function(m){return {nome:m.title.english||m.title.romaji,ano:m.startDate&&m.startDate.year||'',capa:m.coverImage&&m.coverImage.large||'',generos:['🍥 Anime'].concat(m.genres||[]),descricao:m.description||'',isAdult:!!m.isAdult,fonte:'anilist',midia:'anime',tipo:'anime'}})}).catch(function(){return []});
-  Promise.all([Promise.all(movieUrls.map(getJson)).catch(function(){return []}),Promise.all(serieUrls.map(getJson)).catch(function(){return []}),aniPromise]).then(function(all){
-    var movies=[],series=[],animes=all[2]||[];
-    (all[0]||[]).forEach(function(r){(r.results||[]).forEach(function(x){movies.push(mediaNormalizeTmdb(x,'filme'))})});
-    (all[1]||[]).forEach(function(r){(r.results||[]).forEach(function(x){series.push(mediaNormalizeTmdb(x,'serie'))})});
-    movies=bcShuffleDia(mediaDedup(movies,lib),'movies-'+MEDIA_REC_REFRESH);
-    series=bcShuffleDia(mediaDedup(series,lib),'series-'+MEDIA_REC_REFRESH);
-    animes=bcShuffleDia(mediaDedup(animes,lib),'anime-'+MEDIA_REC_REFRESH);
-    if(!movies.length)movies=mediaFallbackPick(MEDIA_FALLBACK_FILMES,lib,prefs,0,'filme');
-    if(!series.length)series=mediaFallbackPick(MEDIA_FALLBACK_SERIES,lib,prefs,0,'serie');
-    if(!animes.length)animes=mediaFallbackPick(MEDIA_FALLBACK_ANIMES,lib,prefs,0,'anime');
-    MEDIA_REC_GROUPS={filme:movies.slice(0,8),serie:series.slice(0,8),anime:animes.slice(0,8)};
-    mediaRecSetTab(MEDIA_REC_TAB);try{localStorage.setItem(mediaRecCacheKey(),JSON.stringify({groups:MEDIA_REC_GROUPS,updatedAt:Date.now(),refresh:MEDIA_REC_REFRESH,date:bcDiaId()}))}catch(e){}
-    mediaResolverCapasFaltantes();
-  }).finally(function(){MEDIA_RECS_BUSY=false;var b=$('#mediaRecsRefresh');if(b)b.disabled=false});
+  var aniPromise=fetch('https://graphql.anilist.co',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({query:aniQuery,variables:{p:1+((base+MEDIA_REC_REFRESH)%8)}}),signal:AbortSignal.timeout(15000)}).then(function(r){if(!r.ok)throw new Error('Catálogo indisponível');return r.json()}).then(function(r){return ((r.data&&r.data.Page&&r.data.Page.media)||[]).filter(function(m){return !m.isAdult}).map(function(m){return {nome:m.title.english||m.title.romaji,ano:m.startDate&&m.startDate.year||'',capa:m.coverImage&&m.coverImage.large||'',generos:['🍥 Anime'].concat(m.genres||[]),descricao:m.description||'',isAdult:!!m.isAdult,fonte:'anilist',midia:'anime',tipo:'anime'}})}).catch(function(){return []});
+  return Promise.all([catalogo('filme'),catalogo('serie'),aniPromise]).then(function(all){
+    if(!P||String(P.uid)!==owner||bcDiaId()!==hoje)return;
+    MEDIA_REC_GROUPS={filme:mediaEscolherNovos(all[0],previous.filme,'filme'),serie:mediaEscolherNovos(all[1],previous.serie,'serie'),anime:mediaEscolherNovos(all[2],previous.anime,'anime')};
+    var ob={groups:MEDIA_REC_GROUPS,updatedAt:Date.now(),refresh:MEDIA_REC_REFRESH,date:hoje};
+    try{if(mediaRecCacheValido(ob))localStorage.setItem(mediaRecCacheKey(),JSON.stringify(ob));else localStorage.removeItem(mediaRecCacheKey())}catch(e){}
+  }).finally(function(){MEDIA_RECS_BUSY=false;var b=$('#mediaRecsRefresh');if(b)b.disabled=false;mediaRecSetTab(MEDIA_REC_TAB)});
 }
 
 
@@ -4095,7 +4096,7 @@ function adminUI(){
   var on=edit();
   $("#adm").textContent=on?"🚪 Sair":"🔒 Entrar";
   $("#adm").hidden=!sb||!P||!P.uid;
-  $("#add").hidden=!(tab!=="steam"&&tab!=="gratis");
+  $("#add").hidden=!(P&&String(P.uid)===String(euId())&&!PERFIL_ABERTO&&(window.innerWidth<=760?bibliotecaMobileVisivel()&&tab==="jogos":tab==="jogos"||tab==="filmes"));
   $("#selbtn").hidden=!(on&&tab!=="gratis");
   if(!on&&SELMODE)selLigar(false);
   $("#bgbtn").hidden=!on;$("#logobtn").hidden=!on;$("#impbtn").hidden=!on;
@@ -4330,6 +4331,7 @@ function importar(f){
 /* ----- adicionar ----- */
 function tipoRes(r){return r.fonte==="anilist"?"🍥 Anime":r.midia==="tv"?"📺 Série":r.midia==="movie"?"🎬 Filme":""}
 function abrirAdicionar(){
+  if(window.innerWidth<=760&&(!bibliotecaMobileVisivel()||tab!=="jogos"))return;
   var l=L();
   modal('<div class="body"><h2>➕ Adicionar '+(tab==="jogos"?"jogo":"título")+'</h2>'+abasAdd("um")+''+
     '<form data-form="buscar"><div class="frow">'+(tab==="filmes"?'<select name="tipo"><option value="">Qualquer tipo</option>'+(l.tipos||[]).map(function(t){return '<option>'+esc(t)+'</option>'}).join("")+'</select>':'')+
@@ -5955,13 +5957,13 @@ function mobileNavSync(){
   var icon=$('#mobileProfileIcon'),me=perfilPorId(euId())||P;if(icon)icon.innerHTML=me&&me.avatar?'<img class="mb-avatar" src="'+esc(me.avatar)+'" alt="">':'👤';
   var cb=$('#mobileChatBadge'),cu=Number(CHAT_UNREAD||0);if(cb){cb.hidden=!cu;cb.textContent=cu>99?'99+':String(cu)}
   var fb=$('#mobileFriendBadge'),fi=Number((CONVITES||[]).length||0);if(fb){fb.hidden=!fi;fb.textContent=fi>99?'99+':String(fi)}
-  var active='jogos';if(document.body.classList.contains('mobile-home-active'))active='home';else if(document.body.classList.contains('profile-view'))active='jogos';else if(document.body.classList.contains('mobile-friends-active'))active='friends';else if($('#chatModal')&&$('#chatModal').classList.contains('on'))active='chat';else if(tab==='social')active='social';else if(tab==='jogos')active='jogos';
+  var active='jogos';if(document.body.classList.contains('mobile-home-active'))active='home';else if(document.body.classList.contains('profile-view'))active='profile';else if(document.body.classList.contains('mobile-friends-active'))active='friends';else if($('#chatModal')&&$('#chatModal').classList.contains('on'))active='chat';else if(tab==='social')active='social';else if(tab==='jogos')active='jogos';
   nav.querySelectorAll('button[data-mobile]').forEach(function(b){b.classList.toggle('on',b.dataset.mobile===active)});if(document.body.classList.contains('mobile-home-active'))mobileHomeRender();
 }
 function mobileNavOpenProfile(){var uid=euId();if(!uid)return toast('Entre na conta para abrir seu perfil.');if(typeof fecharAmigosModal==='function')fecharAmigosModal();if(typeof fecharChat==='function')fecharChat();var i=PERFIS.findIndex(function(p){return String(p.uid)===String(uid)});if(i>=0){fechar();trocarPerfil(i,true);mobileNavSync();}}
 function mobileFriendsOpen(){if(!SESS||!P)return toast('Entre na conta para usar seus amigos.');mobileHomeHide();document.body.classList.add('mobile-friends-active');document.body.classList.remove('profile-view');abrirAmigosModal();mobileNavSync();}
 function mobileFriendsClose(){if(typeof fecharAmigosModal==='function')fecharAmigosModal();document.body.classList.remove('mobile-friends-active');mobileNavSync();}
-function mobileNavOpenTab(name){if(name==='home'){mobileSocialClose();mobileFriendsClose();mobileHomeOpen();return}if(name==='social'){mobileSocialOpen();return}if(name==='friends'){mobileSocialClose();mobileFriendsOpen();return}if(name==='chat'){mobileSocialClose();mobileFriendsClose();mobileHomeHide();fechar();PERFIL_ABERTO=false;document.body.classList.remove('profile-view','mobile-library-tools-open');var pb=$('#profilebar');if(pb){pb.hidden=true;pb.innerHTML=''}var hm=$('#home');if(hm)hm.hidden=true;abrirChat();mobileNavSync();return}mobileSocialClose();mobileFriendsClose();mobileHomeHide();var b=document.querySelector('#tabs [data-t="'+name+'"]');if(b)b.click();setTimeout(mobileNavSync,50);}
+function mobileNavOpenTab(name){if(name==='home'){mobileSocialClose();mobileFriendsClose();mobileHomeOpen();return}if(name==='social'){mobileSocialOpen();return}if(name==='friends'){mobileSocialClose();mobileFriendsOpen();return}if(name==='chat'){mobileSocialClose();mobileFriendsClose();mobileHomeHide();fechar();PERFIL_ABERTO=false;document.body.classList.remove('profile-view','mobile-library-tools-open');var pb=$('#profilebar');if(pb){pb.hidden=true;pb.innerHTML=''}var hm=$('#home');if(hm)hm.hidden=true;abrirChat();mobileNavSync();return}fecharChat();mobileSocialClose();mobileFriendsClose();mobileHomeHide();var b=document.querySelector('#tabs [data-t="'+name+'"]');if(b)b.click();setTimeout(mobileNavSync,50);}
 function mobileNavInit(){
   var nav=$('#mobileBottomNav');if(!nav)return;
   nav.addEventListener('click',function(e){
@@ -7239,6 +7241,8 @@ button.desktop-brand:hover{background:rgba(139,92,246,.10)}button.desktop-brand:
 <script>
 function voltarMeusJogos(){
   fecharChat();fecharAmigosModal();fechar();
+  document.body.classList.remove('mobile-friends-active','mobile-chat-active','mobile-social-active','mobile-library-tools-open');
+  mobileHomeHide();
   var uid=euId(),index=PERFIS.findIndex(function(p){return String(p.uid)===String(uid)});
   if(!uid||index<0){mostrarHome();return}
   tab='jogos';DESTAQUE=null;var q=document.getElementById('q');if(q)q.value='';
@@ -7263,4 +7267,48 @@ function erroMidiaFeed(e){
   if(/exceeded.*size|maximum.*size|too large|413|PayloadTooLarge/i.test(m))return 'O vídeo ultrapassa o limite configurado no armazenamento.';
   return erroTxt(e);
 }
+</script>
+
+<style id="patch128-mobile-composer">
+button#logo{border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;padding:0;font:inherit}
+button#logo:focus-visible{outline:2px solid var(--acc2);outline-offset:4px}
+#socialHome .feed-compose-main{min-width:0;flex:1 1 0}
+#socialHome .feed-compose textarea{box-sizing:border-box;max-width:100%}
+#socialHome .feed-preview{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(130px,160px))!important;gap:10px!important;width:100%;margin:12px 0 0!important}
+#socialHome .feed-preview:empty{display:none!important}
+#socialHome .feed-preview-item{width:100%!important;height:140px!important;min-width:0;overflow:hidden;border-radius:12px;background:#08080d}
+#socialHome .feed-preview-item img,#socialHome .feed-preview-item video{display:block;width:100%!important;height:100%!important;object-fit:contain;box-sizing:border-box}
+#socialHome .feed-preview-item button{z-index:2;width:28px;height:28px}
+#socialHome .feed-compose-foot{position:static!important;display:flex!important;flex-wrap:wrap;gap:10px;margin-top:14px!important;clear:both}
+#socialHome #feedPublish{margin-left:auto;flex:none;min-width:90px}
+.mobile-game-tabs{display:none}
+#mediaRecommendations .recs-head{flex-wrap:wrap;gap:10px}
+#mediaRecsRefresh{flex:none;display:inline-flex!important;visibility:visible!important}
+@media(max-width:760px){
+ body:not(.bc-mobile-games) #add{display:none!important;pointer-events:none!important}
+ body.mobile-friends-active #toolbar,body.mobile-chat-active #toolbar,body.profile-view #toolbar{display:none!important}
+ .mobile-game-tabs:not([hidden]){display:flex;gap:8px;padding:0 0 12px}
+ .mobile-game-tabs button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--txt);padding:10px;border-radius:12px;font:inherit;font-size:12px;cursor:pointer}
+ .mobile-game-tabs button.on{background:rgba(139,92,246,.18);border-color:var(--acc2)}
+ #socialHome .feed-preview{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #socialHome .feed-preview-item{height:130px!important}
+}
+</style>
+<script>
+function bibliotecaMobileVisivel(){
+  var body=document.body,blocked=['home','profile-view','mobile-home-active','mobile-friends-active','mobile-chat-active','mobile-social-active'];
+  return !!(SESS&&P&&!PERFIL_ABERTO&&(tab==='jogos'||tab==='steam')&&!blocked.some(function(c){return body.classList.contains(c)})&&!['chatModal','friendsModal'].some(function(id){var m=document.getElementById(id);return m&&m.classList.contains('on')}));
+}
+function mobileLibrarySync(){
+  var mobile=window.innerWidth<=760,visible=bibliotecaMobileVisivel(),games=mobile&&visible&&tab==='jogos';
+  document.body.classList.toggle('bc-mobile-games',games);
+  var add=document.getElementById('add');if(add)add.hidden=!(mobile?games&&String(P.uid)===String(euId()):SESS&&P&&!PERFIL_ABERTO&&String(P.uid)===String(euId())&&(tab==='jogos'||tab==='filmes'));
+  var nav=document.getElementById('mobileGameTabs');if(nav){nav.hidden=!(mobile&&visible);nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.libraryTab===tab);b.setAttribute('aria-pressed',b.dataset.libraryTab===tab?'true':'false')})}
+}
+var mobileNavSync128=mobileNavSync;mobileNavSync=function(){mobileNavSync128();mobileLibrarySync()};
+var painelSync128=sincronizarPainelJogos;sincronizarPainelJogos=function(){var r=painelSync128();mobileLibrarySync();return r};
+document.getElementById('mobileGameTabs').addEventListener('click',function(e){var b=e.target.closest('[data-library-tab]');if(b)mobileNavOpenTab(b.dataset.libraryTab)});
+var mobileRouteObserver=new MutationObserver(mobileLibrarySync);mobileRouteObserver.observe(document.body,{attributes:true,attributeFilter:['class']});
+['chatModal','friendsModal'].forEach(function(id){var e=document.getElementById(id);if(e)mobileRouteObserver.observe(e,{attributes:true,attributeFilter:['class']})});
+window.addEventListener('resize',mobileLibrarySync);mobileLibrarySync();
 </script>
