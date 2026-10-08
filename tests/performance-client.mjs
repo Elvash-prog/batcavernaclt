@@ -91,7 +91,7 @@ await test('Steam presence honors freshness and pauses when hidden',async()=>{
 });
 await test('300 chat messages read reaction metadata once and unchanged render retains bubbles',async()=>{
  const {c}=setup();let metadataReads=0,writes=0;const box={dataset:{},scrollTop:0,scrollHeight:100,clientHeight:100,firstChild:null,set innerHTML(v){this.value=v;this.firstChild={};writes++}};
- c.$=name=>name==='#chatMessages'?box:null;c.chatAmigo=()=>({nome:'Bob'});c.chatStatus=()=> 'online';c.esc=x=>String(x||'');c.socialTempo=()=> 'agora';c.chatFormatText=m=>m.texto;c.chatMetaLoad=()=>{metadataReads++;return {}};
+ c.$=name=>name==='#chatMessages'?box:null;c.chatAmigo=()=>({nome:'Bob'});c.chatStatus=()=> 'online';c.esc=x=>String(x||'');c.socialTempo=()=> 'agora';c.chatFormatText=m=>m.texto;c.bcReactionLoad=()=>{};c.bcReactionRow=()=>'';c.chatMetaLoad=()=>{metadataReads++;return {}};
  c.CHAT_MESSAGES=Array.from({length:300},(_,i)=>({id:i,texto:'Message '+i,remetente_id:'bob'}));
  vm.runInContext(html.match(/^function renderHtmlEstavel.*$/m)[0],c);vm.runInContext(html.match(/^function chatRenderMain.*$/m)[0],c);
  c.chatRenderMain();assert.equal(metadataReads,1);assert.equal(writes,1);c.chatRenderMain();assert.equal(metadataReads,2);assert.equal(writes,1);
