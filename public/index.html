@@ -2260,9 +2260,10 @@ var STORE={
 };
 function limparSessao(){try{[sessionStorage,localStorage].forEach(function(s){Object.keys(s).forEach(function(k){if(k.indexOf("sb-")===0)s.removeItem(k)})})}catch(e){}}
 var sb=null;
+var BC_PASSWORD_RECOVERY=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery";
 if(SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase){
-  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{storage:STORE,persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
-  sb.auth.onAuthStateChange(function(ev,s){SESS=s;if(ev==="SIGNED_OUT"){pararPresenca();NOTIFICACOES=[];CONVITES_ENVIADOS=[];chatParar();CHAT_UNREAD=0;CHAT_UNREAD_MAP={};chatSyncButton();setTimeout(function(){AMIGOS=[];BLOQUEADOS=[];adminUI();montarPerfis();notificacoesRender();desktopUiRender&&desktopUiRender()},0)}else if(ev==="SIGNED_IN")setTimeout(function(){carregarAmigos();carregarNotificacoes();iniciarPresenca();chatInit();assinarDadosRealtime();desktopUiRender&&desktopUiRender()},0)});
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{storage:STORE,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  sb.auth.onAuthStateChange(function(ev,s){SESS=s;if(ev==="PASSWORD_RECOVERY"){BC_PASSWORD_RECOVERY=true;}if(ev==="SIGNED_OUT"){pararPresenca();NOTIFICACOES=[];CONVITES_ENVIADOS=[];chatParar();CHAT_UNREAD=0;CHAT_UNREAD_MAP={};chatSyncButton();setTimeout(function(){AMIGOS=[];BLOQUEADOS=[];adminUI();montarPerfis();notificacoesRender();desktopUiRender&&desktopUiRender()},0)}else if(ev==="SIGNED_IN")setTimeout(function(){carregarAmigos();carregarNotificacoes();iniciarPresenca();chatInit();assinarDadosRealtime();desktopUiRender&&desktopUiRender()},0)});
 }
 function edit(){return !!(MODO_EDICAO&&sb&&SESS&&SESS.user&&P&&P.uid&&SESS.user.id===P.uid)}
 function garantirEdicao(){
@@ -2755,7 +2756,7 @@ function carregarRanking(){
 }
 
 /* ===== FASE 8 — FEED SOCIAL ===== */
-var SOCIAL_POSTS=[];var FEED_AUTO=[];var SOCIAL_CHANNEL=null;var SOCIAL_REFRESH_TIMER=null;
+var FEED_LIMIT=30,FEED_HAS_MORE=false,FEED_LOAD_SEQ=0;var SOCIAL_POSTS=[];var FEED_AUTO=[];var SOCIAL_CHANNEL=null;var SOCIAL_REFRESH_TIMER=null;
 function feedTempo(iso){return socialTempo(iso)}
 function socialPermitidos(){
   var ids={};
@@ -2770,13 +2771,15 @@ function filtrarSocialAmigos(rows){
 function carregarFeedSocial(){
   renderFeedComposer();
   if(!sb||!euId()){SOCIAL_POSTS=[];FEED_AUTO=[];renderFeedSocial();return Promise.resolve()}
-  var permitidos=socialPermitidos();
-  return Promise.all([sb.from('clt_posts').select('id,user_id,texto,midias,created_at,updated_at').order('created_at',{ascending:false}).limit(60),sb.from('clt_activity_events').select('id,user_id,tipo,item_id,categoria,nome,status,meta,created_at').order('created_at',{ascending:false}).limit(40)]).then(function(rs){
+  var permitidos=socialPermitidos(),seq=++FEED_LOAD_SEQ,eu=euId();
+  return Promise.all([sb.from('clt_posts').select('id,user_id,texto,midias,created_at,updated_at').in('user_id',Object.keys(permitidos)).order('created_at',{ascending:false}).limit(FEED_LIMIT+1),sb.from('clt_activity_events').select('id,user_id,tipo,item_id,categoria,nome,status,meta,created_at').order('created_at',{ascending:false}).limit(40)]).then(function(rs){
     if(rs[0].error)throw rs[0].error;
-    SOCIAL_POSTS=filtrarSocialAmigos(rs[0].data);
+    if(seq!==FEED_LOAD_SEQ||eu!==euId())return;
+    FEED_HAS_MORE=(rs[0].data||[]).length>FEED_LIMIT;
+    SOCIAL_POSTS=filtrarSocialAmigos((rs[0].data||[]).slice(0,FEED_LIMIT));
     FEED_AUTO=rs[1].error?[]:filtrarSocialAmigos(rs[1].data);
     return carregarFeedMeta().then(renderFeedSocial);
-  }).catch(function(e){SOCIAL_POSTS=[];FEED_AUTO=[];renderFeedSocial();return Promise.resolve()});
+  }).catch(function(e){if(seq===FEED_LOAD_SEQ){var more=document.querySelector('[data-feed-more]');if(more)more.disabled=false;}return Promise.resolve()});
 }
 var FEED_REPLY={postId:null,commentId:null,name:''};
 var FEED_META={likes:{},comments:{},mine:{}};
@@ -2793,9 +2796,10 @@ function carregarFeedMeta(){
 }
 function renderFeedComposer(){
   var b=$('#feedComposer');if(!b)return;
-  if(!euId()){b.innerHTML='';return}
-  FEED_SELECTED_FILES=[];
-  b.innerHTML='<div class="feed-compose">'+avatarHtml(P,'activity-avatar')+'<div class="feed-compose-main"><textarea id="feedText" maxlength="500" placeholder="Compartilhe algo com seus amigos…"></textarea><div class="feed-upload"><label class="feed-photo-btn">📷 Foto / print<input id="feedFiles" type="file" accept="image/*" multiple></label><span class="feed-upload-note">Até 4 imagens · JPG, PNG ou WEBP · máx. 10 MB cada</span></div><div id="feedPreview" class="feed-preview"></div><div class="feed-compose-foot"><span class="feed-muted">Até 500 caracteres</span><button class="btn primary sm" id="feedPublish">Publicar</button></div></div></div>';
+  if(!euId()){b.innerHTML='';b.dataset.owner='';limparFeedPreview();FEED_SELECTED_FILES=[];return}
+  if(b.dataset.owner===String(euId())&&b.querySelector('#feedText'))return;
+  b.dataset.owner=String(euId());FEED_SELECTED_FILES=[];
+  b.innerHTML='<div class="feed-compose">'+avatarHtml(P,'activity-avatar')+'<div class="feed-compose-main"><textarea id="feedText" maxlength="500" placeholder="Compartilhe algo com seus amigos…"></textarea><div class="feed-upload"><label class="feed-photo-btn">📷 Fotos / vídeos<input id="feedFiles" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" multiple></label><span class="feed-upload-note">Até 4 arquivos · fotos 10 MB · vídeos 50 MB</span></div><div id="feedPreview" class="feed-preview"></div><div class="feed-compose-foot"><span class="feed-muted">Até 500 caracteres</span><button class="btn primary sm" id="feedPublish">Publicar</button></div></div></div>';
   $('#feedPublish').onclick=publicarFeed;
   $('#feedFiles').onchange=function(){adicionarArquivosFeed(this.files)};
   renderFeedPreview();
@@ -2805,30 +2809,34 @@ function sincronizarFeedInput(){
   var el=$('#feedFiles');if(!el)return;
   try{var dt=new DataTransfer();FEED_SELECTED_FILES.forEach(function(f){dt.items.add(f)});el.files=dt.files}catch(e){}
 }
+function validarMidiaFeed(f){
+  var video=/^video\/(mp4|webm)$/i.test(f.type||""),image=/^image\/(png|jpe?g|webp)$/i.test(f.type||"");
+  if(!video&&!image)return "Escolha uma foto JPG, PNG, WEBP ou um vídeo MP4/WebM.";
+  if(f.size>(video?50:10)*1024*1024)return video?"O vídeo ultrapassa 50 MB.":"A foto ultrapassa 10 MB.";
+  return "";
+}
 function adicionarArquivosFeed(files){
-  var incoming=Array.prototype.slice.call(files||[]);
-  var valid=[];
-  incoming.forEach(function(f){
-    if(!/^image\//i.test(f.type)){toast('Apenas arquivos de imagem são permitidos.');return}
-    if(f.size>10*1024*1024){toast('A imagem '+f.name+' ultrapassa 10 MB.');return}
-    valid.push(f);
-  });
-  var slots=4-FEED_SELECTED_FILES.length;
-  if(valid.length>slots)toast('Você pode adicionar no máximo 4 imagens por publicação.');
-  FEED_SELECTED_FILES=FEED_SELECTED_FILES.concat(valid.slice(0,Math.max(0,slots)));
-  sincronizarFeedInput();
-  renderFeedPreview();
+  if(FEED_PUBLISH_BUSY)return;
+  var valid=Array.prototype.slice.call(files||[]).filter(function(f){var error=validarMidiaFeed(f);if(error){toast(error);return false}return true});
+  var slots=4-FEED_SELECTED_FILES.length;if(valid.length>slots)toast("Máximo de 4 arquivos por publicação.");
+  FEED_SELECTED_FILES=FEED_SELECTED_FILES.concat(valid.slice(0,Math.max(0,slots)));sincronizarFeedInput();renderFeedPreview();
 }
 function removerArquivoFeed(index){
   FEED_SELECTED_FILES.splice(Number(index),1);
   sincronizarFeedInput();
   renderFeedPreview();
 }
+var FEED_PREVIEW_URLS=[],FEED_PUBLISH_BUSY=false;
+function limparFeedPreview(){FEED_PREVIEW_URLS.forEach(function(u){URL.revokeObjectURL(u)});FEED_PREVIEW_URLS=[]}
 function renderFeedPreview(){
-  var b=$('#feedPreview');if(!b)return;
-  if(!FEED_SELECTED_FILES.length){b.innerHTML='<div class="feed-preview-empty">📷 Nenhuma imagem selecionada. Você pode adicionar até 4.</div>';return}
-  b.innerHTML=FEED_SELECTED_FILES.map(function(f,i){return '<div class="feed-preview-item"><img alt="Prévia '+(i+1)+'"><span class="preview-index">'+(i+1)+'</span><button type="button" data-preview-remove="'+i+'" title="Remover imagem">×</button></div>'}).join('');
-  FEED_SELECTED_FILES.forEach(function(f,i){var im=new Image(),url=URL.createObjectURL(f);im.onload=function(){var el=b.children[i]&&b.children[i].querySelector('img');if(el)el.src=url;else URL.revokeObjectURL(url)};im.onerror=function(){URL.revokeObjectURL(url)};im.src=url});
+  var b=$('#feedPreview');if(!b)return;limparFeedPreview();
+  if(!FEED_SELECTED_FILES.length){b.innerHTML="";return}
+  b.innerHTML=FEED_SELECTED_FILES.map(function(f,i){var url=URL.createObjectURL(f);FEED_PREVIEW_URLS.push(url);return '<div class="feed-preview-item">'+(/^video\//i.test(f.type)?'<video controls playsinline preload="metadata" src="'+esc(url)+'"></video>':'<img src="'+esc(url)+'" alt="Foto '+(i+1)+'">')+'<button type="button" data-preview-remove="'+i+'" aria-label="Remover arquivo">×</button></div>'}).join('');
+}
+function feedVideoUrl(u){return /\.(mp4|webm)(?:[?#]|$)/i.test(String(u||""))}
+function feedMediaHtml(u,i,postId){
+  if(!safeUrl(u))return "";
+  return feedVideoUrl(u)?'<video controls playsinline preload="metadata" src="'+esc(u)+'" aria-label="Vídeo da publicação"></video>':'<img src="'+esc(u)+'" alt="Foto '+(i+1)+' da publicação" loading="lazy" data-feed-image="'+esc(u)+'" data-feed-gallery="'+esc(postId)+'">';
 }
 function otimizarFeedImagem(file){
   return new Promise(function(resolve,reject){
@@ -2847,32 +2855,27 @@ function otimizarFeedImagem(file){
   });
 }
 function publicarFeed(){
-  var t=$('#feedText'),texto=t?String(t.value||'').trim():'',files=FEED_SELECTED_FILES.slice(0,4);
-  if(!texto&&!files.length)return toast('Escreva algo ou escolha uma foto.');
-  if(files.some(function(f){return f.size>10*1024*1024}))return toast('Cada imagem pode ter no máximo 10 MB.');
+  if(FEED_PUBLISH_BUSY)return;
+  var t=$('#feedText'),texto=t?String(t.value||'').trim():'',files=FEED_SELECTED_FILES.slice(0,4),uploaded=[];
+  if(!texto&&!files.length)return toast('Escreva algo ou escolha um arquivo.');
+  var error=files.map(validarMidiaFeed).find(Boolean);if(error)return toast(error);
+  FEED_PUBLISH_BUSY=true;var btn=$('#feedPublish');if(btn){btn.disabled=true;btn.textContent='Publicando…'}
   garantirEdicao().then(function(){
-    var urls=[];
-    return files.reduce(function(pr,f,i){
-      return pr.then(function(){
-        return otimizarFeedImagem(f).then(function(blob){
-          var path=euId()+'/'+Date.now()+'-'+i+'.webp';
-          return sb.storage.from('feed-media').upload(path,blob,{contentType:'image/webp',upsert:false}).then(function(r){
-            if(r.error)throw r.error;
-            var g=sb.storage.from('feed-media').getPublicUrl(path);
-            urls.push(g.data.publicUrl);
-          });
+    var urls=[],uid=euId();
+    return files.reduce(function(pr,f,i){return pr.then(function(){
+      var video=/^video\//i.test(f.type),ext=video?(f.type==='video/webm'?'webm':'mp4'):'webp';
+      return (video?Promise.resolve(f):otimizarFeedImagem(f)).then(function(blob){
+        var path=uid+'/'+Date.now()+'-'+i+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+        return sb.storage.from('feed-media').upload(path,blob,{contentType:video?f.type:'image/webp',upsert:false}).then(function(r){
+          if(r.error)throw r.error;uploaded.push(path);urls.push(sb.storage.from('feed-media').getPublicUrl(path).data.publicUrl);
         });
       });
-    },Promise.resolve()).then(function(){
-      return sb.from('clt_posts').insert({user_id:euId(),texto:texto||'',midias:urls}).select('id,user_id,texto,midias,created_at,updated_at').single();
-    });
+    })},Promise.resolve()).then(function(){return sb.from('clt_posts').insert({user_id:uid,texto:texto||'',midias:urls}).select('id,user_id,texto,midias,created_at,updated_at').single()});
   }).then(function(r){
-    if(r.error)throw r.error;
-    SOCIAL_POSTS.unshift(r.data);
-    renderFeedComposer();
-    carregarFeedMeta().then(renderFeedSocial);
-    toast('Publicado ✓');
-  }).catch(function(e){toast('Não foi possível publicar: '+erroTxt(e))});
+    if(r.error)throw r.error;uploaded=[];
+    if(!SOCIAL_POSTS.some(function(p){return String(p.id)===String(r.data.id)}))SOCIAL_POSTS.unshift(r.data);
+    limparFeedPreview();FEED_SELECTED_FILES=[];var b=$('#feedComposer');if(b)b.innerHTML='';renderFeedComposer();carregarFeedMeta().then(renderFeedSocial);toast('Publicado ✓');
+  }).catch(function(e){if(uploaded.length)sb.storage.from('feed-media').remove(uploaded).catch(function(){});toast('Não foi possível publicar: '+erroTxt(e))}).finally(function(){FEED_PUBLISH_BUSY=false;var b=$('#feedPublish');if(b){b.disabled=false;b.textContent='Publicar'}});
 }
 function assinarFeedSocialRealtime(){
   if(!sb||!euId()||SOCIAL_CHANNEL)return;
@@ -2912,11 +2915,11 @@ function renderFeedSocial(){
     var roots=comments.filter(function(c){return c.parent_id==null});
     roots=roots.slice(-5);
     var ch=roots.map(function(c){return comentarioHtml(c,0,childrenMap)}).join('');
-    var mediaCount=Math.min(midias.length,4),media=mediaCount?'<div class="feed-media-grid media-count-'+mediaCount+'">'+midias.slice(0,4).map(function(u,i){return '<img src="'+esc(u)+'" alt="Imagem '+(i+1)+' da publicação" loading="lazy" data-feed-image="'+esc(u)+'" data-feed-gallery="'+esc(post.id)+'">'}).join('')+'</div>':'';
+    var mediaCount=Math.min(midias.length,4),media=mediaCount?'<div class="feed-media-grid media-count-'+mediaCount+'">'+midias.slice(0,4).map(function(u,i){return feedMediaHtml(u,i,post.id)}).join('')+'</div>':'';
     var replying=String(FEED_REPLY.postId)===String(post.id)&&FEED_REPLY.commentId?'<div class="comment-replying"><span>Respondendo a <b>'+esc(FEED_REPLY.name||'comentário')+'</b></span><button type="button" data-comment-reply-cancel="1" title="Cancelar">✕</button></div>':'';
     var placeholder=String(FEED_REPLY.postId)===String(post.id)&&FEED_REPLY.commentId?'Escreva uma resposta…':'Escreva um comentário…';
     return '<article class="social-post" data-post-id="'+esc(post.id)+'"><div class="social-post-head"><button class="social-action" data-feed-profile="'+esc(post.user_id)+'">'+avatarHtml(p,'activity-avatar')+'</button><div class="social-post-copy"><b>'+esc(p.nome)+'</b><small>'+esc(feedTempo(post.created_at))+'</small></div>'+(String(post.user_id)===String(euId())?'<div class="social-post-menu"><button type="button" data-feed-menu="'+esc(post.id)+'" aria-label="Mais opções">⋯</button><div class="social-post-menu-pop"><button type="button" data-feed-edit="'+esc(post.id)+'">✏️ Editar publicação</button><button type="button" data-feed-delete="'+esc(post.id)+'">🗑️ Apagar publicação</button></div></div>':'<span class="social-post-live"><i></i> Amigos</span>')+'</div><div class="social-post-text '+(post.updated_at&&post.created_at&&String(post.updated_at)!==String(post.created_at)?'is-edited':'')+'">'+esc(post.texto)+(post.updated_at&&post.created_at&&String(post.updated_at)!==String(post.created_at)?' <span class="social-post-edited">(editado)</span>':'')+'</div>'+media+'<div class="social-post-actions"><button type="button" class="social-action '+(liked?'liked':'')+'" data-feed-like="'+esc(post.id)+'">'+(liked?'❤️':'🤍')+' Curtir</button><button type="button" class="social-likers-btn" data-feed-likers="'+esc(post.id)+'" title="Ver quem curtiu">❤️ <span class="social-like-count">'+likes+'</span></button><button type="button" class="social-action" data-feed-comments="'+esc(post.id)+'">💬 Comentar '+comments.length+'</button><span class="feed-interaction-hint">Só você e seus amigos</span></div><div class="comment-list">'+ch+'</div>'+replying+'<form class="comment-form" data-comment-form="'+esc(post.id)+'" data-reply-to="'+(String(FEED_REPLY.postId)===String(post.id)&&FEED_REPLY.commentId?esc(FEED_REPLY.commentId):'')+'"><input name="texto" maxlength="240" placeholder="'+placeholder+'"><button class="btn sm">Enviar</button></form></article>';
-  }).join('');
+  }).join('')+(FEED_HAS_MORE?'<div class="feed-more"><button type="button" class="btn" data-feed-more>Carregar mais publicações</button></div>':'');
 }
 function editarPublicacao(id){
   if(!sb||!euId())return;
@@ -3702,7 +3705,7 @@ function abrirPerfilEditor(){
   var nivelAtual=(RANKING.find(function(x){return x.id===P.uid})||{}).nivel||1;
   var tituloNivel=Number(P.tituloDestaqueNivel)||nivelAtual;
   var titulosOpts='';for(var tn=1;tn<=nivelAtual;tn++){var tt=tituloCLT(tn);if((tn===1||tituloCLT(tn).nome!==tituloCLT(tn-1).nome))titulosOpts+='<option value="'+tn+'" '+(tn===tituloNivel?'selected':'')+'>'+tt.ico+' '+esc(tt.nome)+' · Nível '+tn+'</option>';}
-  modal('<div class="body"><h2>👤 Personalizar perfil</h2><p style="color:var(--mut);font-size:13px">Essas informações ficam visíveis no seu perfil para quem tiver acesso a ele.</p><form data-form="perfil"><div class="profile-editor-grid"><div class="fld"><label>Nome público</label><input name="nome" maxlength="40" value="'+esc(P.nome||'')+'" required></div><div class="fld"><label>Status</label><select name="statusPersonalizado"><option value="online" '+(P.statusPersonalizado==='online'?'selected':'')+'>🟢 Online</option><option value="jogando" '+(P.statusPersonalizado==='jogando'?'selected':'')+'>🎮 Jogando</option><option value="ausente" '+(P.statusPersonalizado==='ausente'?'selected':'')+'>🟡 Ausente</option><option value="dnd" '+(P.statusPersonalizado==='dnd'?'selected':'')+'>🔴 Não incomodar</option><option value="invisivel" '+(P.statusPersonalizado==='invisivel'?'selected':'')+'>⚫ Invisível</option></select></div><div class="fld"><label>Título em destaque</label><select name="tituloDestaqueNivel">'+titulosOpts+'</select><small style="color:var(--mut)">Mostra um título que você já desbloqueou.</small></div><div class="fld full"><label>Bio</label><textarea name="bio" maxlength="280" placeholder="Fale um pouco sobre você…">'+esc(P.bio||'')+'</textarea></div><div class="fld full"><label>Banner do perfil</label><input name="banner" value="'+esc(P.banner||'')+'" placeholder="https://…/banner.jpg"><small style="color:var(--mut)">Você também pode usar o botão de upload abaixo para enviar uma imagem.</small><div style="margin-top:7px"><input name="bannerFile" type="file" accept="image/png,image/jpeg,image/webp"></div></div></div><div class="profile-editor-section"><b>🎨 Aparência</b><div class="acts" style="margin-top:10px"><button type="button" class="btn" data-profile-editor-avatar>🖼️ Alterar foto</button><button type="button" class="btn" data-profile-editor-banner>🌄 Enviar banner</button></div></div><div class="profile-editor-section"><b>⭐ Jogos em destaque <small style="color:var(--mut)">(até 4)</small></b><div class="profile-check-grid" style="margin-top:9px">'+(selGames||'<span class="pc-empty">Adicione jogos à sua biblioteca para destacá-los.</span>')+'</div></div><div class="profile-editor-section"><b>🏅 Conquistas em destaque <small style="color:var(--mut)">(até 4)</small></b><div class="profile-check-grid" style="margin-top:9px">'+selAch+'</div></div><div class="acts"><button class="btn primary">Salvar personalização</button><button type="button" class="btn" data-profile-editor-close>Cancelar</button></div><div class="msg" id="msg"></div></form></div>',"f");
+  modal('<div class="body"><h2>👤 Personalizar perfil</h2><form data-form="perfil"><div class="profile-editor-grid"><div class="fld"><label>Nome público</label><input name="nome" maxlength="40" value="'+esc(P.nome||'')+'" required></div><div class="fld"><label>Status</label><select name="statusPersonalizado"><option value="online" '+(P.statusPersonalizado==='online'?'selected':'')+'>🟢 Online</option><option value="jogando" '+(P.statusPersonalizado==='jogando'?'selected':'')+'>🎮 Jogando</option><option value="ausente" '+(P.statusPersonalizado==='ausente'?'selected':'')+'>🟡 Ausente</option><option value="dnd" '+(P.statusPersonalizado==='dnd'?'selected':'')+'>🔴 Não incomodar</option><option value="invisivel" '+(P.statusPersonalizado==='invisivel'?'selected':'')+'>⚫ Invisível</option></select></div><div class="fld"><label>Título em destaque</label><select name="tituloDestaqueNivel">'+titulosOpts+'</select></div><div class="fld full"><label>Bio</label><textarea name="bio" maxlength="280" placeholder="Fale um pouco sobre você…">'+esc(P.bio||'')+'</textarea></div><div class="fld full"><label>Banner do perfil</label><input name="banner" value="'+esc(P.banner||'')+'" placeholder="https://…/banner.jpg"><div style="margin-top:7px"><input name="bannerFile" type="file" accept="image/png,image/jpeg,image/webp"></div></div></div><div class="profile-editor-section"><b>🎨 Aparência</b><div class="acts" style="margin-top:10px"><button type="button" class="btn" data-profile-editor-avatar>🖼️ Alterar foto</button><button type="button" class="btn" data-profile-editor-banner>🌄 Enviar banner</button></div></div><div class="profile-editor-section"><b>⭐ Jogos em destaque <small style="color:var(--mut)">(até 4)</small></b><div class="profile-check-grid" style="margin-top:9px">'+(selGames||'<span class="pc-empty">Adicione jogos à sua biblioteca para destacá-los.</span>')+'</div></div><div class="profile-editor-section"><b>🏅 Conquistas em destaque <small style="color:var(--mut)">(até 4)</small></b><div class="profile-check-grid" style="margin-top:9px">'+selAch+'</div></div><div class="acts"><button class="btn primary">Salvar personalização</button><button type="button" class="btn" data-profile-editor-close>Cancelar</button></div><div class="msg" id="msg"></div></form></div>',"f");
 }
 function bannerBlob(file){return new Promise(function(ok,no){if(!file||!/^image\/(png|jpe?g|webp)$/i.test(file.type))return no(new Error('Escolha uma imagem PNG, JPG ou WebP.'));var fr=new FileReader();fr.onerror=function(){no(new Error('Não consegui ler a imagem.'))};fr.onload=function(){var im=new Image();im.onerror=function(){no(new Error('Imagem inválida.'))};im.onload=function(){var max=1800,w=im.width,h=im.height;if(w>max){h=Math.round(h*max/w);w=max}var c=document.createElement('canvas');c.width=w;c.height=h;var ctx=c.getContext('2d');ctx.drawImage(im,0,0,w,h);c.toBlob(function(b){b?ok(b):no(new Error('Não consegui preparar o banner.'))},'image/webp',.86)};im.src=fr.result};fr.readAsDataURL(file)})}
 function salvarBannerArquivo(file){if(!file)return Promise.resolve(null);if(file.size>10*1024*1024)return Promise.reject(new Error('O banner original deve ter no máximo 10 MB.'));return bannerBlob(file).then(function(blob){var path=P.uid+'/banner-'+Date.now()+'.webp';return sb.storage.from('avatars').upload(path,blob,{upsert:false,contentType:'image/webp',cacheControl:'3600'}).then(function(r){if(r.error)throw new Error(r.error.message);return sb.storage.from('avatars').getPublicUrl(path).data.publicUrl})})}
@@ -4328,7 +4331,7 @@ function importar(f){
 function tipoRes(r){return r.fonte==="anilist"?"🍥 Anime":r.midia==="tv"?"📺 Série":r.midia==="movie"?"🎬 Filme":""}
 function abrirAdicionar(){
   var l=L();
-  modal('<div class="body"><h2>➕ Adicionar '+(tab==="jogos"?"jogo":"título")+'</h2>'+abasAdd("um")+'<p style="color:var(--mut);font-size:14px;margin-bottom:12px">Digite o nome. O site busca capa, ano, gêneros automaticamente.</p>'+
+  modal('<div class="body"><h2>➕ Adicionar '+(tab==="jogos"?"jogo":"título")+'</h2>'+abasAdd("um")+''+
     '<form data-form="buscar"><div class="frow">'+(tab==="filmes"?'<select name="tipo"><option value="">Qualquer tipo</option>'+(l.tipos||[]).map(function(t){return '<option>'+esc(t)+'</option>'}).join("")+'</select>':'')+
     '<input name="nome" placeholder="Nome…" required autofocus><button class="btn primary">Buscar</button><button type="button" class="btn" data-act="manual">Só o nome</button></div></form><div class="msg" id="msg"></div><div id="res"></div></div>',"f");
 }
@@ -4352,7 +4355,7 @@ function escolher(i){
   var pre={nome:ESC.nome,ano:ESC.ano||"",capa:ESC.capa||"",plataforma:ESC.plataforma||"",loja:ESC.loja||"",tempoEst:ESC.tempoEst||"",duracao:ESC.duracao||"",status:achar(l.status,/backlog|para assistir/i)};
   padroes(tab,ESC,pre);
   modal('<div class="body"><h2>Confirmar</h2><div class="opt'+(tab==="filmes"?' p':'')+'" style="cursor:default"><div class="im"'+(c?' style="background-image:url(\''+c+'\')"':'')+'></div><div><b>'+esc(ESC.nome)+(ESC.ano?' ('+esc(ESC.ano)+')':'')+'</b></div></div>'+
-    '<p style="color:var(--mut);font-size:13px;margin-top:12px">Confira e complete o que quiser. O que ficar em “—” é preenchido automaticamente ao adicionar.</p>'+
+    ''+
     '<form data-form="novo"><div class="fgrid">'+CAMPOS[tab].map(function(c){return campoHtml(c,pre[c[0]],l)}).join("")+'</div>'+chipsGeneros(ESC.generos||[])+
     '<div class="acts"><button class="btn primary">Adicionar</button><button type="button" class="btn" data-act="voltar">Voltar</button></div><div class="msg" id="msg"></div></form></div>',"f");
 }
@@ -4475,7 +4478,7 @@ $("#box").addEventListener("click",function(e){
   var tabBtn=e.target.closest("[data-settings-tab]");
   if(tabBtn){document.querySelectorAll("[data-settings-tab]").forEach(function(x){x.classList.toggle("active",x===tabBtn)});document.querySelectorAll("[data-settings-panel]").forEach(function(x){x.hidden=x.dataset.settingsPanel!==tabBtn.dataset.settingsTab});return;}
   var a=e.target.closest("[data-settings-action]");
-  if(a){var k=a.dataset.settingsAction; if(k==="enter-edit"){fechar();formLogin();return;} if(k==="push"){pushRegistrar().finally(function(){setTimeout(pushAtualizarBotao,100)});return;} if(k==="pwa"){var pb=document.getElementById("pwaInstallBtn");if(pb)pb.click();return;} if(k==="notifcenter"){fechar();var nb=document.getElementById("notifbtn");if(nb)nb.click();return;} if(k==="friends"){fechar();var fb=document.getElementById("friendsbtn");if(fb)fb.click();else toast("Abra a área Amigos pelo menu principal.");return;} if(k==="logout"){fechar();sairConta();return;} if(k==="delete-account"){abrirExcluirConta();return;} fechar();if(k==="fundo")abrirFundo();else if(k==="logo")abrirLogo();else if(k==="avatar")avatarModal();else if(k==="steam")steamModal();else if(k==="loginbg")abrirFundoLogin();else if(k==="prefs")abrirPreferencias();return}
+  if(a){var k=a.dataset.settingsAction; if(k==="password"){abrirSenha(false);return;} if(k==="enter-edit"){fechar();formLogin();return;} if(k==="push"){pushRegistrar().finally(function(){setTimeout(pushAtualizarBotao,100)});return;} if(k==="pwa"){var pb=document.getElementById("pwaInstallBtn");if(pb)pb.click();return;} if(k==="notifcenter"){fechar();var nb=document.getElementById("notifbtn");if(nb)nb.click();return;} if(k==="friends"){fechar();var fb=document.getElementById("friendsbtn");if(fb)fb.click();else toast("Abra a área Amigos pelo menu principal.");return;} if(k==="logout"){fechar();sairConta();return;} if(k==="delete-account"){abrirExcluirConta();return;} fechar();if(k==="fundo")abrirFundo();else if(k==="logo")abrirLogo();else if(k==="avatar")avatarModal();else if(k==="steam")steamModal();else if(k==="loginbg")abrirFundoLogin();else if(k==="prefs")abrirPreferencias();return}
   if(e.target.closest("[data-settings-close]")){fechar();return}
 });
 $("#profilebar").addEventListener("click",function(e){var b=e.target.closest("[data-psx-profile]");if(b){var uid=b.dataset.psxProfile;abrirPerfilSocial(uid)}});
@@ -5312,14 +5315,14 @@ function bcApplyPrefs(){var d=bcPrefs();document.body.classList.toggle("bc-compa
 function bcSavePrefs(d){localStorage.setItem(BC_SETTINGS_KEY,JSON.stringify(d));bcApplyPrefs()}
 function abrirConfiguracoes(){
   var isAdmin=!!(P&&P.id==="Elvash"&&edit());
-  if(!edit()){ modal('<div class="body"><h2>⚙️ Configurações</h2><p style="color:var(--mut);font-size:13px">Entre no <b>Modo edição</b> para acessar as configurações da sua conta e personalização.</p><div class="game-detail-edit-note" style="margin-top:16px">🔒 As alterações do perfil continuam protegidas pelo modo edição.</div><div class="acts"><button class="btn primary" data-settings-action="enter-edit">✏️ Entrar no modo edição</button><button type="button" class="btn" data-settings-close>Fechar</button></div></div>',"f settings-access-modal");return; }
+  if(!edit()){ modal('<div class="body"><h2>⚙️ Configurações</h2><p style="color:var(--mut);font-size:13px">Entre no <b>Modo edição</b> para acessar as configurações da sua conta e personalização.</p><div class="game-detail-edit-note" style="margin-top:16px">🔒 As alterações do perfil continuam protegidas pelo modo edição.</div><div class="acts"><button class="btn" data-settings-action="password">Alterar senha</button><button class="btn primary" data-settings-action="enter-edit">✏️ Entrar no modo edição</button><button type="button" class="btn" data-settings-close>Fechar</button></div></div>',"f settings-access-modal");return; }
   var email=(SESS&&SESS.user&&SESS.user.email)||"Não disponível";
   var pushText=typeof pushStatusText==='function'?pushStatusText():'Status das notificações deste aparelho.';
-  var h='<div class="body"><h2>⚙️ Configurações 2.0</h2><p style="color:var(--mut);font-size:13px">Tudo da BatCaverna em um só lugar.</p>';
+  var h='<div class="body"><h2>⚙️ Configurações 2.0</h2>';
   h+='<div class="settings-v2"><div class="settings-nav">';
   h+='<button type="button" class="active" data-settings-tab="conta">👤 Conta</button><button type="button" data-settings-tab="aparencia">🎨 Aparência</button><button type="button" data-settings-tab="notificacoes">🔔 Notificações</button><button type="button" data-settings-tab="privacidade">🔒 Privacidade</button><button type="button" data-settings-tab="app">📱 Aplicativo</button>';
   h+='</div><div class="settings-panel">';
-  h+='<section class="settings-section" data-settings-panel="conta"><div class="settings-card"><h3>👤 Sua conta</h3><p>'+esc(email)+'</p><div class="settings-actions"><button type="button" class="btn" data-settings-action="avatar">👤 Foto de perfil</button><button type="button" class="btn" data-settings-action="steam">🟦 Steam</button></div></div><div class="settings-card"><h3>📐 Preferências</h3><p>Layout, animações e atualização automática ficam salvos neste aparelho.</p><div class="settings-actions"><button type="button" class="btn primary" data-settings-action="prefs">Abrir preferências</button></div></div></section>';
+  h+='<section class="settings-section" data-settings-panel="conta"><div class="settings-card"><h3>👤 Sua conta</h3><p>'+esc(email)+'</p><div class="settings-actions"><button type="button" class="btn" data-settings-action="password">🔐 Alterar senha</button><button type="button" class="btn" data-settings-action="avatar">👤 Foto de perfil</button><button type="button" class="btn" data-settings-action="steam">🟦 Steam</button></div></div><div class="settings-card"><h3>📐 Preferências</h3><p>Layout, animações e atualização automática ficam salvos neste aparelho.</p><div class="settings-actions"><button type="button" class="btn primary" data-settings-action="prefs">Abrir preferências</button></div></div></section>';
   h+='<section class="settings-section" data-settings-panel="aparencia" hidden><div class="settings-card"><h3>🎨 Personalização</h3><p>Altere a aparência do seu perfil e a identidade visual usada no site.</p><div class="settings-actions"><button type="button" class="btn" data-settings-action="fundo">🖼️ Fundo do perfil</button><button type="button" class="btn" data-settings-action="logo">🔰 Ícone do site</button>'+(isAdmin?'<button type="button" class="btn" data-settings-action="loginbg">🔐 Fundo do login</button>':'')+'</div></div><div class="settings-card"><h3>🦇 Identidade da BatCaverna</h3><p>O PWA usa o ícone personalizado da BatCaverna para a instalação no PC e celular.</p><div class="settings-status">✓ Ícone PWA ativo</div></div></section>';
   h+='<section class="settings-section" data-settings-panel="notificacoes" hidden><div class="settings-card"><h3>🔔 Notificações</h3><p>'+esc(pushText)+'</p><div class="settings-actions"><button type="button" class="btn primary" data-settings-action="push">🔔 Ativar neste aparelho</button><button type="button" class="btn" data-settings-action="notifcenter">📨 Abrir central</button></div></div><div class="settings-card"><h3>✨ Preferências locais</h3><p>Você pode controlar animações e atualização automática sem alterar os demais usuários.</p><div class="settings-actions"><button type="button" class="btn" data-settings-action="prefs">⚙️ Ajustar preferências</button></div></div></section>';
   h+='<section class="settings-section" data-settings-panel="privacidade" hidden><div class="settings-card"><h3>🔒 Privacidade e segurança</h3><p>Seu perfil continua respeitando as regras de amizade, bloqueio e visibilidade já existentes.</p><div class="settings-actions"><button type="button" class="btn" data-settings-action="friends">👥 Gerenciar amigos/bloqueados</button></div></div><div class="settings-card settings-danger"><h3>🚪 Sessão</h3><p>Encerra a sessão atual neste navegador.</p><div class="settings-actions"><button type="button" class="btn danger" data-settings-action="logout">Sair da conta</button></div></div><div class="settings-card settings-danger"><h3>🗑️ Excluir conta</h3><p>Exclui permanentemente sua conta, perfil e dados vinculados. Esta ação não pode ser desfeita.</p><div class="settings-actions"><button type="button" class="btn danger" data-settings-action="delete-account">Excluir conta permanentemente</button></div></div></section>';
@@ -5374,7 +5377,7 @@ function excluirContaDefinitiva(f){
 }
 function abrirPreferencias(){
   var d=bcPrefs();
-  modal('<div class="body"><h2>📐 Preferências</h2><p style="color:var(--mut);font-size:13px">Essas preferências ficam salvas neste aparelho.</p><form data-form="preferencias" style="margin-top:14px">'+
+  modal('<div class="body"><h2>📐 Preferências</h2><form data-form="preferencias" style="margin-top:14px">'+
   '<label class="profile-check"><input type="checkbox" name="compact" '+(d.compact?'checked':'')+'> 📐 Modo compacto</label>'+
   '<label class="profile-check"><input type="checkbox" name="noanim" '+(d.noanim?'checked':'')+'> ✨ Reduzir animações</label>'+
   '<label class="profile-check"><input type="checkbox" name="auto" '+(d.auto!==false?'checked':'')+'> 🔄 Atualização automática</label>'+
@@ -5512,11 +5515,11 @@ function renderHomeLogin(modo){
   var cadastro=modo==="cadastro";
   $("#home").innerHTML='<div class="login-shell"><section class="login-brand"><div class="login-mark" id="loginMark">🎮</div><div class="login-kicker">Sua biblioteca pessoal</div><h1>'+esc(NOME_SITE)+'</h1><p class="login-desc">Organize seus jogos, acompanhe o que está jogando e mantenha sua coleção inteira em um só lugar.</p><div class="login-pills"><span class="login-pill">🎮 Jogos</span><span class="login-pill">🎬 Filmes & séries</span><span class="login-pill">🟦 Steam</span><span class="login-pill">🏆 Conquistas</span></div></section><section class="login-form">'+
     (cadastro?
-      '<button type="button" class="login-back" data-login-mode="login">← Voltar para entrar</button><div class="login-form-head"><h2>Criar meu perfil</h2><p>Cadastre seu acesso e crie sua própria biblioteca.</p></div><div class="lg"><form data-form="cadastro"><div class="fld"><label>Nome do perfil</label><input name="nome" placeholder="Ex.: Jonas" required maxlength="40" autocomplete="name"></div><div class="fld"><label>Usuário</label><input name="u" placeholder="Ex.: jonas" required maxlength="24" pattern="[A-Za-z0-9_.-]+" autocapitalize="none" autocomplete="username"></div><div class="fld"><label>E-mail</label><input name="email" type="email" placeholder="voce@email.com" required autocomplete="email"></div><div class="fld"><label>Senha</label><input name="s" type="password" placeholder="Mínimo de 6 caracteres" minlength="6" required autocomplete="new-password"></div><div class="fld"><label>Confirmar senha</label><input name="s2" type="password" placeholder="Digite a senha novamente" minlength="6" required autocomplete="new-password"></div><button class="btn primary">Criar meu perfil</button><div class="msg" id="lmsg"></div></form></div>'
+      '<button type="button" class="login-back" data-login-mode="login">← Voltar para entrar</button><div class="login-form-head"><h2>Criar meu perfil</h2></div><div class="lg"><form data-form="cadastro"><div class="fld"><label>Nome do perfil</label><input name="nome" required maxlength="40" autocomplete="name"></div><div class="fld"><label>Usuário</label><input name="u" required maxlength="24" pattern="[A-Za-z0-9_.-]+" autocapitalize="none" autocomplete="username"></div><div class="fld"><label>E-mail</label><input name="email" type="email" required autocomplete="email"></div><div class="fld"><label>Senha</label><input name="s" type="password" minlength="6" required autocomplete="new-password"></div><div class="fld"><label>Confirmar senha</label><input name="s2" type="password" minlength="6" required autocomplete="new-password"></div><button class="btn primary">Criar meu perfil</button><div class="msg" id="lmsg"></div></form></div>'
     :
-      '<div class="login-form-head"><h2>Bem-vindo de volta</h2><p>Entre com seu usuário e senha para acessar sua estante.</p></div><div class="lg"><form data-form="entrar"><div class="fld"><label>Usuário</label><input name="u" required autofocus autocomplete="username" autocapitalize="none"></div><div class="fld"><label>Senha</label><input type="password" name="s" required autocomplete="current-password"></div><label class="lembrar"><input type="checkbox" name="lembrar"> Permanecer logado neste aparelho</label><button class="btn primary">Entrar na minha biblioteca</button><div class="msg" id="lmsg"></div></form><p class="login-switch">Ainda não tem perfil? <button type="button" data-login-mode="cadastro">Criar meu perfil</button></p></div>')+
+      '<div class="login-form-head"><h2>Bem-vindo de volta</h2></div><div class="lg"><form data-form="entrar"><div class="fld"><label>Usuário</label><input name="u" required autofocus autocomplete="username" autocapitalize="none"></div><div class="fld"><label>Senha</label><input type="password" name="s" required autocomplete="current-password"></div><label class="lembrar"><input type="checkbox" name="lembrar"> Permanecer logado neste aparelho</label><button class="btn primary">Entrar na minha biblioteca</button><div class="msg" id="lmsg"></div></form><p class="login-switch"><button type="button" data-forgot-password>Esqueci minha senha</button></p><p class="login-switch">Ainda não tem perfil? <button type="button" data-login-mode="cadastro">Criar meu perfil</button></p></div>')+
   '</section></div>';
-  if(!document.getElementById('onlineBox')){var b=document.createElement('div');b.id='onlineBox';b.className='online-box';document.querySelector('.login-form').appendChild(b)}
+
   onlineRender();
   aplicarLogo();
 }
@@ -5592,6 +5595,7 @@ notificacoesRender();
 $("#list").innerHTML='<div class="empty">Carregando…</div>';
 function bcReveal(){try{if(window.__bcReveal)window.__bcReveal();else document.documentElement.classList.remove('bc-boot')}catch(e){}}
 function iniciar(){
+  if(BC_PASSWORD_RECOVERY){mostrarHome();bcReveal();abrirSenha(true);return;} 
   /* Mantém o fluxo desktop original. No mobile, aguardamos os dados do perfil
      antes de abrir o Início para evitar avatar/nome/XP vazios na primeira abertura. */
   if(sb&&SESS&&SESS.user){
@@ -7182,4 +7186,48 @@ if(sb){sb.auth.onAuthStateChange(function(event,session){setTimeout(function(){i
 window.addEventListener('online',function(){assinarDadosRealtime();atualizarDadosRealtime('all')});
 document.addEventListener('visibilitychange',function(){if(!document.hidden){assinarDadosRealtime();atualizarDadosRealtime('all')}});
 var chatPortal=document.getElementById('chatModal');if(chatPortal&&chatPortal.parentNode!==document.body)document.body.appendChild(chatPortal);
+</script>
+
+<style id="patch126-feed-account">
+#socialHome,#socialHome>.social-feed,#socialHome #socialFeedList{height:auto!important;max-height:none!important;overflow:visible!important}
+#socialHome .social-feed{align-self:start!important}
+#socialHome #socialFeedList{padding-bottom:18px!important}
+.feed-more{text-align:center;padding:16px}
+.feed-media-grid video{display:block;width:100%;max-height:520px;object-fit:contain;background:#08080d;border-radius:12px}
+.feed-preview-item video{width:100%;height:120px;object-fit:contain;background:#08080d}
+body.home #onlineBox{display:none!important}
+.selecthint,.game-detail-edit-note,.game-detail-intro,.feed-upload-note,.feed-interaction-hint,.chat-details-note,.ranking-note,.login-form-head p{display:none!important}
+.password-form .fld{margin-top:14px}
+.password-form button{margin-top:16px}
+</style>
+<script>
+function abrirRecuperacaoSenha(){
+  modal('<div class="body"><h2>Recuperar senha</h2><form data-account-form="recover" class="password-form"><div class="fld"><label for="recoverEmail">E-mail cadastrado</label><input id="recoverEmail" name="email" type="email" required autocomplete="email"></div><button class="btn primary" type="submit">Enviar link</button><div class="msg" role="status" data-account-message></div></form></div>','f');
+}
+function abrirSenha(recovery){
+  if(!sb)return toast('Não foi possível conectar.');
+  if(!recovery&&(!SESS||!P||String(P.uid)!==String(euId())))return toast('Abra as configurações do seu próprio perfil.');
+  modal('<div class="body"><h2>'+(recovery?'Redefinir senha':'Alterar senha')+'</h2><form class="password-form" data-account-form="password" data-recovery="'+(recovery?'1':'0')+'">'+(recovery?'':'<div class="fld"><label>Senha atual</label><input name="current" type="password" required autocomplete="current-password"></div>')+'<div class="fld"><label>Nova senha</label><input name="password" type="password" required minlength="6" autocomplete="new-password"></div><div class="fld"><label>Confirmar nova senha</label><input name="confirm" type="password" required minlength="6" autocomplete="new-password"></div><button class="btn primary" type="submit">Salvar senha</button><div class="msg" role="status" data-account-message></div></form></div>','f');
+}
+async function enviarFormularioConta(f){
+  var m=f.querySelector('[data-account-message]'),b=f.querySelector('[type="submit"]');if(b.disabled)return;
+  var type=f.dataset.accountForm,fields=new FormData(f);m.textContent='';m.className='msg';
+  if(type==='password'&&(String(fields.get('password')||'').length<6||fields.get('password')!==fields.get('confirm'))){m.textContent='As senhas devem coincidir e ter pelo menos 6 caracteres.';return}
+  b.disabled=true;
+  try{
+    if(!sb)throw new Error('Não foi possível conectar.');
+    if(type==='recover'){
+      var r=await sb.auth.resetPasswordForEmail(String(fields.get('email')||'').trim(),{redirectTo:location.origin+'/'});if(r.error)throw r.error;
+      m.textContent='Se o e-mail estiver cadastrado, você receberá o link de recuperação.';m.className='msg ok';
+    }else{
+      var attrs={password:String(fields.get('password'))};if(f.dataset.recovery!=='1')attrs.current_password=String(fields.get('current')||'');
+      var r=await sb.auth.updateUser(attrs);if(r.error)throw r.error;
+      BC_PASSWORD_RECOVERY=false;f.reset();m.textContent='Senha atualizada.';m.className='msg ok';
+      if(f.dataset.recovery==='1'){await sb.auth.signOut({scope:'local'});SESS=null;setTimeout(function(){fechar();mostrarHome()},800)}
+    }
+  }catch(e){m.textContent=/expired|invalid.*token/i.test(e.message||'')?'O link expirou. Solicite outro.':/current_password|current password/i.test(e.message||'')?'A senha atual está incorreta.':erroTxt(e)}finally{b.disabled=false}
+}
+document.addEventListener('click',function(e){if(e.target.closest('[data-forgot-password]'))abrirRecuperacaoSenha();var more=e.target.closest('[data-feed-more]');if(more){more.disabled=true;FEED_LIMIT+=30;carregarFeedSocial()}});
+document.addEventListener('submit',function(e){var f=e.target;if(f.matches('[data-account-form]')){e.preventDefault();enviarFormularioConta(f)}});
+if(sb)sb.auth.onAuthStateChange(function(event,session){if(event==='PASSWORD_RECOVERY'){BC_PASSWORD_RECOVERY=true;setTimeout(function(){abrirSenha(true)},0)}});
 </script>
