@@ -1,6 +1,6 @@
 // Patch 1.21 — cache restrito aos arquivos públicos do aplicativo.
-const CACHE='batcaverna-shell-v140';
-const SHELL=['./index.html','./performance-client.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./push-icon.png','./push-badge.png'];
+const CACHE='batcaverna-shell-v141';
+const SHELL=['./index.html','./performance-client.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./push-icon.png','./push-badge.png','./notification-icon-v141.png','./notification-badge-v141.png'];
 const SHELL_URLS=new Set(SHELL.map(path=>new URL(path,self.registration.scope).href));
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(async cache=>{
@@ -46,7 +46,7 @@ self.addEventListener('push',event=>{
     try{if(event.data)data.body=event.data.text()}catch(_){}
   }
   event.waitUntil(self.registration.showNotification(data.title||'BatCaverna dos CLTs',{
-    body:data.body||'',icon:'./icon-192.png',badge:'./push-badge.png',data:{url:data.url||'./'},
+    body:data.body||'',icon:'./notification-icon-v141.png',badge:'./notification-badge-v141.png',data:{url:data.url||'./'},
     tag:data.tag||'batcaverna',renotify:true
   }));
 });
