@@ -1,5 +1,5 @@
 // Patch 1.21 — cache restrito aos arquivos públicos do aplicativo.
-const CACHE='batcaverna-shell-v3';
+const CACHE='batcaverna-shell-v139';
 const SHELL=['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./push-icon.png','./push-badge.png'];
 const SHELL_URLS=new Set(SHELL.map(path=>new URL(path,self.registration.scope).href));
 self.addEventListener('install',event=>{
@@ -52,7 +52,7 @@ self.addEventListener('push',event=>{
 });
 self.addEventListener('notificationclick',event=>{
   event.notification.close();
-  const url=event.notification.data&&event.notification.data.url||'./';
+  let url=new URL('./',self.registration.scope).href;try{const proposed=new URL(event.notification.data&&event.notification.data.url||'./',self.registration.scope);if(proposed.origin===self.location.origin&&proposed.protocol==='https:')url=proposed.href}catch(_){}
   event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(clients=>{
     for(const c of clients){if('focus' in c){c.focus();if('navigate' in c)c.navigate(url);return;}}
     if(self.clients.openWindow)return self.clients.openWindow(url);
