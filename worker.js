@@ -5,7 +5,7 @@ async function catalog(request,env,url){
   const match=url.pathname.match(/^\/api\/catalog\/(rawg|tmdb)\/(.+)$/);
   if(!match)return json({error:'Rota inválida'},404);
   const [,provider,path]=match;
-  const allowed=provider==='rawg'?/^games(?:\/[0-9]+)?$/:/^(?:(?:search|discover)\/(?:movie|tv)|(?:movie|tv)\/[0-9]+(?:\/watch\/providers)?)$/;
+  const allowed=provider==='rawg'?/^games(?:\/[0-9]+)?$/:/^(?:(?:search\/(?:movie|tv|multi)|discover\/(?:movie|tv))|(?:movie|tv)\/[0-9]+(?:\/watch\/providers)?)$/;
   if(!allowed.test(path))return json({error:'Rota inválida'},404);
   const key=String((provider==='rawg'?env.RAWG_KEY:env.TMDB_KEY)||'').trim().replace(/^Bearer\s+/i,'');
   if(!env.SUPABASE_URL||!env.SUPABASE_ANON_KEY||!key)return json({error:'Integração não configurada'},503);
@@ -22,8 +22,12 @@ async function catalog(request,env,url){
       upstream.searchParams.set('page_size',String(Math.min(40,Math.max(1,Number(upstream.searchParams.get('page_size'))||20))));
     }else{if(!key.includes('.'))upstream.searchParams.set('api_key',key);upstream.searchParams.set('include_adult','false');}
     const headers={Accept:'application/json'};if(provider==='tmdb'&&key.includes('.'))headers.Authorization='Bearer '+key;
-    const response=await fetch(upstream,{headers,redirect:'error',signal:AbortSignal.timeout(15000)});
-    if(!response.ok)return json({error:response.status===401||response.status===403?'Catálogo temporariamente indisponível.':'Catálogo indisponível. Tente novamente.'},response.status===429?429:502);
+    let response=await fetch(upstream,{headers,redirect:'error',signal:AbortSignal.timeout(15000)});
+    if([500,502,503,504].includes(response.status))response=await fetch(upstream,{headers,redirect:'error',signal:AbortSignal.timeout(15000)});
+    if(!response.ok){
+      const invalid=response.status===401||response.status===403;
+      return json({error:invalid?'O catálogo '+(provider==='rawg'?'de jogos':'de filmes e séries')+' recusou a chave de acesso.':response.status===429?'O catálogo atingiu o limite de consultas. Tente novamente em instantes.':'O catálogo está indisponível. Tente novamente.',code:invalid?'CATALOG_AUTH_FAILED':response.status===429?'CATALOG_RATE_LIMIT':'CATALOG_UNAVAILABLE'},invalid?503:response.status===429?429:502);
+    }
     const data=await response.json();
     // RAWG inclui URLs de paginação com a chave; o cliente não precisa delas.
     if(provider==='rawg'&&data&&typeof data==='object'){delete data.next;delete data.previous;}
