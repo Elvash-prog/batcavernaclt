@@ -74,6 +74,20 @@ async function steamFree(request,ctx){
     return response;
   }catch(e){return json({error:'Não foi possível atualizar as ofertas da Steam. Tente novamente.'},502);}
 }
+async function steamCover(request,ctx,id){
+  if(request.method!=='GET')return json({error:'Método não permitido'},405);
+  if(!/^\d{1,10}$/.test(id))return json({error:'Jogo inválido'},400);
+  const key=new Request(new URL('/api/steam-cover/'+id,request.url)),cache=globalThis.caches&&caches.default;
+  if(cache){const hit=await cache.match(key);if(hit)return hit;}
+  try{
+    const r=await fetch('https://store.steampowered.com/api/appdetails?appids='+id+'&filters=basic&l=brazilian',{redirect:'manual',signal:AbortSignal.timeout(10000)});
+    if(!r.ok||r.status>=300)throw new Error('steam');
+    const d=await r.json(),app=d[id],cover=app&&app.success&&app.data&&(app.data.header_image||app.data.capsule_image);
+    if(!cover||!/^https:\/\/[^/]*steamstatic\.com\//i.test(cover))return json({capa:''},200);
+    const res=new Response(JSON.stringify({capa:cover}),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=86400'}});
+    if(cache&&ctx)ctx.waitUntil(cache.put(key,res.clone()));return res;
+  }catch(e){return json({error:'Capa indisponível na Steam'},502);}
+}
 export default {
   async fetch(request,env,ctx){
     const url=new URL(request.url);
@@ -81,6 +95,7 @@ export default {
       const config={SUPABASE_URL:env.SUPABASE_URL||'',SUPABASE_ANON_KEY:env.SUPABASE_ANON_KEY||'',RAWG_ENABLED:!!env.RAWG_KEY,TMDB_ENABLED:!!env.TMDB_KEY};
       return new Response('window.BC_CONFIG='+JSON.stringify(config)+';',{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
     }
+    if(url.pathname.startsWith('/api/steam-cover/'))return steamCover(request,ctx,url.pathname.slice('/api/steam-cover/'.length));
     if(url.pathname==='/api/steam-free')return steamFree(request,ctx);
     if(url.pathname.startsWith('/api/catalog/'))return catalog(request,env,url);
     if(Object.prototype.hasOwnProperty.call(images,url.pathname)){
