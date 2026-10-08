@@ -2480,7 +2480,7 @@ function getJson(u,opt){
     opt=Object.assign({},opt||{});opt.headers=new Headers(opt.headers||{});
     if(SESS&&SESS.access_token)opt.headers.set('Authorization','Bearer '+SESS.access_token);
   }
-  return fetch(u,opt).then(function(r){if(!r.ok)throw new Error("A busca falhou ("+r.status+")");return r.json()})}
+  return fetch(u,opt).then(function(r){if(!r.ok)return r.json().catch(function(){return {}}).then(function(body){var e=new Error(body.error||("A busca falhou ("+r.status+")"));e.status=r.status;e.code=body.code||'';throw e});return r.json()})}
 function gens(lista,mapa){var o=[];(lista||[]).forEach(function(g){[].concat(mapa[g]||[]).forEach(function(m){if(o.indexOf(m)<0)o.push(m)})});return o}
 var GEN_JOGO={"Action":"⚔️ Ação","Adventure":"🧭 Aventura","RPG":"📜 RPG","Strategy":"♟️ Estratégia","Shooter":"🔫 Tiro","Simulation":"🏗️ Simulação","Puzzle":"🧩 Puzzle","Platformer":"🕹️ Plataforma","Racing":"🏎️ Corrida","Sports":"⚽ Esporte","Fighting":"🥊 Luta","Indie":"🎨 Indie","Arcade":"👾 Arcade","Massively Multiplayer":"🌐 MMO","Casual":"🎲 Casual","Family":"👨‍👩‍👧 Família","Open World":"🌍 Mundo Aberto","Roguelike":"🔄 Roguelike","Metroidvania":"🗺️ Metroidvania","Horror":"👻 Terror","Souls-like":"💀 Soulslike"};
 var GEN_TMDB={28:"⚔️ Ação",12:"🧭 Aventura",16:"🎨 Animação",35:"😂 Comédia",80:"🕵️ Crime",99:"🎥 Documentário",18:"🎭 Drama",10751:"👨‍👩‍👧 Família",14:"🐉 Fantasia",36:"🏛️ História",27:"👻 Terror",10402:"🎵 Música",9648:"🔍 Mistério",10749:"💕 Romance",878:"🚀 Ficção Científica",53:"😰 Suspense",10752:"🪖 Guerra",37:"🤠 Faroeste",10759:["⚔️ Ação","🧭 Aventura"],10765:["🚀 Ficção Científica","🐉 Fantasia"],10768:"🪖 Guerra"};
@@ -3371,46 +3371,40 @@ function recCacheSalvar(){
 function recCacheCarregar(){
   try{var raw=localStorage.getItem(recCacheKey());if(!raw)return false;var obj=JSON.parse(raw);if(!obj||!Array.isArray(obj.items)||!obj.items.length)return false;RECOMENDACOES=obj.items.slice();atualizarContextoRecs();return RECOMENDACOES.length>0}catch(e){return false}
 }
+var REC_PAGE=1,REC_HAS_MORE=true,REC_OWNER='',REC_ERROR='',REC_LAST_ATTEMPT=0,REC_SEEN={};
+function recCacheKey(){return 'batcaverna_recomendacoes_v3_'+String(P&&P.uid||'anon')+'_'+bcDiaId()}
+function recCacheSalvar(){try{localStorage.setItem(recCacheKey(),JSON.stringify({items:RECOMENDACOES,page:REC_PAGE,more:REC_HAS_MORE,updatedAt:Date.now()}))}catch(e){}}
+function recCacheCarregar(){
+  try{var ob=JSON.parse(localStorage.getItem(recCacheKey())||'null');if(!ob||!Array.isArray(ob.items)||!ob.items.length||!ob.items.every(function(x){return x.id})||Date.now()-ob.updatedAt>6*3600000)return false;RECOMENDACOES=recFiltrarBiblioteca(ob.items);REC_PAGE=Number(ob.page)||1;REC_HAS_MORE=ob.more!==false;RECOMENDACOES.forEach(function(x){REC_SEEN[norm(x.name)]=true});return !!RECOMENDACOES.length}catch(e){return false}
+}
 function carregarRecomendacoes(force){
-  var hojeRec=bcDiaId();if(window.__BC_REC_DAY!==hojeRec){window.__BC_REC_DAY=hojeRec;RECOMENDACOES=[];REC_REFRESH=0}
-  var sec=$('#recommendationsHome');if(!sec)return;
-  var ok=tab==='jogos'&&!PERFIL_ABERTO&&!!P;sec.hidden=!ok;if(!ok)return;
-  if(RECS_BUSY||!sb)return;
-  /* O cache agora é diário: no dia seguinte a chave muda e uma nova seleção é carregada. */
-  if(!force){
-    if(RECOMENDACOES.length){renderRecomendacoes();return}
-    if(recCacheCarregar()){renderRecomendacoes();return}
-  }
-  RECS_BUSY=true;
-  if(force){
-    REC_REFRESH++;RECOMENDACOES=[];
-    var rb=$('#recsRefresh');if(rb){rb.disabled=true;rb.dataset.oldText=rb.textContent;rb.textContent='⟳ Atualizando…';}
-  }
-  window.__BC_REC_TOP=[];atualizarContextoRecs();renderRecomendacoes();
-  var lib=nomesBiblioteca();
-  if(!RAWG_KEY){
-    RECOMENDACOES=recFiltrarBiblioteca(recLocalCatalog([],lib));renderRecomendacoes();recCacheSalvar();RECS_BUSY=false;
-    var rb0=$('#recsRefresh');if(rb0){rb0.disabled=false;rb0.textContent=rb0.dataset.oldText||'↻ Atualizar';}
-    return;
-  }
-  var seed=bcHashSeed(bcDiaId()+'|games-pages|'+REC_REFRESH);
-  var base=1+(seed%12);
-  var ords=['-added','-rating','-metacritic'];
-  var urls=ords.map(function(ord,i){var page=1+((base+i*4)%15);return '/api/catalog/rawg/games?key='+encodeURIComponent(RAWG_KEY)+'&ordering='+encodeURIComponent(ord)+'&page_size=24&page='+page});
-  Promise.all(urls.map(getJson)).then(function(rs){
-    var seen={},out=[];
-    rs.forEach(function(r){(r&&r.results||[]).forEach(function(x){
-      var n=norm(x.name||'');if(!n||lib.indexOf(n)>=0||seen[n]||recConteudoAdulto(x))return;seen[n]=1;out.push(x);
-    })});
-    out=bcShuffleDia(out,'games-api-'+REC_REFRESH);
-    RECOMENDACOES=out.slice(0,10);
-    if(!RECOMENDACOES.length)RECOMENDACOES=recLocalCatalog([],lib);
-    RECOMENDACOES=recFiltrarBiblioteca(RECOMENDACOES);renderRecomendacoes();recCacheSalvar();
-  }).catch(function(){
-    RECOMENDACOES=recFiltrarBiblioteca(recLocalCatalog([],lib));renderRecomendacoes();recCacheSalvar();
-  }).then(function(){
-    RECS_BUSY=false;var rb=$('#recsRefresh');if(rb){rb.disabled=false;rb.textContent=rb.dataset.oldText||'↻ Atualizar';}
-  });
+  var sec=$('#recommendationsHome');if(!sec)return Promise.resolve();var ok=tab==='jogos'&&!PERFIL_ABERTO&&!!P;sec.hidden=!ok;if(!ok||RECS_BUSY||!sb)return Promise.resolve();
+  var owner=String(P.uid),day=bcDiaId();
+  if(REC_OWNER!==owner||window.__BC_REC_DAY!==day){REC_OWNER=owner;window.__BC_REC_DAY=day;RECOMENDACOES=[];REC_SEEN={};REC_PAGE=1+bcHashSeed(day+'|games-pages')%20;REC_HAS_MORE=true;REC_LAST_ATTEMPT=0;REC_ERROR=''}
+  if(force){REC_REFRESH++;REC_PAGE+=3;REC_HAS_MORE=true;RECOMENDACOES=[];REC_ERROR='';REC_LAST_ATTEMPT=0}
+  else if(RECOMENDACOES.length||recCacheCarregar()){renderRecomendacoes();return Promise.resolve()}
+  if(!force&&REC_LAST_ATTEMPT&&Date.now()-REC_LAST_ATTEMPT<60000){renderRecomendacoes();return Promise.resolve()}
+  return carregarMaisRecomendacoes();
+}
+async function carregarMaisRecomendacoes(){
+  if(RECS_BUSY||!REC_HAS_MORE||!P||tab!=='jogos'||PERFIL_ABERTO)return;
+  var owner=String(P.uid),day=bcDiaId();RECS_BUSY=true;REC_ERROR='';REC_LAST_ATTEMPT=Date.now();renderRecomendacoes();
+  var refresh=$('#recsRefresh');if(refresh)refresh.disabled=true;
+  try{
+    if(!RAWG_KEY)throw new Error('Não foi possível conectar ao catálogo de jogos.');
+    var added=0;
+    for(var attempt=0;attempt<3&&!added&&REC_HAS_MORE;attempt++){
+      var r=await getJson('/api/catalog/rawg/games?ordering=-added&page_size=40&page='+REC_PAGE);
+      if(!P||String(P.uid)!==owner||bcDiaId()!==day)return;
+      REC_PAGE++;REC_HAS_MORE=!!(r.results&&r.results.length)&&(!Number.isFinite(r.count)||(REC_PAGE-1)*40<r.count);
+      var items=recFiltrarBiblioteca(r.results||[]);items.forEach(function(x){var n=norm(x.name);if(!REC_SEEN[n]){REC_SEEN[n]=true;RECOMENDACOES.push(x);added++}});
+    }
+    recCacheSalvar();
+  }catch(e){REC_ERROR=erroTxt(e)}finally{RECS_BUSY=false;if(refresh)refresh.disabled=false;renderRecomendacoes()}
+}
+function renderRecomendacoes(){
+  var box=$('#recommendationsList');if(!box)return;
+  box.innerHTML=RECOMENDACOES.map(recCard).join('')+(REC_ERROR?'<div class="rec-empty" role="status">'+esc(REC_ERROR)+'</div>':'')+(!RECOMENDACOES.length&&!REC_ERROR?'<div class="rec-empty">'+(RECS_BUSY?'Carregando recomendações…':'Nenhuma recomendação disponível agora.')+'</div>':'')+(REC_HAS_MORE?'<div class="rec-more"><button type="button" class="btn" data-rec-more '+(RECS_BUSY?'disabled':'')+'>'+(RECS_BUSY?'Carregando…':REC_ERROR?'Tentar novamente':'Carregar mais jogos')+'</button></div>':'');
 }
 
 function prepararBuscaRecomendacao(nome){tab='jogos';var b=document.querySelector('#tabs [data-t="jogos"]');if(b){document.querySelectorAll('#tabs button').forEach(function(x){x.classList.toggle('on',x===b)})}DESTAQUE=null;adminUI();montarFiltros();abrirAdicionar();setTimeout(function(){var inp=$('#box [name="nome"]');if(inp){inp.value=nome;inp.focus()}},50)}
@@ -3664,10 +3658,10 @@ function perfilStatusInfo(p){
 }
 function perfilDestaquesHtml(p,j,ach){
   var nomes=Array.isArray(p.jogosDestaque)?p.jogosDestaque:[];
-  var games=nomes.map(function(n){return j.find(function(x){return String(x.nome)===String(n)})}).filter(Boolean).slice(0,4);
+  var games=nomes.map(function(n){return j.find(function(x){return String(x.nome)===String(n)})}).filter(Boolean).slice(0,8);
   var gh=games.map(function(x){var c=safeUrl(x.capa);return '<div class="pc-game"><div class="pc-cover"'+(c?' style="background-image:url(\''+esc(c)+'\')"':'')+'>'+(c?'':'🎮')+'</div><b>'+esc(x.nome)+'</b></div>'}).join('');
   var ids=Array.isArray(p.conquistasDestaque)?p.conquistasDestaque:[];
-  var ah=ids.map(function(i){return ach[Number(i)]}).filter(Boolean).slice(0,4).map(function(x){return '<span class="chip">'+x[0]+' '+esc(x[1])+'</span>'}).join('');
+  var ah=ids.map(function(i){return ach[Number(i)]}).filter(function(x){return x&&x[3]}).slice(0,4).map(function(x){return '<span class="chip">'+x[0]+' '+esc(x[1])+'</span>'}).join('');
   var tn=Number(p.tituloDestaqueNivel)||0,ti=tn?tituloCLT(tn):null;
   return '<section class="profile-custom">'+
     '<div class="pc-card"><h3>🎖️ Título em destaque</h3><div class="pc-title-feature">'+(ti?'<span>'+ti.ico+'</span><div><b>'+esc(ti.nome)+'</b><small>Nível '+tn+'</small></div>':'<div class="pc-empty">Nenhum título selecionado.</div>')+'</div></div>'+
@@ -3701,12 +3695,12 @@ function abrirPerfilEditor(){
   if(!edit())return;
   var j=(D&&D.jogos)||[],ach=conquistasPerfil(itens(),j,(D&&D.filmes)||[],j.reduce(function(s,x){return s+(Number(x.horas)||0)},0),j.filter(function(x){return /zerado|platina/i.test(x.status||'')}).length,j.filter(function(x){return /platina/i.test(x.status||'')}).length);
   var selGames=j.slice().sort(function(a,b){return String(a.nome).localeCompare(String(b.nome))}).slice(0,60).map(function(x){var on=(P.jogosDestaque||[]).indexOf(x.nome)>=0;return '<label class="profile-check"><input type="checkbox" name="jogosDestaque" value="'+esc(x.nome)+'" '+(on?'checked':'')+'> '+esc(x.nome)+'</label>'}).join('');
-  var selAch=ach.map(function(x,i){var on=(P.conquistasDestaque||[]).map(Number).indexOf(i)>=0;return '<label class="profile-check"><input type="checkbox" name="conquistasDestaque" value="'+i+'" '+(on?'checked':'')+'> '+x[0]+' '+esc(x[1])+'</label>'}).join('');
+  var selAch=ach.map(function(x,i){if(!x[3])return '';var on=(P.conquistasDestaque||[]).map(Number).indexOf(i)>=0;return '<label class="profile-check"><input type="checkbox" name="conquistasDestaque" value="'+i+'" '+(on?'checked':'')+'> '+x[0]+' '+esc(x[1])+'</label>'}).join('');
   var si=perfilStatusInfo(P);
   var nivelAtual=(RANKING.find(function(x){return x.id===P.uid})||{}).nivel||1;
   var tituloNivel=Number(P.tituloDestaqueNivel)||nivelAtual;
   var titulosOpts='';for(var tn=1;tn<=nivelAtual;tn++){var tt=tituloCLT(tn);if((tn===1||tituloCLT(tn).nome!==tituloCLT(tn-1).nome))titulosOpts+='<option value="'+tn+'" '+(tn===tituloNivel?'selected':'')+'>'+tt.ico+' '+esc(tt.nome)+' · Nível '+tn+'</option>';}
-  modal('<div class="body"><h2>👤 Personalizar perfil</h2><form data-form="perfil"><div class="profile-editor-grid"><div class="fld"><label>Nome público</label><input name="nome" maxlength="40" value="'+esc(P.nome||'')+'" required></div><div class="fld"><label>Status</label><select name="statusPersonalizado"><option value="online" '+(P.statusPersonalizado==='online'?'selected':'')+'>🟢 Online</option><option value="jogando" '+(P.statusPersonalizado==='jogando'?'selected':'')+'>🎮 Jogando</option><option value="ausente" '+(P.statusPersonalizado==='ausente'?'selected':'')+'>🟡 Ausente</option><option value="dnd" '+(P.statusPersonalizado==='dnd'?'selected':'')+'>🔴 Não incomodar</option><option value="invisivel" '+(P.statusPersonalizado==='invisivel'?'selected':'')+'>⚫ Invisível</option></select></div><div class="fld"><label>Título em destaque</label><select name="tituloDestaqueNivel">'+titulosOpts+'</select></div><div class="fld full"><label>Bio</label><textarea name="bio" maxlength="280" placeholder="Fale um pouco sobre você…">'+esc(P.bio||'')+'</textarea></div><div class="fld full"><label>Banner do perfil</label><input name="banner" value="'+esc(P.banner||'')+'" placeholder="https://…/banner.jpg"><div style="margin-top:7px"><input name="bannerFile" type="file" accept="image/png,image/jpeg,image/webp"></div></div></div><div class="profile-editor-section"><b>🎨 Aparência</b><div class="acts" style="margin-top:10px"><button type="button" class="btn" data-profile-editor-avatar>🖼️ Alterar foto</button><button type="button" class="btn" data-profile-editor-banner>🌄 Enviar banner</button></div></div><div class="profile-editor-section"><b>⭐ Jogos em destaque <small style="color:var(--mut)">(até 4)</small></b><div class="profile-check-grid" style="margin-top:9px">'+(selGames||'<span class="pc-empty">Adicione jogos à sua biblioteca para destacá-los.</span>')+'</div></div><div class="profile-editor-section"><b>🏅 Conquistas em destaque <small style="color:var(--mut)">(até 4)</small></b><div class="profile-check-grid" style="margin-top:9px">'+selAch+'</div></div><div class="acts"><button class="btn primary">Salvar personalização</button><button type="button" class="btn" data-profile-editor-close>Cancelar</button></div><div class="msg" id="msg"></div></form></div>',"f");
+  modal('<div class="body"><h2>👤 Personalizar perfil</h2><form data-form="perfil"><div class="profile-editor-grid"><div class="fld"><label>Nome público</label><input name="nome" maxlength="40" value="'+esc(P.nome||'')+'" required></div><div class="fld"><label>Status</label><select name="statusPersonalizado"><option value="online" '+(P.statusPersonalizado==='online'?'selected':'')+'>🟢 Online</option><option value="jogando" '+(P.statusPersonalizado==='jogando'?'selected':'')+'>🎮 Jogando</option><option value="ausente" '+(P.statusPersonalizado==='ausente'?'selected':'')+'>🟡 Ausente</option><option value="dnd" '+(P.statusPersonalizado==='dnd'?'selected':'')+'>🔴 Não incomodar</option><option value="invisivel" '+(P.statusPersonalizado==='invisivel'?'selected':'')+'>⚫ Invisível</option></select></div><div class="fld"><label>Título em destaque</label><select name="tituloDestaqueNivel">'+titulosOpts+'</select></div><div class="fld full"><label>Bio</label><textarea name="bio" maxlength="280" placeholder="Fale um pouco sobre você…">'+esc(P.bio||'')+'</textarea></div><div class="fld full"><label>Banner do perfil</label><input name="banner" value="'+esc(P.banner||'')+'" placeholder="https://…/banner.jpg"><div style="margin-top:7px"><input name="bannerFile" type="file" accept="image/png,image/jpeg,image/webp"></div></div></div><div class="profile-editor-section"><b>🎨 Aparência</b><div class="acts" style="margin-top:10px"><button type="button" class="btn" data-profile-editor-avatar>🖼️ Alterar foto</button><button type="button" class="btn" data-profile-editor-banner>🌄 Enviar banner</button></div></div><div class="profile-editor-section"><b>⭐ Jogos em destaque <small style="color:var(--mut)">(até 8)</small></b><div class="profile-check-grid" style="margin-top:9px">'+(selGames||'<span class="pc-empty">Adicione jogos à sua biblioteca para destacá-los.</span>')+'</div></div><div class="profile-editor-section"><b>🏅 Conquistas em destaque <small style="color:var(--mut)">(até 4)</small></b><div class="profile-check-grid" style="margin-top:9px">'+(selAch||'<span class="pc-empty">Nenhuma conquista desbloqueada ainda.</span>')+'</div></div><div class="acts"><button class="btn primary">Salvar personalização</button><button type="button" class="btn" data-profile-editor-close>Cancelar</button></div><div class="msg" id="msg"></div></form></div>',"f");
 }
 function bannerBlob(file){return new Promise(function(ok,no){if(!file||!/^image\/(png|jpe?g|webp)$/i.test(file.type))return no(new Error('Escolha uma imagem PNG, JPG ou WebP.'));var fr=new FileReader();fr.onerror=function(){no(new Error('Não consegui ler a imagem.'))};fr.onload=function(){var im=new Image();im.onerror=function(){no(new Error('Imagem inválida.'))};im.onload=function(){var max=1800,w=im.width,h=im.height;if(w>max){h=Math.round(h*max/w);w=max}var c=document.createElement('canvas');c.width=w;c.height=h;var ctx=c.getContext('2d');ctx.drawImage(im,0,0,w,h);c.toBlob(function(b){b?ok(b):no(new Error('Não consegui preparar o banner.'))},'image/webp',.86)};im.src=fr.result};fr.readAsDataURL(file)})}
 function salvarBannerArquivo(file){if(!file)return Promise.resolve(null);if(file.size>10*1024*1024)return Promise.reject(new Error('O banner original deve ter no máximo 10 MB.'));return bannerBlob(file).then(function(blob){var path=P.uid+'/banner-'+Date.now()+'.webp';return sb.storage.from('avatars').upload(path,blob,{upsert:false,contentType:'image/webp',cacheControl:'3600'}).then(function(r){if(r.error)throw new Error(r.error.message);return sb.storage.from('avatars').getPublicUrl(path).data.publicUrl})})}
@@ -3715,8 +3709,9 @@ function salvarPerfil(f){
   var nome=String(f.nome.value||'').trim(),bio=String(f.bio.value||'').trim(),banner=String(f.banner.value||'').trim(),status=String(f.statusPersonalizado.value||'online'),tituloNivel=Number(f.tituloDestaqueNivel&&f.tituloDestaqueNivel.value||0)||0;
   if(!nome){msg('O nome não pode ficar vazio.');return}
   if(banner&&!/^https:\/\//i.test(banner)){msg('O banner precisa começar com https://');return}
-  var games=[].slice.call(f.querySelectorAll('input[name="jogosDestaque"]:checked')).map(function(x){return x.value}).slice(0,4);
-  var ach=[].slice.call(f.querySelectorAll('input[name="conquistasDestaque"]:checked')).map(function(x){return Number(x.value)}).slice(0,4);
+  var games=[].slice.call(f.querySelectorAll('input[name="jogosDestaque"]:checked')).map(function(x){return x.value}).slice(0,8);
+  var unlocked=conquistasAtuaisPerfil();
+  var ach=[].slice.call(f.querySelectorAll('input[name="conquistasDestaque"]:checked')).map(function(x){return Number(x.value)}).filter(function(i){return unlocked[i]&&unlocked[i][3]}).slice(0,4);
   msg('Salvando…',true);
   salvarBannerArquivo(f.bannerFile&&f.bannerFile.files&&f.bannerFile.files[0]).then(function(pub){
     if(pub)banner=pub;
@@ -5675,15 +5670,19 @@ setInterval(function(){if(!document.hidden&&SESS&&P&&sb){carregarAmigos();carreg
 
 /* ===== FASE 5 — MISSÕES ===== */
 var MISSOES_ATIVAS=[],MISSOES_TAB='diarias';
-function periodoMissao(tipo){var d=new Date();if(tipo==='diaria')return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');var x=new Date(d);var day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}
-function definicoesMissoes(){return [
- {id:'add_game_1',tipo:'diaria',ico:'🎮',nome:'Primeiro passo',desc:'Adicione 1 jogo à sua biblioteca.',meta:1,xp:25},
- {id:'finish_game_1',tipo:'diaria',ico:'✅',nome:'Hora de jogar',desc:'Finalize 1 jogo.',meta:1,xp:40},
- {id:'media_3',tipo:'diaria',ico:'🎬',nome:'Maratona',desc:'Adicione 3 filmes ou séries.',meta:3,xp:70},
- {id:'add_game_3',tipo:'semanal',ico:'🎮',nome:'Coleção crescendo',desc:'Adicione 3 jogos nesta semana.',meta:3,xp:80},
- {id:'finish_game_2',tipo:'semanal',ico:'🔥',nome:'Semana produtiva',desc:'Finalize 2 jogos nesta semana.',meta:2,xp:100},
- {id:'platina_1',tipo:'semanal',ico:'💎',nome:'Caçador de platina',desc:'Conquiste 1 platina nesta semana.',meta:1,xp:200}
-]}
+function periodoMissao(tipo){var d=new Date();if(tipo==='diaria')return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');var x=new Date(d);var day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return 'semana:'+x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}
+function definicoesMissoes(){
+  var pool=[
+    {id:'add_game_1',tipo:'diaria',ico:'🎮',nome:'Descoberta do dia',desc:'Adicione 1 jogo à sua biblioteca.',meta:1,xp:25},
+    {id:'add_game_3',tipo:'diaria',ico:'📚',nome:'Expanda sua coleção',desc:'Adicione 3 jogos à sua biblioteca.',meta:3,xp:80},
+    {id:'media_3',tipo:'diaria',ico:'🎬',nome:'Sessão de novidades',desc:'Adicione 3 filmes ou séries.',meta:3,xp:70}
+  ];
+  var day=Math.floor(Date.parse(periodoMissao('diaria')+'T12:00:00Z')/86400000),skip=day%pool.length;
+  return pool.filter(function(x,i){return i!==skip}).concat([
+    {id:'add_game_3',tipo:'semanal',ico:'🎮',nome:'Coleção crescendo',desc:'Adicione 3 jogos nesta semana.',meta:3,xp:80},
+    {id:'media_3',tipo:'semanal',ico:'🎬',nome:'Novas histórias',desc:'Adicione 3 filmes ou séries nesta semana.',meta:3,xp:70}
+  ]);
+}
 function prepararMissoes(){if(!sb||!P||!P.uid||String(P.uid)!==String(euId()))return Promise.resolve();var defs=definicoesMissoes(),d=defs.filter(function(x){return x.tipo==='diaria'}).map(function(x){return x.id}),w=defs.filter(function(x){return x.tipo==='semanal'}).map(function(x){return x.id});return Promise.all([sb.rpc('preparar_missoes_clt',{p_periodo:periodoMissao('diaria'),p_missoes:d}),sb.rpc('preparar_missoes_clt',{p_periodo:periodoMissao('semanal'),p_missoes:w})]).then(function(){return sb.rpc('missoes_clt')}).then(function(r){if(r.error)throw r.error;MISSOES_ATIVAS=r.data||[];renderMissoes()}).catch(function(){MISSOES_ATIVAS=[];renderMissoes()})}
 function renderMissoes(){
   var box=document.getElementById("missionBox");if(!box)return;
@@ -7311,4 +7310,15 @@ document.getElementById('mobileGameTabs').addEventListener('click',function(e){v
 var mobileRouteObserver=new MutationObserver(mobileLibrarySync);mobileRouteObserver.observe(document.body,{attributes:true,attributeFilter:['class']});
 ['chatModal','friendsModal'].forEach(function(id){var e=document.getElementById(id);if(e)mobileRouteObserver.observe(e,{attributes:true,attributeFilter:['class']})});
 window.addEventListener('resize',mobileLibrarySync);mobileLibrarySync();
+</script>
+
+<style id="patch129-recs-profile">
+#recommendationsHome .recs-head p,#recommendationsHome .recs-context,#mediaRecommendations .recs-head p,#mediaRecommendations .recs-context,.rec-match,.rec-reason{display:none!important}
+.rec-more{grid-column:1/-1;display:flex;justify-content:center;padding:14px}
+.profile-check input:disabled{opacity:.35}.profile-check:has(input:disabled){opacity:.5}
+</style>
+<script>
+function conquistasAtuaisPerfil(){var j=D&&D.jogos||[],f=D&&D.filmes||[];return conquistasPerfil(itens(),j,f,j.reduce(function(s,x){return s+(Number(x.horas)||0)},0),j.filter(function(x){return /zerado|platina/i.test(x.status||'')}).length,j.filter(function(x){return /platina/i.test(x.status||'')}).length)}
+document.addEventListener('click',function(e){if(e.target.closest('[data-rec-more]'))carregarMaisRecomendacoes()});
+document.addEventListener('change',function(e){var x=e.target;if(!x.matches('input[name="jogosDestaque"],input[name="conquistasDestaque"]'))return;var limit=x.name==='jogosDestaque'?8:4;if(x.checked&&x.form.querySelectorAll('input[name="'+x.name+'"]:checked').length>limit){x.checked=false;toast('Selecione até '+limit+' destaques.')}});
 </script>
