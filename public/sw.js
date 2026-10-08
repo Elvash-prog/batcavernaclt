@@ -1,5 +1,5 @@
 // Patch 1.21 — cache restrito aos arquivos públicos do aplicativo.
-const CACHE='batcaverna-shell-v142';
+const CACHE='batcaverna-shell-v143';
 const SHELL=['./index.html','./performance-client.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./push-icon.png','./push-badge.png','./notification-icon-v141.png','./notification-badge-v141.png'];
 const SHELL_URLS=new Set(SHELL.map(path=>new URL(path,self.registration.scope).href));
 self.addEventListener('install',event=>{
