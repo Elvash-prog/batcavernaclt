@@ -60,7 +60,7 @@ await test('library polling ignores late response after changing profile',async(
 await test('unchanged library skips rendering; cover changes still update',async()=>{const {c,d}=tickContext();assert.equal(c.bcLibraryChanged({...c.D,atualizado:'new'}),false);assert.equal(c.bcLibraryChanged({...c.D,jogos:[{nome:'Game',capa:'b'}]}),true);const p=c.tick();d.resolve({...c.D,atualizado:'new'});await p;assert.equal(c.updates,1);assert.equal(c.renders,0)});
 await test('only one library poll runs at once',async()=>{const {c,d}=tickContext();const p=c.tick();assert.equal(c.tick(),undefined);d.resolve(c.D);await p;assert.equal(c.updates,1)});
 await test('private media scan still hides the original and only applies approved signed URL',async()=>{
- const {c}=setup();const d=deferred(),image={nodeType:1,tagName:'IMG',isConnected:true,dataset:{},src:'https://storage.test/public/avatar',matches:()=>true,querySelectorAll:()=>[],getAttribute(){return this.src},removeAttribute(){this.src=''}};
+ const {c}=setup();const d=deferred(),image={nodeType:1,tagName:'IMG',isConnected:true,dataset:{},src:'https://storage.test/public/avatar',hasAttribute:()=>false,matches:()=>true,querySelectorAll:()=>[],getAttribute(){return this.src},removeAttribute(){this.src=''}};
  c.BC_CONFIG={MEDIA_MODERATION_ENABLED:true};c.sb={};c.bcStoredMedia=()=>true;c.bcPrivateMediaUrl=()=>d.promise;
  vm.runInContext(html.match(/^function bcScanPrivateMedia.*$/m)[0],c);c.bcScanPrivateMedia(image,false);assert.equal(image.src,'');d.resolve('https://storage.test/signed/avatar');await flush();assert.equal(image.src,'https://storage.test/signed/avatar');assert.equal(image.decoding,'async');
 });
