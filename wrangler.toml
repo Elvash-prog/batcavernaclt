@@ -6,7 +6,7 @@ keep_vars = true
 [assets]
 directory = "./public"
 binding = "ASSETS"
-run_worker_first = ["/config.js", "/api/catalog/*", "/api/steam-free"]
+run_worker_first = ["/config.js", "/api/catalog/*", "/api/steam-free", "/api/steam-cover/*"]
 not_found_handling = "single-page-application"
 
 [previews]
