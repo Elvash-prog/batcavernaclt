@@ -2097,6 +2097,7 @@ textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #b5a1ff!import
 <div class="toasts" id="toasts"></div>
 <div class="selbar" id="selbar" hidden><b id="selcount">0 selecionados</b><button class="btn sm" id="selall" type="button">Selecionar todos</button><button class="btn sm primary" id="selstatus" type="button">🔁 Mudar status</button><button class="btn sm primary" id="selfix" type="button">✨ Corrigir dados</button><button class="btn sm danger" id="seldel" type="button">🗑️ Excluir</button><button class="btn sm primary" id="selimp" type="button" hidden>⬇️ Importar para a biblioteca</button><button class="btn sm" id="selcancel" type="button">Cancelar</button></div>
 
+<script src="/performance-client.js"></script>
 <script src="/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -2203,7 +2204,7 @@ function commentStickerHtml(text){var match=/^\[bc-sticker:v1:([a-z]+)\]$/.exec(
 var PRESENCA=null, ONLINE=[], NOTIFICACOES=[], CONVITES_ENVIADOS=[];
 
 /* ===== Presença: quem está online ===== */
-function renderHtmlEstavel(el,html){if(el.__bcRenderedHtml!==html){el.innerHTML=html;el.__bcRenderedHtml=html;}}
+function renderHtmlEstavel(el,html){if(el.__bcRenderedHtml!==html||el.firstChild!==el.__bcRenderedFirstChild){el.innerHTML=html;el.__bcRenderedHtml=html;el.__bcRenderedFirstChild=el.firstChild;}}
 function onlineRender(){
   var els=document.querySelectorAll("#onlineBox");
   var nomes=ONLINE.map(function(x){return esc(x.nome||x.slug||"Usuário")});
@@ -2245,7 +2246,7 @@ function iniciarPresenca(){
       map[k]={id:k,nome:profile?profile.nome:(v.nome||v.slug||k),slug:profile?profile.id:(v.slug||""),avatar:profile?profile.avatar:(v.avatar||""),status:v.status||"online",jogo:v.jogo||"",jogo_fonte:v.jogo_fonte||""};
     });
     ONLINE=Object.keys(map).map(function(k){return map[k]}).sort(function(a,b){return norm(a.nome).localeCompare(norm(b.nome))});
-    onlineRender();
+    onlineRender();bcFrame("desktop",desktopUiRender);
     if(document.body.classList.contains("mobile-home-active"))mobileHomeRender();
   });
   PRESENCA.on("presence",{event:"join"},function(){onlineRender();if(document.body.classList.contains("mobile-home-active"))mobileHomeRender()});
@@ -2550,8 +2551,9 @@ function rawgPlats(ps){var n=(ps||[]).map(function(p){return p.platform.name}).j
 function rawgLoja(ss){var n=(ss||[]).map(function(x){return x.store.name}).join("|"),l=L().lojas||[];return /Steam/.test(n)?achar(l,/steam/i):/Epic/.test(n)?achar(l,/epic/i):/GOG/.test(n)?achar(l,/gog/i):""}
 /* chama a função do Supabase (SteamGridDB e Steam passam por ela, porque as chaves não podem ficar no navegador) */
 function api(op,body){
-  return fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPABASE_ANON_KEY,Authorization:"Bearer "+(SESS&&SESS.access_token||SUPABASE_ANON_KEY)},body:JSON.stringify(Object.assign({op:op},body||{}))})
-    .then(function(r){return r.json().catch(function(){return {erro:"Resposta inválida ("+r.status+")"}}).then(function(j){if(!r.ok||j.erro)throw new Error(j.erro||("Erro "+r.status));return j})});
+  var controller=new AbortController(),timeout=setTimeout(function(){controller.abort()},45000);
+  return fetch(API_URL,{method:"POST",signal:controller.signal,headers:{"Content-Type":"application/json",apikey:SUPABASE_ANON_KEY,Authorization:"Bearer "+(SESS&&SESS.access_token||SUPABASE_ANON_KEY)},body:JSON.stringify(Object.assign({op:op},body||{}))})
+    .then(function(r){return r.json().catch(function(){return {erro:"Resposta inválida ("+r.status+")"}}).then(function(j){if(!r.ok||j.erro)throw new Error(j.erro||("Erro "+r.status));return j})}).finally(function(){clearTimeout(timeout)});
 }
 /* capas do SteamGridDB (estilo "alternate" = arte com o nome do jogo). Se a função não estiver no ar, fica a capa do RAWG. */
 function buscarJogos(nome){
@@ -2672,18 +2674,22 @@ function setDados(novo,silencioso){
       ev.slice(0,3).forEach(function(e){toast(e.txt)});
     }
   }
-  D=novo;PREV=snap;if(!PREVIA)aplicarFundo(novo.fundo);aplicarLogo(novo.fundo&&novo.fundo.logo);
+  var fundoMudou=!D||JSON.stringify(D.fundo)!==JSON.stringify(novo.fundo);D=novo;PREV=snap;if(fundoMudou){if(!PREVIA)aplicarFundo(novo.fundo);aplicarLogo(novo.fundo&&novo.fundo.logo);}
   return mudou;
 }
+var BC_TICK_BUSY=false;
+function bcLibraryChanged(novo){return !D||JSON.stringify([D.jogos,D.filmes,D.listas,D.fundo])!==JSON.stringify([novo.jogos,novo.filmes,novo.listas,novo.fundo])}
 function tick(){
-  if(!P||!P.uid||!sb||document.hidden||ocupado||!D)return;
-  buscarDados().then(function(d){
-    var mudou=setDados(d,false);setLive("ok");
+  if(!P||!P.uid||!sb||document.hidden||ocupado||!D||BC_TICK_BUSY)return;
+  var view=P,uid=euId();BC_TICK_BUSY=true;
+  return buscarDados().then(function(d){
+    if(P!==view||euId()!==uid)return;
+    var mudou=bcLibraryChanged(d);setDados(d,false);setLive("ok");
     $("#foot").textContent="Atualizado em "+new Date(D.atualizado).toLocaleString("pt-BR");
     if(mudou){cachePut(D);montarFiltros();render()}
   }).catch(function(e){
-    setLive("erro");
-  });
+    if(P===view&&euId()===uid)setLive("erro");
+  }).finally(function(){BC_TICK_BUSY=false});
 }
 
 /* =====================================================
@@ -2769,7 +2775,7 @@ function carregarRanking(){
   return sb.rpc("ranking_clt").then(function(r){
     if(r.error)throw new Error(r.error.message);
     RANKING=(r.data||[]).map(function(x){return {id:x.id,nome:x.nome||x.slug,slug:x.slug,avatar:x.avatar_url||"",xp:Number(x.xp||0),nivel:Number(x.nivel||1),jogos:Number(x.jogos||0),finalizados:Number(x.finalizados||0)}});
-    renderNivelHome();renderRankingHome();rankingFullRender();avisarSubidaNivel(RANKING.find(function(x){return x.id===P.uid}));emitirConquistasGamificacao();
+    renderNivelHome();renderRankingHome();rankingFullRender();bcFrame("desktop",desktopUiRender);avisarSubidaNivel(RANKING.find(function(x){return x.id===P.uid}));emitirConquistasGamificacao();
   }).catch(function(){RANKING=PERFIS.map(function(p){return {id:p.uid,nome:p.nome,slug:p.id,avatar:p.avatar||"",xp:0,nivel:1,jogos:0,finalizados:0}});renderNivelHome();renderRankingHome()});
 }
 
@@ -2913,8 +2919,8 @@ function fecharMenusSocial(){document.querySelectorAll('.social-post-menu.open')
 
 function renderFeedSocial(){
   var b=$('#socialFeedList');if(!b)return;
-  if(!euId()){b.innerHTML='<div class="feed-empty">Entre na conta para usar o feed social.</div>';return}
-  if(!SOCIAL_POSTS.length){b.innerHTML='<div class="feed-empty">Nenhuma publicação ainda. Seja o primeiro a postar! ✨</div>';return}
+  if(!euId()){renderHtmlEstavel(b,'<div class="feed-empty">Entre na conta para usar o feed social.</div>');return}
+  if(!SOCIAL_POSTS.length){renderHtmlEstavel(b,'<div class="feed-empty">Nenhuma publicação ainda. Seja o primeiro a postar! ✨</div>');return}
 
   function comentarioHtml(c,depth,childrenMap){
     depth=Math.min(Number(depth)||0,3);
@@ -2927,7 +2933,7 @@ function renderFeedSocial(){
     return html;
   }
 
-  b.innerHTML=SOCIAL_POSTS.map(function(post){
+  var html=SOCIAL_POSTS.map(function(post){
     var p=perfilPorId(post.user_id)||{uid:post.user_id,nome:'Usuário',avatar:''},likes=FEED_META.likes[post.id]||0,liked=!!FEED_META.mine[post.id],comments=FEED_META.comments[post.id]||[],midias=Array.isArray(post.midias)?post.midias:[];
     var childrenMap={};comments.forEach(function(c){var pid=c.parent_id==null?null:String(c.parent_id);if(pid){(childrenMap[pid]||(childrenMap[pid]=[])).push(c)}});
     var roots=comments.filter(function(c){return c.parent_id==null});
@@ -2937,7 +2943,7 @@ function renderFeedSocial(){
     var replying=String(FEED_REPLY.postId)===String(post.id)&&FEED_REPLY.commentId?'<div class="comment-replying"><span>Respondendo a <b>'+esc(FEED_REPLY.name||'comentário')+'</b></span><button type="button" data-comment-reply-cancel="1" title="Cancelar">✕</button></div>':'';
     var placeholder=String(FEED_REPLY.postId)===String(post.id)&&FEED_REPLY.commentId?'Escreva uma resposta…':'Escreva um comentário…';
     return '<article class="social-post" data-post-id="'+esc(post.id)+'"><div class="social-post-head"><button class="social-action" data-feed-profile="'+esc(post.user_id)+'">'+avatarHtml(p,'activity-avatar')+'</button><div class="social-post-copy"><b>'+esc(p.nome)+'</b><small>'+esc(feedTempo(post.created_at))+'</small></div>'+(String(post.user_id)===String(euId())?'<div class="social-post-menu"><button type="button" data-feed-menu="'+esc(post.id)+'" aria-label="Mais opções">⋯</button><div class="social-post-menu-pop"><button type="button" data-feed-edit="'+esc(post.id)+'">✏️ Editar publicação</button><button type="button" data-feed-delete="'+esc(post.id)+'">🗑️ Apagar publicação</button></div></div>':'<span class="social-post-live"><i></i> Amigos</span>')+'</div><div class="social-post-text '+(post.updated_at&&post.created_at&&String(post.updated_at)!==String(post.created_at)?'is-edited':'')+'">'+esc(post.texto)+(post.updated_at&&post.created_at&&String(post.updated_at)!==String(post.created_at)?' <span class="social-post-edited">(editado)</span>':'')+'</div>'+media+'<div class="social-post-actions"><button type="button" class="social-action '+(liked?'liked':'')+'" data-feed-like="'+esc(post.id)+'">'+(liked?'❤️':'🤍')+' Curtir</button><button type="button" class="social-likers-btn" data-feed-likers="'+esc(post.id)+'" title="Ver quem curtiu">❤️ <span class="social-like-count">'+likes+'</span></button><button type="button" class="social-action" data-feed-comments="'+esc(post.id)+'">💬 Comentar '+comments.length+'</button><span class="feed-interaction-hint">Só você e seus amigos</span></div><div class="comment-list">'+ch+'</div>'+replying+'<form class="comment-form" data-comment-form="'+esc(post.id)+'" data-reply-to="'+(String(FEED_REPLY.postId)===String(post.id)&&FEED_REPLY.commentId?esc(FEED_REPLY.commentId):'')+'"><input name="texto" maxlength="240" placeholder="'+placeholder+'"><button type="button" class="btn sm" data-comment-stickers aria-label="Figurinhas">☺</button><button class="btn sm">Enviar</button></form></article>';
-  }).join('')+(FEED_HAS_MORE?'<div class="feed-more"><button type="button" class="btn" data-feed-more>Carregar mais publicações</button></div>':'');
+  }).join('')+(FEED_HAS_MORE?'<div class="feed-more"><button type="button" class="btn" data-feed-more>Carregar mais publicações</button></div>':'');renderHtmlEstavel(b,html);
 }
 function editarPublicacao(id){
   if(!sb||!euId())return;
@@ -4007,7 +4013,7 @@ function listaR(){
       renderSec('🍥 Animes assistidos', '#ff4081', animes);
     }else renderSec(tab==="jogos"&&si===0?"🎮 Em progresso":s[1],s[2],g);
   });
-  $("#list").innerHTML=h||'<div class="empty">Nada encontrado 🤷</div>';lazyBg($("#list"));
+  renderHtmlEstavel($("#list"),h||'<div class="empty">Nada encontrado 🤷</div>');lazyBg($("#list"));
   if(SELMODE){var ok={};VIS.forEach(function(x){if(x.linha&&SEL[x.linha])ok[x.linha]=x.linha});SEL=ok;selUI()}
 }
 
@@ -4512,7 +4518,7 @@ $("#box").addEventListener("input",function(e){if(e.target.closest&&e.target.clo
 $("#mx").addEventListener("click",fechar);
 $("#modal").addEventListener("click",function(e){if(e.target.id==="modal")fechar()});
 document.addEventListener("keydown",function(e){if(e.key==="Escape")fechar()});
-document.addEventListener("visibilitychange",function(){if(!document.hidden){tick();agoraBuscar()}});
+document.addEventListener("visibilitychange",function(){if(!document.hidden){tick();agoraBuscar();carregarSteamAmigos(false)}});
 $("#box").addEventListener("click",function(e){
   if(e.target.closest("[data-profile-editor-avatar]")){var ef=e.target.closest("form"),ai=ef&&ef.elements.avatarFile;if(ai)ai.click();else avatarModal();return}
   if(e.target.closest("[data-profile-editor-banner]")){var f=e.target.closest("form"),i=f&&f.elements.bannerFile;if(i)i.click();return}
@@ -4571,7 +4577,7 @@ function agoraBuscar(){
 function tocando(x){return !!(AGORA&&tab==="jogos"&&x.steamAppid&&Number(x.steamAppid)===Number(AGORA.appid))}
 
 /* ===== Steam dos amigos 2.0 ===== */
-var STEAM_AMIGOS_ATIVOS=[],STEAM_AMIGOS_BUSY=false,STEAM_AMIGOS_TIMER=null;
+var STEAM_AMIGOS_ATIVOS=[],STEAM_AMIGOS_BUSY=false,STEAM_AMIGOS_TIMER=null,STEAM_AMIGOS_AT=0,STEAM_AMIGOS_KEY="";
 function steamAmigosLista(){
   var ids=(AMIGOS||[]).map(String),seen={},out=[];
   (PERFIS||[]).forEach(function(p){
@@ -4597,15 +4603,16 @@ function steamAmigosRender(){
   var ativos=(STEAM_AMIGOS_ATIVOS||[]).slice().sort(function(a,b){return String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR')});
   if(count)count.textContent=String(ativos.length);
   if(!list)return;
-  if(!ativos.length){list.innerHTML='<div class="desktop-activity-row">Nenhum amigo está jogando na Steam agora.</div>';return;}
-  list.innerHTML=ativos.slice(0,8).map(function(x){
+  if(!ativos.length){renderHtmlEstavel(list,'<div class="desktop-activity-row">Nenhum amigo está jogando na Steam agora.</div>');return;}
+  var html=ativos.slice(0,8).map(function(x){
     var jogo=x.jogo||'Jogando na Steam';
     return '<div class="desktop-list-row steam-friend-row">'+steamAmigoCapaHtml(x)+'<span class="desktop-list-copy"><b>'+esc(x.nome||'Amigo')+'</b><small>🟦 '+esc(jogo)+'</small></span><i class="desktop-dot"></i></div>';
-  }).join('');
+  }).join('');renderHtmlEstavel(list,html);
 }
 function carregarSteamAmigos(force){
-  if(STEAM_AMIGOS_BUSY)return;
-  var amigos=steamAmigosLista();
+  if(STEAM_AMIGOS_BUSY||document.hidden)return;
+  var amigos=steamAmigosLista(),uid=String(euId()||""),key=uid+":"+amigos.map(function(p){return p.uid+":"+p.steam}).join(",");
+  if(!force&&key===STEAM_AMIGOS_KEY&&Date.now()-STEAM_AMIGOS_AT<45000)return;
   if(!amigos.length){STEAM_AMIGOS_ATIVOS=[];steamAmigosRender();return;}
   STEAM_AMIGOS_BUSY=true;
   Promise.all(amigos.slice(0,20).map(function(p){
@@ -4615,6 +4622,8 @@ function carregarSteamAmigos(force){
       return {uid:p.uid,nome:p.nome,avatar:p.avatar,steam:p.steam,appid:a.appid,nomeJogo:a.nome,jogo:a.nome,capa:a.capa||steamImg(a.appid)};
     }).catch(function(){return null});
   })).then(function(rs){
+    if(String(euId()||"")!==uid||key!==uid+":"+steamAmigosLista().map(function(p){return p.uid+":"+p.steam}).join(","))return;
+    STEAM_AMIGOS_AT=Date.now();STEAM_AMIGOS_KEY=key;
     STEAM_AMIGOS_ATIVOS=rs.filter(Boolean).map(function(x){return {uid:x.uid,nome:x.nome,avatar:x.avatar,steam:x.steam,appid:x.appid,jogo:x.jogo,capa:x.capa}});
     steamAmigosRender();
     if(typeof mobileHomeRender==='function'&&document.body.classList.contains('mobile-home-active'))mobileHomeRender();
@@ -4625,7 +4634,7 @@ function carregarSteamAmigos(force){
   });
 }
 /* ===== Amigos / convites ===== */
-var AMIGOS=[],CONVITES=[],BLOQUEADOS=[];
+var AMIGOS=[],CONVITES=[],BLOQUEADOS=[],BC_FRIENDS_SIGNATURE="",BC_FRIENDS_PROFILE_AT=0;
 function euId(){return (SESS&&SESS.user)?SESS.user.id:null}
 function onlineUid(uid){return !!uid&&ONLINE.some(function(x){return String(x.id)===String(uid)&&x.status!=='invisivel'})}
 function visivel(p){return !p.extra||p===P||(p.uid&&(p.uid===euId()||AMIGOS.indexOf(p.uid)>=0))}
@@ -4637,18 +4646,20 @@ function montarPerfis(){
   var qdd=$("#qdd");if(qdd)qdd.hidden=true;
 }
 function carregarAmigos(){
-  AMIGOS=[];CONVITES=[];CONVITES_ENVIADOS=[];var eu=euId();
-  if(!eu||!sb){montarPerfis();return Promise.resolve()}
+  var eu=euId();
+  if(!eu||!sb){AMIGOS=[];CONVITES=[];CONVITES_ENVIADOS=[];BLOQUEADOS=[];montarPerfis();return Promise.resolve()}
   return Promise.all([
     sb.from("amigos").select("*").eq("user_id",eu),
     sb.from("convites_amizade").select("id,remetente_id,created_at").eq("destinatario_id",eu).eq("status","pending").order("created_at",{ascending:false}),
     sb.from("convites_amizade").select("id,destinatario_id,created_at").eq("remetente_id",eu).eq("status","pending").order("created_at",{ascending:false}),
     sb.from("bloqueios_clt").select("bloqueado_id").eq("bloqueador_id",eu)
   ]).then(function(rs){
+    if(euId()!==eu)return;
     if(rs[0].error)throw new Error(rs[0].error.message);
     if(rs[1].error)throw new Error(rs[1].error.message);
     if(rs[2].error)throw new Error(rs[2].error.message);
     if(rs[3].error)throw new Error(rs[3].error.message);
+    var signature=JSON.stringify([eu,rs.map(function(r){return r.data||[]})]),changed=signature!==BC_FRIENDS_SIGNATURE;
     AMIGOS=(rs[0].data||[]).map(function(x){return x.amigo_id});
     atualizarInicioAmizades(rs[0].data||[],eu);
     CONVITES=rs[1].data||[];
@@ -4656,18 +4667,20 @@ function carregarAmigos(){
     BLOQUEADOS=(rs[3].data||[]).map(function(x){return x.bloqueado_id});
     /* PATCH 1.19: presença online não define mais quem aparece na Central.
        Carrega os perfis de TODOS os amigos aceitos, inclusive offline. */
-    var perfisAmigos=AMIGOS.length
+    var refreshProfiles=changed||Date.now()-BC_FRIENDS_PROFILE_AT>120000;
+    var perfisAmigos=AMIGOS.length&&refreshProfiles
       ? bcDirectory().select("id,slug,nome,avatar_url,codigo_convite").in("id",AMIGOS).then(function(pr){
-          if(pr.error)throw new Error(pr.error.message);
+          if(euId()!==eu)return;if(pr.error)throw new Error(pr.error.message);
           (pr.data||[]).forEach(garantirPerfil);
         })
       : Promise.resolve();
     return perfisAmigos.then(function(){
-      montarPerfis();amigosLista();renderAmigosHome();carregarAtividadeSocial();renderBuscaPessoas("");carregarSteamAmigos(true);
+      if(euId()!==eu)return;BC_FRIENDS_SIGNATURE=signature;if(refreshProfiles)BC_FRIENDS_PROFILE_AT=Date.now();
+      if(changed||refreshProfiles){montarPerfis();amigosLista();renderAmigosHome();if(changed){carregarAtividadeSocial();carregarSteamAmigos(true)}}
       if(typeof mobileNavSync==='function')mobileNavSync();if(typeof desktopUiRender==='function')desktopUiRender();
       return carregarNotificacoes();
     });
-  }).catch(function(e){montarPerfis();if(/bloqueios_clt/i.test(erroTxt(e)))BLOQUEADOS=[]});
+  }).catch(function(e){if(euId()===eu)montarPerfis()});
 }
 var PAINEL_EU=undefined;
 function amgMsg(t,ok){var m=$("#amgmsg");if(m){m.textContent=t;m.className="msg"+(ok?" ok":"")}}
@@ -4796,6 +4809,7 @@ function carregarNotificacoes(){
   var eu=euId();if(!eu||!sb){NOTIFICACOES=[];notificacoesRender();return Promise.resolve()}
   return sb.from("notificacoes").select("id,tipo,mensagem,actor_id,referencia_id,read,created_at").eq("destinatario_id",eu).not("tipo","in","(chat_message,chat_group_message)").order("created_at",{ascending:false}).limit(50).then(function(r){
     if(r.error)throw new Error(r.error.message);
+    if(euId()!==eu)return;
     NOTIFICACOES=(r.data||[]).filter(function(n){return n.tipo!=="chat_message"&&n.tipo!=="chat_group_message"});
     NOTIFICACOES.forEach(function(n){if(n.actor_id)carregarPerfilSilencioso(n.actor_id)});
     notificacoesRender();
@@ -5532,8 +5546,9 @@ var PRE=null;
 function cacheGet(){return null}
 function cachePut(d){}
 
-var IO=("IntersectionObserver" in window)?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){var el=e.target;IO.unobserve(el);var u=cssUrl(el.dataset.bg);if(u)el.style.backgroundImage=u}})},{rootMargin:"600px 0px"}):null;
-function lazyBg(raiz){[].forEach.call(raiz.querySelectorAll("[data-bg]"),function(el){if(IO)IO.observe(el);else{var u=cssUrl(el.dataset.bg);if(u)el.style.backgroundImage=u}})}
+var IO_PENDING=new Set();
+var IO=("IntersectionObserver" in window)?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){var el=e.target;IO.unobserve(el);IO_PENDING.delete(el);if(!el.isConnected)return;var u=cssUrl(el.dataset.bg);if(u){el.style.backgroundImage=u;el.__bcLoadedBg=el.dataset.bg}}})},{rootMargin:"600px 0px"}):null;
+function lazyBg(raiz){if(IO)IO_PENDING.forEach(function(el){if(!el.isConnected){IO.unobserve(el);IO_PENDING.delete(el)}});[].forEach.call(raiz.querySelectorAll("[data-bg]"),function(el){if(el.__bcLoadedBg===el.dataset.bg)return;if(IO){if(!IO_PENDING.has(el)){IO_PENDING.add(el);IO.observe(el)}}else{var u=cssUrl(el.dataset.bg);if(u){el.style.backgroundImage=u;el.__bcLoadedBg=el.dataset.bg}}})}
 /* ===== página inicial (login) e link de convidado ===== */
 function norm(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim()}
 function carregarFundoLoginPublico(){
@@ -5710,7 +5725,7 @@ else sb.auth.getSession()
 window.addEventListener("beforeunload",pararPresenca);
 timer=setInterval(tick,INTERVALO);
 setInterval(function(){if(!document.hidden)agoraBuscar()},30000);
-setInterval(function(){if(!document.hidden&&SESS&&P&&sb){carregarAmigos();carregarNotificacoes()}},15000);
+setInterval(function(){if(!document.hidden&&SESS&&P&&sb)carregarAmigos()},30000);
 
 
 /* ===== FASE 5 — MISSÕES ===== */
@@ -5777,7 +5792,7 @@ function chatStatus(p){return onlineUid(p&&p.uid)?'online':'offline'}
 function abrirChat(){document.body.classList.remove('mobile-friends-active');document.body.classList.add('mobile-chat-active');if(!P||!P.uid||!sb)return toast('Entre na conta para usar o chat.');var m=$('#chatModal'),c=$('#chatCard');if(!m||!c)return;c.classList.remove('chat-conversation');m.classList.add('on');m.setAttribute('aria-hidden','false');CHAT_ACTIVE=null;CHAT_MESSAGES=[];CHAT_MEDIA_URLS={};CHAT_SELECTED_FILE=null;chatRenderPreview();chatRenderFriends();chatRenderMain();carregarChatAmigos();carregarChatPreviews();var a=window.__BC_PANEL_ANCHOR||document.querySelector('#chatTop');window.__BC_PANEL_ANCHOR=null;setTimeout(function(){if(!document.body.classList.contains('mobile-chat-active')||window.innerWidth<=600)return;positionPanelNear(m,c,a)},0)}
 function fecharChat(){document.body.classList.remove('mobile-chat-active');var m=$('#chatModal'),c=$('#chatCard');if(m){m.classList.remove('on');m.setAttribute('aria-hidden','true')}if(c)c.classList.remove('chat-conversation');CHAT_ACTIVE=null;CHAT_MESSAGES=[];CHAT_MEDIA_URLS={};CHAT_SELECTED_FILE=null;chatRenderPreview()}
 function chatUnreadFor(uid){return Number(CHAT_UNREAD_MAP[String(uid)]||0)}
-function chatRenderFriends(){var b=$('#chatFriends');if(!b)return;var os=$('#chatOnlineSummary');if(os){var oc=(CHAT_FRIENDS||[]).filter(function(p){return chatStatus(p)==='online'}).length;os.textContent=oc?oc+' amigo'+(oc===1?'':'s')+' online':'Nenhum amigo online';}var term=String($('#chatSearch')&&$('#chatSearch').value||'').trim().toLowerCase();var rows=(CHAT_FRIENDS||[]).filter(function(p){return !term||String(p.nome||p.slug||'').toLowerCase().indexOf(term)>=0});if(!CHAT_FRIENDS.length){b.innerHTML='<div class="chat-empty">Você ainda não tem amigos para conversar.<br><br>Adicione alguém pela área de Amigos. 👥</div>';return}if(!rows.length){b.innerHTML='<div class="chat-empty">Nenhuma conversa encontrada.</div>';return}rows.sort(function(a,b){var ua=chatUnreadFor(a.uid||a.id),ub=chatUnreadFor(b.uid||b.id);if(ua!==ub)return ub-ua;var ta=CHAT_PREVIEWS[String(a.uid||a.id)]&&CHAT_PREVIEWS[String(a.uid||a.id)].created_at||'',tb=CHAT_PREVIEWS[String(b.uid||b.id)]&&CHAT_PREVIEWS[String(b.uid||b.id)].created_at||'';if(ta!==tb)return String(tb).localeCompare(String(ta));var oa=chatStatus(a)==='online',ob=chatStatus(b)==='online';return Number(ob)-Number(oa)||String(a.nome||a.slug||'').localeCompare(String(b.nome||b.slug||''));});b.innerHTML=rows.map(function(p){var uid=p.uid||p.id,unread=chatUnreadFor(uid),on=chatStatus(p)==='online',pr=CHAT_PREVIEWS[String(uid)]||{},typing=CHAT_ACTIVE&&String(CHAT_ACTIVE)===String(uid)&&window.CHAT_TYPING_TEXT;var preview=typing?'✍️ '+window.CHAT_TYPING_TEXT:(pr.texto||((pr.midia_url)?'📷 Imagem':CHAT_PREVIEWS_ERROR?'Prévia indisponível':CHAT_PREVIEWS_LOADED?'Nenhuma mensagem ainda':'Carregando conversa…'));if(preview.length>42)preview=preview.slice(0,42)+'…';var tm=pr.created_at?socialTempo(pr.created_at):'';return '<button type="button" class="chat-friend '+(String(CHAT_ACTIVE)===String(uid)?'on ':'')+(unread?'unread':'')+'" data-chat-friend="'+esc(uid)+'">'+avatarHtml(p,'activity-avatar')+'<span class="chat-friend-copy"><b>'+esc(p.nome||p.slug||'Usuário')+'</b><small><i class="chat-dot '+(on?'online':'')+'"></i> '+esc(perfilStatusTexto(p))+'</small><span class="chat-friend-preview '+(typing?'typing':'')+'">'+esc(preview)+'</span></span><span class="chat-friend-meta">'+(tm?'<span class="chat-friend-time">'+esc(tm)+'</span>':'')+(unread?'<span class="chat-unread">'+(unread>99?'99+':unread)+'</span>':'')+'</span></button>'}).join('')}
+function chatRenderFriends(){var b=$('#chatFriends');if(!b)return;var os=$('#chatOnlineSummary');if(os){var oc=(CHAT_FRIENDS||[]).filter(function(p){return chatStatus(p)==='online'}).length;os.textContent=oc?oc+' amigo'+(oc===1?'':'s')+' online':'Nenhum amigo online';}var term=String($('#chatSearch')&&$('#chatSearch').value||'').trim().toLowerCase();var rows=(CHAT_FRIENDS||[]).filter(function(p){return !term||String(p.nome||p.slug||'').toLowerCase().indexOf(term)>=0});if(!CHAT_FRIENDS.length){renderHtmlEstavel(b,'<div class="chat-empty">Você ainda não tem amigos para conversar.<br><br>Adicione alguém pela área de Amigos. 👥</div>');return}if(!rows.length){renderHtmlEstavel(b,'<div class="chat-empty">Nenhuma conversa encontrada.</div>');return}rows.sort(function(a,b){var ua=chatUnreadFor(a.uid||a.id),ub=chatUnreadFor(b.uid||b.id);if(ua!==ub)return ub-ua;var ta=CHAT_PREVIEWS[String(a.uid||a.id)]&&CHAT_PREVIEWS[String(a.uid||a.id)].created_at||'',tb=CHAT_PREVIEWS[String(b.uid||b.id)]&&CHAT_PREVIEWS[String(b.uid||b.id)].created_at||'';if(ta!==tb)return String(tb).localeCompare(String(ta));var oa=chatStatus(a)==='online',ob=chatStatus(b)==='online';return Number(ob)-Number(oa)||String(a.nome||a.slug||'').localeCompare(String(b.nome||b.slug||''));});var friendsHtml=rows.map(function(p){var uid=p.uid||p.id,unread=chatUnreadFor(uid),on=chatStatus(p)==='online',pr=CHAT_PREVIEWS[String(uid)]||{},typing=CHAT_ACTIVE&&String(CHAT_ACTIVE)===String(uid)&&window.CHAT_TYPING_TEXT;var preview=typing?'✍️ '+window.CHAT_TYPING_TEXT:(pr.texto||((pr.midia_url)?'📷 Imagem':CHAT_PREVIEWS_ERROR?'Prévia indisponível':CHAT_PREVIEWS_LOADED?'Nenhuma mensagem ainda':'Carregando conversa…'));if(preview.length>42)preview=preview.slice(0,42)+'…';var tm=pr.created_at?socialTempo(pr.created_at):'';return '<button type="button" class="chat-friend '+(String(CHAT_ACTIVE)===String(uid)?'on ':'')+(unread?'unread':'')+'" data-chat-friend="'+esc(uid)+'">'+avatarHtml(p,'activity-avatar')+'<span class="chat-friend-copy"><b>'+esc(p.nome||p.slug||'Usuário')+'</b><small><i class="chat-dot '+(on?'online':'')+'"></i> '+esc(perfilStatusTexto(p))+'</small><span class="chat-friend-preview '+(typing?'typing':'')+'">'+esc(preview)+'</span></span><span class="chat-friend-meta">'+(tm?'<span class="chat-friend-time">'+esc(tm)+'</span>':'')+(unread?'<span class="chat-unread">'+(unread>99?'99+':unread)+'</span>':'')+'</span></button>'}).join('');renderHtmlEstavel(b,friendsHtml)}
 function carregarChatPreviews(){if(!sb||!euId()||CHAT_PREVIEWS_BUSY)return Promise.resolve();var me=String(euId());CHAT_PREVIEWS_BUSY=true;return sb.from('clt_chat_messages').select('id,remetente_id,destinatario_id,texto,midia_url,created_at,lida').or('remetente_id.eq.'+me+',destinatario_id.eq.'+me).order('created_at',{ascending:false}).limit(500).then(async function(r){if(r.error)throw r.error;var map={};(r.data||[]).forEach(function(m){var other=String(m.remetente_id)===me?String(m.destinatario_id):String(m.remetente_id);if(!map[other])map[other]=m});
 if((r.data||[]).length===500){var missing=(AMIGOS||[]).map(String).filter(function(id){return !map[id]});for(var i=0;i<missing.length;i+=4){await Promise.all(missing.slice(i,i+4).map(function(id){return sb.from('clt_chat_messages').select('id,remetente_id,destinatario_id,texto,midia_url,created_at,lida').or('and(remetente_id.eq.'+me+',destinatario_id.eq.'+id+'),and(remetente_id.eq.'+id+',destinatario_id.eq.'+me+')').order('created_at',{ascending:false}).limit(1).then(function(rr){if(rr.error)throw rr.error;if(rr.data&&rr.data[0])map[id]=rr.data[0]})}))}}
 if(String(euId())!==me)return;CHAT_PREVIEWS=map;CHAT_PREVIEWS_LOADED=true;CHAT_PREVIEWS_ERROR=false;chatRenderFriends();return map}).catch(function(){if(String(euId())===me){CHAT_PREVIEWS_ERROR=true;chatRenderFriends()}}).finally(function(){CHAT_PREVIEWS_BUSY=false})}
@@ -5793,7 +5808,7 @@ function chatClearReply(){window.CHAT_REPLY=null;var b=$('#chatReplying');if(b)b
 function chatEditStart(m){if(String(m.remetente_id)!==String(euId()))return;window.CHAT_EDIT={id:String(m.id),text:String(m.texto||'')};var t=$('#chatText');if(t){t.value=window.CHAT_EDIT.text;t.classList.add('chat-editing');t.focus();t.selectionStart=t.value.length}var b=$('#chatReplying');if(!b){var form=$('#chatCompose');b=document.createElement('div');b.id='chatReplying';b.className='chat-replying';form.parentNode.insertBefore(b,form)}b.innerHTML='<span>✏️ Editando</span><b>Altere a mensagem e envie novamente</b><button type="button" id="chatEditCancel">×</button>'}
 function chatClearEdit(){window.CHAT_EDIT=null;var t=$('#chatText');if(t){t.value='';t.classList.remove('chat-editing')}var b=$('#chatReplying');if(b)b.remove()}
 function chatToggleReaction(id,emoji){var meta=chatMeta(id),r=meta.reactions||{};r[emoji]=r[emoji]===String(euId())?null:String(euId());if(!r[emoji])delete r[emoji];chatSetMeta(id,{reactions:r});window.CHAT_REACTION_SUPPRESS=String(id);chatRenderMain()}
-function chatRenderMain(){if(typeof GROUP_MODE!=="undefined"&&GROUP_MODE==="groups"){groupRenderMain();return}var p=chatAmigo(CHAT_ACTIVE),title=$('#chatTitle'),st=$('#chatStatus'),dot=$('#chatDot'),box=$('#chatMessages'),db=$('#chatDetailsBody');if(db){if(p){var av=p.avatar_url||p.avatar||'';db.innerHTML=(av?'<img class="chat-details-avatar" src="'+esc(av)+'" alt="">':'<div class="chat-details-avatar" style="display:grid;place-items:center;font-size:30px">👤</div>')+'<b>'+esc(p.nome||p.slug||'Usuário')+'</b><span class="chat-details-status">'+(chatStatus(p)==='online'?'🟢 Online agora':'⚪ Offline')+'</span><div class="chat-details-actions"><button type="button" data-chat-profile="'+esc(p.uid||p.id)+'">👤 Ver perfil</button></div><div class="chat-details-note">Conversa privada entre amigos. Mensagens, imagens e status de leitura continuam protegidos pelas regras atuais.</div>'}else db.innerHTML='<div class="chat-empty">Selecione uma conversa para ver os detalhes.</div>';}if(title)title.textContent=p?p.nome:'Selecione um amigo';if(st)st.textContent=window.CHAT_TYPING_TEXT||(p?(chatStatus(p)==='online'?'online':'offline'):'Nenhuma conversa selecionada');if(dot)dot.className='chat-dot'+(p&&chatStatus(p)==='online'?' online':'');if(!box)return;if(!p){box.innerHTML='<div class="chat-empty">Escolha um amigo à esquerda para começar uma conversa. 💜</div>';return}if(!CHAT_MESSAGES.length){box.innerHTML='<div class="chat-empty">Nenhuma mensagem ainda.<br>Comece a conversa! 👋</div>';return}var chatPrevTop=box.scrollTop,chatNewThread=box.dataset.thread!==String(CHAT_ACTIVE),chatWasBottom=box.scrollHeight-box.clientHeight-box.scrollTop<=24;box.dataset.thread=String(CHAT_ACTIVE);box.innerHTML=CHAT_MESSAGES.map(function(m){var mine=String(m.remetente_id)===String(euId()),src=CHAT_MEDIA_URLS[String(m.id)]||'',meta=chatMeta(m.id),img=src?'<img class="chat-image" data-chat-image="'+esc(src)+'" src="'+esc(src)+'" alt="Imagem enviada">':'';var del=mine?'<button class="chat-msg-tool" type="button" data-chat-delete="'+esc(m.id)+'">🗑️</button>':'';var edit=mine&&m.texto?'<button class="chat-msg-tool" type="button" data-chat-edit="'+esc(m.id)+'">✏️</button>':'';var pin='<button class="chat-msg-tool" type="button" data-chat-pin="'+esc(m.id)+'">'+(meta.pinned?'📌':'📍')+'</button>';var rep='<button class="chat-msg-tool chat-reply-mobile" type="button" data-chat-reply="'+esc(m.id)+'">Responder</button>';var emojis=['❤️','😂','🔥','👍'];var current=emojis.filter(function(em){return meta.reactions&&meta.reactions[em]===String(euId())}).map(function(em){return '<span class="chat-reaction on">'+em+' 1</span>'}).join('');var picker=emojis.map(function(em){return '<button type="button" data-chat-react="'+esc(m.id)+'" data-emoji="'+em+'" title="Reagir com '+em+'">'+em+'</button>'}).join('');var reactionRow='<div class="chat-reaction-row"><button type="button" class="chat-react-open" data-chat-react-open="'+esc(m.id)+'" aria-expanded="false">☺ Reagir</button>'+(current?'<div class="chat-reactions">'+current+'</div>':'')+'<div class="chat-reaction-picker">'+picker+'</div></div>';var pin=meta.pinned?'<div class="chat-pin-label">📌 Fixada nesta conversa</div>':'';var edited=(m.updated_at&&m.updated_at!==m.created_at)?'<span class="chat-edited">(editada)</span>':'';var read=mine?(m.lida?' <span class="chat-read">✓✓ lida</span>':' <span class="chat-read">✓ enviada</span>'):'';return '<div data-message-id="'+esc(m.id)+'" class="chat-msg '+(mine?'mine':'theirs')+' '+(meta.pinned?'chat-pinned':'')+' '+(window.CHAT_REACTION_SUPPRESS===String(m.id)?'chat-reaction-suppressed':'')+'"><div class="chat-msg-tools">'+rep+edit+pin+del+'</div><div class="chat-bubble">'+pin+chatFormatText(m)+img+reactionRow+'</div><span class="chat-time">'+esc(socialTempo(m.created_at))+' '+edited+read+'</span></div>'}).join('');box.scrollTop=chatNewThread||chatWasBottom?box.scrollHeight:chatPrevTop;CHAT_MESSAGES.filter(function(m){return m.midia_url&&!CHAT_MEDIA_URLS[String(m.id)]}).forEach(function(m){sb.storage.from('chat-media').createSignedUrl(m.midia_url,3600).then(function(r){if(!r.error&&r.data&&r.data.signedUrl){CHAT_MEDIA_URLS[String(m.id)]=r.data.signedUrl;chatRenderMain()}})})}
+function chatRenderMain(){if(typeof GROUP_MODE!=="undefined"&&GROUP_MODE==="groups"){groupRenderMain();return}var p=chatAmigo(CHAT_ACTIVE),title=$('#chatTitle'),st=$('#chatStatus'),dot=$('#chatDot'),box=$('#chatMessages'),db=$('#chatDetailsBody');if(db){if(p){var av=p.avatar_url||p.avatar||'';var detailsHtml=(av?'<img class="chat-details-avatar" src="'+esc(av)+'" alt="">':'<div class="chat-details-avatar" style="display:grid;place-items:center;font-size:30px">👤</div>')+'<b>'+esc(p.nome||p.slug||'Usuário')+'</b><span class="chat-details-status">'+(chatStatus(p)==='online'?'🟢 Online agora':'⚪ Offline')+'</span><div class="chat-details-actions"><button type="button" data-chat-profile="'+esc(p.uid||p.id)+'">👤 Ver perfil</button></div><div class="chat-details-note">Conversa privada entre amigos. Mensagens, imagens e status de leitura continuam protegidos pelas regras atuais.</div>';renderHtmlEstavel(db,detailsHtml)}else renderHtmlEstavel(db,'<div class="chat-empty">Selecione uma conversa para ver os detalhes.</div>');}if(title)title.textContent=p?p.nome:'Selecione um amigo';if(st)st.textContent=window.CHAT_TYPING_TEXT||(p?(chatStatus(p)==='online'?'online':'offline'):'Nenhuma conversa selecionada');if(dot)dot.className='chat-dot'+(p&&chatStatus(p)==='online'?' online':'');if(!box)return;if(!p){renderHtmlEstavel(box,'<div class="chat-empty">Escolha um amigo à esquerda para começar uma conversa. 💜</div>');return}if(!CHAT_MESSAGES.length){renderHtmlEstavel(box,'<div class="chat-empty">Nenhuma mensagem ainda.<br>Comece a conversa! 👋</div>');return}var chatPrevTop=box.scrollTop,chatNewThread=box.dataset.thread!==String(CHAT_ACTIVE),chatWasBottom=box.scrollHeight-box.clientHeight-box.scrollTop<=24;box.dataset.thread=String(CHAT_ACTIVE);var chatMetaCache=chatMetaLoad();var chatHtml=CHAT_MESSAGES.map(function(m){var mine=String(m.remetente_id)===String(euId()),src=CHAT_MEDIA_URLS[String(m.id)]||'',meta=chatMetaCache[String(m.id)]||{reactions:{},pinned:false},img=src?'<img class="chat-image" data-chat-image="'+esc(src)+'" src="'+esc(src)+'" alt="Imagem enviada">':'';var del=mine?'<button class="chat-msg-tool" type="button" data-chat-delete="'+esc(m.id)+'">🗑️</button>':'';var edit=mine&&m.texto?'<button class="chat-msg-tool" type="button" data-chat-edit="'+esc(m.id)+'">✏️</button>':'';var pin='<button class="chat-msg-tool" type="button" data-chat-pin="'+esc(m.id)+'">'+(meta.pinned?'📌':'📍')+'</button>';var rep='<button class="chat-msg-tool chat-reply-mobile" type="button" data-chat-reply="'+esc(m.id)+'">Responder</button>';var emojis=['❤️','😂','🔥','👍'];var current=emojis.filter(function(em){return meta.reactions&&meta.reactions[em]===String(euId())}).map(function(em){return '<span class="chat-reaction on">'+em+' 1</span>'}).join('');var picker=emojis.map(function(em){return '<button type="button" data-chat-react="'+esc(m.id)+'" data-emoji="'+em+'" title="Reagir com '+em+'">'+em+'</button>'}).join('');var reactionRow='<div class="chat-reaction-row"><button type="button" class="chat-react-open" data-chat-react-open="'+esc(m.id)+'" aria-expanded="false">☺ Reagir</button>'+(current?'<div class="chat-reactions">'+current+'</div>':'')+'<div class="chat-reaction-picker">'+picker+'</div></div>';var pin=meta.pinned?'<div class="chat-pin-label">📌 Fixada nesta conversa</div>':'';var edited=(m.updated_at&&m.updated_at!==m.created_at)?'<span class="chat-edited">(editada)</span>':'';var read=mine?(m.lida?' <span class="chat-read">✓✓ lida</span>':' <span class="chat-read">✓ enviada</span>'):'';return '<div data-message-id="'+esc(m.id)+'" class="chat-msg '+(mine?'mine':'theirs')+' '+(meta.pinned?'chat-pinned':'')+' '+(window.CHAT_REACTION_SUPPRESS===String(m.id)?'chat-reaction-suppressed':'')+'"><div class="chat-msg-tools">'+rep+edit+pin+del+'</div><div class="chat-bubble">'+pin+chatFormatText(m)+img+reactionRow+'</div><span class="chat-time">'+esc(socialTempo(m.created_at))+' '+edited+read+'</span></div>'}).join('');renderHtmlEstavel(box,chatHtml);box.scrollTop=chatNewThread||chatWasBottom?box.scrollHeight:chatPrevTop;CHAT_MESSAGES.filter(function(m){return m.midia_url&&!CHAT_MEDIA_URLS[String(m.id)]}).forEach(function(m){bcLoadChatMedia(false,m)})}
 
 function carregarChatAmigos(){if(!sb||!euId())return;var ids=(AMIGOS||[]).map(String);if(!ids.length){CHAT_FRIENDS=[];chatRenderFriends();return}sb.from('perfis').select('id,slug,nome,avatar_url,codigo_convite,status_personalizado').in('id',ids).then(function(r){if(r.error)throw r.error;CHAT_FRIENDS=(r.data||[]).map(function(x){garantirPerfil(x);return perfilPorId(x.id)||{uid:x.id,id:x.slug,nome:x.nome,avatar:x.avatar_url||''}});chatRenderFriends();chatRenderMain()}).catch(function(e){toast('Não foi possível carregar o chat: '+erroTxt(e))})}
 function carregarChatMensagens(uid){if(!sb||!euId()||!chatIsFriend(uid))return Promise.resolve();chatClearReply();CHAT_ACTIVE=String(uid);CHAT_MESSAGES=[];CHAT_MEDIA_URLS={};chatRenderFriends();chatRenderMain();var eu=euId();return sb.from('clt_chat_messages').select('id,remetente_id,destinatario_id,texto,midia_url,created_at,lida').or('and(remetente_id.eq.'+eu+',destinatario_id.eq.'+uid+'),and(remetente_id.eq.'+uid+',destinatario_id.eq.'+eu+')').order('created_at',{ascending:false}).limit(300).then(function(r){if(r.error)throw r.error;if(GROUP_MODE!=='private'||String(CHAT_ACTIVE)!==String(uid)||String(euId())!==String(eu))return;CHAT_MESSAGES=(r.data||[]).slice().reverse();if(CHAT_MESSAGES.length)CHAT_PREVIEWS[String(uid)]=CHAT_MESSAGES[CHAT_MESSAGES.length-1];chatRenderMain();chatRenderFriends();return chatMarcarLidas(uid)}).catch(function(e){toast('Não foi possível carregar a conversa: '+erroTxt(e))})}
@@ -5926,7 +5941,7 @@ function groupContarNaoLidas(){if(!sb||!euId()||!GROUPS.length)return Promise.re
 
 function groupRenderList(){var b=$('#groupList');if(!b)return;var term=String($('#chatSearch')&&$('#chatSearch').value||'').trim().toLowerCase();var rows=(GROUPS||[]).filter(function(g){return !term||String(g.nome||'').toLowerCase().indexOf(term)>=0});if(!rows.length){b.innerHTML='<div class="chat-empty">'+(GROUPS.length?'Nenhum grupo encontrado.':'Você ainda não participa de nenhum grupo.<br><br>Crie um grupo com seus amigos. 👥')+'</div>';return}b.innerHTML=rows.map(function(g){var on=String(GROUP_ACTIVE)===String(g.id);var unread=Number(GROUP_UNREAD_MAP[String(g.id)]||0);return '<button type="button" class="group-item '+(on?'on':'')+'" data-group-open="'+esc(g.id)+'">'+groupAvatar(g)+'<span class="group-copy"><b>'+esc(g.nome)+'</b><small>Conversa em grupo</small></span>'+(unread?'<span class="chat-unread">'+(unread>99?'99+':unread)+'</span>':'')+'</button>'}).join('')}
 function abrirGrupos(){carregarConvitesGrupo();GROUP_MODE='groups';GROUP_ACTIVE=null;GROUP_MESSAGES=[];GROUP_MEDIA_URLS={};groupSyncMode();groupRenderList();carregarGrupos();chatRenderMain();}
-function groupRenderMain(){var g=groupGet(GROUP_ACTIVE),title=$('#chatTitle'),st=$('#chatStatus'),dot=$('#chatDot'),box=$('#chatMessages'),info=$('#groupInfo'),it=$('#groupInfoText'),manage=$('#groupManage');if(GROUP_MODE!=='groups')return;if(!g){if(title)title.textContent='Selecione um grupo';if(st)st.textContent='';if(dot)dot.className='chat-dot';if(box)box.innerHTML='<div class="chat-empty">Escolha um grupo para conversar.</div>';return}if(title)title.textContent=g.nome;var typing=window.CHAT_TYPING_TEXT||'';if(st)st.textContent=typing||'Grupo • mensagens em tempo real';if(dot)dot.className='chat-dot online';if(it)it.textContent='👥 Grupo privado';if(manage){manage.hidden=!g.admin;manage.title='Configurações do grupo';manage.setAttribute('aria-label','Configurações do grupo')}if(info)info.hidden=false;if(!box)return;if(!GROUP_MESSAGES.length){box.innerHTML='<div class="chat-empty">Nenhuma mensagem ainda.<br>Comece a conversa! 👋</div>';return}var groupPrevTop=box.scrollTop,groupNewThread=box.dataset.thread!=='group:'+GROUP_ACTIVE,groupWasBottom=box.scrollHeight-box.clientHeight-box.scrollTop<=24;box.dataset.thread='group:'+GROUP_ACTIVE;box.innerHTML=GROUP_MESSAGES.map(function(m){var mine=String(m.remetente_id)===String(euId()),src=GROUP_MEDIA_URLS[String(m.id)]||'',img=src?'<img class="chat-image" src="'+esc(src)+'" alt="Imagem enviada">':'';var del=mine?'<button class="chat-delete" type="button" data-group-delete="'+esc(m.id)+'">apagar</button>':'';return '<div data-message-id="'+esc(m.id)+'" class="chat-msg '+(mine?'mine':'theirs')+'"><div class="chat-bubble">'+(m.texto?'<div>'+chatFormatText(m)+'</div>':'')+img+'</div><span class="chat-time">'+esc(socialTempo(m.created_at))+' '+del+'</span><button type="button" class="chat-msg-tool chat-reply-mobile" data-chat-reply="'+esc(m.id)+'">Responder</button></div>'}).join('');box.scrollTop=groupNewThread||groupWasBottom?box.scrollHeight:groupPrevTop;GROUP_MESSAGES.filter(function(m){return m.midia_path&&!GROUP_MEDIA_URLS[String(m.id)]}).forEach(function(m){sb.storage.from('group-chat-media').createSignedUrl(m.midia_path,3600).then(function(r){if(!r.error&&r.data&&r.data.signedUrl){GROUP_MEDIA_URLS[String(m.id)]=r.data.signedUrl;groupRenderMain()}})})}
+function groupRenderMain(){var g=groupGet(GROUP_ACTIVE),title=$('#chatTitle'),st=$('#chatStatus'),dot=$('#chatDot'),box=$('#chatMessages'),info=$('#groupInfo'),it=$('#groupInfoText'),manage=$('#groupManage');if(GROUP_MODE!=='groups')return;if(!g){if(title)title.textContent='Selecione um grupo';if(st)st.textContent='';if(dot)dot.className='chat-dot';if(box)renderHtmlEstavel(box,'<div class="chat-empty">Escolha um grupo para conversar.</div>');return}if(title)title.textContent=g.nome;var typing=window.CHAT_TYPING_TEXT||'';if(st)st.textContent=typing||'Grupo • mensagens em tempo real';if(dot)dot.className='chat-dot online';if(it)it.textContent='👥 Grupo privado';if(manage){manage.hidden=!g.admin;manage.title='Configurações do grupo';manage.setAttribute('aria-label','Configurações do grupo')}if(info)info.hidden=false;if(!box)return;if(!GROUP_MESSAGES.length){renderHtmlEstavel(box,'<div class="chat-empty">Nenhuma mensagem ainda.<br>Comece a conversa! 👋</div>');return}var groupPrevTop=box.scrollTop,groupNewThread=box.dataset.thread!=='group:'+GROUP_ACTIVE,groupWasBottom=box.scrollHeight-box.clientHeight-box.scrollTop<=24;box.dataset.thread='group:'+GROUP_ACTIVE;var groupHtml=GROUP_MESSAGES.map(function(m){var mine=String(m.remetente_id)===String(euId()),src=GROUP_MEDIA_URLS[String(m.id)]||'',img=src?'<img class="chat-image" src="'+esc(src)+'" alt="Imagem enviada">':'';var del=mine?'<button class="chat-delete" type="button" data-group-delete="'+esc(m.id)+'">apagar</button>':'';return '<div data-message-id="'+esc(m.id)+'" class="chat-msg '+(mine?'mine':'theirs')+'"><div class="chat-bubble">'+(m.texto?'<div>'+chatFormatText(m)+'</div>':'')+img+'</div><span class="chat-time">'+esc(socialTempo(m.created_at))+' '+del+'</span><button type="button" class="chat-msg-tool chat-reply-mobile" data-chat-reply="'+esc(m.id)+'">Responder</button></div>'}).join('');renderHtmlEstavel(box,groupHtml);box.scrollTop=groupNewThread||groupWasBottom?box.scrollHeight:groupPrevTop;GROUP_MESSAGES.filter(function(m){return m.midia_path&&!GROUP_MEDIA_URLS[String(m.id)]}).forEach(function(m){bcLoadChatMedia(true,m)})}
 function abrirGrupo(gid){if(!groupGet(gid))return;GROUP_MODE="groups";CHAT_ACTIVE=null;chatClearReply();chatClearEdit();window.CHAT_TYPING_TEXT="";CHAT_SELECTED_FILE=null;chatRenderPreview();GROUP_ACTIVE=String(gid);GROUP_MESSAGES=[];GROUP_MEDIA_URLS={};groupRenderList();groupSyncMode();groupRenderMain();carregarGrupoMensagens(gid).then(function(){var c=$('#chatCard');if(c)c.classList.add('chat-conversation')})}
 function carregarGrupoMensagens(gid){var requester=String(euId());if(!sb||!euId()||!groupIsMember(gid))return Promise.resolve();return sb.from('clt_chat_group_messages').select('id,group_id,remetente_id,texto,midia_path,created_at').eq('group_id',gid).order('created_at',{ascending:false}).limit(300).then(function(r){if(r.error)throw r.error;if(GROUP_MODE!=='groups'||String(GROUP_ACTIVE)!==String(gid)||String(euId())!==requester)return;GROUP_MESSAGES=(r.data||[]).slice().reverse();groupRenderMain();return sb.from('clt_chat_group_reads').upsert({group_id:gid,user_id:euId(),last_read_at:new Date().toISOString()},{onConflict:'group_id,user_id'}).then(function(){GROUP_UNREAD_MAP[String(gid)]=0;groupRenderList()})}).catch(function(e){toast('Não foi possível carregar o grupo: '+erroTxt(e))})}
 function groupUpload(file){if(!file||!/^image\/(?:png|jpeg|webp)$/i.test(file.type))return Promise.reject(new Error('Escolha uma imagem válida.'));if(file.size>5*1024*1024)return Promise.reject(new Error('A imagem ultrapassa 5 MB.'));var ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg',path=euId()+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,9)+'.'+ext;return sb.storage.from('group-chat-media').upload(path,file,{upsert:false,contentType:file.type}).then(function(r){if(r.error)throw r.error;return path})}
@@ -5986,7 +6001,7 @@ function mobileHomeRender(){
   var h=$('#mobileHome');if(!h||!P||!euId())return;
   var me=RANKING.find(function(x){return String(x.id)===String(euId())})||{xp:0,nivel:1,jogos:0,finalizados:0};
   var n=nivelInfo(me.xp),ti=tituloCLT(n.nivel);
-  var av=$('#mhAvatar');if(av)av.innerHTML=P.avatar?'<img src="'+esc(P.avatar)+'" alt="">':'👤';
+  var av=$('#mhAvatar');if(av)renderHtmlEstavel(av,P.avatar?'<img src="'+esc(P.avatar)+'" alt="">':'👤');
   var nm=$('#mhName');if(nm)nm.textContent='Olá, '+(P.nome||P.id||'CLT')+' 👋';
   var tt=$('#mhTitle');if(tt)tt.textContent=ti.ico+' '+ti.nome+' · Nível '+n.nivel;
   var xl=$('#mhXpLabel');if(xl)xl.textContent=Number(me.xp||0)+' XP';
@@ -6054,7 +6069,7 @@ function desktopUiRender(){
   document.body.classList.toggle('desktop-ui-ready',ok);shell.setAttribute('aria-hidden',ok?'false':'true');if(!ok)return;
   var me=RANKING.find(function(x){return String(x.id)===String(euId())})||{xp:0,nivel:1,jogos:0};
   var ni=nivelInfo(Number(me.xp||0)),ti=tituloCLT(ni.nivel);
-  var av=$('#deskAvatar');if(av)av.innerHTML=P.avatar?'<img src="'+esc(P.avatar)+'" alt="">':'👤';
+  var av=$('#deskAvatar');if(av)renderHtmlEstavel(av,P.avatar?'<img src="'+esc(P.avatar)+'" alt="">':'👤');
   var dn=$('#deskName');if(dn)dn.textContent=P.nome||P.id||'CLT';
   var dh=$('#deskHandle');if(dh)dh.textContent=P.slug?'@'+P.slug:(P.bio||'Perfil pessoal');
   var dl=$('#deskLevel');if(dl)dl.textContent=ti.ico+' Nv.'+ni.nivel;
@@ -6063,8 +6078,8 @@ function desktopUiRender(){
   var cb=$('#deskChatBadge'),cu=Number(CHAT_UNREAD||0);if(cb){cb.hidden=!cu;cb.textContent=cu>99?'99+':String(cu)}
   var online=(ONLINE||[]).filter(function(x){return x&&String(x.id)!==String(euId())&&x.status!=='invisivel'&&AMIGOS.map(String).indexOf(String(x.id))>=0});var oc=$('#deskOnlineCount');if(oc)oc.textContent=String(online.length);
   var ol=$('#deskOnlineList');if(ol){var a=online.slice(0,7);renderHtmlEstavel(ol,a.length?a.map(function(f){var info=f.jogo?'🎮 '+f.jogo:perfilStatusTexto(f);return '<div class="desktop-list-row"><span class="desktop-mini-avatar">'+avatarHtml(f,'')+'</span><span class="desktop-list-copy"><b>'+esc(f.nome||f.slug||'Usuário')+'</b><small>'+esc(info)+'</small></span><i class="desktop-dot"></i></div>'}).join(''):'<div class="desktop-activity-row">Nenhum amigo online agora.</div>')}
-  var ml=$('#deskMissionList');if(ml){var ms=(MISSOES_ATIVAS||[]).slice(0,3);ml.innerHTML=ms.length?ms.map(function(m){var nome=m.titulo||m.nome||m.descricao||'Missão';var prog=Number(m.progresso||m.atual||0),meta=Number(m.meta||m.objetivo||0);return '<div class="desktop-activity-row"><b>'+esc(nome)+'</b><br><span>'+esc(String(prog))+(meta?' / '+esc(String(meta)):'')+' · '+esc(String(m.xp||m.recompensa_xp||0))+' XP</span></div>'}).join(''):'<div class="desktop-activity-row">Nenhuma missão carregada.</div>'}
-  var rl=$('#deskRankList');if(rl){var rs=(RANKING||[]).slice(0,5);rl.innerHTML=rs.length?rs.map(function(r,i){return '<div class="desktop-list-row"><span style="width:18px;text-align:center;font:800 9px Sora;color:#aaa">'+(i+1)+'</span><span class="desktop-mini-avatar">'+(r.avatar?'<img src="'+esc(r.avatar)+'" alt="">':'👤')+'</span><span class="desktop-list-copy"><b>'+esc(r.nome||r.slug||'CLT')+'</b><small>'+esc(String(r.xp||0))+' XP · Nv.'+esc(String(r.nivel||1))+'</small></span></div>'}).join(''):'<div class="desktop-activity-row">Ranking indisponível.</div>'}
+  var ml=$('#deskMissionList');if(ml){var ms=(MISSOES_ATIVAS||[]).slice(0,3);renderHtmlEstavel(ml,ms.length?ms.map(function(m){var nome=m.titulo||m.nome||m.descricao||'Missão';var prog=Number(m.progresso||m.atual||0),meta=Number(m.meta||m.objetivo||0);return '<div class="desktop-activity-row"><b>'+esc(nome)+'</b><br><span>'+esc(String(prog))+(meta?' / '+esc(String(meta)):'')+' · '+esc(String(m.xp||m.recompensa_xp||0))+' XP</span></div>'}).join(''):'<div class="desktop-activity-row">Nenhuma missão carregada.</div>')}
+  var rl=$('#deskRankList');if(rl){var rs=(RANKING||[]).slice(0,5);renderHtmlEstavel(rl,rs.length?rs.map(function(r,i){return '<div class="desktop-list-row"><span style="width:18px;text-align:center;font:800 9px Sora;color:#aaa">'+(i+1)+'</span><span class="desktop-mini-avatar">'+(r.avatar?'<img src="'+esc(r.avatar)+'" alt="">':'👤')+'</span><span class="desktop-list-copy"><b>'+esc(r.nome||r.slug||'CLT')+'</b><small>'+esc(String(r.xp||0))+' XP · Nv.'+esc(String(r.nivel||1))+'</small></span></div>'}).join(''):'<div class="desktop-activity-row">Ranking indisponível.</div>')}
   renderSteamFriendsDesktop();
   var active='jogos';if(document.body.classList.contains('desktop-home-active'))active='home';else if(document.body.classList.contains('friends-modal-on')||document.body.classList.contains('mobile-friends-active'))active='friends';else if($('#chatModal')&&$('#chatModal').classList.contains('on'))active='chat';else if(document.body.classList.contains('profile-view'))active='jogos';else active=tab||'jogos';desktopUiSetActive(active);
 }
@@ -6120,7 +6135,7 @@ function desktopUiGo(name){
   setTimeout(syncDesktop,300);
   setTimeout(syncDesktop,1000);
   setTimeout(syncDesktop,2500);
-  setInterval(function(){if(!document.hidden){try{desktopUiRender()}catch(e){}}},1200);
+  setInterval(function(){if(!document.hidden)bcFrame('desktop',desktopUiRender)},15000);
 })();
 
 
@@ -6815,8 +6830,8 @@ body::after,#wall,.hero .bg{pointer-events:none!important;}
   }
   window.addEventListener('resize',refresh,{passive:true});
   window.addEventListener('orientationchange',function(){setTimeout(refresh,80);},{passive:true});
-  var obs=new MutationObserver(function(){setTimeout(refresh,0);});
-  obs.observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:['class']});
+  var obs=new MutationObserver(function(){bcFrame('modal-layout',refresh)});
+  [document.body,document.getElementById('modal'),document.getElementById('rankingModal'),document.getElementById('chatModal'),document.getElementById('chatCard')].filter(Boolean).forEach(function(el){obs.observe(el,{attributes:true,attributeFilter:['class']})});
   setTimeout(refresh,0);
 })();
 </script>
@@ -7235,7 +7250,7 @@ function atualizarDadosRealtime(scope){APP_DATA_PENDING[scope||'all']=true;clear
 function sincronizarDadosRealtime(){
   if(!sb||!euId()||document.hidden||APP_DATA_BUSY||ocupado){if(euId()&&(APP_DATA_BUSY||ocupado))APP_DATA_TIMER=setTimeout(sincronizarDadosRealtime,500);return}
   var pending=APP_DATA_PENDING;APP_DATA_PENDING={};APP_DATA_BUSY=true;var uid=euId(),view=P,work=[];
-  if(pending.library||pending.all){if(P&&D)work.push(buscarDados().then(function(d){if(P!==view||euId()!==uid)return;setDados(d,true);cachePut(d);montarFiltros();render()}))}
+  if(pending.library||pending.all){if(P&&D)work.push(buscarDados().then(function(d){if(P!==view||euId()!==uid)return;var changed=bcLibraryChanged(d);setDados(d,true);if(changed){cachePut(d);montarFiltros();render()}}))}
   if(pending.friends||pending.all)work.push(carregarAmigos().then(function(){if(euId()===uid){carregarChatAmigos();carregarFeedSocial()}}));
   else if(pending.activity)work.push(carregarAtividadeSocial());
   if(pending.notifications||pending.all)work.push(carregarNotificacoes());
@@ -7547,8 +7562,10 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')chatReplyMen
 /* Patch 1.39 — handlers confiáveis, CSP sem execução de atributos e arquivos privados */
 document.addEventListener('click',function(e){var close=e.target.closest('[data-site-close]');if(close){fechar();return}var add=e.target.closest('[data-sec-rec-add]');if(add){e.stopPropagation();adicionarRecomendacao(Number(add.dataset.secRecAdd));return}var rec=e.target.closest('[data-sec-rec-open]');if(rec){e.stopPropagation();abrirRecomendacao(Number(rec.dataset.secRecOpen))}});
 document.addEventListener('error',function(e){var el=e.target;if(!el||el.tagName!=='IMG')return;if(el.hasAttribute('data-sec-steam-fallback')){steamAmigoCapaErro(el);return}if(el.dataset.secSteamCover&&!el.dataset.secSteamRetried){el.dataset.secSteamRetried='1';el.src=steamImg(el.dataset.secSteamCover)}},true);
-function bcScanPrivateMedia(){if(!(window.BC_CONFIG||{}).MEDIA_MODERATION_ENABLED||!sb||!euId())return;document.querySelectorAll('img[src],video[src],[style*="background-image"]').forEach(function(el){var image=el.tagName==='IMG'||el.tagName==='VIDEO',value=image?el.getAttribute('src'):el.style.backgroundImage,match=!image&&/url\(["']?(.*?)["']?\)/.exec(value),url=image?value:match&&match[1];if(!url||!bcStoredMedia(url)||el.dataset.bcPrivateResolving===url)return;el.dataset.bcPrivateResolving=url;if(image)el.removeAttribute('src');else el.style.backgroundImage='none';bcPrivateMediaUrl(url).then(function(signed){if(!el.isConnected||el.dataset.bcPrivateResolving!==url)return;if(image)el.src=signed;else el.style.backgroundImage='url("'+signed.replace(/["\\]/g,encodeURIComponent)+'")'}).catch(function(){if(image)el.alt='Arquivo indisponível ou não aprovado';})})}
-var BC_PRIVATE_SCAN_TIMER=null;BC_MEDIA_WATCHER=new MutationObserver(function(){clearTimeout(BC_PRIVATE_SCAN_TIMER);BC_PRIVATE_SCAN_TIMER=setTimeout(bcScanPrivateMedia,60)});BC_MEDIA_WATCHER.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src','style']});bcScanPrivateMedia();
+function bcScanPrivateMedia(root,deep){if(!(window.BC_CONFIG||{}).MEDIA_MODERATION_ENABLED||!sb||!euId())return;var selector='img[src],video[src],[style*="background-image"]',nodes=[];if(!root){root=document;deep=true}if(root.nodeType===1&&root.matches(selector))nodes.push(root);if(deep!==false)nodes=nodes.concat(Array.from(root.querySelectorAll(selector)));nodes.forEach(function(el){if(el.tagName==='IMG')el.decoding='async';var image=el.tagName==='IMG'||el.tagName==='VIDEO',value=image?el.getAttribute('src'):el.style.backgroundImage,match=!image&&/url\(["']?(.*?)["']?\)/.exec(value),url=image?value:match&&match[1];if(!url||!bcStoredMedia(url)||el.dataset.bcPrivateResolving===url)return;el.dataset.bcPrivateResolving=url;if(image)el.removeAttribute('src');else el.style.backgroundImage='none';bcPrivateMediaUrl(url).then(function(signed){if(!el.isConnected||el.dataset.bcPrivateResolving!==url)return;if(image)el.src=signed;else el.style.backgroundImage='url("'+signed.replace(/["\\]/g,encodeURIComponent)+'")'}).catch(function(){if(image)el.alt='Arquivo indisponível ou não aprovado';})})}
+BC_MEDIA_WATCHER=new MutationObserver(bcQueuePrivateMedia);BC_MEDIA_WATCHER.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src','style']});bcScanPrivateMedia();
 </script>
 
 <!-- Patch 1.39 · segurança e moderação automática com liberação pelo servidor -->
+
+<!-- Patch 1.40: desempenho, consultas compartilhadas e renderização estável -->
