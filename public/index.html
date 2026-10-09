@@ -1956,6 +1956,7 @@ body:not(.home) .desktop-left-rail,.mobile-notif-modal .notif-center-head,
 
 <div class="wrap" id="profilebar" hidden></div>
 <script defer src="/features.js?v=1.1.0"></script>
+<script defer src="/journey.js?v=1.2.0"></script>
 <div class="toolbar-wrap wrap" id="toolbar">
   <nav id="mobileGameTabs" class="mobile-game-tabs" aria-label="Biblioteca de jogos" hidden><button type="button" data-library-tab="jogos">🎮 Meus jogos</button><button type="button" data-library-tab="steam">🟦 Steam</button></nav>
   <div class="bcf-shortcuts"><button class="btn" type="button" data-bcf="lists">📚 Listas</button><button class="btn" type="button" data-bcf="recommendations">💌 Indicações</button><button class="btn" type="button" data-bcf="preferences">🔔 Preferências</button></div><div class="toolbar-main">
@@ -2909,7 +2910,7 @@ function otimizarFeedImagem(file){
 }
 function publicarFeed(){
   if(FEED_PUBLISH_BUSY)return;
-  var t=$('#feedText'),texto=t?String(t.value||'').trim():'',files=FEED_SELECTED_FILES.slice(0,4),uploaded=[];
+  var t=$('#feedText'),draftRaw=t?String(t.value||''):'',draftOwner=euId(),texto=draftRaw.trim(),files=FEED_SELECTED_FILES.slice(0,4),uploaded=[];
   if(!texto&&!files.length)return toast('Escreva algo ou escolha um arquivo.');
   var error=files.map(validarMidiaFeed).find(Boolean);if(error)return toast(error);
   FEED_PUBLISH_BUSY=true;var btn=$('#feedPublish');if(btn){btn.disabled=true;btn.textContent='Publicando…'}
@@ -2925,7 +2926,7 @@ function publicarFeed(){
       });
     })},Promise.resolve()).then(function(){return sb.from('clt_posts').insert({user_id:uid,texto:texto||'',midias:urls}).select('id,user_id,texto,midias,created_at,updated_at').single()});
   }).then(function(r){
-    if(r.error)throw r.error;uploaded=[];
+    if(r.error)throw r.error;uploaded=[];if(window.bcJourneyDraftCommitted)window.bcJourneyDraftCommitted(draftOwner,draftRaw);
     if(!SOCIAL_POSTS.some(function(p){return String(p.id)===String(r.data.id)}))SOCIAL_POSTS.unshift(r.data);
     limparFeedPreview();FEED_SELECTED_FILES=[];var b=$('#feedComposer');if(b)b.innerHTML='';renderFeedComposer();carregarFeedMeta().then(renderFeedSocial);toast('Publicado ✓');
   }).catch(function(e){if(uploaded.length)sb.storage.from('feed-media').remove(uploaded).catch(function(){});toast('Não foi possível publicar: '+erroMidiaFeed(e))}).finally(function(){FEED_PUBLISH_BUSY=false;var b=$('#feedPublish');if(b){b.disabled=false;b.textContent='Publicar'}});
