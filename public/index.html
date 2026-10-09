@@ -5778,7 +5778,8 @@ function definicoesMissoes(){
   var daily=MISSOES_V2?[games[day%3],media[(day+1)%3],day%2?media[(day+2)%3]:games[(day+1)%3]]:[games[0],games[2],media[2]];
   return daily.concat([
     {id:'add_game_3',tipo:'semanal',ico:'🎮',nome:'Coleção crescendo',desc:'Adicione 3 jogos nesta semana.',meta:3,xp:80},
-    {id:'media_3',tipo:'semanal',ico:'🎬',nome:'Novas histórias',desc:'Adicione 3 filmes ou séries nesta semana.',meta:3,xp:70}
+    {id:'media_3',tipo:'semanal',ico:'🎬',nome:'Novas histórias',desc:'Adicione 3 filmes ou séries nesta semana.',meta:3,xp:70},
+    {id:MISSOES_V2?'add_game_2':'add_game_1',tipo:'semanal',ico:'🕹️',nome:'Novas descobertas',desc:'Adicione '+(MISSOES_V2?2:1)+' jogo(s) nesta semana.',meta:MISSOES_V2?2:1,xp:MISSOES_V2?50:25}
   ]);
 }
 async function prepararMissoes(){
