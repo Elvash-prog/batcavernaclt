@@ -54,7 +54,7 @@ await test('stable HTML preserves nodes but recovers after an external loading p
 function tickContext(){
  const {c}=setup();c.D={jogos:[{nome:'Game',capa:'a'}],filmes:[],listas:{},fundo:null};c.sb={};c.ocupado=false;c.document.hidden=false;c.BC_TICK_BUSY=false;
  const d=deferred();c.buscarDados=()=>d.promise;c.updates=0;c.renders=0;c.setDados=x=>{c.D=x;c.updates++};c.setLive=()=>{};c.cachePut=()=>{};c.montarFiltros=()=>{};c.render=()=>c.renders++;c.$=()=>({});
- const a=html.indexOf('function bcLibraryChanged'),b=html.indexOf('/* =====================================================\n   FILTROS',a);vm.runInContext(html.slice(a,b),c);return {c,d};
+ const a=html.indexOf('function bcLibraryChanged'),b=html.lastIndexOf('/*',html.indexOf('FILTROS E RENDER',a));vm.runInContext(html.slice(a,b),c);return {c,d};
 }
 await test('library polling ignores late response after changing profile',async()=>{const {c,d}=tickContext();const p=c.tick();c.P={uid:'carol'};d.resolve({jogos:[],filmes:[],listas:{},fundo:null});await p;assert.equal(c.updates,0);assert.equal(c.BC_TICK_BUSY,false)});
 await test('unchanged library skips rendering; cover changes still update',async()=>{const {c,d}=tickContext();assert.equal(c.bcLibraryChanged({...c.D,atualizado:'new'}),false);assert.equal(c.bcLibraryChanged({...c.D,jogos:[{nome:'Game',capa:'b'}]}),true);const p=c.tick();d.resolve({...c.D,atualizado:'new'});await p;assert.equal(c.updates,1);assert.equal(c.renders,0)});
