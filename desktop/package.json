@@ -1,0 +1,14 @@
+{
+  "name": "batcaverna-clt-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:ui": "node scripts/prepare.mjs",
+    "test": "node --test scripts/desktop.test.mjs",
+    "dev": "tauri dev",
+    "build": "tauri build --bundles nsis",
+    "tauri": "tauri"
+  },
+  "devDependencies": {"@tauri-apps/cli": "^2.0.0"}
+}
