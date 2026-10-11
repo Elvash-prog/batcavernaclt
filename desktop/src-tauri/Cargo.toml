@@ -1,6 +1,6 @@
 [package]
 name = "batcaverna-clt-desktop"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 
 [build-dependencies]
@@ -14,3 +14,5 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 keyring = "3"
 open = "5"
 urlencoding = "2"
+base64 = "0.22"
+

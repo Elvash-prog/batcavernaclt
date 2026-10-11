@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
+use base64::Engine;
 use serde_json::{json, Value};
 use std::{collections::HashMap, sync::Mutex, time::{Duration, SystemTime, UNIX_EPOCH}};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
@@ -35,7 +36,7 @@ struct PasswordInput { current: String, password: String }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ProfileInput { name: String, bio: String, banner: String, status: String, steam_id: String }
+struct ProfileInput { name: String, bio: String, banner: String, status: String, steam_id: String, #[serde(default)] avatar: Option<String>, #[serde(default)] games: Option<Vec<String>> }
 
 #[derive(Deserialize)]
 struct PublishInput { text: String, #[serde(default)] media: Vec<String> }
@@ -248,7 +249,7 @@ async fn dashboard(state: tauri::State<'_, AppState>) -> Result<Value, String> {
 async fn profile(user_id: Option<String>, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?; let id=user_id.unwrap_or_else(||session.user.id.clone()); let id=safe_id(&id)?;
     let own=id==session.user.id;
-    let fields=if own{"id,nome,slug,avatar_url,banner_url,status_personalizado,bio,steam_id,fundo"}else{"id,nome,slug,avatar_url"};
+    let fields=if own{"*"}else{"id,nome,slug,avatar_url"};
     let source=if own{"perfis"}else{"perfis_publicos_clt"};
     let rows=get(&state.client,&format!("/rest/v1/{source}?select={fields}&id=eq.{id}&limit=1"),&session.access_token).await?;
     let mut p=rows.as_array().and_then(|x|x.first()).cloned().ok_or_else(||"Perfil não encontrado ou privado.".to_string())?;
@@ -277,12 +278,16 @@ async fn update_profile(input: ProfileInput, state: tauri::State<'_, AppState>) 
     if bio.chars().count()>280{return Err("A bio deve ter até 280 caracteres.".into());}
     if !banner.is_empty()&&!banner.starts_with("https://"){return Err("O banner precisa usar HTTPS.".into());}
     if !matches!(status,"online"|"jogando"|"ausente"|"dnd"|"invisivel"){return Err("Status inválido.".into());}
-    let result=rpc(&state.client,"salvar_personalizacao_perfil_clt",json!({"p_nome":name,"p_bio":if bio.is_empty(){Value::Null}else{json!(bio)},"p_banner_url":if banner.is_empty(){Value::Null}else{json!(banner)},"p_status":status,"p_titulo_destaque_nivel":0,"p_jogos_destaque":[],"p_conquistas_destaque":[]}),&session.access_token).await?;
     let steam=input.steam_id.trim();
-    if steam.is_empty()||steam.bytes().all(|b|b.is_ascii_digit()){
-        let value=if steam.is_empty(){Value::Null}else{json!(steam)};
-        let _=state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&json!({"steam_id":value})).send().await;
-    }
+    if !steam.is_empty()&&(steam.len()!=17||!steam.bytes().all(|b|b.is_ascii_digit())){return Err("Informe um Steam ID de 17 dígitos.".into());}
+    if let Some(ref avatar)=input.avatar {if !avatar.is_empty()&&!avatar.starts_with("https://"){return Err("Foto inválida.".into());}}
+    let old=get(&state.client,&format!("/rest/v1/perfis?select=*&id=eq.{}&limit=1",session.user.id),&session.access_token).await?;
+    let existing=old.as_array().and_then(|a|a.first()).cloned().unwrap_or(json!({}));
+    if input.games.as_ref().is_some_and(|g|g.len()>8){return Err("Selecione até oito jogos.".into());}
+    let result=rpc(&state.client,"salvar_personalizacao_perfil_clt",json!({"p_nome":name,"p_bio":if bio.is_empty(){Value::Null}else{json!(bio)},"p_banner_url":if banner.is_empty(){Value::Null}else{json!(banner)},"p_status":status,"p_titulo_destaque_nivel":existing.get("titulo_destaque_nivel").unwrap_or(&json!(0)),"p_jogos_destaque":input.games.map(|v|json!(v)).unwrap_or_else(||existing.get("jogos_destaque").cloned().unwrap_or(json!([]))),"p_conquistas_destaque":existing.get("conquistas_destaque").unwrap_or(&json!([]))}),&session.access_token).await?;
+    let mut patch=json!({"steam_id":if steam.is_empty(){Value::Null}else{json!(steam)}});
+    if let Some(avatar)=input.avatar {if !avatar.is_empty()&&!avatar.starts_with("https://"){return Err("Foto inválida.".into());}patch["avatar_url"]=if avatar.is_empty(){Value::Null}else{json!(avatar)};}
+    value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&patch).send().await.map_err(|_|"Não foi possível salvar foto e Steam.".to_string())?).await?;
     Ok(result)
 }
 
@@ -291,7 +296,7 @@ async fn library(category: String, state: tauri::State<'_, AppState>) -> Result<
     let session = current(&state).await?; let user = &session.user.id;
     if !matches!(category.as_str(), "jogos"|"filmes"|"series"|"animes") { return Err("Categoria inválida.".into()); }
     let source = if category == "jogos" { "jogos" } else { "filmes" };
-    let rows = get(&state.client, &format!("/rest/v1/itens?select=id,nome,categoria,tipo,status,capa,nota,horas,plataforma,loja,onde,ano,generos,review,updated_at&user_id=eq.{user}&categoria=eq.{source}&order=updated_at.desc,id.desc&limit=500"), &session.access_token).await?;
+    let rows = get(&state.client, &format!("/rest/v1/itens?select=*&user_id=eq.{user}&categoria=eq.{source}&order=updated_at.desc,id.desc&limit=500"), &session.access_token).await?;
     if category == "jogos" { return Ok(rows); }
     let filtered = rows.as_array().cloned().unwrap_or_default().into_iter().filter(|row| {
         let kind=row.get("tipo").and_then(Value::as_str).unwrap_or("").to_lowercase();
@@ -319,7 +324,7 @@ async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Val
     if !matches!(category, "jogos" | "filmes") { return Err("Categoria inválida.".into()); }
     let mut row = serde_json::Map::new();
     row.insert("nome".into(), json!(name)); row.insert("categoria".into(), json!(category));
-    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review"] {
+    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data"] {
         if let Some(value) = object.get(key) { row.insert(key.into(), value.clone()); }
     }
     let id = object.get("id").and_then(Value::as_str).map(str::to_owned).or_else(|| object.get("id").and_then(Value::as_i64).map(|v| v.to_string()));
@@ -419,6 +424,61 @@ async fn media_url(url: String, state: tauri::State<'_, AppState>) -> Result<Str
     Ok(if value.starts_with("http"){value.to_string()}else{format!("{SUPABASE_URL}/storage/v1{value}")})
 }
 
+const CATALOG_ORIGIN: &str = "https://batcavernaclt.gamersclt.workers.dev";
+#[tauri::command]
+async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?;
+    let provider=input["provider"].as_str().unwrap_or("");
+    let query=input["query"].as_str().unwrap_or("").trim();
+    if query.chars().count()>180{return Err("Pesquisa muito longa.".into());}
+    if provider=="anilist" {
+        if query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
+        let gql="query($s:String){Page(perPage:12){media(search:$s,type:ANIME,isAdult:false,sort:SEARCH_MATCH){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes description(asHtml:false)}}}";
+        return value(state.client.post("https://graphql.anilist.co").json(&json!({"query":gql,"variables":{"s":query}})).send().await.map_err(|_|"AniList indisponível.".to_string())?).await;
+    }
+    let kind=input["kind"].as_str().unwrap_or("movie");
+    let id=input["id"].as_u64();
+    let path=match provider {
+        "rawg"=>if let Some(id)=id{format!("rawg/games/{id}")}else{"rawg/games".into()},
+        "tmdb"=>{if !matches!(kind,"movie"|"tv"){return Err("Tipo inválido.".into());}if let Some(id)=id {format!("tmdb/{kind}/{id}{}",if input["providers"].as_bool()==Some(true){"/watch/providers"}else{""})}else{format!("tmdb/search/{kind}")}},
+        _=>return Err("Catálogo inválido.".into())
+    };
+    if id.is_none()&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
+    let response=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","12")]).send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
+    value(response).await
+}
+fn image_host(host: &str)->bool {
+    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || ["rawg.io","steamgriddb.com","steamstatic.com","tmdb.org","anilist.co"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
+}
+#[tauri::command]
+async fn cover_image(url: String) -> Result<String,String> {
+    let mut parsed=reqwest::Url::parse(&url).map_err(|_|"Imagem inválida.".to_string())?;
+    if parsed.scheme()!="https"||!parsed.username().is_empty()||parsed.password().is_some()||parsed.port().is_some()||!image_host(parsed.host_str().unwrap_or("")){return Err("Origem de capa não permitida.".into());}
+    parsed.set_fragment(None);
+    let client=reqwest::Client::builder().timeout(Duration::from_secs(15)).redirect(reqwest::redirect::Policy::custom(|a|{
+        if a.previous().len()<4&&a.url().scheme()=="https"&&a.url().port().is_none()&&a.url().username().is_empty()&&a.url().password().is_none()&&image_host(a.url().host_str().unwrap_or("")){a.follow()}else{a.stop()}
+    })).build().map_err(|_|"Imagem indisponível.".to_string())?;
+    let mut r=client.get(parsed).send().await.map_err(|_|"Imagem indisponível.".to_string())?;
+    if !r.status().is_success(){return Err("Capa indisponível.".into());}
+    let mime=r.headers().get("content-type").and_then(|h|h.to_str().ok()).unwrap_or("").split(';').next().unwrap_or("").to_string();
+    if !matches!(mime.as_str(),"image/png"|"image/jpeg"|"image/webp"|"image/gif"|"image/avif"){return Err("Formato de capa inválido.".into());}
+    let mut bytes=Vec::new();while let Some(chunk)=r.chunk().await.map_err(|_|"Imagem interrompida.".to_string())?{if bytes.len()+chunk.len()>8*1024*1024{return Err("Capa muito grande.".into());}bytes.extend_from_slice(&chunk);}
+    Ok(format!("data:{mime};base64,{}",base64::engine::general_purpose::STANDARD.encode(bytes)))
+}
+#[tauri::command]
+async fn upload_profile_image(input: UploadInput, state: tauri::State<'_,AppState>)->Result<Value,String>{
+    let session=current(&state).await?;
+    if input.base64.len()>14_000_000||!matches!(input.mime.as_str(),"image/png"|"image/jpeg"|"image/webp"){return Err("Escolha PNG, JPG ou WebP de até 10 MB.".into());}
+    let bytes=base64::engine::general_purpose::STANDARD.decode(&input.base64).map_err(|_|"Imagem inválida.".to_string())?;
+    if bytes.is_empty()||bytes.len()>10*1024*1024{return Err("Imagem inválida ou muito grande.".into());}
+    let ext=match input.mime.as_str(){"image/png"=>"png","image/jpeg"=>"jpg",_=>"webp"};
+    let kind=if input.name=="banner"{"banner"}else{"avatar"};
+    let stamp=SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis();
+    let path=format!("{}/{kind}-{stamp}.{ext}",session.user.id);
+    value(state.client.post(format!("{SUPABASE_URL}/storage/v1/object/avatars/{path}")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type",&input.mime).body(bytes).send().await.map_err(|_|"Não foi possível enviar a imagem.".to_string())?).await?;
+    Ok(json!({"url":format!("{SUPABASE_URL}/storage/v1/object/public/avatars/{path}")}))
+}
+
 #[tauri::command]
 async fn bright_api(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?;
@@ -515,7 +575,7 @@ fn main() {
         .build()
         .expect("Cliente HTTPS");
     tauri::Builder::default().manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, bright_api, open_external, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats])
+        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
             use tauri::{menu::{Menu,MenuItem}, tray::TrayIconBuilder};
@@ -530,3 +590,4 @@ mod tests {
     use super::*;
     #[test] fn direct_backend_only() { assert!(SUPABASE_URL.starts_with("https://")); assert!(SUPABASE_URL.ends_with(".supabase.co")); }
 }
+

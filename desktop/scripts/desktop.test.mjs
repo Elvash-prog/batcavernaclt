@@ -45,11 +45,13 @@ test('renderer usa somente comandos Tauri', () => {
   assert.doesNotMatch(script, /fetch\(|workers\.dev|supabase\.co/);
 });
 
-test('Rust acessa Supabase diretamente e não referencia o Worker', () => {
+test('Rust usa Supabase e limita o Worker ao proxy do catálogo', () => {
   const rust = read('src-tauri/src/main.rs');
   assert.match(rust, /\.supabase\.co/);
   assert.match(rust, /email_login_por_usuario/);
-  assert.doesNotMatch(rust, /workers\.dev|\/api\//);
+  assert.doesNotMatch(rust, /WebviewUrl::External/);
+  assert.match(rust, /CATALOG_ORIGIN}\/api\/catalog/);
+  assert.match(rust, /WebviewUrl::App/);
   assert.match(rust, /timeout\(Duration::from_secs\(25\)\)/);
   assert.match(rust, /send_message/);
   assert.match(rust, /respond_friend_invite/);
@@ -89,3 +91,8 @@ test('feed renderiza mídia e catálogo usa Supabase', () => {
   assert.match(rust,/functions\/v1\/media-upload/);
   assert.match(rust,/functions\/v1\/bright-api/);
 });
+
+function rendererHelpers(){const source=read('src/app.js').split("$('#mainNav').onclick")[0];const ctx={window:{},document:{},URL,URLSearchParams,Date,Intl,Map,console};vm.createContext(ctx);vm.runInContext(source,ctx);return ctx}
+test('categoriza os status existentes sem misturar platinas e zerados',()=>{const c=rendererHelpers();for(const [input,expected] of [['🏆 100% (Platina)','platinum'],['🎮 Em Progresso','progress'],['✅ Zerado','finished'],['✅ Assistido','finished'],['🟦 Biblioteca Steam','steam'],['⏸️ Pausado','paused'],['⭐ Favorito','favorite']])assert.equal(c.normalizedStatus(input),expected)});
+test('estatísticas usam data de conclusão e horas reais sem inventar meses',()=>{const c=rendererHelpers(),today=new Date().toISOString().slice(0,10),rows=[{categoria:'jogos',status:'🏆 Platina',horas:12,data:today},{categoria:'filmes',tipo:'anime',status:'✅ Concluído'},{categoria:'jogos',status:'Backlog',horas:3}];const s=c.statsFromRows(rows);assert.equal(s.total,3);assert.equal(s.concluidos,2);assert.equal(s.horas,15);assert.equal(s.animes,1);assert.equal(s.sem_data,1);assert.equal(s.months.reduce((a,m)=>a+m.jogos+m.midias,0),1)});
+test('banner preserva posição e zoom no formato usado pelo site',()=>{const c=rendererHelpers();const url=c.bannerSave('https://example.com/banner.jpg',20,80,150),data=c.bannerData(url);assert.equal(data.url,'https://example.com/banner.jpg');assert.equal(data.x,20);assert.equal(data.y,80);assert.equal(data.z,150);assert.equal(c.coverUrl('/poster.jpg'),'https://image.tmdb.org/t/p/w500/poster.jpg')});
