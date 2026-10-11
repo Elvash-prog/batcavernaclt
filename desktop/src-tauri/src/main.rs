@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod v06;
 use serde::{Deserialize, Serialize};
 use base64::Engine;
 use serde_json::{json, Value};
@@ -54,7 +55,7 @@ struct CommentInput { post_id: String, text: String }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct MessageInput { friend_id: String, text: String }
+struct MessageInput { friend_id: String, text: String, #[serde(default)] media: Option<String> }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -223,6 +224,7 @@ async fn change_password(input: PasswordInput, state: tauri::State<'_, AppState>
 
 #[tauri::command]
 fn logout(state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    v06::stop();
     clear_keyring();
     *state.session.lock().map_err(|_| "Sessão indisponível.".to_string())? = None;
     Ok(json!({"authenticated": false}))
@@ -324,7 +326,7 @@ async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Val
     if !matches!(category, "jogos" | "filmes") { return Err("Categoria inválida.".into()); }
     let mut row = serde_json::Map::new();
     row.insert("nome".into(), json!(name)); row.insert("categoria".into(), json!(category));
-    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data"] {
+    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data","inicio","prioridade","tempo_est","conquistas","preco","duracao","steam_appid"] {
         if let Some(value) = object.get(key) { row.insert(key.into(), value.clone()); }
     }
     let id = object.get("id").and_then(Value::as_str).map(str::to_owned).or_else(|| object.get("id").and_then(Value::as_i64).map(|v| v.to_string()));
@@ -438,13 +440,14 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     }
     let kind=input["kind"].as_str().unwrap_or("movie");
     let id=input["id"].as_u64();
+    let recommend=input["recommend"].as_bool()==Some(true);
     let path=match provider {
         "rawg"=>if let Some(id)=id{format!("rawg/games/{id}")}else{"rawg/games".into()},
-        "tmdb"=>{if !matches!(kind,"movie"|"tv"){return Err("Tipo inválido.".into());}if let Some(id)=id {format!("tmdb/{kind}/{id}{}",if input["providers"].as_bool()==Some(true){"/watch/providers"}else{""})}else{format!("tmdb/search/{kind}")}},
+        "tmdb"=>{if !matches!(kind,"movie"|"tv"){return Err("Tipo inválido.".into());}if let Some(id)=id {format!("tmdb/{kind}/{id}{}",if input["providers"].as_bool()==Some(true){"/watch/providers"}else{""})}else{if recommend{format!("tmdb/discover/{kind}")}else{format!("tmdb/search/{kind}")}}},
         _=>return Err("Catálogo inválido.".into())
     };
-    if id.is_none()&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
-    let response=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","12")]).send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
+    if id.is_none()&&!recommend&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
+    let response=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","12"),("ordering","-added"),("sort_by","popularity.desc"),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]).send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
     value(response).await
 }
 fn image_host(host: &str)->bool {
@@ -467,16 +470,7 @@ async fn cover_image(url: String) -> Result<String,String> {
 }
 #[tauri::command]
 async fn upload_profile_image(input: UploadInput, state: tauri::State<'_,AppState>)->Result<Value,String>{
-    let session=current(&state).await?;
-    if input.base64.len()>14_000_000||!matches!(input.mime.as_str(),"image/png"|"image/jpeg"|"image/webp"){return Err("Escolha PNG, JPG ou WebP de até 10 MB.".into());}
-    let bytes=base64::engine::general_purpose::STANDARD.decode(&input.base64).map_err(|_|"Imagem inválida.".to_string())?;
-    if bytes.is_empty()||bytes.len()>10*1024*1024{return Err("Imagem inválida ou muito grande.".into());}
-    let ext=match input.mime.as_str(){"image/png"=>"png","image/jpeg"=>"jpg",_=>"webp"};
-    let kind=if input.name=="banner"{"banner"}else{"avatar"};
-    let stamp=SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis();
-    let path=format!("{}/{kind}-{stamp}.{ext}",session.user.id);
-    value(state.client.post(format!("{SUPABASE_URL}/storage/v1/object/avatars/{path}")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type",&input.mime).body(bytes).send().await.map_err(|_|"Não foi possível enviar a imagem.".to_string())?).await?;
-    Ok(json!({"url":format!("{SUPABASE_URL}/storage/v1/object/public/avatars/{path}")}))
+    v06::moderated_upload(input,&state,"avatars").await
 }
 
 #[tauri::command]
@@ -524,16 +518,17 @@ async fn send_friend_invite(input: InviteInput, state: tauri::State<'_, AppState
 #[tauri::command]
 async fn chat_messages(friend_id: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?; let friend=safe_id(&friend_id)?; let me=&session.user.id;
-    get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida&or=(and(remetente_id.eq.{me},destinatario_id.eq.{friend}),and(remetente_id.eq.{friend},destinatario_id.eq.{me}))&order=created_at.asc&limit=300"),&session.access_token).await
+    get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,updated_at,lida&or=(and(remetente_id.eq.{me},destinatario_id.eq.{friend}),and(remetente_id.eq.{friend},destinatario_id.eq.{me}))&order=created_at.desc&limit=300"),&session.access_token).await
 }
 
 #[tauri::command]
 async fn send_message(input: MessageInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?; let friend=safe_id(&input.friend_id)?; let text=input.text.trim();
-    if text.is_empty() || text.chars().count()>2000 { return Err("Escreva uma mensagem de até 2.000 caracteres.".into()); }
+    if (text.is_empty() && input.media.is_none()) || text.chars().count()>2000 { return Err("Escreva uma mensagem de até 2.000 caracteres.".into()); }
+    if let Some(ref media)=input.media {if !media.starts_with(&format!("{}/",session.user.id))||media.contains("..")||media.contains('?')||media.contains('#'){return Err("Imagem de mensagem inválida.".into());}}
     value(state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida"))
         .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").header("prefer","return=representation")
-        .json(&json!({"remetente_id":session.user.id,"destinatario_id":friend,"texto":text})).send().await.map_err(|_| "Não foi possível enviar a mensagem.".to_string())?).await
+        .json(&json!({"remetente_id":session.user.id,"destinatario_id":friend,"texto":text,"midia_url":input.media})).send().await.map_err(|_| "Não foi possível enviar a mensagem.".to_string())?).await
 }
 
 #[tauri::command]
@@ -575,7 +570,7 @@ fn main() {
         .build()
         .expect("Cliente HTTPS");
     tauri::Builder::default().manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats])
+        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
             use tauri::{menu::{Menu,MenuItem}, tray::TrayIconBuilder};

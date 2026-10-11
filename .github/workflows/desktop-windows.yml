@@ -2,7 +2,7 @@ name: Gerar programa Windows EXE
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, codex/windows-0.6.0]
     paths:
       - "desktop/**"
       - ".github/workflows/desktop-windows.yml"
