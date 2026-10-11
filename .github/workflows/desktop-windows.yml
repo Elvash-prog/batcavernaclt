@@ -29,6 +29,12 @@ jobs:
       - name: Validar fluxos da interface
         working-directory: desktop
         run: npm run test:ui
+      - name: Disponibilizar prévias da interface
+        uses: actions/upload-artifact@v4
+        with:
+          name: BatCaverna-CLT-Windows-Previews
+          path: desktop/preview/*.png
+          if-no-files-found: error
       - name: Testes Rust
         working-directory: desktop/src-tauri
         run: cargo test
@@ -42,9 +48,3 @@ jobs:
           path: desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
           if-no-files-found: error
 
-      - name: Disponibilizar prévias da interface
-        uses: actions/upload-artifact@v4
-        with:
-          name: BatCaverna-CLT-Windows-Previews
-          path: desktop/preview/*.png
-          if-no-files-found: error
