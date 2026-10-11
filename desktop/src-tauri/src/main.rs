@@ -27,6 +27,26 @@ struct AuthReply { access_token: String, refresh_token: String, #[serde(default 
 #[derive(Deserialize)]
 struct Credentials { identifier: String, password: String, remember: bool }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LikeInput { post_id: String, liked: bool }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CommentInput { post_id: String, text: String }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MessageInput { friend_id: String, text: String }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InviteInput { user_id: String }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InviteReplyInput { invite_id: String, accept: bool }
+
 struct AppState { client: reqwest::Client, session: Mutex<Option<Session>> }
 
 fn default_expiry() -> u64 { 3600 }
@@ -69,6 +89,21 @@ async fn password_session(client: &reqwest::Client, email: &str, password: &str)
     let status = response.status();
     let body = response.text().await.map_err(|_| "A resposta do Supabase foi interrompida.".to_string())?;
     if !status.is_success() { return Err(message(&body, status)); }
+    session(serde_json::from_str(&body).map_err(|_| "Sessão inválida.".to_string())?)
+}
+
+async fn username_session(client: &reqwest::Client, username: &str, password: &str) -> Result<Session, String> {
+    let response = auth(client, "/functions/v1/login-username")
+        .json(&json!({"username": username.trim().to_lowercase(), "password": password}))
+        .send().await.map_err(|_| "Não foi possível conectar ao login por usuário.".to_string())?;
+    let status = response.status();
+    let body = response.text().await.map_err(|_| "A resposta do login foi interrompida.".to_string())?;
+    if !status.is_success() {
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Err("O login por usuário ainda não foi ativado no Supabase. Use seu e-mail por enquanto.".into());
+        }
+        return Err(message(&body, status));
+    }
     session(serde_json::from_str(&body).map_err(|_| "Sessão inválida.".to_string())?)
 }
 
@@ -121,8 +156,13 @@ async fn app_state(state: tauri::State<'_, AppState>) -> Result<Value, String> {
 #[tauri::command]
 async fn login(credentials: Credentials, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     if credentials.password.is_empty() || credentials.password.len() > 256 { return Err("Informe sua senha.".into()); }
-    let email = resolve_email(&state.client, &credentials.identifier).await?;
-    let logged = password_session(&state.client, &email, &credentials.password).await?;
+    let identifier = credentials.identifier.trim().to_lowercase();
+    if identifier.is_empty() { return Err("Informe seu usuário ou e-mail.".into()); }
+    let logged = if identifier.contains('@') {
+        password_session(&state.client, &identifier, &credentials.password).await?
+    } else {
+        username_session(&state.client, &identifier, &credentials.password).await?
+    };
     if credentials.remember { keyring()?.set_password(&logged.refresh_token).map_err(|_| "Não foi possível proteger a sessão neste computador.".to_string())?; } else { clear_keyring(); }
     let user = logged.user.clone();
     *state.session.lock().map_err(|_| "Sessão indisponível.".to_string())? = Some(logged);
@@ -156,8 +196,58 @@ async fn dashboard(state: tauri::State<'_, AppState>) -> Result<Value, String> {
 #[tauri::command]
 async fn library(category: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session = current(&state).await?; let user = &session.user.id;
-    let extra = match category.as_str() { "jogos" => "categoria=eq.jogos", "filmes" => "categoria=eq.filmes&or=(tipo.eq.filme,tipo.is.null)", "series" => "categoria=eq.filmes&tipo=eq.serie", "animes" => "categoria=eq.filmes&tipo=eq.anime", _ => return Err("Categoria inválida.".into()) };
-    get(&state.client, &format!("/rest/v1/itens?select=id,nome,categoria,tipo,status,capa,nota,horas,plataforma,onde,updated_at&user_id=eq.{user}&{extra}&order=updated_at.desc,id.desc&limit=200"), &session.access_token).await
+    if !matches!(category.as_str(), "jogos"|"filmes"|"series"|"animes") { return Err("Categoria inválida.".into()); }
+    let source = if category == "jogos" { "jogos" } else { "filmes" };
+    let rows = get(&state.client, &format!("/rest/v1/itens?select=id,nome,categoria,tipo,status,capa,nota,horas,plataforma,loja,onde,ano,generos,review,updated_at&user_id=eq.{user}&categoria=eq.{source}&order=updated_at.desc,id.desc&limit=500"), &session.access_token).await?;
+    if category == "jogos" { return Ok(rows); }
+    let filtered = rows.as_array().cloned().unwrap_or_default().into_iter().filter(|row| {
+        let kind=row.get("tipo").and_then(Value::as_str).unwrap_or("").to_lowercase();
+        let anime=kind.contains("anime")||kind.contains('🍥');
+        let series=kind.contains("serie")||kind.contains("série")||kind.contains('📺');
+        match category.as_str() { "animes"=>anime,"series"=>series&&!anime,"filmes"=>!anime&&!series,_=>false }
+    }).collect();
+    Ok(Value::Array(filtered))
+}
+
+fn safe_id(value: &str) -> Result<&str, String> {
+    if value.is_empty() || value.len() > 80 || !value.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_')) {
+        return Err("Identificador inválido.".into());
+    }
+    Ok(value)
+}
+
+#[tauri::command]
+async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session = current(&state).await?;
+    let object = item.as_object().ok_or_else(|| "Dados do título inválidos.".to_string())?;
+    let name = object.get("nome").and_then(Value::as_str).unwrap_or("").trim();
+    if name.is_empty() || name.chars().count() > 180 { return Err("Informe um nome de até 180 caracteres.".into()); }
+    let category = object.get("categoria").and_then(Value::as_str).unwrap_or("");
+    if !matches!(category, "jogos" | "filmes") { return Err("Categoria inválida.".into()); }
+    let mut row = serde_json::Map::new();
+    row.insert("nome".into(), json!(name)); row.insert("categoria".into(), json!(category));
+    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review"] {
+        if let Some(value) = object.get(key) { row.insert(key.into(), value.clone()); }
+    }
+    let id = object.get("id").and_then(Value::as_str).map(str::to_owned).or_else(|| object.get("id").and_then(Value::as_i64).map(|v| v.to_string()));
+    let response = if let Some(id) = id {
+        let id = safe_id(&id)?;
+        state.client.patch(format!("{SUPABASE_URL}/rest/v1/itens?id=eq.{id}&user_id=eq.{}&select=*", session.user.id))
+            .header("apikey", SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type", "application/json").header("prefer", "return=representation").json(&row).send().await
+    } else {
+        row.insert("user_id".into(), json!(session.user.id));
+        state.client.post(format!("{SUPABASE_URL}/rest/v1/itens?select=*"))
+            .header("apikey", SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type", "application/json").header("prefer", "return=representation").json(&row).send().await
+    }.map_err(|_| "Não foi possível salvar o título.".to_string())?;
+    value(response).await
+}
+
+#[tauri::command]
+async fn delete_item(id: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session = current(&state).await?; let id = safe_id(&id)?;
+    value(state.client.delete(format!("{SUPABASE_URL}/rest/v1/itens?id=eq.{id}&user_id=eq.{}", session.user.id))
+        .header("apikey", SUPABASE_KEY).bearer_auth(&session.access_token).header("prefer", "return=minimal")
+        .send().await.map_err(|_| "Não foi possível excluir o título.".to_string())?).await
 }
 
 async fn attach_authors(client: &reqwest::Client, posts: Value, token: &str) -> Result<Value, String> {
@@ -177,6 +267,37 @@ async fn feed(state: tauri::State<'_, AppState>) -> Result<Value, String> {
 }
 
 #[tauri::command]
+async fn social_meta(state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session = current(&state).await?;
+    let likes = get(&state.client, "/rest/v1/clt_post_likes?select=post_id,user_id,created_at&order=created_at.desc&limit=1000", &session.access_token).await?;
+    let comments = get(&state.client, "/rest/v1/clt_post_comments?select=id,post_id,user_id,texto,parent_id,created_at&order=created_at.asc&limit=1000", &session.access_token).await?;
+    Ok(json!({"likes":likes,"comments":comments,"userId":session.user.id}))
+}
+
+#[tauri::command]
+async fn toggle_like(input: LikeInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session = current(&state).await?; let post = safe_id(&input.post_id)?;
+    let response = if input.liked {
+        state.client.delete(format!("{SUPABASE_URL}/rest/v1/clt_post_likes?post_id=eq.{post}&user_id=eq.{}",session.user.id))
+            .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("prefer","return=minimal").send().await
+    } else {
+        state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_post_likes"))
+            .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").header("prefer","return=minimal")
+            .json(&json!({"post_id":post,"user_id":session.user.id})).send().await
+    }.map_err(|_| "Não foi possível atualizar a curtida.".to_string())?;
+    value(response).await
+}
+
+#[tauri::command]
+async fn add_comment(input: CommentInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?; let post=safe_id(&input.post_id)?; let text=input.text.trim();
+    if text.is_empty() || text.chars().count()>500 { return Err("Escreva um comentário de até 500 caracteres.".into()); }
+    value(state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_post_comments?select=id,post_id,user_id,texto,parent_id,created_at"))
+        .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").header("prefer","return=representation")
+        .json(&json!({"post_id":post,"user_id":session.user.id,"texto":text})).send().await.map_err(|_| "Não foi possível comentar.".to_string())?).await
+}
+
+#[tauri::command]
 async fn publish(text: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let clean = text.trim(); if clean.is_empty() || clean.chars().count() > 500 { return Err("Escreva entre 1 e 500 caracteres.".into()); }
     let session = current(&state).await?;
@@ -193,6 +314,38 @@ async fn friends(state: tauri::State<'_, AppState>) -> Result<Value, String> {
 }
 
 #[tauri::command]
+async fn search_people(query: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?; let query=query.trim();
+    if query.chars().count()<2 || query.chars().count()>80 { return Err("Digite pelo menos 2 caracteres.".into()); }
+    value(state.client.post(format!("{SUPABASE_URL}/rest/v1/rpc/buscar_usuarios_clt"))
+        .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json")
+        .json(&json!({"p_busca":query})).send().await.map_err(|_| "Não foi possível pesquisar pessoas.".to_string())?).await
+}
+
+#[tauri::command]
+async fn send_friend_invite(input: InviteInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?; let user=safe_id(&input.user_id)?;
+    value(state.client.post(format!("{SUPABASE_URL}/rest/v1/rpc/enviar_convite_amizade"))
+        .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json")
+        .json(&json!({"p_destinatario_id":user})).send().await.map_err(|_| "Não foi possível enviar o convite.".to_string())?).await
+}
+
+#[tauri::command]
+async fn chat_messages(friend_id: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?; let friend=safe_id(&friend_id)?; let me=&session.user.id;
+    get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida&or=(and(remetente_id.eq.{me},destinatario_id.eq.{friend}),and(remetente_id.eq.{friend},destinatario_id.eq.{me}))&order=created_at.asc&limit=300"),&session.access_token).await
+}
+
+#[tauri::command]
+async fn send_message(input: MessageInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?; let friend=safe_id(&input.friend_id)?; let text=input.text.trim();
+    if text.is_empty() || text.chars().count()>2000 { return Err("Escreva uma mensagem de até 2.000 caracteres.".into()); }
+    value(state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida"))
+        .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").header("prefer","return=representation")
+        .json(&json!({"remetente_id":session.user.id,"destinatario_id":friend,"texto":text})).send().await.map_err(|_| "Não foi possível enviar a mensagem.".to_string())?).await
+}
+
+#[tauri::command]
 async fn notifications(state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session = current(&state).await?;
     get(&state.client, &format!("/rest/v1/notificacoes?select=id,tipo,mensagem,actor_id,referencia_id,read,created_at&destinatario_id=eq.{}&order=created_at.desc,id.desc&limit=100", session.user.id), &session.access_token).await
@@ -202,6 +355,23 @@ async fn notifications(state: tauri::State<'_, AppState>) -> Result<Value, Strin
 async fn mark_notifications_read(state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session = current(&state).await?;
     value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/notificacoes?destinatario_id=eq.{}&read=eq.false", session.user.id)).header("apikey", SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type", "application/json").header("prefer", "return=minimal").json(&json!({"read":true})).send().await.map_err(|_| "Não foi possível atualizar as notificações.".to_string())?).await
+}
+
+#[tauri::command]
+async fn respond_friend_invite(input: InviteReplyInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?; let invite=safe_id(&input.invite_id)?;
+    let function=if input.accept {"aceitar_convite_amizade"} else {"recusar_convite_amizade"};
+    value(state.client.post(format!("{SUPABASE_URL}/rest/v1/rpc/{function}"))
+        .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json")
+        .json(&json!({"p_convite_id":invite})).send().await.map_err(|_| "Não foi possível responder ao convite.".to_string())?).await
+}
+
+#[tauri::command]
+async fn journey_stats(state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?;
+    value(state.client.post(format!("{SUPABASE_URL}/rest/v1/rpc/clt_journey"))
+        .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json")
+        .json(&json!({"p_action":"stats","p_data":{}})).send().await.map_err(|_| "Não foi possível carregar as estatísticas.".to_string())?).await
 }
 
 fn local_url(url: &tauri::Url) -> bool { (url.scheme() == "tauri" && url.host_str() == Some("localhost")) || (url.scheme() == "http" && url.host_str() == Some("tauri.localhost") && url.port().is_none()) }
@@ -214,7 +384,7 @@ fn main() {
         .build()
         .expect("Cliente HTTPS");
     tauri::Builder::default().manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![app_state, login, logout, dashboard, library, feed, publish, friends, notifications, mark_notifications_read])
+        .invoke_handler(tauri::generate_handler![app_state, login, logout, dashboard, library, save_item, delete_item, feed, social_meta, publish, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
             use tauri::{menu::{Menu,MenuItem}, tray::TrayIconBuilder};

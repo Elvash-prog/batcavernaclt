@@ -1,8 +1,8 @@
-# BatCaverna CLT para Windows — 0.2.2
+# BatCaverna CLT para Windows — 0.3.0
 
 Aplicativo Tauri com interface própria instalada localmente. Ele não abre nem empacota o site e não depende do endereço `workers.dev`.
 
-Esta versão corrige a exibição simultânea das telas, adiciona retorno visual ao login e impede falhas silenciosas ou espera indefinida na conexão.
+Esta versão inaugura a interface completa: ícone oficial, biblioteca editável, feed interativo, chat privado, busca e convites de amizade, notificações acionáveis e estatísticas.
 
 ## Já funciona nesta base
 

@@ -15,6 +15,7 @@ test('login e aplicativo respeitam o estado oculto', () => {
   const html = read('src/index.html');
   const css = read('src/visibility.css');
   assert.match(html, /href="visibility\.css"/);
+  assert.match(html, /href="phase03\.css"/);
   assert.match(css, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/i);
 });
 
@@ -38,6 +39,9 @@ test('renderer usa somente comandos Tauri', () => {
   new vm.Script(script);
   assert.match(script, /call\('dashboard'\)/);
   assert.match(script, /call\('library'/);
+  assert.match(script, /call\('chat_messages'/);
+  assert.match(script, /call\('save_item'/);
+  assert.match(script, /call\('toggle_like'/);
   assert.doesNotMatch(script, /fetch\(|workers\.dev|supabase\.co/);
 });
 
@@ -47,4 +51,15 @@ test('Rust acessa Supabase diretamente e não referencia o Worker', () => {
   assert.match(rust, /email_login_por_usuario/);
   assert.doesNotMatch(rust, /workers\.dev|\/api\//);
   assert.match(rust, /timeout\(Duration::from_secs\(25\)\)/);
+  assert.match(rust, /send_message/);
+  assert.match(rust, /respond_friend_invite/);
+});
+
+test('login por usuário usa função segura do Supabase', () => {
+  const edge = read('supabase/functions/login-username/index.ts');
+  const rust = read('src-tauri/src/main.rs');
+  assert.match(edge, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(edge, /email_login_por_usuario/);
+  assert.match(rust, /\/functions\/v1\/login-username/);
+  assert.doesNotMatch(rust, /service_role/);
 });
