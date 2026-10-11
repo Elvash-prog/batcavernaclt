@@ -63,3 +63,29 @@ test('login por usuário usa função segura do Supabase', () => {
   assert.match(rust, /\/functions\/v1\/login-username/);
   assert.doesNotMatch(rust, /service_role/);
 });
+
+test('versão 0.4 inclui autenticação completa e perfil', () => {
+  const html=read('src/index.html'),script=read('src/app.js'),rust=read('src-tauri/src/main.rs');
+  assert.match(html,/id="registerForm"/);
+  assert.match(html,/id="recoverForm"/);
+  assert.match(html,/data-view="profile"/);
+  assert.match(script,/call\('register'/);
+  assert.match(script,/call\('recover_password'/);
+  assert.match(rust,/async fn update_profile/);
+});
+
+test('chat é limitado à área útil e mantém o compositor na grade', () => {
+  const css=read('src/styles.css');
+  assert.match(css,/\.content\{[^}]*min-height:0[^}]*overflow:auto/);
+  assert.match(css,/\.chat-layout\{[^}]*height:100%[^}]*min-height:0/);
+  assert.match(css,/\.conversation\{[^}]*grid-template-rows:auto minmax\(0,1fr\) auto/);
+});
+
+test('feed renderiza mídia e catálogo usa Supabase', () => {
+  const script=read('src/app.js'),rust=read('src-tauri/src/main.rs');
+  assert.match(script,/Foto ou vídeo/);
+  assert.match(script,/data-private-src/);
+  assert.match(script,/op:'gratis'/);
+  assert.match(rust,/functions\/v1\/media-upload/);
+  assert.match(rust,/functions\/v1\/bright-api/);
+});
