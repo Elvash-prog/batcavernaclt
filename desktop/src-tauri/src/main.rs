@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{collections::HashMap, sync::Mutex, time::{SystemTime, UNIX_EPOCH}};
+use std::{collections::HashMap, sync::Mutex, time::{Duration, SystemTime, UNIX_EPOCH}};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 const SUPABASE_URL: &str = "https://luoqlhgfmixvfqbfcdoc.supabase.co";
@@ -207,7 +207,12 @@ async fn mark_notifications_read(state: tauri::State<'_, AppState>) -> Result<Va
 fn local_url(url: &tauri::Url) -> bool { (url.scheme() == "tauri" && url.host_str() == Some("localhost")) || (url.scheme() == "http" && url.host_str() == Some("tauri.localhost") && url.port().is_none()) }
 
 fn main() {
-    let client = reqwest::Client::builder().redirect(reqwest::redirect::Policy::none()).build().expect("Cliente HTTPS");
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(25))
+        .build()
+        .expect("Cliente HTTPS");
     tauri::Builder::default().manage(AppState { client, session: Mutex::new(None) })
         .invoke_handler(tauri::generate_handler![app_state, login, logout, dashboard, library, feed, publish, friends, notifications, mark_notifications_read])
         .setup(|app| {

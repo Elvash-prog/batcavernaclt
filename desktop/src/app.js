@@ -42,6 +42,19 @@ function toast(message) {
   toast.timer = setTimeout(() => { node.hidden = true; }, 3500);
 }
 
+function failureMessage(failure) {
+  if (typeof failure === 'string' && failure.trim()) return failure;
+  if (failure && typeof failure.message === 'string' && failure.message.trim()) return failure.message;
+  return 'Não foi possível entrar. Verifique sua conexão e tente novamente.';
+}
+
+function setLoginPending(pending) {
+  const button = $('#loginForm button[type="submit"]');
+  button.disabled = pending;
+  button.textContent = pending ? 'Entrando…' : button.dataset.idleLabel;
+  $('#loginForm').setAttribute('aria-busy', String(pending));
+}
+
 function loading() { $('#content').innerHTML = '<div class="loading">Carregando sua BatCaverna...</div>'; }
 function errorCard(error) { $('#content').innerHTML = `<div class="error-card">${escapeHtml(error.message)}</div>`; }
 
@@ -147,15 +160,21 @@ $('#mainNav').addEventListener('click', event => {
 $('#loginForm').addEventListener('submit', async event => {
   event.preventDefault();
   const form = event.currentTarget;
-  const button = form.querySelector('button');
   const error = $('#loginError');
+  const fields = new FormData(form);
   error.textContent = '';
-  button.disabled = true;
+  setLoginPending(true);
   try {
-    await api.login({ identifier: form.identifier.value, password: form.password.value, remember: form.remember.checked });
+    await api.login({
+      identifier: String(fields.get('identifier') || '').trim(),
+      password: String(fields.get('password') || ''),
+      remember: fields.get('remember') === 'on'
+    });
     showApp();
-  } catch (failure) { error.textContent = failure.message; }
-  finally { button.disabled = false; }
+  } catch (failure) {
+    error.textContent = failureMessage(failure);
+    error.focus();
+  } finally { setLoginPending(false); }
 });
 
 api.state().then(initial => {
