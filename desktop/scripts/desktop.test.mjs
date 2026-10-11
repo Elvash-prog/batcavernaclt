@@ -11,6 +11,13 @@ test('interface desktop é própria e não carrega o site', () => {
   assert.doesNotMatch(html, /iframe|workers\.dev|config\.js/i);
 });
 
+test('login e aplicativo respeitam o estado oculto', () => {
+  const html = read('src/index.html');
+  const css = read('src/visibility.css');
+  assert.match(html, /href="visibility\.css"/);
+  assert.match(css, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/i);
+});
+
 test('renderer usa somente comandos Tauri', () => {
   const script = read('src/app.js');
   new vm.Script(script);
