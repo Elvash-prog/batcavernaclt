@@ -87,3 +87,18 @@ do $$ declare tab text; begin
 end $$;
 notify pgrst,'reload schema';
 commit;
+-- Personalização completa apenas para o dono e amizades autorizadas.
+begin;
+create or replace function public.clt_desktop_profile(p_id uuid) returns jsonb
+language plpgsql security definer set search_path=public,pg_temp as $$
+declare u uuid:=auth.uid(); result jsonb;
+begin
+ if u is null or not(u=p_id or clt_private.friends(u,p_id)) then raise exception 'Perfil restrito aos amigos.'; end if;
+ select jsonb_build_object('id',id,'nome',nome,'slug',slug,'avatar_url',avatar_url,'banner_url',banner_url,'bio',bio,'steam_id',steam_id,'status_personalizado',status_personalizado,'titulo_destaque_nivel',titulo_destaque_nivel,'jogos_destaque',jogos_destaque,'conquistas_destaque',conquistas_destaque) into result from public.perfis where id=p_id;
+ result=coalesce(result,'{}'::jsonb)||jsonb_build_object('amigos_em_comum',coalesce((select jsonb_agg(distinct a.amigo_id) from public.amigos a where a.user_id=p_id and (p_id=u or exists(select 1 from public.amigos b where b.user_id=u and b.amigo_id=a.amigo_id))),'[]'::jsonb));
+ return result;
+end; $$;
+revoke all on function public.clt_desktop_profile(uuid) from public,anon;
+grant execute on function public.clt_desktop_profile(uuid) to authenticated;
+notify pgrst,'reload schema';
+commit;

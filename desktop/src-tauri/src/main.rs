@@ -37,7 +37,7 @@ struct PasswordInput { current: String, password: String }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ProfileInput { name: String, bio: String, banner: String, status: String, steam_id: String, #[serde(default)] avatar: Option<String>, #[serde(default)] games: Option<Vec<String>> }
+struct ProfileInput { name: String, bio: String, banner: String, status: String, steam_id: String, #[serde(default)] avatar: Option<String>, #[serde(default)] games: Option<Vec<String>>, #[serde(default)] achievements: Option<Vec<u32>>, #[serde(default)] title_level: Option<u32> }
 
 #[derive(Deserialize)]
 struct PublishInput { text: String, #[serde(default)] media: Vec<String> }
@@ -285,8 +285,9 @@ async fn update_profile(input: ProfileInput, state: tauri::State<'_, AppState>) 
     if let Some(ref avatar)=input.avatar {if !avatar.is_empty()&&!avatar.starts_with("https://"){return Err("Foto inválida.".into());}}
     let old=get(&state.client,&format!("/rest/v1/perfis?select=*&id=eq.{}&limit=1",session.user.id),&session.access_token).await?;
     let existing=old.as_array().and_then(|a|a.first()).cloned().unwrap_or(json!({}));
+    if input.achievements.as_ref().is_some_and(|v|v.len()>4){return Err("Selecione até quatro conquistas.".into());}
     if input.games.as_ref().is_some_and(|g|g.len()>8){return Err("Selecione até oito jogos.".into());}
-    let result=rpc(&state.client,"salvar_personalizacao_perfil_clt",json!({"p_nome":name,"p_bio":if bio.is_empty(){Value::Null}else{json!(bio)},"p_banner_url":if banner.is_empty(){Value::Null}else{json!(banner)},"p_status":status,"p_titulo_destaque_nivel":existing.get("titulo_destaque_nivel").unwrap_or(&json!(0)),"p_jogos_destaque":input.games.map(|v|json!(v)).unwrap_or_else(||existing.get("jogos_destaque").cloned().unwrap_or(json!([]))),"p_conquistas_destaque":existing.get("conquistas_destaque").unwrap_or(&json!([]))}),&session.access_token).await?;
+    let result=rpc(&state.client,"salvar_personalizacao_perfil_clt",json!({"p_nome":name,"p_bio":if bio.is_empty(){Value::Null}else{json!(bio)},"p_banner_url":if banner.is_empty(){Value::Null}else{json!(banner)},"p_status":status,"p_titulo_destaque_nivel":input.title_level.map(|v|json!(v)).unwrap_or_else(||existing.get("titulo_destaque_nivel").cloned().unwrap_or(json!(0))),"p_jogos_destaque":input.games.map(|v|json!(v)).unwrap_or_else(||existing.get("jogos_destaque").cloned().unwrap_or(json!([]))),"p_conquistas_destaque":input.achievements.map(|v|json!(v)).unwrap_or_else(||existing.get("conquistas_destaque").cloned().unwrap_or(json!([])))}),&session.access_token).await?;
     let mut patch=json!({"steam_id":if steam.is_empty(){Value::Null}else{json!(steam)}});
     if let Some(avatar)=input.avatar {if !avatar.is_empty()&&!avatar.starts_with("https://"){return Err("Foto inválida.".into());}patch["avatar_url"]=if avatar.is_empty(){Value::Null}else{json!(avatar)};}
     value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&patch).send().await.map_err(|_|"Não foi possível salvar foto e Steam.".to_string())?).await?;

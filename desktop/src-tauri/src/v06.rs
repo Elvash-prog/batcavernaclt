@@ -16,14 +16,21 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
  let reaction_table=if input["group"].as_bool()==Some(true){"clt_chat_group_reactions"}else{"clt_chat_reactions"};
  let message_table=if input["group"].as_bool()==Some(true){"clt_chat_group_messages"}else{"clt_chat_messages"};
  match op{
+ "notification_message"=>{let id=safe_id(ident)?;get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id&id=eq.{id}&limit=1"),token).await},
  "clear_notifications"=>rpc(&state.client,"clt_desktop_clear_notifications",json!({}),token).await,
  "read_notification"=>{let id=safe_id(ident)?;write(&state,&session,reqwest::Method::PATCH,&format!("/rest/v1/notificacoes?id=eq.{id}&destinatario_id=eq.{me}"),json!({"read":true})).await},
  "ranking"=>rpc(&state.client,"ranking_clt",json!({}),token).await,
+ "prepare_missions"=>{let period=input["period"].as_str().unwrap_or("");let ids=input["ids"].as_array().ok_or("Missões inválidas.")?;if period.len()>25||!period.chars().all(|c|c.is_ascii_alphanumeric()||c=='-'||c==':')||ids.len()>3||ids.iter().any(|x|!matches!(x.as_str(),Some("add_game_1"|"add_game_2"|"add_game_3"|"media_1"|"media_2"|"media_3"))){return Err("Missões inválidas.".into());}rpc(&state.client,"preparar_missoes_clt",json!({"p_periodo":period,"p_missoes":ids}),token).await},
+ "mission_version"=>rpc(&state.client,"missoes_clt_versao",json!({}),token).await,
+ "mutual_friends"=>{let id=safe_id(ident)?;let rows=get(&state.client,&format!("/rest/v1/amigos?select=amigo_id&user_id=eq.{id}"),token).await?;Ok(rows)},
  "missions"=>rpc(&state.client,"missoes_clt",json!({}),token).await,
  "claim_mission"=>{let id=input["missionId"].as_u64().ok_or("Missão inválida.")?;rpc(&state.client,"resgatar_missao_clt",json!({"p_id":id}),token).await},
  "profile_bundle"=>{
    let id=safe_id(ident)?;if id!=me{let f=get(&state.client,&format!("/rest/v1/amigos?select=amigo_id&user_id=eq.{me}&amigo_id=eq.{id}&limit=1"),token).await?;if f.as_array().is_none_or(|a|a.is_empty()){return Err("Este perfil é restrito aos amigos.".into());}}
-   let detail=rpc(&state.client,"perfil_detalhes_autorizado",json!({"p_perfil_id":id}),token).await?;
+   let personalization=rpc(&state.client,"clt_desktop_profile",json!({"p_id":id}),token).await?;
+   let mut detail=rpc(&state.client,"perfil_detalhes_autorizado",json!({"p_perfil_id":id}),token).await?;
+   if let Some(a)=detail.as_array_mut(){if a.is_empty(){a.push(json!({}));}if let (Some(obj),Some(p))=(a[0].as_object_mut(),personalization.as_object()){obj.extend(p.clone());}}
+
    if input["light"].as_bool()==Some(true){return Ok(json!({"detail":detail}));}
    let mut items=Vec::new();for offset in (0..10000).step_by(1000){let r=get(&state.client,&format!("/rest/v1/itens?select=id,user_id,categoria,nome,plataforma,status,nota,data,inicio,horas,loja,ano,prioridade,tempo_est,conquistas,capa,tipo,onde,duracao,steam_appid,generos,created_at,updated_at&user_id=eq.{id}&order=id.asc&offset={offset}&limit=1000"),token).await?;let rows=r.as_array().cloned().unwrap_or_default();let count=rows.len();items.extend(rows);if count<1000{break;}}
    let ranking=rpc(&state.client,"ranking_clt",json!({}),token).await.unwrap_or(json!([]));
