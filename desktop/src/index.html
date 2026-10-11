@@ -1,3 +1,50 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BatCaverna CLT</title><style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(ellipse at top,#231849,#09090f 65%);color:#efedf8;font:16px/1.6 system-ui,sans-serif}main{width:min(540px,90%);padding:48px;text-align:center;border:1px solid #ffffff16;border-radius:24px;background:#13111bcc}img{width:80px;height:80px;border-radius:20px}h1{font-size:30px;letter-spacing:-1px;margin:20px 0 0}small{color:#ad94f7;letter-spacing:3px}p{color:#b8b4c8}button{padding:13px 24px;background:#885af7;color:white;border:0;border-radius:10px;font:600 15px system-ui;cursor:pointer}button:focus-visible{outline:3px solid white;outline-offset:4px}
-</style><script src="desktop-bridge.js"></script></head><body><main><img src="icon-192.png" alt=""><h1>BatCaverna CLT</h1><small>PARA WINDOWS</small><p id="status" role="status">Preparando seu espaço…</p><button id="retry" hidden>Tentar novamente</button></main><script src="startup.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BatCaverna dos CLTs</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-brand">
+      <img src="icon.png" alt="">
+      <p>BATCAVERNA DOS CLTs</p>
+      <h1>Sua biblioteca e sua comunidade no Windows.</h1>
+      <span>Interface instalada no computador, conectada diretamente ao Supabase.</span>
+    </div>
+    <form id="loginForm" class="login-panel">
+      <div><span class="eyebrow">APLICATIVO WINDOWS</span><h2>Entrar</h2></div>
+      <label>Usuário ou e-mail<input name="identifier" autocomplete="username" required></label>
+      <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
+      <label class="remember"><input name="remember" type="checkbox"> Manter minha conta conectada</label>
+      <button class="primary" type="submit">Entrar na BatCaverna</button>
+      <p id="loginError" class="error" role="alert"></p>
+    </form>
+  </section>
+  <div id="appShell" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="logo"><img src="icon.png" alt=""><strong>BatCaverna</strong></div>
+      <nav id="mainNav">
+        <button data-view="home" class="active"><span>⌂</span>Início</button>
+        <button data-view="library"><span>▦</span>Biblioteca</button>
+        <button data-view="social"><span>◉</span>Social</button>
+        <button data-view="friends"><span>♙</span>Amigos</button>
+        <button data-view="notifications"><span>●</span>Notificações <b id="navUnread" hidden></b></button>
+        <button data-view="settings"><span>⚙</span>Configurações</button>
+      </nav>
+      <div class="sidebar-foot"><small>Windows <span id="appVersion"></span></small></div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <div><span id="pageEyebrow" class="eyebrow">VISÃO GERAL</span><h1 id="pageTitle">Início</h1></div>
+        <div class="account"><img id="accountAvatar" alt=""><div><strong id="accountName">Minha conta</strong><small id="accountStatus">Online</small></div></div>
+      </header>
+      <div id="content" class="content" aria-live="polite"></div>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,6 +1,11 @@
 name: Gerar programa Windows EXE
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop-windows.yml"
 permissions:
   contents: read
 jobs:
@@ -15,31 +20,18 @@ jobs:
       - name: Instalar dependências desktop
         working-directory: desktop
         run: npm install
-      - name: Verificar adaptação desktop
+      - name: Verificar interface desktop
         working-directory: desktop
-        run: npm run prepare:ui && npm test
-      - name: Instalar dependências dos testes existentes
-        working-directory: tests
-        run: npm install
-      - name: Testes existentes
-        shell: pwsh
-        run: |
-          Get-ChildItem tests/*.mjs | ForEach-Object {
-            node $_.FullName
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+        run: npm test
       - name: Testes Rust
         working-directory: desktop/src-tauri
         run: cargo test
       - name: Compilar instalador EXE
         working-directory: desktop
         run: npm run build
-      - name: Disponibilizar instalador e locks da compilação
+      - name: Disponibilizar instalador
         uses: actions/upload-artifact@v4
         with:
           name: BatCaverna-CLT-Windows-EXE
-          path: |
-            desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
-            desktop/package-lock.json
-            desktop/src-tauri/Cargo.lock
+          path: desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
           if-no-files-found: error
