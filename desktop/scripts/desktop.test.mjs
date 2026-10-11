@@ -56,7 +56,7 @@ test('Rust acessa Supabase diretamente e não referencia o Worker', () => {
 });
 
 test('login por usuário usa função segura do Supabase', () => {
-  const edge = read('supabase/functions/login-username/index.ts');
+  const edge = fs.readFileSync(new URL('../../supabase/functions/login-username/index.ts', import.meta.url), 'utf8');
   const rust = read('src-tauri/src/main.rs');
   assert.match(edge, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(edge, /email_login_por_usuario/);
