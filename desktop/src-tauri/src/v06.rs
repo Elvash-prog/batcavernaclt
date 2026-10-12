@@ -1,4 +1,6 @@
 use super::*;
+fn steam_title_key(title:&str)->String{title.chars().filter(|c|c.is_alphanumeric()).flat_map(char::to_lowercase).collect()}
+
 use futures_util::{SinkExt, StreamExt};
 use std::sync::{atomic::{AtomicU64,Ordering},LazyLock};
 use tauri::Emitter;
@@ -50,7 +52,7 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
  "read_group"=>{let id=safe_id(ident)?;let response=state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_chat_group_reads?on_conflict=group_id,user_id")).header("apikey",SUPABASE_KEY).bearer_auth(token).header("content-type","application/json").header("prefer","resolution=merge-duplicates").json(&json!({"group_id":id,"user_id":me,"last_read_at":chrono::Utc::now().to_rfc3339()})).send().await.map_err(|_|"Falha ao marcar leitura.".to_string())?;value(response).await},
  "group_invite"=>{let id=safe_id(ident)?;rpc(&state.client,"responder_convite_grupo_clt",json!({"p_invite_id":id,"p_accept":input["accept"].as_bool().unwrap_or(false)}),token).await},
  "steam_details"=>{
-   let id=if let Some(id)=input["appid"].as_u64(){id}else{let q=input["query"].as_str().unwrap_or("").trim();if q.len()<2||q.len()>180{return Err("Nome inválido.".into());}let r=value(state.client.get("https://store.steampowered.com/api/storesearch/").query(&[("term",q),("cc","br"),("l","portuguese")]).send().await.map_err(|_|"Steam indisponível.".to_string())?).await?;r["items"].as_array().and_then(|a|{let matches:Vec<_>=a.iter().filter(|x|x["name"].as_str().is_some_and(|name|name.trim().eq_ignore_ascii_case(q))).collect();if matches.len()==1{Some(matches[0])}else{None}}).and_then(|x|x["id"].as_u64()).ok_or("Jogo não encontrado na Steam.")?};
+   let id=if let Some(id)=input["appid"].as_u64(){id}else{let q=input["query"].as_str().unwrap_or("").trim();if q.len()<2||q.len()>180{return Err("Nome inválido.".into());}let r=value(state.client.get("https://store.steampowered.com/api/storesearch/").query(&[("term",q),("cc","br"),("l","portuguese")]).send().await.map_err(|_|"Steam indisponível.".to_string())?).await?;r["items"].as_array().and_then(|a|{let matches:Vec<_>=a.iter().filter(|x|x["name"].as_str().is_some_and(|name|steam_title_key(name)==steam_title_key(q))).collect();if matches.len()==1{Some(matches[0])}else{None}}).and_then(|x|x["id"].as_u64()).ok_or("Jogo não encontrado na Steam.")?};
    let r=value(state.client.get("https://store.steampowered.com/api/appdetails").query(&[("appids",id.to_string()),("cc","br".into()),("l","brazilian".into())]).send().await.map_err(|_|"Steam indisponível.".to_string())?).await?;
    let d=&r[id.to_string()]["data"];if d.is_null(){return Err("Dados da Steam indisponíveis.".into());}let genres=d["genres"].as_array().cloned().unwrap_or_default();if genres.iter().any(|g|g["id"].as_str()==Some("71")){return Err("Título adulto indisponível.".into());}
    Ok(json!({"steam_appid":id,"nome":d["name"],"generos":genres,"capa":d["header_image"],"descricao":d["short_description"],"preco":d["price_overview"]["final_formatted"],"desenvolvedores":d["developers"],"lancamento":d["release_date"]["date"],"screenshots":d["screenshots"],"movies":d["movies"],"metacritic":d["metacritic"],"recommendations":d["recommendations"],"platforms":d["platforms"]}))
@@ -102,5 +104,15 @@ async fn realtime_loop(app:tauri::AppHandle,owner:String,generation:u64){
    }
   }
   let _=app.emit("desktop-connection",json!({"userId":owner,"status":"polling"}));tokio::time::sleep(Duration::from_secs(5)).await;
+ }
+}
+
+#[cfg(test)]
+mod title_tests{
+ use super::steam_title_key;
+ #[test] fn steam_names_ignore_brand_marks_but_keep_sequels_and_editions(){
+  assert_eq!(steam_title_key("DARK SOULS™ III"),steam_title_key("Dark Souls III"));
+  assert_ne!(steam_title_key("Dark Souls II"),steam_title_key("Dark Souls III"));
+  assert_ne!(steam_title_key("Dark Souls III Deluxe Edition"),steam_title_key("Dark Souls III"));
  }
 }
