@@ -43,7 +43,7 @@ pub fn desktop_preferences(input: Option<DesktopPreferences>, app: tauri::AppHan
 #[tauri::command]
 pub fn test_windows_notification(app: tauri::AppHandle) -> Result<(), String> {
     app.notification().builder().title("BatCaverna CLT").body("As notificações do Windows estão funcionando. Ao fechar a janela, o programa pode continuar na bandeja.").show()
-        .map_err(|_| "O Windows não exibiu a notificação. Confira as permissões de notificações do aplicativo.")
+        .map_err(|_| "O Windows não exibiu a notificação. Confira as permissões de notificações do aplicativo.".to_string())
 }
 fn notice_id(n: &Value) -> Option<String> { match &n["id"] { Value::String(id) => Some(id.clone()), Value::Number(id) => Some(id.to_string()), _ => None } }
 fn fresh_notifications(rows: &[Value], seen: &HashSet<String>, initialized: bool) -> Vec<Value> {
