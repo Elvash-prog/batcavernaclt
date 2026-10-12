@@ -114,3 +114,11 @@ test('gêneros preservam listas da API e convertem campos do editor para arrays'
  assert.deepEqual(JSON.parse(JSON.stringify(parse([{description:'Ação'},{name:'RPG'}]))),['Ação','RPG']);
  assert.deepEqual(JSON.parse(JSON.stringify(parse(null))),[]);
 });
+
+
+test('histórico mantém datas de calendário sem deslocamento de fuso',()=>{
+ const source=read('src/reference.js').match(/function referenceDate\(value\)\{[^\n]+/)[0];
+ const format=vm.runInNewContext('('+source+')',{date:()=> 'timestamp formatado'});
+ assert.equal(format('2026-10-11'),'11/10/2026');
+ assert.equal(format('2026-10-11T20:00:00Z'),'timestamp formatado');
+});

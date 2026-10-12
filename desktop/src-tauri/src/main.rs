@@ -609,6 +609,7 @@ mod tests {
         assert_eq!(normalize_genres(&Value::Null).unwrap(), json!([]));
         assert!(normalize_genres(&json!([42])).is_err());
     }
+    #[test] fn invalid_steam_launch_ids_are_rejected() { assert!(launch_game(0).is_err()); assert!(launch_game(10_000_000_000).is_err()); }
     #[test] fn direct_backend_only() { assert!(SUPABASE_URL.starts_with("https://")); assert!(SUPABASE_URL.ends_with(".supabase.co")); }
 }
 
