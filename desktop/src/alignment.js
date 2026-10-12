@@ -31,6 +31,19 @@ navigate=async function(view){
  $('#content')?.classList.remove('friends-chat-reference','chat-reference-active');
  return baseNavigate(view==='collection'?'library':view);
 };
+const baseDrawLibrary=drawLibrary;
+drawLibrary=function(){
+ baseDrawLibrary();if(state.current!=='library')return;
+ const tabs=$('#statusTabs');if(tabs)tabs.hidden=false;
+ const filter=$('#libraryStatusFilter');if(filter)filter.value=state.libraryStatus;
+};
+const baseLibrary=renderLibrary;
+renderLibrary=async function(){
+ await baseLibrary();if(state.current!=='library')return;
+ let theme={};try{theme=JSON.parse(localStorage.getItem('bc-desktop-theme-v2')||'{}')}catch{}
+ $('#content').style.setProperty('--collection-card-width',`${Math.max(180,Math.min(500,Number(theme.cardWidth)||190))}px`);
+ drawLibrary();
+};
 const friendsNav=$('#mainNav [data-view="friends"]');
 friendsNav?.remove();
 const chatNav=$('#mainNav [data-view="chat"]');
@@ -92,7 +105,7 @@ renderFriends=async function(){
  const shell=document.createElement('section');shell.className='friends-compact';
  shell.innerHTML='<header><h2>Amigos e chat</h2><button id="unifiedAddFriend" class="secondary">＋ Adicionar amigo</button></header><nav class="tabs compact-friends-tabs"><button id="chatFriendsTab" class="active">Amigos</button><button id="chatConversationsTab">Chat</button></nav><label class="compact-friends-search"><span>⌕</span><input id="compactFriendsSearch" type="search" placeholder="Buscar amigos…" aria-label="Buscar amigos"></label><div class="compact-friends-list"></div><p id="compactFriendsEmpty" class="muted" hidden>Nenhum amigo encontrado.</p>';
  content.replaceChildren(shell);content.classList.add('friends-chat-reference');shell.querySelector('.compact-friends-list').append(rows);
- rows.querySelectorAll('.friend-card').forEach(card=>{const chat=card.querySelector('[data-choose-chat]');if(chat){chat.textContent='›';chat.setAttribute('aria-label','Conversar com '+(card.querySelector('strong')?.textContent||'amigo'));}});
+ rows.querySelectorAll('.friend-card').forEach(card=>{const info=card.querySelector('.friend-profile span'),status=card.querySelector('.friend-status');info?.querySelector('small')?.remove();if(info&&status)info.append(status);const chat=card.querySelector('[data-choose-chat]');if(chat){chat.textContent='›';chat.setAttribute('aria-label','Conversar com '+(card.querySelector('strong')?.textContent||'amigo'));}});
  $('#unifiedAddFriend').onclick=openFriendSearch;
  $('#chatFriendsTab').onclick=()=>{};
  $('#chatConversationsTab').onclick=()=>{const first=rows.querySelector('[data-choose-chat]');if(first)first.click();else toast('Adicione um amigo para iniciar uma conversa.');};
