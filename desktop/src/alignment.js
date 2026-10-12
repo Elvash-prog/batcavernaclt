@@ -3,6 +3,12 @@
 const statusOptions={online:'Online',jogando:'Jogando',ausente:'Ausente',dnd:'Não incomodar',invisivel:'Invisível'};
 
 const initialPatchNotes=[
+ 'Chat ocupa a área disponível da janela, com contatos à esquerda e mensagens no centro.',
+ 'Comunidade com publicação e controles sem sobreposição; fotos de contatos no perfil corrigidas.',
+ 'Biblioteca organizada por status, como Em progresso, Backlog, Zerados e Platinados.',
+ 'Aceitar indicações abre o cadastro normal na sua biblioteca.',
+ 'Notificações nativas do Windows e opção de continuar na bandeja ao fechar.',
+ 'Estatísticas com cálculo a partir da biblioteca quando o RPC não está disponível.',
  'Biblioteca restaurada à grade direta de capas, com busca e filtros, sem tela intermediária.',
  'Amigos em lista compacta, com abas Amigos/Chat, busca, fotos e status.',
  'Perfil com capa completa e independente do fundo; biblioteca visível ao visitar amigos.',
@@ -17,7 +23,7 @@ const baseHome=renderHome;
 renderHome=async function(){
  await baseHome();if(state.current!=='home'||$('#initialPatchNotes'))return;
  const notes=document.createElement('details');notes.id='initialPatchNotes';notes.className='initial-patch-notes';
- notes.innerHTML=`<summary><span>✦ Novidades da versão 0.11.1</span><small>12 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
+ notes.innerHTML=`<summary><span>✦ Novidades da versão 0.12.0</span><small>12 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
  const hero=$('.home-hero');if(hero)hero.after(notes);else $('#content').prepend(notes);
 };
 
@@ -83,7 +89,7 @@ renderProfile=async function(userId=null){
  }else{
   $('[data-profile-section="statistics"]')?.remove();$('[data-profile-page="statistics"]')?.remove();
  }
- const tabs=$('.profile-tabs');if(tabs&&!tabs.children.length)tabs.remove();
+ const tabs=$('.profile-tabs');if(tabs&&!tabs.children.length)tabs.remove();await hydrateMedia($('#content'));
 };
 
 const baseSocial=renderSocial;

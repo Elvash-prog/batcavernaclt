@@ -1,8 +1,13 @@
-# BatCaverna CLT Windows 0.11.1
+# BatCaverna CLT Windows 0.12.0
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
 
-## Correções 0.11.1
+## Correções 0.12.0
+Chat em toda a área útil, separação da biblioteca por status, publicação da comunidade sem sobreposição, fotos da comunidade no perfil, aceitação de indicações no cadastro normal e preferências nativas de notificações/segundo plano.
+
+Execute **supabase/ativar-desktop-0.12.0.sql** inteiro no SQL Editor para ativar progresso de episódios, listas e indicações. O instalador não aplica migrações no banco. Estatísticas conseguem calcular os dados da biblioteca mesmo sem `clt_journey`.
+
+## Correções anteriores
 
 - Biblioteca abre diretamente na grade de capas, com resumo, busca e filtros, sem a tela intermediária de categorias.
 - Amigos reorganizados em uma lista compacta, com abas Amigos/Chat, busca local, fotos, status e acesso ao perfil.
