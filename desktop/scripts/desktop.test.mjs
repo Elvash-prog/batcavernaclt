@@ -125,3 +125,13 @@ test('histórico mantém datas de calendário sem deslocamento de fuso',()=>{
 
 
 test('fundo global vincula a conta Elvash ao UUID e impede acesso direto',()=>{const sql=fs.readFileSync(new URL('../../supabase/patch-1.45-desktop-0.9.sql',import.meta.url),'utf8');assert.match(sql,/insert into public.clt_launcher_admins\(user_id\) values\(owner_id\)/);assert.match(sql,/revoke all on public.clt_launcher_admins from anon, authenticated/);assert.match(sql,/user_id=auth.uid\(\)/);assert.match(sql,/if not public.clt_launcher_can_edit\(\)/);assert.match(sql,/grant execute on function public.clt_launcher_public\(\) to anon,authenticated/);});
+
+test('detalhes não confundem sequências, edições ou remakes',()=>{
+ const source=read('src/app.js'),start=source.indexOf('function catalogTitleKey'),end=source.indexOf('async function searchCatalog',start),context=vm.createContext({});vm.runInContext(source.slice(start,end),context);
+ const match=(rows,item)=>context.matchCatalogTitle(rows,item);
+ assert.equal(match([{id:1,name:'Dark Souls II'},{id:2,name:'Dark Souls III'}],{nome:'Dark Souls III'}).id,2);
+ assert.equal(match([{id:1,name:'Dark Souls III Deluxe Edition'}],{nome:'Dark Souls III'}),null);
+ assert.equal(match([{id:1,title:'Duna',release_date:'1984-01-01'},{id:2,title:'Duna',release_date:'2021-01-01'}],{nome:'Duna',ano:2021}).id,2);
+ assert.equal(match([{id:1,title:'Duna'},{id:2,title:'Duna'}],{nome:'Duna'}),null);
+ assert.equal(match([{id:1,title:{english:'Anime de teste'}}],{nome:'Anime de teste'}).id,1);
+});

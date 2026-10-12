@@ -1,4 +1,4 @@
-# BatCaverna CLT Windows 0.7.0
+# BatCaverna CLT Windows 0.9.1
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
 
@@ -36,3 +36,7 @@ Composição baseada nos exemplos da referência: capas verticais em fileiras (c
 Os detalhes têm Sobre, Conquistas, Mídia, Avaliações, Notas e Histórico. Avaliações vêm dos catálogos; notas e status são persistidos na biblioteca. O histórico apresenta as datas existentes, sem inventar eventos antigos. A mídia usa imagens disponíveis nos catálogos e vídeos retornados pela Steam/AniList. Continuar abre jogos Steam pelo protocolo local, quando há Steam App ID.
 
 O SQL da versão 0.6.0 continua válido. Os testes de UI utilizam dados/eventos simulados; a verificação entre duas contas reais e APIs configuradas continua necessária.
+
+## Correções 0.9.1
+
+Bibliotecas em grade para todos os tipos de mídia, resumo de coleção e início compacto. Pesquisa RAWG sem ordenar popularidade, páginas com até 40 jogos e 30 animes, navegação entre páginas e correspondência exata nos detalhes. Carregamento completo da biblioteca, Steam App ID vazio normalizado para null e aviso de jogo duplicado sem sobrescrever progresso.

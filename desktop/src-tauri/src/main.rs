@@ -73,6 +73,7 @@ fn keyring() -> Result<keyring::Entry, String> { keyring::Entry::new(KEYRING_SER
 fn clear_keyring() { if let Ok(entry) = keyring() { let _ = entry.delete_credential(); } }
 
 fn message(body: &str, status: reqwest::StatusCode) -> String {
+    if body.contains("itens_steam_unico") { return "Este jogo já está na sua biblioteca Steam. Abra o título existente para editar seu progresso. Se ele não aparece, a regra de unicidade do banco precisa ser revisada.".into(); }
     serde_json::from_str::<Value>(body).ok().and_then(|v| {
         ["message", "msg", "error_description", "error"].into_iter().find_map(|key| v.get(key).and_then(Value::as_str).map(str::to_owned))
     }).unwrap_or_else(|| if status == reqwest::StatusCode::UNAUTHORIZED { "Sua sessão expirou. Entre novamente.".into() } else { format!("O servidor não confirmou a operação (HTTP {}).", status.as_u16()) })
@@ -346,7 +347,16 @@ async fn library(category: String, state: tauri::State<'_, AppState>) -> Result<
     let session = current(&state).await?; let user = &session.user.id;
     if !matches!(category.as_str(), "jogos"|"filmes"|"series"|"animes") { return Err("Categoria inválida.".into()); }
     let source = if category == "jogos" { "jogos" } else { "filmes" };
-    let rows = get(&state.client, &format!("/rest/v1/itens?select=*&user_id=eq.{user}&categoria=eq.{source}&order=updated_at.desc,id.desc&limit=500"), &session.access_token).await?;
+    let mut all = Vec::new();
+    let mut offset = 0;
+    loop {
+        let page = get(&state.client, &format!("/rest/v1/itens?select=*&user_id=eq.{user}&categoria=eq.{source}&order=id.asc&offset={offset}&limit=500"), &session.access_token).await?;
+        let batch = page.as_array().ok_or("A biblioteca retornou dados inválidos.")?;
+        let count = batch.len(); all.extend(batch.iter().cloned());
+        if count == 0 { break; }
+        offset += count;
+    }
+    let rows = Value::Array(all);
     if category == "jogos" { return Ok(rows); }
     let filtered = rows.as_array().cloned().unwrap_or_default().into_iter().filter(|row| {
         let kind=row.get("tipo").and_then(Value::as_str).unwrap_or("").to_lowercase();
@@ -376,6 +386,12 @@ fn normalize_genres(value: &Value) -> Result<Value, String> {
     Ok(json!(genres))
 }
 
+fn normalize_steam_appid(value: &Value) -> Result<Value, String> {
+    if value.is_null() || value.as_str() == Some("") || value.as_i64() == Some(0) { return Ok(Value::Null); }
+    let id = value.as_u64().or_else(|| value.as_str().and_then(|s| s.parse::<u64>().ok())).filter(|n| *n > 0 && *n <= u32::MAX as u64).ok_or("Steam App ID inválido.")?;
+    Ok(json!(id))
+}
+
 #[tauri::command]
 async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session = current(&state).await?;
@@ -387,9 +403,15 @@ async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Val
     let mut row = serde_json::Map::new();
     row.insert("nome".into(), json!(name)); row.insert("categoria".into(), json!(category));
     for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data","inicio","prioridade","tempo_est","conquistas","preco","duracao","steam_appid"] {
-        if let Some(value) = object.get(key) { row.insert(key.into(), if key == "generos" { normalize_genres(value)? } else { value.clone() }); }
+        if let Some(value) = object.get(key) { row.insert(key.into(), if key == "generos" { normalize_genres(value)? } else if key == "steam_appid" { normalize_steam_appid(value)? } else { value.clone() }); }
     }
     let id = object.get("id").and_then(Value::as_str).map(str::to_owned).or_else(|| object.get("id").and_then(Value::as_i64).map(|v| v.to_string()));
+    if let Some(appid) = row.get("steam_appid").and_then(Value::as_u64) {
+        let matches = get(&state.client, &format!("/rest/v1/itens?select=id,nome&user_id=eq.{}&steam_appid=eq.{appid}&limit=2",session.user.id), &session.access_token).await?;
+        if matches.as_array().is_some_and(|items| items.iter().any(|x| x["id"].as_str().map(str::to_owned).or_else(|| x["id"].as_i64().map(|v|v.to_string())) != id)) {
+            return Err("Este jogo já está na sua biblioteca. Abra o título existente para editar seu progresso.".into());
+        }
+    }
     let response = if let Some(id) = id {
         let id = safe_id(&id)?;
         state.client.patch(format!("{SUPABASE_URL}/rest/v1/itens?id=eq.{id}&user_id=eq.{}&select=*", session.user.id))
@@ -495,8 +517,8 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     if query.chars().count()>180{return Err("Pesquisa muito longa.".into());}
     if provider=="anilist" {
         if query.len()<2&&input["recommend"].as_bool()!=Some(true){return Err("Digite pelo menos dois caracteres.".into());}
-        let gql=if input["recommend"].as_bool()==Some(true){"query{Page(perPage:12){media(type:ANIME,isAdult:false,sort:POPULARITY_DESC){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes averageScore meanScore bannerImage siteUrl trailer{id site thumbnail}description(asHtml:false)}}}"}else{"query($s:String){Page(perPage:12){media(search:$s,type:ANIME,isAdult:false,sort:SEARCH_MATCH){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes averageScore meanScore bannerImage siteUrl trailer{id site thumbnail}description(asHtml:false)}}}"};
-        return value(state.client.post("https://graphql.anilist.co").json(&json!({"query":gql,"variables":{"s":query}})).send().await.map_err(|_|"AniList indisponível.".to_string())?).await;
+        let gql=if input["recommend"].as_bool()==Some(true){"query($page:Int){Page(page:$page,perPage:30){pageInfo{lastPage hasNextPage}media(type:ANIME,isAdult:false,sort:POPULARITY_DESC){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes averageScore meanScore bannerImage siteUrl trailer{id site thumbnail}description(asHtml:false)}}}"}else{"query($s:String,$page:Int){Page(page:$page,perPage:30){pageInfo{lastPage hasNextPage}media(search:$s,type:ANIME,isAdult:false,sort:SEARCH_MATCH){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes averageScore meanScore bannerImage siteUrl trailer{id site thumbnail}description(asHtml:false)}}}"};
+        return value(state.client.post("https://graphql.anilist.co").json(&json!({"query":gql,"variables":{"s":query,"page":input["page"].as_u64().unwrap_or(1).clamp(1,100)}})).send().await.map_err(|_|"AniList indisponível.".to_string())?).await;
     }
     let kind=input["kind"].as_str().unwrap_or("movie");
     let id=input["id"].as_u64();
@@ -507,7 +529,9 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
         _=>return Err("Catálogo inválido.".into())
     };
     if id.is_none()&&!recommend&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
-    let response=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","12"),("ordering","-added"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,30).to_string()),("sort_by","popularity.desc"),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]).send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
+    let request=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","40"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,100).to_string()),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]);
+    let request=if recommend{request.query(&[("ordering","-added"),("sort_by","popularity.desc")])}else{request};
+    let response=request.send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
     value(response).await
 }
 fn image_host(host: &str)->bool {
@@ -649,6 +673,13 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn steam_id_does_not_turn_empty_values_into_shared_zero() {
+        assert_eq!(normalize_steam_appid(&Value::Null).unwrap(),Value::Null);
+        assert_eq!(normalize_steam_appid(&json!(0)).unwrap(),Value::Null);
+        assert_eq!(normalize_steam_appid(&json!("10")).unwrap(),json!(10));
+        assert!(normalize_steam_appid(&json!(-1)).is_err());
+        assert!(normalize_steam_appid(&json!(1.5)).is_err());
+    }
     #[test] fn genres_accept_editor_text_and_catalog_arrays() {
         assert_eq!(normalize_genres(&json!("Ação • Aventura • RPG • Ação")).unwrap(), json!(["Ação", "Aventura", "RPG"]));
         assert_eq!(normalize_genres(&json!(["Ação", "RPG"])).unwrap(), json!(["Ação", "RPG"]));
