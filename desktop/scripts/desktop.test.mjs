@@ -105,3 +105,12 @@ test('conquistas usam os mesmos 32 critérios do site com a biblioteca do perfil
 test('SQL do desktop restringe limpeza à conta e personalização às amizades',()=>{
  const sql=fs.readFileSync(new URL('../../supabase/patch-1.44-desktop-0.6.sql',import.meta.url),'utf8');assert.match(sql,/delete from public\.notificacoes where destinatario_id=auth\.uid\(\)/i);assert.match(sql,/u=p_id or clt_private\.friends\(u,p_id\)/i);assert.doesNotMatch(sql,/disable row level security|grant.*to anon/i);assert.match(sql,/alter publication supabase_realtime add table/);
 });
+
+
+test('gêneros preservam listas da API e convertem campos do editor para arrays',()=>{
+ const source=read('src/app.js').match(/function normalizeGenres\(value\)\{[^\n]+/)[0];
+ const parse=vm.runInNewContext('('+source+')');
+ assert.deepEqual(JSON.parse(JSON.stringify(parse('Ação • Aventura • RPG • Ação'))),['Ação','Aventura','RPG']);
+ assert.deepEqual(JSON.parse(JSON.stringify(parse([{description:'Ação'},{name:'RPG'}]))),['Ação','RPG']);
+ assert.deepEqual(JSON.parse(JSON.stringify(parse(null))),[]);
+});

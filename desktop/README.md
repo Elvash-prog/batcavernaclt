@@ -1,4 +1,4 @@
-# BatCaverna CLT Windows 0.6.0
+# BatCaverna CLT Windows 0.6.1
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
 
@@ -24,3 +24,7 @@ Os uploads passam pelo endpoint moderado do Cloudflare já utilizado pelo site. 
 Feche a versão anterior e execute o instalador. Confira login, dados já existentes, buscas, mídia privada, envio de figurinha, reação visível em outro cliente, resposta, edição/exclusão, notificações e perfil de amigo. Use duas contas amigas para confirmar o chat ao vivo.
 
 `npm test` verifica lógica do cliente; `npm run test:ui` verifica fluxos e resoluções com respostas simuladas. GitHub Actions também compila/testa Rust e gera NSIS. Esses testes não substituem validação com sessão real no Supabase e APIs externas.
+
+## Ajustes 0.6.1
+
+Gêneros são enviados ao Supabase como arrays, inclusive na edição manual, importação e atualização via API. O visual usa azul escuro e roxo, com abas no formulário de títulos, filtros de gêneros, prévias dos temas e ajustes de imagem/tamanho estilizados. O SQL de ativação 0.6.0 continua válido; não há migração nova.
