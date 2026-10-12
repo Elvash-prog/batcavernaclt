@@ -317,6 +317,18 @@ fn safe_id(value: &str) -> Result<&str, String> {
     Ok(value)
 }
 
+fn normalize_genres(value: &Value) -> Result<Value, String> {
+    let raw: Vec<String> = match value {
+        Value::Null => Vec::new(),
+        Value::String(text) => text.split(|c| c == '•' || c == ',' || c == '|').map(str::to_owned).collect(),
+        Value::Array(items) => items.iter().map(|v| v.as_str().map(str::to_owned).ok_or_else(|| "Gêneros inválidos.".to_string())).collect::<Result<_, _>>()?,
+        _ => return Err("Gêneros inválidos.".into()),
+    };
+    let mut genres: Vec<String> = Vec::new();
+    for entry in raw { let genre = entry.trim(); if !genre.is_empty() && !genres.iter().any(|g| g == genre) { genres.push(genre.to_string()); } }
+    Ok(json!(genres))
+}
+
 #[tauri::command]
 async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session = current(&state).await?;
@@ -328,7 +340,7 @@ async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Val
     let mut row = serde_json::Map::new();
     row.insert("nome".into(), json!(name)); row.insert("categoria".into(), json!(category));
     for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data","inicio","prioridade","tempo_est","conquistas","preco","duracao","steam_appid"] {
-        if let Some(value) = object.get(key) { row.insert(key.into(), value.clone()); }
+        if let Some(value) = object.get(key) { row.insert(key.into(), if key == "generos" { normalize_genres(value)? } else { value.clone() }); }
     }
     let id = object.get("id").and_then(Value::as_str).map(str::to_owned).or_else(|| object.get("id").and_then(Value::as_i64).map(|v| v.to_string()));
     let response = if let Some(id) = id {
@@ -584,6 +596,13 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn genres_accept_editor_text_and_catalog_arrays() {
+        assert_eq!(normalize_genres(&json!("Ação • Aventura • RPG • Ação")).unwrap(), json!(["Ação", "Aventura", "RPG"]));
+        assert_eq!(normalize_genres(&json!(["Ação", "RPG"])).unwrap(), json!(["Ação", "RPG"]));
+        assert_eq!(normalize_genres(&json!("")).unwrap(), json!([]));
+        assert_eq!(normalize_genres(&Value::Null).unwrap(), json!([]));
+        assert!(normalize_genres(&json!([42])).is_err());
+    }
     #[test] fn direct_backend_only() { assert!(SUPABASE_URL.starts_with("https://")); assert!(SUPABASE_URL.ends_with(".supabase.co")); }
 }
 
