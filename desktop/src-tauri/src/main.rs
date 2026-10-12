@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod v06;
 use serde::{Deserialize, Serialize};
 use base64::Engine;
 use serde_json::{json, Value};
@@ -36,7 +37,7 @@ struct PasswordInput { current: String, password: String }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ProfileInput { name: String, bio: String, banner: String, status: String, steam_id: String, #[serde(default)] avatar: Option<String>, #[serde(default)] games: Option<Vec<String>> }
+struct ProfileInput { name: String, bio: String, banner: String, status: String, steam_id: String, #[serde(default)] avatar: Option<String>, #[serde(default)] games: Option<Vec<String>>, #[serde(default)] achievements: Option<Vec<u32>>, #[serde(default)] title_level: Option<u32> }
 
 #[derive(Deserialize)]
 struct PublishInput { text: String, #[serde(default)] media: Vec<String> }
@@ -54,7 +55,7 @@ struct CommentInput { post_id: String, text: String }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct MessageInput { friend_id: String, text: String }
+struct MessageInput { friend_id: String, text: String, #[serde(default)] media: Option<String> }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -72,6 +73,7 @@ fn keyring() -> Result<keyring::Entry, String> { keyring::Entry::new(KEYRING_SER
 fn clear_keyring() { if let Ok(entry) = keyring() { let _ = entry.delete_credential(); } }
 
 fn message(body: &str, status: reqwest::StatusCode) -> String {
+    if body.contains("itens_steam_unico") { return "Este jogo já está na sua biblioteca Steam. Abra o título existente para editar seu progresso. Se ele não aparece, a regra de unicidade do banco precisa ser revisada.".into(); }
     serde_json::from_str::<Value>(body).ok().and_then(|v| {
         ["message", "msg", "error_description", "error"].into_iter().find_map(|key| v.get(key).and_then(Value::as_str).map(str::to_owned))
     }).unwrap_or_else(|| if status == reqwest::StatusCode::UNAUTHORIZED { "Sua sessão expirou. Entre novamente.".into() } else { format!("O servidor não confirmou a operação (HTTP {}).", status.as_u16()) })
@@ -221,8 +223,56 @@ async fn change_password(input: PasswordInput, state: tauri::State<'_, AppState>
     value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&json!({"password":input.password})).send().await.map_err(|_|"Não foi possível alterar a senha.".to_string())?).await
 }
 
+#[derive(Deserialize)]
+struct EmailInput { current: String, email: String }
+#[tauri::command]
+async fn change_email(input:EmailInput,state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let email=input.email.trim().to_lowercase();
+ if email.len()>254||email.chars().any(char::is_whitespace)||!email.split_once('@').is_some_and(|(a,b)|!a.is_empty()&&b.contains('.')&&!b.starts_with('.')&&!b.ends_with('.')){return Err("Informe um e-mail válido.".into());}
+ let session=current(&state).await?;
+ let fresh=password_session(&state.client,&session.user.email,&input.current).await.map_err(|_|"A senha atual está incorreta.".to_string())?;
+ if fresh.user.id!=session.user.id{return Err("Sua sessão mudou.".into());}
+ let result=value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&fresh.access_token).json(&json!({"email":email})).send().await.map_err(|_|"Não foi possível solicitar a troca de e-mail.".to_string())?).await?;
+ Ok(json!({"email":result.get("email"),"pending":result.get("new_email"),"message":"Solicitação enviada. Confira os e-mails de confirmação para concluir a alteração."}))
+}
+#[tauri::command]
+async fn launcher_settings(state:tauri::State<'_,AppState>)->Result<Value,String>{
+ value(state.client.post(format!("{SUPABASE_URL}/rest/v1/rpc/clt_launcher_public")).header("apikey",SUPABASE_KEY).json(&json!({})).send().await.map_err(|_|"Não foi possível consultar o fundo de login.".to_string())?).await
+}
+#[tauri::command]
+async fn launcher_permission(state:tauri::State<'_,AppState>)->Result<bool,String>{
+ let session=current(&state).await?;Ok(rpc(&state.client,"clt_launcher_can_edit",json!({}),&session.access_token).await?.as_bool()==Some(true))
+}
+#[tauri::command]
+async fn set_login_background(url:Option<String>,state:tauri::State<'_,AppState>)->Result<Value,String>{let session=current(&state).await?;rpc(&state.client,"clt_launcher_set_wallpaper",json!({"p_url":url}),&session.access_token).await}
+#[tauri::command]
+async fn upload_login_background(input:UploadInput,state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let session=current(&state).await?;
+ if rpc(&state.client,"clt_launcher_can_edit",json!({}),&session.access_token).await?.as_bool()!=Some(true){return Err("Esta conta não tem permissão para alterar o login.".into());}
+ let ext=match input.mime.as_str(){"image/png"=>"png","image/jpeg"=>"jpg","image/webp"=>"webp",_=>return Err("Escolha PNG, JPG ou WebP.".into())};
+ if input.base64.len()>12*1024*1024{return Err("Escolha uma imagem de até 8 MB.".into());}
+ let bytes=base64::engine::general_purpose::STANDARD.decode(input.base64).map_err(|_|"Imagem inválida.".to_string())?;
+ if bytes.is_empty()||bytes.len()>8*1024*1024{return Err("Escolha uma imagem de até 8 MB.".into());}
+ let path=format!("{}/login-{}.{}",session.user.id,SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis(),ext);
+ value(state.client.post(format!("{SUPABASE_URL}/storage/v1/object/login-backgrounds/{path}")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type",&input.mime).body(bytes).send().await.map_err(|_|"Não foi possível enviar o fundo.".to_string())?).await?;
+ Ok(json!({"url":format!("{SUPABASE_URL}/storage/v1/object/public/login-backgrounds/{path}")}))
+}
+#[tauri::command]
+async fn friend_activity(state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let session=current(&state).await?;let friends=get(&state.client,&format!("/rest/v1/amigos?select=amigo_id&user_id=eq.{}&limit=200",session.user.id),&session.access_token).await?;
+ let ids:Vec<&str>=friends.as_array().into_iter().flatten().filter_map(|f|f["amigo_id"].as_str()).collect();if ids.is_empty(){return Ok(json!([]));}
+ let events=get(&state.client,&format!("/rest/v1/clt_activity_events?select=id,user_id,tipo,item_id,categoria,nome,status,meta,created_at&user_id=in.({})&order=created_at.desc,id.desc&limit=20",ids.join(",")),&session.access_token).await?;
+ attach_authors(&state.client,events,&session.access_token).await
+}
+#[tauri::command]
+async fn link_steam(steam_id:String,state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let session=current(&state).await?;let id=steam_id.trim();if !id.is_empty()&&(id.len()!=17||!id.bytes().all(|x|x.is_ascii_digit())){return Err("Informe o Steam ID da conta com 17 dígitos.".into());}
+ value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).json(&json!({"steam_id":if id.is_empty(){Value::Null}else{json!(id)}})).send().await.map_err(|_|"Não foi possível conectar a Steam.".to_string())?).await
+}
+
 #[tauri::command]
 fn logout(state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    v06::stop();
     clear_keyring();
     *state.session.lock().map_err(|_| "Sessão indisponível.".to_string())? = None;
     Ok(json!({"authenticated": false}))
@@ -283,8 +333,9 @@ async fn update_profile(input: ProfileInput, state: tauri::State<'_, AppState>) 
     if let Some(ref avatar)=input.avatar {if !avatar.is_empty()&&!avatar.starts_with("https://"){return Err("Foto inválida.".into());}}
     let old=get(&state.client,&format!("/rest/v1/perfis?select=*&id=eq.{}&limit=1",session.user.id),&session.access_token).await?;
     let existing=old.as_array().and_then(|a|a.first()).cloned().unwrap_or(json!({}));
+    if input.achievements.as_ref().is_some_and(|v|v.len()>4){return Err("Selecione até quatro conquistas.".into());}
     if input.games.as_ref().is_some_and(|g|g.len()>8){return Err("Selecione até oito jogos.".into());}
-    let result=rpc(&state.client,"salvar_personalizacao_perfil_clt",json!({"p_nome":name,"p_bio":if bio.is_empty(){Value::Null}else{json!(bio)},"p_banner_url":if banner.is_empty(){Value::Null}else{json!(banner)},"p_status":status,"p_titulo_destaque_nivel":existing.get("titulo_destaque_nivel").unwrap_or(&json!(0)),"p_jogos_destaque":input.games.map(|v|json!(v)).unwrap_or_else(||existing.get("jogos_destaque").cloned().unwrap_or(json!([]))),"p_conquistas_destaque":existing.get("conquistas_destaque").unwrap_or(&json!([]))}),&session.access_token).await?;
+    let result=rpc(&state.client,"salvar_personalizacao_perfil_clt",json!({"p_nome":name,"p_bio":if bio.is_empty(){Value::Null}else{json!(bio)},"p_banner_url":if banner.is_empty(){Value::Null}else{json!(banner)},"p_status":status,"p_titulo_destaque_nivel":input.title_level.map(|v|json!(v)).unwrap_or_else(||existing.get("titulo_destaque_nivel").cloned().unwrap_or(json!(0))),"p_jogos_destaque":input.games.map(|v|json!(v)).unwrap_or_else(||existing.get("jogos_destaque").cloned().unwrap_or(json!([]))),"p_conquistas_destaque":input.achievements.map(|v|json!(v)).unwrap_or_else(||existing.get("conquistas_destaque").cloned().unwrap_or(json!([])))}),&session.access_token).await?;
     let mut patch=json!({"steam_id":if steam.is_empty(){Value::Null}else{json!(steam)}});
     if let Some(avatar)=input.avatar {if !avatar.is_empty()&&!avatar.starts_with("https://"){return Err("Foto inválida.".into());}patch["avatar_url"]=if avatar.is_empty(){Value::Null}else{json!(avatar)};}
     value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&patch).send().await.map_err(|_|"Não foi possível salvar foto e Steam.".to_string())?).await?;
@@ -296,7 +347,16 @@ async fn library(category: String, state: tauri::State<'_, AppState>) -> Result<
     let session = current(&state).await?; let user = &session.user.id;
     if !matches!(category.as_str(), "jogos"|"filmes"|"series"|"animes") { return Err("Categoria inválida.".into()); }
     let source = if category == "jogos" { "jogos" } else { "filmes" };
-    let rows = get(&state.client, &format!("/rest/v1/itens?select=*&user_id=eq.{user}&categoria=eq.{source}&order=updated_at.desc,id.desc&limit=500"), &session.access_token).await?;
+    let mut all = Vec::new();
+    let mut offset = 0;
+    loop {
+        let page = get(&state.client, &format!("/rest/v1/itens?select=*&user_id=eq.{user}&categoria=eq.{source}&order=id.asc&offset={offset}&limit=500"), &session.access_token).await?;
+        let batch = page.as_array().ok_or("A biblioteca retornou dados inválidos.")?;
+        let count = batch.len(); all.extend(batch.iter().cloned());
+        if count == 0 { break; }
+        offset += count;
+    }
+    let rows = Value::Array(all);
     if category == "jogos" { return Ok(rows); }
     let filtered = rows.as_array().cloned().unwrap_or_default().into_iter().filter(|row| {
         let kind=row.get("tipo").and_then(Value::as_str).unwrap_or("").to_lowercase();
@@ -314,6 +374,24 @@ fn safe_id(value: &str) -> Result<&str, String> {
     Ok(value)
 }
 
+fn normalize_genres(value: &Value) -> Result<Value, String> {
+    let raw: Vec<String> = match value {
+        Value::Null => Vec::new(),
+        Value::String(text) => text.split(|c| c == '•' || c == ',' || c == '|').map(str::to_owned).collect(),
+        Value::Array(items) => items.iter().map(|v| v.as_str().map(str::to_owned).ok_or_else(|| "Gêneros inválidos.".to_string())).collect::<Result<_, _>>()?,
+        _ => return Err("Gêneros inválidos.".into()),
+    };
+    let mut genres: Vec<String> = Vec::new();
+    for entry in raw { let genre = entry.trim(); if !genre.is_empty() && !genres.iter().any(|g| g == genre) { genres.push(genre.to_string()); } }
+    Ok(json!(genres))
+}
+
+fn normalize_steam_appid(value: &Value) -> Result<Value, String> {
+    if value.is_null() || value.as_str() == Some("") || value.as_i64() == Some(0) { return Ok(Value::Null); }
+    let id = value.as_u64().or_else(|| value.as_str().and_then(|s| s.parse::<u64>().ok())).filter(|n| *n > 0 && *n <= u32::MAX as u64).ok_or("Steam App ID inválido.")?;
+    Ok(json!(id))
+}
+
 #[tauri::command]
 async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session = current(&state).await?;
@@ -324,10 +402,16 @@ async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Val
     if !matches!(category, "jogos" | "filmes") { return Err("Categoria inválida.".into()); }
     let mut row = serde_json::Map::new();
     row.insert("nome".into(), json!(name)); row.insert("categoria".into(), json!(category));
-    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data"] {
-        if let Some(value) = object.get(key) { row.insert(key.into(), value.clone()); }
+    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data","inicio","prioridade","tempo_est","conquistas","preco","duracao","steam_appid"] {
+        if let Some(value) = object.get(key) { row.insert(key.into(), if key == "generos" { normalize_genres(value)? } else if key == "steam_appid" { normalize_steam_appid(value)? } else { value.clone() }); }
     }
     let id = object.get("id").and_then(Value::as_str).map(str::to_owned).or_else(|| object.get("id").and_then(Value::as_i64).map(|v| v.to_string()));
+    if let Some(appid) = row.get("steam_appid").and_then(Value::as_u64) {
+        let matches = get(&state.client, &format!("/rest/v1/itens?select=id,nome&user_id=eq.{}&steam_appid=eq.{appid}&limit=2",session.user.id), &session.access_token).await?;
+        if matches.as_array().is_some_and(|items| items.iter().any(|x| x["id"].as_str().map(str::to_owned).or_else(|| x["id"].as_i64().map(|v|v.to_string())) != id)) {
+            return Err("Este jogo já está na sua biblioteca. Abra o título existente para editar seu progresso.".into());
+        }
+    }
     let response = if let Some(id) = id {
         let id = safe_id(&id)?;
         state.client.patch(format!("{SUPABASE_URL}/rest/v1/itens?id=eq.{id}&user_id=eq.{}&select=*", session.user.id))
@@ -432,19 +516,22 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     let query=input["query"].as_str().unwrap_or("").trim();
     if query.chars().count()>180{return Err("Pesquisa muito longa.".into());}
     if provider=="anilist" {
-        if query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
-        let gql="query($s:String){Page(perPage:12){media(search:$s,type:ANIME,isAdult:false,sort:SEARCH_MATCH){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes description(asHtml:false)}}}";
-        return value(state.client.post("https://graphql.anilist.co").json(&json!({"query":gql,"variables":{"s":query}})).send().await.map_err(|_|"AniList indisponível.".to_string())?).await;
+        if query.len()<2&&input["recommend"].as_bool()!=Some(true){return Err("Digite pelo menos dois caracteres.".into());}
+        let gql=if input["recommend"].as_bool()==Some(true){"query($page:Int){Page(page:$page,perPage:30){pageInfo{lastPage hasNextPage}media(type:ANIME,isAdult:false,sort:POPULARITY_DESC){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes averageScore meanScore bannerImage siteUrl trailer{id site thumbnail}description(asHtml:false)}}}"}else{"query($s:String,$page:Int){Page(page:$page,perPage:30){pageInfo{lastPage hasNextPage}media(search:$s,type:ANIME,isAdult:false,sort:SEARCH_MATCH){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes averageScore meanScore bannerImage siteUrl trailer{id site thumbnail}description(asHtml:false)}}}"};
+        return value(state.client.post("https://graphql.anilist.co").json(&json!({"query":gql,"variables":{"s":query,"page":input["page"].as_u64().unwrap_or(1).clamp(1,100)}})).send().await.map_err(|_|"AniList indisponível.".to_string())?).await;
     }
     let kind=input["kind"].as_str().unwrap_or("movie");
     let id=input["id"].as_u64();
+    let recommend=input["recommend"].as_bool()==Some(true);
     let path=match provider {
         "rawg"=>if let Some(id)=id{format!("rawg/games/{id}")}else{"rawg/games".into()},
-        "tmdb"=>{if !matches!(kind,"movie"|"tv"){return Err("Tipo inválido.".into());}if let Some(id)=id {format!("tmdb/{kind}/{id}{}",if input["providers"].as_bool()==Some(true){"/watch/providers"}else{""})}else{format!("tmdb/search/{kind}")}},
+        "tmdb"=>{if !matches!(kind,"movie"|"tv"){return Err("Tipo inválido.".into());}if let Some(id)=id {format!("tmdb/{kind}/{id}{}",if input["providers"].as_bool()==Some(true){"/watch/providers"}else{""})}else{if recommend{format!("tmdb/discover/{kind}")}else{format!("tmdb/search/{kind}")}}},
         _=>return Err("Catálogo inválido.".into())
     };
-    if id.is_none()&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
-    let response=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","12")]).send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
+    if id.is_none()&&!recommend&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
+    let request=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","40"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,100).to_string()),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]);
+    let request=if recommend{request.query(&[("ordering","-added"),("sort_by","popularity.desc")])}else{request};
+    let response=request.send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
     value(response).await
 }
 fn image_host(host: &str)->bool {
@@ -467,23 +554,20 @@ async fn cover_image(url: String) -> Result<String,String> {
 }
 #[tauri::command]
 async fn upload_profile_image(input: UploadInput, state: tauri::State<'_,AppState>)->Result<Value,String>{
-    let session=current(&state).await?;
-    if input.base64.len()>14_000_000||!matches!(input.mime.as_str(),"image/png"|"image/jpeg"|"image/webp"){return Err("Escolha PNG, JPG ou WebP de até 10 MB.".into());}
-    let bytes=base64::engine::general_purpose::STANDARD.decode(&input.base64).map_err(|_|"Imagem inválida.".to_string())?;
-    if bytes.is_empty()||bytes.len()>10*1024*1024{return Err("Imagem inválida ou muito grande.".into());}
-    let ext=match input.mime.as_str(){"image/png"=>"png","image/jpeg"=>"jpg",_=>"webp"};
-    let kind=if input.name=="banner"{"banner"}else{"avatar"};
-    let stamp=SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis();
-    let path=format!("{}/{kind}-{stamp}.{ext}",session.user.id);
-    value(state.client.post(format!("{SUPABASE_URL}/storage/v1/object/avatars/{path}")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type",&input.mime).body(bytes).send().await.map_err(|_|"Não foi possível enviar a imagem.".to_string())?).await?;
-    Ok(json!({"url":format!("{SUPABASE_URL}/storage/v1/object/public/avatars/{path}")}))
+    v06::moderated_upload(input,&state,"avatars").await
 }
 
 #[tauri::command]
 async fn bright_api(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?;
-    let response=state.client.post(format!("{SUPABASE_URL}/functions/v1/bright-api")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&input).send().await.map_err(|_|"Não foi possível consultar a Steam.".to_string())?;
+    let response=state.client.post(format!("{SUPABASE_URL}/functions/v1/bright-api")).timeout(Duration::from_secs(if input["op"].as_str()==Some("gratis"){50}else{25})).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&input).send().await.map_err(|_|"Não foi possível consultar a Steam.".to_string())?;
     value(response).await
+}
+
+#[tauri::command]
+fn launch_game(appid: u64) -> Result<(), String> {
+    if appid == 0 || appid > 9999999999 { return Err("Jogo inválido.".into()); }
+    open::that(format!("steam://rungameid/{appid}")).map_err(|_| "Não foi possível abrir a Steam.".into())
 }
 
 #[tauri::command]
@@ -524,16 +608,20 @@ async fn send_friend_invite(input: InviteInput, state: tauri::State<'_, AppState
 #[tauri::command]
 async fn chat_messages(friend_id: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?; let friend=safe_id(&friend_id)?; let me=&session.user.id;
-    get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida&or=(and(remetente_id.eq.{me},destinatario_id.eq.{friend}),and(remetente_id.eq.{friend},destinatario_id.eq.{me}))&order=created_at.asc&limit=300"),&session.access_token).await
+    // The production chat table predates message editing and does not expose
+    // `updated_at`. Selecting only columns that exist keeps the whole history
+    // readable without weakening RLS or deleting any message.
+    get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida&or=(and(remetente_id.eq.{me},destinatario_id.eq.{friend}),and(remetente_id.eq.{friend},destinatario_id.eq.{me}))&order=created_at.desc&limit=300"),&session.access_token).await
 }
 
 #[tauri::command]
 async fn send_message(input: MessageInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?; let friend=safe_id(&input.friend_id)?; let text=input.text.trim();
-    if text.is_empty() || text.chars().count()>2000 { return Err("Escreva uma mensagem de até 2.000 caracteres.".into()); }
+    if (text.is_empty() && input.media.is_none()) || text.chars().count()>2000 { return Err("Escreva uma mensagem de até 2.000 caracteres.".into()); }
+    if let Some(ref media)=input.media {if !media.starts_with(&format!("{}/",session.user.id))||media.contains("..")||media.contains('?')||media.contains('#'){return Err("Imagem de mensagem inválida.".into());}}
     value(state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida"))
         .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").header("prefer","return=representation")
-        .json(&json!({"remetente_id":session.user.id,"destinatario_id":friend,"texto":text})).send().await.map_err(|_| "Não foi possível enviar a mensagem.".to_string())?).await
+        .json(&json!({"remetente_id":session.user.id,"destinatario_id":friend,"texto":text,"midia_url":input.media})).send().await.map_err(|_| "Não foi possível enviar a mensagem.".to_string())?).await
 }
 
 #[tauri::command]
@@ -575,7 +663,7 @@ fn main() {
         .build()
         .expect("Cliente HTTPS");
     tauri::Builder::default().manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats])
+        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
             use tauri::{menu::{Menu,MenuItem}, tray::TrayIconBuilder};
@@ -588,6 +676,21 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn steam_id_does_not_turn_empty_values_into_shared_zero() {
+        assert_eq!(normalize_steam_appid(&Value::Null).unwrap(),Value::Null);
+        assert_eq!(normalize_steam_appid(&json!(0)).unwrap(),Value::Null);
+        assert_eq!(normalize_steam_appid(&json!("10")).unwrap(),json!(10));
+        assert!(normalize_steam_appid(&json!(-1)).is_err());
+        assert!(normalize_steam_appid(&json!(1.5)).is_err());
+    }
+    #[test] fn genres_accept_editor_text_and_catalog_arrays() {
+        assert_eq!(normalize_genres(&json!("Ação • Aventura • RPG • Ação")).unwrap(), json!(["Ação", "Aventura", "RPG"]));
+        assert_eq!(normalize_genres(&json!(["Ação", "RPG"])).unwrap(), json!(["Ação", "RPG"]));
+        assert_eq!(normalize_genres(&json!("")).unwrap(), json!([]));
+        assert_eq!(normalize_genres(&Value::Null).unwrap(), json!([]));
+        assert!(normalize_genres(&json!([42])).is_err());
+    }
+    #[test] fn invalid_steam_launch_ids_are_rejected() { assert!(launch_game(0).is_err()); assert!(launch_game(10_000_000_000).is_err()); }
     #[test] fn direct_backend_only() { assert!(SUPABASE_URL.starts_with("https://")); assert!(SUPABASE_URL.ends_with(".supabase.co")); }
 }
 

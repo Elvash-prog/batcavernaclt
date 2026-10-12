@@ -1,6 +1,6 @@
 [package]
 name = "batcaverna-clt-desktop"
-version = "0.5.0"
+version = "0.11.0"
 edition = "2021"
 
 [build-dependencies]
@@ -16,3 +16,8 @@ open = "5"
 urlencoding = "2"
 base64 = "0.22"
 
+
+futures-util = "0.3"
+tokio = { version = "1", features = ["time", "macros"] }
+tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }

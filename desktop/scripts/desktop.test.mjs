@@ -96,3 +96,65 @@ function rendererHelpers(){const source=read('src/app.js').split("$('#mainNav').
 test('categoriza os status existentes sem misturar platinas e zerados',()=>{const c=rendererHelpers();for(const [input,expected] of [['🏆 100% (Platina)','platinum'],['🎮 Em Progresso','progress'],['✅ Zerado','finished'],['✅ Assistido','finished'],['🟦 Biblioteca Steam','steam'],['⏸️ Pausado','paused'],['⭐ Favorito','favorite']])assert.equal(c.normalizedStatus(input),expected)});
 test('estatísticas usam data de conclusão e horas reais sem inventar meses',()=>{const c=rendererHelpers(),today=new Date().toISOString().slice(0,10),rows=[{categoria:'jogos',status:'🏆 Platina',horas:12,data:today},{categoria:'filmes',tipo:'anime',status:'✅ Concluído'},{categoria:'jogos',status:'Backlog',horas:3}];const s=c.statsFromRows(rows);assert.equal(s.total,3);assert.equal(s.concluidos,2);assert.equal(s.horas,15);assert.equal(s.animes,1);assert.equal(s.sem_data,1);assert.equal(s.months.reduce((a,m)=>a+m.jogos+m.midias,0),1)});
 test('banner preserva posição e zoom no formato usado pelo site',()=>{const c=rendererHelpers();const url=c.bannerSave('https://example.com/banner.jpg',20,80,150),data=c.bannerData(url);assert.equal(data.url,'https://example.com/banner.jpg');assert.equal(data.x,20);assert.equal(data.y,80);assert.equal(data.z,150);assert.equal(c.coverUrl('/poster.jpg'),'https://image.tmdb.org/t/p/w500/poster.jpg')});
+
+test('conquistas usam os mesmos 32 critérios do site com a biblioteca do perfil',()=>{
+ const script=read('src/redesign.js'),start=script.indexOf('function siteAchievements('),end=script.indexOf('function cltTitle(',start),ctx={Set};vm.createContext(ctx);vm.runInContext(script.slice(start,end),ctx);
+ const empty=ctx.siteAchievements([],[],[],0,0,0);assert.equal(empty.length,32);assert.equal(empty.filter(a=>a[3]).length,0);
+ const games=Array.from({length:25},(_,i)=>({nome:'Jogo '+i,nota:9,plataforma:'PC',generos:'Ação',status:'Zerado',conquistas:i<5?100:0}));const result=ctx.siteAchievements(games,games,[],1000,25,5);assert.equal(result.find(a=>a[1]==='Mil horas')[3],true);assert.equal(result.find(a=>a[1]==='Biblioteca lendária')[3],false);assert.equal(result.find(a=>a[1]==='Caçador de 100%')[3],true);
+});
+test('SQL do desktop restringe limpeza à conta e personalização às amizades',()=>{
+ const sql=fs.readFileSync(new URL('../../supabase/patch-1.44-desktop-0.6.sql',import.meta.url),'utf8');assert.match(sql,/delete from public\.notificacoes where destinatario_id=auth\.uid\(\)/i);assert.match(sql,/u=p_id or clt_private\.friends\(u,p_id\)/i);assert.doesNotMatch(sql,/disable row level security|grant.*to anon/i);assert.match(sql,/alter publication supabase_realtime add table/);
+});
+
+
+test('gêneros preservam listas da API e convertem campos do editor para arrays',()=>{
+ const source=read('src/app.js').match(/function normalizeGenres\(value\)\{[^\n]+/)[0];
+ const parse=vm.runInNewContext('('+source+')');
+ assert.deepEqual(JSON.parse(JSON.stringify(parse('Ação • Aventura • RPG • Ação'))),['Ação','Aventura','RPG']);
+ assert.deepEqual(JSON.parse(JSON.stringify(parse([{description:'Ação'},{name:'RPG'}]))),['Ação','RPG']);
+ assert.deepEqual(JSON.parse(JSON.stringify(parse(null))),[]);
+});
+
+
+test('histórico mantém datas de calendário sem deslocamento de fuso',()=>{
+ const source=read('src/reference.js').match(/function referenceDate\(value\)\{[^\n]+/)[0];
+ const format=vm.runInNewContext('('+source+')',{date:()=> 'timestamp formatado'});
+ assert.equal(format('2026-10-11'),'11/10/2026');
+ assert.equal(format('2026-10-11T20:00:00Z'),'timestamp formatado');
+});
+
+
+test('fundo global vincula a conta Elvash ao UUID e impede acesso direto',()=>{const sql=fs.readFileSync(new URL('../../supabase/patch-1.45-desktop-0.9.sql',import.meta.url),'utf8');assert.match(sql,/insert into public.clt_launcher_admins\(user_id\) values\(owner_id\)/);assert.match(sql,/revoke all on public.clt_launcher_admins from anon, authenticated/);assert.match(sql,/user_id=auth.uid\(\)/);assert.match(sql,/if not public.clt_launcher_can_edit\(\)/);assert.match(sql,/grant execute on function public.clt_launcher_public\(\) to anon,authenticated/);});
+
+test('detalhes não confundem sequências, edições ou remakes',()=>{
+ const source=read('src/app.js'),start=source.indexOf('function catalogTitleKey'),end=source.indexOf('async function searchCatalog',start),context=vm.createContext({});vm.runInContext(source.slice(start,end),context);
+ const match=(rows,item)=>context.matchCatalogTitle(rows,item);
+ assert.equal(match([{id:1,name:'Dark Souls II'},{id:2,name:'Dark Souls III'}],{nome:'Dark Souls III'}).id,2);
+ assert.equal(match([{id:1,name:'Dark Souls III Deluxe Edition'}],{nome:'Dark Souls III'}),null);
+ assert.equal(match([{id:1,title:'Duna',release_date:'1984-01-01'},{id:2,title:'Duna',release_date:'2021-01-01'}],{nome:'Duna',ano:2021}).id,2);
+ assert.equal(match([{id:1,title:'Duna'},{id:2,title:'Duna'}],{nome:'Duna'}),null);
+ assert.equal(match([{id:1,title:{english:'Anime de teste'}}],{nome:'Anime de teste'}).id,1);
+});
+
+test('desktop 0.10 expõe os recursos compartilhados do site e do APK',()=>{
+ const html=read('src/index.html'),journey=read('src/journey.js'),rust=read('src-tauri/src/v06.rs'),css=read('src/journey.css');
+ new vm.Script(journey);
+ assert.match(html,/journey\.css/);assert.match(html,/journey\.js/);
+ for(const action of ['lists','recommendations','preferences','save_preferences'])assert.match(rust,new RegExp('"'+action+'"'));
+ for(const action of ['stats','progress','save_progress','next_episode','next_season'])assert.match(rust,new RegExp('"'+action+'"'));
+ for(const view of ['lists','recommendations','statistics','preferences'])assert.match(journey,new RegExp("view==='"+view+"'"));
+ assert.match(journey,/bc-desktop-draft:/);assert.match(journey,/batcaverna:item-details/);
+ assert.match(css,/\.sidebar-account/);assert.match(css,/\.statistics-layout/);assert.doesNotMatch(journey,/fetch\(/);
+});
+
+test('desktop 0.11 alinha perfil, biblioteca, comunidade, chat e presença',()=>{
+ const html=read('src/index.html'),script=read('src/alignment.js'),css=read('src/alignment.css'),rust=read('src-tauri/src/main.rs'),realtime=read('src-tauri/src/v06.rs');
+ new vm.Script(script);
+ assert.match(html,/alignment\.css/);assert.match(html,/alignment\.js/);
+ assert.match(script,/category-library-card/);assert.match(script,/community-reference-layout/);assert.match(script,/data-account-status/);assert.match(script,/unifiedAddFriend/);assert.match(script,/initialPatchNotes/);
+ assert.match(script,/data-profile-section="library"/);assert.match(script,/state\.settingsTab!==['"]appearance['"]/);
+ assert.match(css,/grid-template-columns:210px minmax\(420px,760px\) 260px/);assert.match(css,/grid-template-columns:300px minmax\(0,1fr\)!important/);
+ const chatQuery=rust.match(/async fn chat_messages[\s\S]*?(?=async fn send_message)/)?.[0]||'';
+ assert.doesNotMatch(chatQuery,/select=[^"\n]*updated_at/);assert.match(chatQuery,/created_at,lida/);
+ assert.match(realtime,/interval\(Duration::from_secs\(5\)\)/);
+});
