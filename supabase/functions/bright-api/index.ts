@@ -95,6 +95,7 @@ function validate(b: any): {body: any, cost:number} {
   switch (b.op) {
     case "capas": case "steamInfo":
       out.appids = array(b.appids, 50, appid); out.nomes = array(b.nomes, 20, name);
+      out.format = b.format === "landscape" ? "landscape" : "poster";
       cost = Math.max(1, out.appids.length * 2 + out.nomes.length * 3); break;
     case "perfil": out.entrada = entry(b.entrada ?? b.steamid); cost=3; break;
     case "agora": out.steamid=steamid(b.steamid); break;
@@ -135,10 +136,11 @@ const getJson = async (u: string, h: HeadersInit = {}) => {
 const sg = (p: string) => getJson("https://www.steamgriddb.com/api/v2" + p, { Authorization: "Bearer " + SGDB });
 const st = (p: string) => getJson("https://api.steampowered.com" + p + (p.includes("?") ? "&" : "?") + "key=" + STEAM + "&format=json");
 // styles=alternate -> arte "padrão" do SteamGridDB, a que traz o nome/logo do jogo; 600x900 -> formato de capa
-const Q = "styles=alternate&dimensions=600x900&types=static&nsfw=false";
-async function capa(nome?: string, appid?: number): Promise<string | null> {
+const gridQuery = (format: string) => `dimensions=${format === "landscape" ? "920x430,460x215" : "600x900,660x930,342x482"}&types=static&nsfw=false`;
+async function capa(nome?: string, appid?: number, format = "poster"): Promise<string | null> {
   if (adultTitle(nome)) return null;
   try {
+    const Q = gridQuery(format);
     let path: string;
     if (appid) path = `/grids/steam/${appid}?${Q}`;
     else {
@@ -280,7 +282,7 @@ async function steamGratis() {
     switch (b.op) {
       case "capas": {
         const nomes: string[] = b.nomes ?? [], appids: number[] = b.appids ?? [];
-        const capas = await Promise.all(appids.length ? appids.map((a) => capa(undefined, a)) : nomes.map((n) => capa(n)));
+        const capas = await Promise.all(appids.length ? appids.map((a) => capa(undefined, a, b.format)) : nomes.map((n) => capa(n, undefined, b.format)));
         out = { capas };
         break;
       }
@@ -404,3 +406,4 @@ Deno.serve(async (req: Request) => {
     return response(req,{erro:known ? e.message : "Não foi possível concluir a busca. Tente novamente."},known ? e.status : 502);
   }
 });
+
