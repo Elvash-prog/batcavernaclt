@@ -14,3 +14,5 @@
 
 .reference-ui .sidebar nav button{font-weight:500}.reference-ui .sidebar nav button>span{width:auto;min-width:0;flex:1;white-space:nowrap;text-align:left}
 .reference-ui .message-menu>div{top:24px;bottom:auto}.reference-ui .message:has(.message-menu[open]){z-index:10}.reference-ui .modern-chat .chat-profile-link small{color:var(--muted)}.reference-ui .modern-chat .chat-profile-link small.friend-online{color:#71d49d}
+
+.reference-ui .message:not(.mine) .message-menu>div{left:0;right:auto}
