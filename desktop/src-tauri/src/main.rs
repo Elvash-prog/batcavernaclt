@@ -447,8 +447,8 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     let query=input["query"].as_str().unwrap_or("").trim();
     if query.chars().count()>180{return Err("Pesquisa muito longa.".into());}
     if provider=="anilist" {
-        if query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
-        let gql="query($s:String){Page(perPage:12){media(search:$s,type:ANIME,isAdult:false,sort:SEARCH_MATCH){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes description(asHtml:false)}}}";
+        if query.len()<2&&input["recommend"].as_bool()!=Some(true){return Err("Digite pelo menos dois caracteres.".into());}
+        let gql=if input["recommend"].as_bool()==Some(true){"query{Page(perPage:12){media(type:ANIME,isAdult:false,sort:POPULARITY_DESC){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes averageScore meanScore bannerImage siteUrl trailer{id site thumbnail}description(asHtml:false)}}}"}else{"query($s:String){Page(perPage:12){media(search:$s,type:ANIME,isAdult:false,sort:SEARCH_MATCH){id isAdult title{romaji english}startDate{year}coverImage{large}genres episodes averageScore meanScore bannerImage siteUrl trailer{id site thumbnail}description(asHtml:false)}}}"};
         return value(state.client.post("https://graphql.anilist.co").json(&json!({"query":gql,"variables":{"s":query}})).send().await.map_err(|_|"AniList indisponível.".to_string())?).await;
     }
     let kind=input["kind"].as_str().unwrap_or("movie");
@@ -460,7 +460,7 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
         _=>return Err("Catálogo inválido.".into())
     };
     if id.is_none()&&!recommend&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
-    let response=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","12"),("ordering","-added"),("sort_by","popularity.desc"),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]).send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
+    let response=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","12"),("ordering","-added"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,30).to_string()),("sort_by","popularity.desc"),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]).send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?;
     value(response).await
 }
 fn image_host(host: &str)->bool {
@@ -491,6 +491,12 @@ async fn bright_api(input: Value, state: tauri::State<'_, AppState>) -> Result<V
     let session=current(&state).await?;
     let response=state.client.post(format!("{SUPABASE_URL}/functions/v1/bright-api")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&input).send().await.map_err(|_|"Não foi possível consultar a Steam.".to_string())?;
     value(response).await
+}
+
+#[tauri::command]
+fn launch_game(appid: u64) -> Result<(), String> {
+    if appid == 0 || appid > 9999999999 { return Err("Jogo inválido.".into()); }
+    open::that(format!("steam://rungameid/{appid}")).map_err(|_| "Não foi possível abrir a Steam.".into())
 }
 
 #[tauri::command]
@@ -583,7 +589,7 @@ fn main() {
         .build()
         .expect("Cliente HTTPS");
     tauri::Builder::default().manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
             use tauri::{menu::{Menu,MenuItem}, tray::TrayIconBuilder};

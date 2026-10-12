@@ -30,6 +30,7 @@ jobs:
         working-directory: desktop
         run: npm run test:ui
       - name: Disponibilizar prévias da interface
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: BatCaverna-CLT-Windows-Previews

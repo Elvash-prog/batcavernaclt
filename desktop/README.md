@@ -1,4 +1,4 @@
-# BatCaverna CLT Windows 0.6.1
+# BatCaverna CLT Windows 0.7.0
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
 
@@ -28,3 +28,11 @@ Feche a versão anterior e execute o instalador. Confira login, dados já existe
 ## Ajustes 0.6.1
 
 Gêneros são enviados ao Supabase como arrays, inclusive na edição manual, importação e atualização via API. O visual usa azul escuro e roxo, com abas no formulário de títulos, filtros de gêneros, prévias dos temas e ajustes de imagem/tamanho estilizados. O SQL de ativação 0.6.0 continua válido; não há migração nova.
+
+## Interface 0.7.0
+
+Composição baseada nos exemplos da referência: capas verticais em fileiras (com modo horizontal opcional), título/status/horas sobre a imagem, jogo atual em bloco compacto no início e atividades ao lado, painel de personalização com temas/cores/fundo, contatos em lista e chat compacto.
+
+Os detalhes têm Sobre, Conquistas, Mídia, Avaliações, Notas e Histórico. Avaliações vêm dos catálogos; notas e status são persistidos na biblioteca. O histórico apresenta as datas existentes, sem inventar eventos antigos. A mídia usa imagens disponíveis nos catálogos e vídeos retornados pela Steam/AniList. Continuar abre jogos Steam pelo protocolo local, quando há Steam App ID.
+
+O SQL da versão 0.6.0 continua válido. Os testes de UI utilizam dados/eventos simulados; a verificação entre duas contas reais e APIs configuradas continua necessária.

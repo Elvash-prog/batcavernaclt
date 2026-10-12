@@ -53,7 +53,7 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
    let id=if let Some(id)=input["appid"].as_u64(){id}else{let q=input["query"].as_str().unwrap_or("").trim();if q.len()<2||q.len()>180{return Err("Nome inválido.".into());}let r=value(state.client.get("https://store.steampowered.com/api/storesearch/").query(&[("term",q),("cc","br"),("l","portuguese")]).send().await.map_err(|_|"Steam indisponível.".to_string())?).await?;r["items"].as_array().and_then(|a|a.first()).and_then(|x|x["id"].as_u64()).ok_or("Jogo não encontrado na Steam.")?};
    let r=value(state.client.get("https://store.steampowered.com/api/appdetails").query(&[("appids",id.to_string()),("cc","br".into()),("l","brazilian".into())]).send().await.map_err(|_|"Steam indisponível.".to_string())?).await?;
    let d=&r[id.to_string()]["data"];if d.is_null(){return Err("Dados da Steam indisponíveis.".into());}let genres=d["genres"].as_array().cloned().unwrap_or_default();if genres.iter().any(|g|g["id"].as_str()==Some("71")){return Err("Título adulto indisponível.".into());}
-   Ok(json!({"steam_appid":id,"nome":d["name"],"generos":genres,"capa":d["header_image"],"descricao":d["short_description"],"preco":d["price_overview"]["final_formatted"],"desenvolvedores":d["developers"],"lancamento":d["release_date"]["date"]}))
+   Ok(json!({"steam_appid":id,"nome":d["name"],"generos":genres,"capa":d["header_image"],"descricao":d["short_description"],"preco":d["price_overview"]["final_formatted"],"desenvolvedores":d["developers"],"lancamento":d["release_date"]["date"],"screenshots":d["screenshots"],"movies":d["movies"],"metacritic":d["metacritic"],"recommendations":d["recommendations"],"platforms":d["platforms"]}))
  },
  _=>Err("Operação não permitida.".into())
  }
