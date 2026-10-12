@@ -16,3 +16,5 @@
 .reference-ui .message-menu>div{top:24px;bottom:auto}.reference-ui .message:has(.message-menu[open]){z-index:10}.reference-ui .modern-chat .chat-profile-link small{color:var(--muted)}.reference-ui .modern-chat .chat-profile-link small.friend-online{color:#71d49d}
 
 .reference-ui .message:not(.mine) .message-menu>div{left:0;right:auto}
+
+.reference-ui .modern-chat{grid-template-columns:minmax(0,1fr);max-width:960px;height:min(700px,calc(100% - 52px));margin:0 auto}.reference-ui .modern-chat .chat-people{display:none}.reference-ui .reference-chat-page .community-tabs{max-width:960px}.reference-ui .chat-date{align-self:center;color:var(--muted);font-size:10px;padding:5px 12px;border-radius:18px;background:color-mix(in srgb,var(--panel) 75%,var(--bg));border:1px solid var(--line);margin:2px 0 7px}.reference-ui .modern-chat .message{max-width:75%}
