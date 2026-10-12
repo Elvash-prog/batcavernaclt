@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod v06;
+mod desktop_runtime;
 use serde::{Deserialize, Serialize};
 use base64::Engine;
 use serde_json::{json, Value};
@@ -496,9 +497,20 @@ async fn upload_media(input: UploadInput, state: tauri::State<'_, AppState>) -> 
     value(response).await
 }
 
+fn normalize_media_url(value: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.starts_with("https://") { return Ok(value.to_string()); }
+    let path = value.trim_start_matches('/');
+    if path.is_empty() || path.contains("..") || path.chars().any(|c| matches!(c, ':'|'?'|'#')) { return Err("URL de mídia inválida.".into()); }
+    if path.starts_with("storage/v1/") { return Ok(format!("{SUPABASE_URL}/{path}")); }
+    let bucket = path.split('/').next().unwrap_or("");
+    let prefix = if matches!(bucket, "avatars"|"group-avatars"|"feed-media"|"chat-media"|"group-chat-media") { "" } else { "avatars/" };
+    Ok(format!("{SUPABASE_URL}/storage/v1/object/public/{prefix}{path}"))
+}
 #[tauri::command]
 async fn media_url(url: String, state: tauri::State<'_, AppState>) -> Result<String, String> {
-    if !url.starts_with(SUPABASE_URL){return if url.starts_with("https://"){Ok(url)}else{Err("URL de mídia inválida.".into())};}
+    let url=normalize_media_url(&url)?;
+    if !url.starts_with(&format!("{SUPABASE_URL}/")){return Ok(url);}
     let marker="/storage/v1/object/public/"; let Some(rest)=url.split(marker).nth(1) else{return Ok(url)};
     let mut parts=rest.splitn(2,'/'); let bucket=parts.next().unwrap_or(""); let path=parts.next().unwrap_or("");
     if !matches!(bucket,"avatars"|"group-avatars"|"feed-media"|"chat-media"|"group-chat-media") || path.is_empty(){return Err("Mídia inválida.".into());}
@@ -662,9 +674,19 @@ fn main() {
         .timeout(Duration::from_secs(25))
         .build()
         .expect("Cliente HTTPS");
-    tauri::Builder::default().manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+    tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| desktop_runtime::show_main(app)))
+        .plugin(tauri_plugin_notification::init())
+        .manage(desktop_runtime::DesktopState::default())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if desktop_runtime::background_enabled(window.app_handle()) { api.prevent_close(); let _ = window.hide(); }
+            }
+        })
+        .manage(AppState { client, session: Mutex::new(None) })
+        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, app_state, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
+            desktop_runtime::initialize(app.handle())?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
             use tauri::{menu::{Menu,MenuItem}, tray::TrayIconBuilder};
             let show=MenuItem::with_id(app,"show","Abrir BatCaverna",true,None::<&str>)?; let hide=MenuItem::with_id(app,"hide","Ocultar na bandeja",true,None::<&str>)?; let quit=MenuItem::with_id(app,"quit","Sair",true,None::<&str>)?;
@@ -676,6 +698,14 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn media_paths_preserve_buckets_and_reject_invalid_paths() {
+        assert_eq!(normalize_media_url("friend/avatar.webp").unwrap(), format!("{SUPABASE_URL}/storage/v1/object/public/avatars/friend/avatar.webp"));
+        assert_eq!(normalize_media_url("chat-media/friend/image.webp").unwrap(), format!("{SUPABASE_URL}/storage/v1/object/public/chat-media/friend/image.webp"));
+        assert_eq!(normalize_media_url("/storage/v1/object/public/avatars/avatar.webp").unwrap(), format!("{SUPABASE_URL}/storage/v1/object/public/avatars/avatar.webp"));
+        assert!(normalize_media_url("../avatar.webp").is_err());
+        assert!(normalize_media_url("javascript:alert(1)").is_err());
+        assert_eq!(normalize_media_url("https://avatars.example/avatar.webp").unwrap(), "https://avatars.example/avatar.webp");
+    }
     #[test] fn steam_id_does_not_turn_empty_values_into_shared_zero() {
         assert_eq!(normalize_steam_appid(&Value::Null).unwrap(),Value::Null);
         assert_eq!(normalize_steam_appid(&json!(0)).unwrap(),Value::Null);
