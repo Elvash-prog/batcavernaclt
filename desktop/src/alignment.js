@@ -1,15 +1,10 @@
 'use strict';
 (()=>{
 const statusOptions={online:'Online',jogando:'Jogando',ausente:'Ausente',dnd:'Não incomodar',invisivel:'Invisível'};
-const categoryMeta=[
- ['jogos','🎮','Jogos','Seus mundos interativos, progresso e horas jogadas.'],
- ['filmes','🎬','Filmes','Histórias que você assistiu ou quer descobrir.'],
- ['series','📺','Séries','Temporadas, episódios e próximas maratonas.'],
- ['animes','✦','Animes','Jornadas, temporadas e episódios em um só lugar.']
-];
 
 const initialPatchNotes=[
- 'Biblioteca organizada em Jogos, Filmes, Séries e Animes, com ícones e acesso separado.',
+ 'Biblioteca restaurada à grade direta de capas, com busca e filtros, sem tela intermediária.',
+ 'Amigos em lista compacta, com abas Amigos/Chat, busca, fotos e status.',
  'Perfil com capa completa e independente do fundo; biblioteca visível ao visitar amigos.',
  'Amigos e Chat reunidos, com busca e adição de amigos e lista lateral de conversas.',
  'Correção do histórico de mensagens que não carregava e do posicionamento dos botões.',
@@ -22,7 +17,7 @@ const baseHome=renderHome;
 renderHome=async function(){
  await baseHome();if(state.current!=='home'||$('#initialPatchNotes'))return;
  const notes=document.createElement('details');notes.id='initialPatchNotes';notes.className='initial-patch-notes';
- notes.innerHTML=`<summary><span>✦ Novidades da versão 0.11.0</span><small>12 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
+ notes.innerHTML=`<summary><span>✦ Novidades da versão 0.11.1</span><small>12 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
  const hero=$('.home-hero');if(hero)hero.after(notes);else $('#content').prepend(notes);
 };
 
@@ -32,28 +27,10 @@ new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(
 document.querySelectorAll('img').forEach(safeAvatar);
 
 const baseNavigate=navigate;
-async function renderCollectionHub(){
- setPage('Biblioteca','TODOS OS SEUS MUNDOS');
- const request=state.navigationSequence=(state.navigationSequence||0)+1;
- const groups=await Promise.all(categoryMeta.map(([key])=>api.library(key).catch(()=>[])));
- if(state.current!=='collection'||request!==state.navigationSequence)return;
- const total=groups.reduce((sum,rows)=>sum+rows.length,0);
- $('#content').className='content collection-hub';
- $('#content').innerHTML=`<section class="collection-hub-heading"><span class="eyebrow">SUA COLEÇÃO COMPLETA</span><h2>Sua biblioteca, organizada de verdade.</h2><p>${total} título${total===1?'':'s'} separado${total===1?'':'s'} por categoria. Escolha uma área para explorar.</p></section><section class="category-library-grid">${categoryMeta.map(([key,icon,label,description],index)=>{const rows=groups[index],progress=rows.filter(x=>normalizedStatus(x.status)==='progress').length,finished=rows.filter(x=>['finished','platinum','favorite'].includes(normalizedStatus(x.status))).length;return `<button class="category-library-card category-${key}" data-open-category="${key}"><span class="category-library-icon">${icon}</span><span class="category-library-copy"><small>${String(key).toUpperCase()}</small><strong>${label}</strong><em>${description}</em><i>${rows.length} na coleção · ${progress} em progresso · ${finished} concluídos</i></span><span class="category-library-covers">${rows.slice(0,3).map(item=>`<img src="brand.jpg" data-cover="${esc(coverUrl(item.capa))}" data-cover-name="${esc(item.nome)}" data-cover-game="${key==='jogos'?'1':'0'}" alt="">`).join('')||'<b>＋</b>'}</span><span class="category-library-arrow">→</span></button>`}).join('')}</section>`;
- hydrateCovers($('#content'));
- $$('[data-open-category]').forEach(button=>button.onclick=()=>{state.libraryCategory=button.dataset.openCategory;state.libraryStatus='all';navigate('library')});
-}
 navigate=async function(view){
- if(view==='collection'){
-  state.current='collection';$$('[data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view==='collection'));loading();
-  try{await renderCollectionHub()}catch(error){errorCard(error)}
-  return;
- }
- $('#content')?.classList.remove('collection-hub');
- return baseNavigate(view);
+ $('#content')?.classList.remove('friends-chat-reference','chat-reference-active');
+ return baseNavigate(view==='collection'?'library':view);
 };
-const libraryNav=$('#mainNav [data-view="library"][data-collection="jogos"]');
-if(libraryNav){libraryNav.dataset.view='collection';delete libraryNav.dataset.collection;libraryNav.querySelector('span').textContent='Biblioteca';}
 const friendsNav=$('#mainNav [data-view="friends"]');
 friendsNav?.remove();
 const chatNav=$('#mainNav [data-view="chat"]');
@@ -111,8 +88,15 @@ renderSocial=async function(){
 const baseFriends=renderFriends;
 renderFriends=async function(){
  await baseFriends();if(!['friends','chat'].includes(state.current))return;
- $('#content').classList.add('friends-chat-reference');
- const heading=$('.friends-heading');if(heading&&!heading.querySelector('#unifiedAddFriend')){heading.insertAdjacentHTML('afterbegin','<button id="unifiedAddFriend" class="primary">♙ Adicionar amigo</button>');$('#unifiedAddFriend').onclick=openFriendSearch;}
+ const content=$('#content'),rows=content.querySelector('.reference-friend-list');if(!rows)return;
+ const shell=document.createElement('section');shell.className='friends-compact';
+ shell.innerHTML='<header><h2>Amigos e chat</h2><button id="unifiedAddFriend" class="secondary">＋ Adicionar amigo</button></header><nav class="tabs compact-friends-tabs"><button id="chatFriendsTab" class="active">Amigos</button><button id="chatConversationsTab">Chat</button></nav><label class="compact-friends-search"><span>⌕</span><input id="compactFriendsSearch" type="search" placeholder="Buscar amigos…" aria-label="Buscar amigos"></label><div class="compact-friends-list"></div><p id="compactFriendsEmpty" class="muted" hidden>Nenhum amigo encontrado.</p>';
+ content.replaceChildren(shell);content.classList.add('friends-chat-reference');shell.querySelector('.compact-friends-list').append(rows);
+ rows.querySelectorAll('.friend-card').forEach(card=>{const chat=card.querySelector('[data-choose-chat]');if(chat){chat.textContent='›';chat.setAttribute('aria-label','Conversar com '+(card.querySelector('strong')?.textContent||'amigo'));}});
+ $('#unifiedAddFriend').onclick=openFriendSearch;
+ $('#chatFriendsTab').onclick=()=>{};
+ $('#chatConversationsTab').onclick=()=>{const first=rows.querySelector('[data-choose-chat]');if(first)first.click();else toast('Adicione um amigo para iniciar uma conversa.');};
+ $('#compactFriendsSearch').oninput=event=>{const query=event.target.value.trim().toLocaleLowerCase('pt-BR');let visible=0;rows.querySelectorAll('.friend-card').forEach(card=>{card.hidden=!card.textContent.toLocaleLowerCase('pt-BR').includes(query);if(!card.hidden)visible++;});$('#compactFriendsEmpty').hidden=visible>0||!query;};
 };
 function openFriendSearch(){
  $('.friend-search-overlay')?.remove();
