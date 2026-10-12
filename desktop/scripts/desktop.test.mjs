@@ -122,3 +122,6 @@ test('histórico mantém datas de calendário sem deslocamento de fuso',()=>{
  assert.equal(format('2026-10-11'),'11/10/2026');
  assert.equal(format('2026-10-11T20:00:00Z'),'timestamp formatado');
 });
+
+
+test('fundo global vincula a conta Elvash ao UUID e impede acesso direto',()=>{const sql=fs.readFileSync(new URL('../../supabase/patch-1.45-desktop-0.9.sql',import.meta.url),'utf8');assert.match(sql,/insert into public.clt_launcher_admins\(user_id\) values\(owner_id\)/);assert.match(sql,/revoke all on public.clt_launcher_admins from anon, authenticated/);assert.match(sql,/user_id=auth.uid\(\)/);assert.match(sql,/if not public.clt_launcher_can_edit\(\)/);assert.match(sql,/grant execute on function public.clt_launcher_public\(\) to anon,authenticated/);});

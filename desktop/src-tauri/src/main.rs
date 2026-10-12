@@ -222,6 +222,53 @@ async fn change_password(input: PasswordInput, state: tauri::State<'_, AppState>
     value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&json!({"password":input.password})).send().await.map_err(|_|"Não foi possível alterar a senha.".to_string())?).await
 }
 
+#[derive(Deserialize)]
+struct EmailInput { current: String, email: String }
+#[tauri::command]
+async fn change_email(input:EmailInput,state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let email=input.email.trim().to_lowercase();
+ if email.len()>254||email.chars().any(char::is_whitespace)||!email.split_once('@').is_some_and(|(a,b)|!a.is_empty()&&b.contains('.')&&!b.starts_with('.')&&!b.ends_with('.')){return Err("Informe um e-mail válido.".into());}
+ let session=current(&state).await?;
+ let fresh=password_session(&state.client,&session.user.email,&input.current).await.map_err(|_|"A senha atual está incorreta.".to_string())?;
+ if fresh.user.id!=session.user.id{return Err("Sua sessão mudou.".into());}
+ let result=value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&fresh.access_token).json(&json!({"email":email})).send().await.map_err(|_|"Não foi possível solicitar a troca de e-mail.".to_string())?).await?;
+ Ok(json!({"email":result.get("email"),"pending":result.get("new_email"),"message":"Solicitação enviada. Confira os e-mails de confirmação para concluir a alteração."}))
+}
+#[tauri::command]
+async fn launcher_settings(state:tauri::State<'_,AppState>)->Result<Value,String>{
+ value(state.client.post(format!("{SUPABASE_URL}/rest/v1/rpc/clt_launcher_public")).header("apikey",SUPABASE_KEY).json(&json!({})).send().await.map_err(|_|"Não foi possível consultar o fundo de login.".to_string())?).await
+}
+#[tauri::command]
+async fn launcher_permission(state:tauri::State<'_,AppState>)->Result<bool,String>{
+ let session=current(&state).await?;Ok(rpc(&state.client,"clt_launcher_can_edit",json!({}),&session.access_token).await?.as_bool()==Some(true))
+}
+#[tauri::command]
+async fn set_login_background(url:Option<String>,state:tauri::State<'_,AppState>)->Result<Value,String>{let session=current(&state).await?;rpc(&state.client,"clt_launcher_set_wallpaper",json!({"p_url":url}),&session.access_token).await}
+#[tauri::command]
+async fn upload_login_background(input:UploadInput,state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let session=current(&state).await?;
+ if rpc(&state.client,"clt_launcher_can_edit",json!({}),&session.access_token).await?.as_bool()!=Some(true){return Err("Esta conta não tem permissão para alterar o login.".into());}
+ let ext=match input.mime.as_str(){"image/png"=>"png","image/jpeg"=>"jpg","image/webp"=>"webp",_=>return Err("Escolha PNG, JPG ou WebP.".into())};
+ if input.base64.len()>12*1024*1024{return Err("Escolha uma imagem de até 8 MB.".into());}
+ let bytes=base64::engine::general_purpose::STANDARD.decode(input.base64).map_err(|_|"Imagem inválida.".to_string())?;
+ if bytes.is_empty()||bytes.len()>8*1024*1024{return Err("Escolha uma imagem de até 8 MB.".into());}
+ let path=format!("{}/login-{}.{}",session.user.id,SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis(),ext);
+ value(state.client.post(format!("{SUPABASE_URL}/storage/v1/object/login-backgrounds/{path}")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type",&input.mime).body(bytes).send().await.map_err(|_|"Não foi possível enviar o fundo.".to_string())?).await?;
+ Ok(json!({"url":format!("{SUPABASE_URL}/storage/v1/object/public/login-backgrounds/{path}")}))
+}
+#[tauri::command]
+async fn friend_activity(state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let session=current(&state).await?;let friends=get(&state.client,&format!("/rest/v1/amigos?select=amigo_id&user_id=eq.{}&limit=200",session.user.id),&session.access_token).await?;
+ let ids:Vec<&str>=friends.as_array().into_iter().flatten().filter_map(|f|f["amigo_id"].as_str()).collect();if ids.is_empty(){return Ok(json!([]));}
+ let events=get(&state.client,&format!("/rest/v1/clt_activity_events?select=id,user_id,tipo,item_id,categoria,nome,status,meta,created_at&user_id=in.({})&order=created_at.desc,id.desc&limit=20",ids.join(",")),&session.access_token).await?;
+ attach_authors(&state.client,events,&session.access_token).await
+}
+#[tauri::command]
+async fn link_steam(steam_id:String,state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let session=current(&state).await?;let id=steam_id.trim();if !id.is_empty()&&(id.len()!=17||!id.bytes().all(|x|x.is_ascii_digit())){return Err("Informe o Steam ID da conta com 17 dígitos.".into());}
+ value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).json(&json!({"steam_id":if id.is_empty(){Value::Null}else{json!(id)}})).send().await.map_err(|_|"Não foi possível conectar a Steam.".to_string())?).await
+}
+
 #[tauri::command]
 fn logout(state: tauri::State<'_, AppState>) -> Result<Value, String> {
     v06::stop();
@@ -489,7 +536,7 @@ async fn upload_profile_image(input: UploadInput, state: tauri::State<'_,AppStat
 #[tauri::command]
 async fn bright_api(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?;
-    let response=state.client.post(format!("{SUPABASE_URL}/functions/v1/bright-api")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&input).send().await.map_err(|_|"Não foi possível consultar a Steam.".to_string())?;
+    let response=state.client.post(format!("{SUPABASE_URL}/functions/v1/bright-api")).timeout(Duration::from_secs(if input["op"].as_str()==Some("gratis"){50}else{25})).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&input).send().await.map_err(|_|"Não foi possível consultar a Steam.".to_string())?;
     value(response).await
 }
 
@@ -589,7 +636,7 @@ fn main() {
         .build()
         .expect("Cliente HTTPS");
     tauri::Builder::default().manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+        .invoke_handler(tauri::generate_handler![app_state, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
             use tauri::{menu::{Menu,MenuItem}, tray::TrayIconBuilder};

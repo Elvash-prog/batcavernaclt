@@ -18,7 +18,7 @@ function installRefinement(env){
   // Show the existing cover while resolving a local image; never replace it with a logo.
   if(url)img.src=url;else img.src=emptyImage;
   let task=imageJobs.get(key);if(!task){task=queueCover(async()=>{
-   const urls=[];if(url)urls.push(url);
+   const urls=[];if(game&&img.dataset.autoFormat==='1'){const preferred=await chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation,url);if(preferred)urls.push(preferred)}if(url)urls.push(url);
    if(game&&appid)urls.push(`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appid}/${orientation==='poster'?'library_600x900.jpg':'header.jpg'}`);
    for(const u of urls){try{return await api.coverImage(await signed(u))}catch{}}
    if(game&&name){const alt=await chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation);if(alt){try{return await api.coverImage(alt)}catch{}}}
@@ -29,7 +29,7 @@ function installRefinement(env){
  const mediaURLs=new Map(),baseSigned=signed;
  signed=async function(url){const key=state.userId+':'+url,hit=mediaURLs.get(key);if(hit&&hit.until>Date.now())return hit.task;const task=baseSigned(url);mediaURLs.set(key,{task,until:Date.now()+300000});return task};
  const mediaReady=new Map();hydrateMedia=async function(root=document){await Promise.all([...root.querySelectorAll('[data-private-src]')].map(async n=>{const url=n.dataset.privateSrc,key=state.userId+':'+url;if(mediaReady.has(key)){n.src=mediaReady.get(key);n.removeAttribute('data-private-src');return}if(/^https:\/\//.test(url))n.src=url;const src=await signed(url);mediaReady.set(key,src);if(n.isConnected){n.src=src;n.removeAttribute('data-private-src')}}))};
- const baseCard=mediaCard;mediaCard=function(item){const html=baseCard(item);return html.replace('src="brand.jpg"',`src="${esc(cachedCover(item,format()))}"`)};
+ const baseCard=mediaCard;mediaCard=function(item){let html=baseCard(item);if(String(item.id).startsWith('rec-'))html=html.replace('data-cover-format=', 'data-auto-format="1" data-cover-format=');return html.replace('src="brand.jpg"',`src="${esc(cachedCover(item,format()))}"`)};
  // A single render keeps cached covers and status sections stable.
  let selecting=false,selected=new Set(),visible=[],collection=state.libraryCategory;
  drawLibrary=function(){
@@ -62,5 +62,5 @@ function installRefinement(env){
  const profile=renderProfile;renderProfile=async function(id=null){await profile(id);const box=$('#profileMissions');if(!box)return;const cards=[...box.querySelectorAll('.mission-cards article')];if(!cards.length)return;const daily=[],weekly=[];for(const card of cards){const heading=card.querySelector('b').textContent,weeklyCard=card.querySelector('p').textContent==='Nesta semana',target=card.querySelector('progress').max;const objective=document.createElement('p');objective.className='mission-objective';objective.textContent=`Adicionar ${target} ${card.dataset.missionKind==='media'?'filme(s), série(s) ou anime(s)':'jogo(s)'} à biblioteca ${weeklyCard?'nesta semana':'hoje'}.`;card.querySelector('b').after(objective);(weeklyCard?weekly:daily).push(card)}box.innerHTML='';for(const [label,list] of [['Missões diárias',daily],['Missões semanais',weekly]]){const section=document.createElement('section');section.className='mission-period';section.innerHTML=`<h2>${label}</h2><div class="mission-cards"></div>`;section.querySelector('div').append(...list);box.append(section)}};
  const friendNav=$('#mainNav [data-view="friends"]');friendNav?.remove();const chatNav=$('#mainNav [data-view="chat"]');if(chatNav)chatNav.querySelector('span').textContent='Amigos e chat';
  const baseNavigate=navigate;let navigation=0;navigate=async function(view){const seq=++navigation,content=$('#content');content.classList.remove('community-feed','community-hub');content.classList.add('screen-pending');try{await baseNavigate(view==='chat'&&!ui.chat&&!ui.group?'friends':view)}finally{if(seq===navigation){content.classList.remove('screen-pending');$('#mainNav [data-view="chat"]')?.classList.toggle('active',['friends','chat'].includes(state.current))}}};
- document.documentElement.classList.remove('booting');
+ installPolish(env);document.documentElement.classList.remove('booting');
 }

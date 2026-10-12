@@ -100,7 +100,7 @@ function validate(b: any): {body: any, cost:number} {
     case "perfil": out.entrada = entry(b.entrada ?? b.steamid); cost=3; break;
     case "agora": out.steamid=steamid(b.steamid); break;
     case "jogos": out.steamid=steamid(b.steamid); cost=3; break;
-    case "conquistas": out.steamid=steamid(b.steamid); out.appid=appid(b.appid); cost=2; break;
+    case "conquistas": if(b.steamid)out.steamid=steamid(b.steamid); out.appid=appid(b.appid); cost=b.steamid?2:1; break;
     case "steamAmigos": out.steamids=array(b.steamids,100,steamid); cost=Math.max(1,Math.ceil(out.steamids.length/10)); break;
     case "gratis": cost=35; break;
     default: throw new ApiError(400, "Operação inválida.");
@@ -205,6 +205,7 @@ async function steamAppInfo(appid: number) {
     precoInicial: p ? Number(p.initial) / 100 : (d.is_free ? 0 : null),
     desconto: p?.discount_percent ?? (d.is_free ? 100 : 0),
     isFree: !!d.is_free,
+    tipo: d.type === "dlc" ? "DLC" : "Jogo",
     loja: "🟦 Steam",
     url: `https://store.steampowered.com/app/${appid}`,
   };
@@ -222,7 +223,7 @@ async function steamInfo(appids: number[] = [], nomes: string[] = []) {
     try {
       const q = await getJson(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(nome)}&cc=br&l=portuguese`);
       const id = Number(q?.items?.[0]?.id);
-      if (!id || seen.has(id)) continue;
+      if (!id || seen.has(id)) return;
       seen.add(id);
       const z = await steamAppInfo(id);
       if (z) out.push(z);
@@ -238,7 +239,7 @@ async function steamGratis() {
     if (!id || seen.has(id) || adultTitle(g.name)) return;
     const discount = Number(g?.discount_percent ?? 0);
     const finalPrice = Number(g?.final_price ?? -1);
-    if (discount !== 100 && finalPrice !== 0) return;
+    if (discount !== 100 || finalPrice !== 0 || Number(g.original_price ?? 0)<=0) return;
     seen.add(id);
     out.push({
       appid: id,
@@ -259,22 +260,22 @@ async function steamGratis() {
   } catch {}
   // A busca da loja encontra promoções temporárias que não entram em featuredcategories.
   try {
-    const html = await fetch("https://store.steampowered.com/search/results/?maxprice=free&specials=1&ndl=1&count=100&cc=br&l=portuguese", {
-      headers: { "User-Agent": "Mozilla/5.0", "Accept-Language": "pt-BR,pt;q=0.9" }, signal: AbortSignal.any([signal,AbortSignal.timeout(8000)]), redirect: "error"
-    }).then(async r => { if (!r.ok) throw new Error(`Steam search ${r.status}`); return readText(r, 2 * 1024 * 1024); });
-    const ids = [...html.matchAll(/data-ds-appid="([0-9]+)"/g)].map(m => Number(m[1]));
-    for (const id of ids.slice(0, 30)) {
-      if (!id || seen.has(id)) continue;
+    const pages=await Promise.allSettled([998,21].map(async category=>{const r=await fetch(`https://store.steampowered.com/search/results/?maxprice=free&specials=1&category1=${category}&ndl=1&count=100&cc=br&l=portuguese`,{headers:{"User-Agent":"Mozilla/5.0","Accept-Language":"pt-BR,pt;q=0.9"},signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:"error"});if(!r.ok)throw Error('Steam search');return readText(r,2*1024*1024)}));
+    const html=pages.filter(x=>x.status==='fulfilled').map((x:any)=>x.value).join('');
+    const ids=[...new Set([...html.matchAll(/data-ds-appid="([0-9]+)"/g)].map(m=>Number(m[1])))];
+    for(let offset=0;offset<Math.min(ids.length,60);offset+=6){await Promise.all(ids.slice(offset,offset+6).map(async id=>{
+
+      if (!id || seen.has(id)) return;
       try {
         const z = await steamAppInfo(id);
-        if (!z || z.preco !== 0 || Number(z.precoInicial ?? 0) <= 0) continue;
+        if (!z || z.preco !== 0 || Number(z.precoInicial ?? 0) <= 0 || z.desconto!==100) return;
         seen.add(id);
         out.push({
-          appid: id, nome: z.nome, capa: z.capa, url: z.url,
+          appid: id, nome: z.nome, capa: z.capa, url: z.url, tipo:z.tipo,
           fim: "", preco: 0, precoInicial: z.precoInicial, desconto: 100,
         });
       } catch {}
-    }
+    }));}
   } catch {}
   return out;
 }
@@ -349,25 +350,14 @@ async function steamGratis() {
         break;
       }
       case "conquistas": {
-        const id = await resolver(b.steamid), app = Number(b.appid);
-        try {
-          const [pl, sc] = await Promise.all([
-            st(`/ISteamUserStats/GetPlayerAchievements/v1/?steamid=${id}&appid=${app}&l=brazilian`),
-            st(`/ISteamUserStats/GetSchemaForGame/v2/?appid=${app}&l=brazilian`),
-          ]);
-          const icons: Record<string, any> = {};
-          (sc.game?.availableGameStats?.achievements ?? []).forEach((a: any) => (icons[a.name] = a));
-          const lista = (pl.playerstats?.achievements ?? []).map((a: any) => ({
-            nome: a.name || icons[a.apiname]?.displayName || a.apiname,
-            desc: a.description || icons[a.apiname]?.description || "",
-            got: a.achieved === 1,
-            quando: a.unlocktime ? new Date(a.unlocktime * 1000).toISOString().slice(0, 10) : "",
-            icon: a.achieved === 1 ? icons[a.apiname]?.icon : icons[a.apiname]?.icongray,
-          }));
-          out = { lista };
-        } catch {
-          out = { lista: [], erro: "Sem conquistas para este jogo, ou os detalhes de jogo estão privados na Steam." };
-        }
+        const app=Number(b.appid);
+        const schema=await st(`/ISteamUserStats/GetSchemaForGame/v2/?appid=${app}&l=brazilian`);
+        let player:any=null;
+        if(b.steamid){try{const id=await resolver(b.steamid);player=(await st(`/ISteamUserStats/GetPlayerAchievements/v1/?steamid=${id}&appid=${app}&l=brazilian`)).playerstats}catch{}}
+        const progressKnown=player?.success!==false&&Array.isArray(player?.achievements);
+        const unlocked=new Map((player?.achievements??[]).map((a:any)=>[a.apiname,a]));
+        const lista=(schema.game?.availableGameStats?.achievements??[]).map((a:any)=>{const p:any=unlocked.get(a.name);return {nome:a.displayName||a.name,desc:a.description||'',got:progressKnown?p?.achieved===1:null,quando:p?.unlocktime?new Date(p.unlocktime*1000).toISOString().slice(0,10):'',icon:a.icon||a.icongray,progressKnown}});
+        out={lista,progressKnown,erro:lista.length?'':'Este jogo não disponibiliza conquistas na Steam.'};
         break;
       }
       case "steamInfo": {
