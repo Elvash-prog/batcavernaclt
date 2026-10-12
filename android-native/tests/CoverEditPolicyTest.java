@@ -1,0 +1,5 @@
+package dev.gamersclt.batcaverna.nativeapp;
+public final class CoverEditPolicyTest {
+ static int count;static void test(boolean actual,boolean expected){if(actual!=expected)throw new AssertionError();count++;}
+ public static void main(String[] args){String base="https://project.supabase.co",prefix=base+"/storage/v1/object/public/avatars/A/";test(CoverEditPolicy.allowed("","old","A",base),true);test(CoverEditPolicy.allowed("old","old","A",base),true);test(CoverEditPolicy.allowed("https://media.rawg.io/image.jpg","old","A",base),true);test(CoverEditPolicy.allowed(prefix+"abc-123.jpg","old","A",base),true);test(CoverEditPolicy.allowed(prefix+"../B/photo.jpg","old","A",base),false);test(CoverEditPolicy.allowed(prefix+"%2e%2e/photo.jpg","old","A",base),false);test(CoverEditPolicy.allowed(base+"/storage/v1/object/public/avatars/B/photo.jpg","old","A",base),false);test(CoverEditPolicy.allowed(prefix+"file.svg","old","A",base),false);test(CoverEditPolicy.allowed("https://evil.test/photo.jpg","old","A",base),false);test(CoverEditPolicy.allowed("http://media.rawg.io/photo.jpg","old","A",base),false);System.out.println("CoverEditPolicy: "+count+" checks");}
+}
