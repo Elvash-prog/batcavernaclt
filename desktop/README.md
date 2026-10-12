@@ -1,6 +1,15 @@
-# BatCaverna CLT Windows 0.10.0
+# BatCaverna CLT Windows 0.11.0
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Novidades 0.11.0
+
+- Perfil com capa preenchendo toda a área superior e biblioteca/estatísticas removidas do perfil próprio; perfis de amigos continuam exibindo a biblioteca autorizada.
+- Biblioteca geral separada em Jogos, Filmes, Séries e Animes, com ícones, contadores e acesso dedicado a cada categoria.
+- Comunidade em três colunas e Amigos + Chat reunidos em uma só experiência, com busca e adição de amigos.
+- Correção do carregamento das mensagens para a estrutura atual do Supabase, sem depender da coluna inexistente `updated_at`.
+- Status da conta selecionável no rodapé, presença atualizada com mais frequência, avatares resilientes e atividade da Steam renovada automaticamente.
+- Aparência com os controles de largura, tamanho dos cards e escala seguindo o sentido correto e fundo de login administrativo exibido apenas uma vez.
 
 ## Esta atualização
 

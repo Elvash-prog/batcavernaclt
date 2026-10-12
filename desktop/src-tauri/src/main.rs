@@ -608,7 +608,10 @@ async fn send_friend_invite(input: InviteInput, state: tauri::State<'_, AppState
 #[tauri::command]
 async fn chat_messages(friend_id: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?; let friend=safe_id(&friend_id)?; let me=&session.user.id;
-    get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,updated_at,lida&or=(and(remetente_id.eq.{me},destinatario_id.eq.{friend}),and(remetente_id.eq.{friend},destinatario_id.eq.{me}))&order=created_at.desc&limit=300"),&session.access_token).await
+    // The production chat table predates message editing and does not expose
+    // `updated_at`. Selecting only columns that exist keeps the whole history
+    // readable without weakening RLS or deleting any message.
+    get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida&or=(and(remetente_id.eq.{me},destinatario_id.eq.{friend}),and(remetente_id.eq.{friend},destinatario_id.eq.{me}))&order=created_at.desc&limit=300"),&session.access_token).await
 }
 
 #[tauri::command]

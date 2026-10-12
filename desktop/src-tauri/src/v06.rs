@@ -100,7 +100,7 @@ async fn realtime_loop(app:tauri::AppHandle,owner:String,generation:u64){
    let topic="realtime:desktop-changes";let presence_topic="realtime:platinados-presenca";
    if ws.send(envelope(topic,"phx_join",json!({"config":{"broadcast":{"self":false},"presence":{"enabled":false},"postgres_changes":changes,"private":false},"access_token":token}),1,"1")).await.is_err(){continue;}
    if ws.send(envelope(presence_topic,"phx_join",json!({"config":{"presence":{"enabled":true,"key":owner},"broadcast":{"self":false},"private":false},"access_token":token}),2,"2")).await.is_err(){continue;}
-   let mut tick=tokio::time::interval(Duration::from_secs(20));let mut last_response=std::time::Instant::now();
+   let mut tick=tokio::time::interval(Duration::from_secs(5));let mut last_response=std::time::Instant::now();
    loop{if GENERATION.load(Ordering::SeqCst)!=generation{let _=ws.close(None).await;return;}
     tokio::select!{
      _=tick.tick()=>{
