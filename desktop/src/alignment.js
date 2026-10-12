@@ -8,6 +8,24 @@ const categoryMeta=[
  ['animes','✦','Animes','Jornadas, temporadas e episódios em um só lugar.']
 ];
 
+const initialPatchNotes=[
+ 'Biblioteca organizada em Jogos, Filmes, Séries e Animes, com ícones e acesso separado.',
+ 'Perfil com capa completa e independente do fundo; biblioteca visível ao visitar amigos.',
+ 'Amigos e Chat reunidos, com busca e adição de amigos e lista lateral de conversas.',
+ 'Correção do histórico de mensagens que não carregava e do posicionamento dos botões.',
+ 'Comunidade em três colunas e detalhes dos títulos com visual atualizado.',
+ 'Status da conta no rodapé, recuperação de avatares e atualização mais frequente de presença e Steam.',
+ 'Ajustes de largura, cards e escala corrigidos; fundo de login administrativo somente em Aparência.',
+ 'Listas, indicações, preferências de notificações, progresso de episódios e estatísticas compartilhados com site e APK.'
+];
+const baseHome=renderHome;
+renderHome=async function(){
+ await baseHome();if(state.current!=='home'||$('#initialPatchNotes'))return;
+ const notes=document.createElement('details');notes.id='initialPatchNotes';notes.className='initial-patch-notes';
+ notes.innerHTML=`<summary><span>✦ Novidades da versão 0.11.0</span><small>12 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
+ const hero=$('.home-hero');if(hero)hero.after(notes);else $('#content').prepend(notes);
+};
+
 function safeAvatar(img){if(!img||img.dataset.fallbackReady)return;img.dataset.fallbackReady='1';img.addEventListener('error',()=>{img.removeAttribute('data-private-src');img.src='brand.jpg'},{once:true});}
 document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement&&event.target.src&&!event.target.src.endsWith('/brand.jpg')){event.target.removeAttribute('data-private-src');event.target.src='brand.jpg'}},true);
 new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType!==1)return;if(node.matches?.('img'))safeAvatar(node);node.querySelectorAll?.('img').forEach(safeAvatar)}))).observe(document.body,{childList:true,subtree:true});

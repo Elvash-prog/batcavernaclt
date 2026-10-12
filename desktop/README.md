@@ -4,6 +4,8 @@ Aplicativo Tauri com interface própria e Supabase compartilhado com site e Andr
 
 ## Novidades 0.11.0
 
+As notas desta versão aparecem na tela Início do programa, em um bloco recolhível **Novidades da versão 0.11.0**.
+
 - Perfil com capa preenchendo toda a área superior e biblioteca/estatísticas removidas do perfil próprio; perfis de amigos continuam exibindo a biblioteca autorizada.
 - Biblioteca geral separada em Jogos, Filmes, Séries e Animes, com ícones, contadores e acesso dedicado a cada categoria.
 - Comunidade em três colunas e Amigos + Chat reunidos em uma só experiência, com busca e adição de amigos.

@@ -151,7 +151,7 @@ test('desktop 0.11 alinha perfil, biblioteca, comunidade, chat e presença',()=>
  const html=read('src/index.html'),script=read('src/alignment.js'),css=read('src/alignment.css'),rust=read('src-tauri/src/main.rs'),realtime=read('src-tauri/src/v06.rs');
  new vm.Script(script);
  assert.match(html,/alignment\.css/);assert.match(html,/alignment\.js/);
- assert.match(script,/category-library-card/);assert.match(script,/community-reference-layout/);assert.match(script,/data-account-status/);assert.match(script,/unifiedAddFriend/);
+ assert.match(script,/category-library-card/);assert.match(script,/community-reference-layout/);assert.match(script,/data-account-status/);assert.match(script,/unifiedAddFriend/);assert.match(script,/initialPatchNotes/);
  assert.match(script,/data-profile-section="library"/);assert.match(script,/state\.settingsTab!==['"]appearance['"]/);
  assert.match(css,/grid-template-columns:210px minmax\(420px,760px\) 260px/);assert.match(css,/grid-template-columns:300px minmax\(0,1fr\)!important/);
  const chatQuery=rust.match(/async fn chat_messages[\s\S]*?(?=async fn send_message)/)?.[0]||'';
