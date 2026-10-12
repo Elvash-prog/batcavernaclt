@@ -42,3 +42,7 @@ input[type=range]{appearance:none;-webkit-appearance:none;height:6px!important;m
 input[type=file]::file-selector-button{border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--accent) 20%,var(--panel));color:var(--text);padding:10px 16px;margin-right:14px;cursor:pointer;font-family:inherit}input[type=color]{border-radius:10px;padding:7px;height:52px}input[type=color]::-webkit-color-swatch-wrapper{padding:0}input[type=color]::-webkit-color-swatch{border:0;border-radius:6px}.profile-editor .banner-preview{border-radius:14px;border:1px solid var(--line)}
 [hidden]{display:none!important}
 @media(max-width:1000px){.item-editor-tabs{gap:5px}.item-editor-tabs button{padding:9px 11px;font-size:12px}.item-editor-modern .cover-choice{grid-template-columns:1fr}}
+
+.adjustment-control{grid-template-columns:1fr auto;align-items:center;gap:12px!important}.adjustment-control output{justify-self:end;min-width:54px;text-align:center;float:none}.adjustment-control input[type=range]{grid-column:1/-1}
+.eyebrow{color:color-mix(in srgb,var(--accent) 65%,var(--text))}.settings{width:min(1100px,100%);max-width:1100px}.hero-activity h2{letter-spacing:0;line-height:1.3;margin:0}.detail-badges span:empty{display:none}
+#sidebarCommunity h4{font-size:11px}#sidebarCommunity small{font-size:10px}#sidebarCommunity button{font-size:12px}
