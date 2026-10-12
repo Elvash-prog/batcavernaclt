@@ -135,3 +135,14 @@ test('detalhes não confundem sequências, edições ou remakes',()=>{
  assert.equal(match([{id:1,title:'Duna'},{id:2,title:'Duna'}],{nome:'Duna'}),null);
  assert.equal(match([{id:1,title:{english:'Anime de teste'}}],{nome:'Anime de teste'}).id,1);
 });
+
+test('desktop 0.10 expõe os recursos compartilhados do site e do APK',()=>{
+ const html=read('src/index.html'),journey=read('src/journey.js'),rust=read('src-tauri/src/v06.rs'),css=read('src/journey.css');
+ new vm.Script(journey);
+ assert.match(html,/journey\.css/);assert.match(html,/journey\.js/);
+ for(const action of ['lists','recommendations','preferences','save_preferences'])assert.match(rust,new RegExp('"'+action+'"'));
+ for(const action of ['stats','progress','save_progress','next_episode','next_season'])assert.match(rust,new RegExp('"'+action+'"'));
+ for(const view of ['lists','recommendations','statistics','preferences'])assert.match(journey,new RegExp("view==='"+view+"'"));
+ assert.match(journey,/bc-desktop-draft:/);assert.match(journey,/batcaverna:item-details/);
+ assert.match(css,/\.sidebar-account/);assert.match(css,/\.statistics-layout/);assert.doesNotMatch(journey,/fetch\(/);
+});
