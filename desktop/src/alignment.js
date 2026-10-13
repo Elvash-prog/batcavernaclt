@@ -3,6 +3,7 @@
 const statusOptions={online:'Online',jogando:'Jogando',ausente:'Ausente',dnd:'Não incomodar',invisivel:'Invisível'};
 
 const initialPatchNotes=[
+ 'Tela Início mais compacta: jogo em progresso e atividades dos amigos ficam alinhados, sem a grande área vazia.',
  'Novo diagnóstico local: exporte um relatório técnico em Configurações → Aplicativo, sem conversas, biblioteca ou credenciais.',
  'O instalador só é publicado depois que o executável Tauri real abre e confirma que toda a interface terminou de carregar.',
  'Indicações resolvidas agora somem da caixa de entrada e não podem ser aceitas ou recusadas novamente.',
@@ -33,8 +34,9 @@ const baseHome=renderHome;
 renderHome=async function(){
  await baseHome();if(state.current!=='home'||$('#initialPatchNotes'))return;
  const notes=document.createElement('details');notes.id='initialPatchNotes';notes.className='initial-patch-notes';
- notes.innerHTML=`<summary><span>✦ Novidades da versão 0.14.0</span><small>13 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Esta é a primeira etapa da reconstrução gradual da interface. Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
- const hero=$('.home-hero');if(hero)hero.after(notes);else $('#content').prepend(notes);
+ notes.innerHTML=`<summary><span>✦ Novidades da versão 0.14.1</span><small>13 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Esta é a primeira etapa da reconstrução gradual da interface. Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
+ const hero=$('.home-hero'),dashboard=hero?.closest('.dashboard-columns');
+ if(dashboard)dashboard.after(notes);else if(hero)hero.after(notes);else $('#content').prepend(notes);
 };
 
 function safeAvatar(img){if(!img||img.dataset.fallbackReady)return;img.dataset.fallbackReady='1';img.addEventListener('error',()=>{img.removeAttribute('data-private-src');img.src='brand.jpg'},{once:true});}

@@ -1,6 +1,10 @@
-# BatCaverna CLT Windows 0.14.0
+# BatCaverna CLT Windows 0.14.1
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Correção visual 0.14.1
+
+A tela Início voltou a usar uma única linha principal: o jogo em progresso ocupa a área central e as atividades dos amigos permanecem no trilho direito. As notas da versão ficam abaixo dessa grade, eliminando a grande coluna vazia. O hero também ficou mais baixo e denso, com validações específicas em 1280×720, 1920×1080 e 2560×1440.
 
 ## Estabilidade 0.14.0
 
