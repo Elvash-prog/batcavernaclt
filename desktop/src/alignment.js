@@ -3,6 +3,9 @@
 const statusOptions={online:'Online',jogando:'Jogando',ausente:'Ausente',dnd:'Não incomodar',invisivel:'Invisível'};
 
 const initialPatchNotes=[
+ 'Nova base de interface em React e TypeScript, preservando todas as integrações Tauri existentes.',
+ 'Transições suaves entre telas, entrada progressiva dos blocos, modais animados e interações mais naturais nos cards e botões.',
+ 'Animações respeitam a preferência de movimento reduzido do Windows.',
  'Indicações corrigidas no desktop, com validação segura do título existente na sua biblioteca.',
  'A barra de atividades da tela Início permanece no canto direito em janelas de desktop.',
  'Chat ocupa a área disponível da janela, com contatos à esquerda e mensagens no centro.',
@@ -25,7 +28,7 @@ const baseHome=renderHome;
 renderHome=async function(){
  await baseHome();if(state.current!=='home'||$('#initialPatchNotes'))return;
  const notes=document.createElement('details');notes.id='initialPatchNotes';notes.className='initial-patch-notes';
- notes.innerHTML=`<summary><span>✦ Novidades da versão 0.12.1</span><small>13 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
+ notes.innerHTML=`<summary><span>✦ Novidades da versão 0.13.0</span><small>13 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Esta é a primeira etapa da reconstrução gradual da interface. Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
  const hero=$('.home-hero');if(hero)hero.after(notes);else $('#content').prepend(notes);
 };
 
