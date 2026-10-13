@@ -18,6 +18,6 @@ export default defineConfig({
     }
   ],
   server:{strictPort:true},
-  build:{target:'es2021',emptyOutDir:true},
+  build:{target:'es2021',emptyOutDir:true,assetsInlineLimit:0},
   clearScreen:false
 });
