@@ -1,4 +1,4 @@
-# BatCaverna Android 1.3.0
+# BatCaverna Android 1.3.1
 
 Atualização do aplicativo Android nativo, separado da TWA. [Notas da atualização](PATCH_NOTES.md).
 
