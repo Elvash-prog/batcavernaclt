@@ -20,7 +20,7 @@ public class MobileParityTest {
   assertFalse(RecommendationInput.pending(new JSONObject().put("estado","dispensada")));
  }
  @Test public void diagnosticsHideCredentialsAndLimitLongValues(){
-  assertEquals("conta [email]",NativeDiagnostics.clean("conta pessoa@exemplo.com",100));
+  assertEquals("conta [dado-protegido]",NativeDiagnostics.clean("conta pessoa@exemplo.com",100));
   assertEquals("[dado-protegido]",NativeDiagnostics.clean("eyJabc.def.ghi",100));
   assertTrue(NativeDiagnostics.clean(String.join("",java.util.Collections.nCopies(250,"x")),300).contains("dado-protegido"));
  }
