@@ -1,6 +1,12 @@
-# BatCaverna CLT Windows 0.12.1
+# BatCaverna CLT Windows 0.13.0
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Nova interface 0.13.0
+
+Primeira etapa da migração gradual para React + TypeScript com Vite, mantendo os comandos Tauri, Supabase, Steam, chat, presença e regras já existentes. A estrutura principal agora é um componente React e recebeu transições entre telas, entrada progressiva de conteúdo, animações em modais, cards, botões e notificações. O movimento é reduzido automaticamente quando essa preferência estiver ativa no Windows.
+
+As próximas versões podem migrar cada tela internamente para componentes React sem interromper as funções atuais.
 
 ## Correções 0.12.1
 Indicações no desktop agora confirmam o título da biblioteca antes do envio e têm recuperação segura por nome/categoria quando o identificador local estiver desatualizado. O UUID da notificação deixou de ser convertido em texto. Na tela Início, as atividades dos amigos ficam no trilho direito em janelas de desktop e passam para baixo apenas em larguras menores.

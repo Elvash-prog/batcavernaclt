@@ -5,22 +5,22 @@ import vm from 'node:vm';
 const read = path => fs.readFileSync(new URL('../'+path, import.meta.url), 'utf8');
 
 test('interface desktop é própria e não carrega o site', () => {
-  const html = read('src/index.html');
-  assert.match(html, /BATCAVERNA DOS CLTs/);
-  assert.match(html, /data-view="library"/);
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url),'utf8'),shell=read('src/AppShell.tsx');
+  assert.match(shell, /BATCAVERNA DOS CLTs/);
+  assert.match(shell, /\['library','▦','Biblioteca'\]/);
   assert.doesNotMatch(html, /iframe|workers\.dev|config\.js/i);
 });
 
 test('login e aplicativo respeitam o estado oculto', () => {
-  const html = read('src/index.html');
+  const html = read('src/main.tsx');
   const css = read('src/visibility.css');
-  assert.match(html, /href="visibility\.css"/);
-  assert.match(html, /href="phase03\.css"/);
+  assert.match(html, /import '\.\/visibility\.css'/);
+  assert.match(html, /import '\.\/phase03\.css'/);
   assert.match(css, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/i);
 });
 
 test('login informa andamento e nunca falha silenciosamente', () => {
-  const html = read('src/index.html');
+  const html = read('src/AppShell.tsx');
   const script = read('src/app.js');
   assert.match(html, /data-idle-label="Entrar na BatCaverna"/);
   assert.match(script, /Entrando…/);
@@ -29,7 +29,7 @@ test('login informa andamento e nunca falha silenciosamente', () => {
 });
 
 test('tela de login não apresenta referência à versão desktop', () => {
-  const html = read('src/index.html');
+  const html = read('src/AppShell.tsx');
   const login = html.match(/<section id="loginScreen"[\s\S]*?<\/section>/)?.[0] || '';
   assert.doesNotMatch(login, /Windows|desktop|aplicativo instalado/i);
 });
@@ -67,10 +67,10 @@ test('login por usuário usa função segura do Supabase', () => {
 });
 
 test('versão 0.4 inclui autenticação completa e perfil', () => {
-  const html=read('src/index.html'),script=read('src/app.js'),rust=read('src-tauri/src/main.rs');
+  const html=read('src/AppShell.tsx'),script=read('src/app.js'),rust=read('src-tauri/src/main.rs');
   assert.match(html,/id="registerForm"/);
   assert.match(html,/id="recoverForm"/);
-  assert.match(html,/data-view="profile"/);
+  assert.match(html,/\['profile','◎','Meu perfil'\]/);
   assert.match(script,/call\('register'/);
   assert.match(script,/call\('recover_password'/);
   assert.match(rust,/async fn update_profile/);
@@ -137,7 +137,7 @@ test('detalhes não confundem sequências, edições ou remakes',()=>{
 });
 
 test('desktop 0.10 expõe os recursos compartilhados do site e do APK',()=>{
- const html=read('src/index.html'),journey=read('src/journey.js'),rust=read('src-tauri/src/v06.rs'),css=read('src/journey.css');
+ const html=read('src/main.tsx'),journey=read('src/journey.js'),rust=read('src-tauri/src/v06.rs'),css=read('src/journey.css');
  new vm.Script(journey);
  assert.match(html,/journey\.css/);assert.match(html,/journey\.js/);
  for(const action of ['lists','recommendations','preferences','save_preferences'])assert.match(rust,new RegExp('"'+action+'"'));
@@ -148,7 +148,7 @@ test('desktop 0.10 expõe os recursos compartilhados do site e do APK',()=>{
 });
 
 test('desktop 0.11 alinha perfil, biblioteca, comunidade, chat e presença',()=>{
- const html=read('src/index.html'),script=read('src/alignment.js'),css=read('src/alignment.css'),rust=read('src-tauri/src/main.rs'),realtime=read('src-tauri/src/v06.rs');
+ const html=read('src/main.tsx'),script=read('src/alignment.js'),css=read('src/alignment.css'),rust=read('src-tauri/src/main.rs'),realtime=read('src-tauri/src/v06.rs');
  new vm.Script(script);
  assert.match(html,/alignment\.css/);assert.match(html,/alignment\.js/);
  assert.doesNotMatch(script,/category-library-card|renderCollectionHub/);assert.match(script,/friends-compact/);assert.match(script,/community-reference-layout/);assert.match(script,/data-account-status/);assert.match(script,/unifiedAddFriend/);assert.match(script,/initialPatchNotes/);
@@ -170,4 +170,16 @@ test('desktop 0.12.1 envia indicação da biblioteca e mantém atividades à dir
  assert.doesNotMatch(sql,/r\.id::text,false/);
  assert.match(css,/dashboard-columns>\.hero-activity\{grid-column:2;justify-self:end/);
  assert.match(css,/@media\(max-width:1050px\)\{\.reference-ui \.reference-home>\.dashboard-columns>\.hero-activity\{grid-column:1/);
+});
+
+test('desktop 0.13 usa React e respeita redução de movimento',()=>{
+ const main=read('src/main.tsx'),shell=read('src/AppShell.tsx'),motion=read('src/react-motion.css');
+ const config=fs.readFileSync(new URL('../vite.config.ts',import.meta.url),'utf8');
+ const tauri=JSON.parse(read('src-tauri/tauri.conf.json'));
+ assert.match(main,/createRoot/);assert.match(main,/start\(\)\.catch/);
+ assert.match(read('src/app.js'),/document\.readyState==='loading'/);
+ assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
+ assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.13.0');
 });
