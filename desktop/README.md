@@ -1,6 +1,12 @@
-# BatCaverna CLT Windows 0.13.2
+# BatCaverna CLT Windows 0.14.0
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Estabilidade 0.14.0
+
+O pipeline agora abre o executável Tauri compilado e só publica o instalador depois que a interface registra `BOOT_READY`. Em **Configurações → Aplicativo**, a nova área de diagnóstico mostra o tamanho do histórico técnico, permite limpar os registros ou exportar um relatório para a pasta Downloads. O relatório limita o tamanho, gira automaticamente e oculta valores que possam parecer credenciais, e-mails ou tokens; conversas e conteúdo da biblioteca não são registrados.
+
+Falhas de inicialização, comandos nativos e comunicação com a API passam a deixar um marcador técnico genérico para facilitar a análise, sem guardar o conteúdo enviado pelo usuário.
 
 ## Correção 0.13.2
 

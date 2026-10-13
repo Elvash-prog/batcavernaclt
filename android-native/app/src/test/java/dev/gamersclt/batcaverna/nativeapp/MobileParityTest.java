@@ -19,6 +19,11 @@ public class MobileParityTest {
   assertFalse(RecommendationInput.pending(new JSONObject().put("estado","interesse")));
   assertFalse(RecommendationInput.pending(new JSONObject().put("estado","dispensada")));
  }
+ @Test public void diagnosticsHideCredentialsAndLimitLongValues(){
+  assertEquals("conta [email]",NativeDiagnostics.clean("conta pessoa@exemplo.com",100));
+  assertEquals("[dado-protegido]",NativeDiagnostics.clean("eyJabc.def.ghi",100));
+  assertTrue(NativeDiagnostics.clean(String.join("",java.util.Collections.nCopies(250,"x")),300).contains("dado-protegido"));
+ }
  @Test public void statisticsCountCompleteLibraryAndDates()throws Exception{
   Calendar clock=Calendar.getInstance(TimeZone.getTimeZone("America/Sao_Paulo"));clock.clear();clock.set(2026,Calendar.OCTOBER,12,12,0);JSONArray items=new JSONArray();
   for(int i=0;i<1201;i++)items.put(new JSONObject().put("categoria","jogos").put("status","🏆 Platinado").put("horas",1).put("data","2026-10-02"));

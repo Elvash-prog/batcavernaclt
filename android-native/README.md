@@ -1,6 +1,8 @@
-# BatCaverna Android 1.3.3
+# BatCaverna Android 1.4.0
 
 Atualização do aplicativo Android nativo, separado da TWA. [Notas da atualização](PATCH_NOTES.md).
+
+Em **Perfil → Configurações → Diagnóstico**, agora é possível compartilhar ou limpar um relatório técnico local. Ele registra apenas etapas e tipos genéricos de falha, limita o tamanho e oculta possíveis credenciais, e-mails e tokens; mensagens e conteúdo da biblioteca não entram no arquivo.
 
 Indicações aceitas, guardadas ou dispensadas agora somem da caixa de entrada. Para impedir também uma segunda resposta no servidor, execute `backend/BatCaverna-1.3.3-Indicacoes-Resolvidas.sql` no SQL Editor do Supabase.
 

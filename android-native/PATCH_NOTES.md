@@ -1,4 +1,8 @@
-# BatCaverna Android 1.3.3 — 13/10/2026
+# BatCaverna Android 1.4.0 — 13/10/2026
+
+- Adiciona em Configurações a área **Diagnóstico**, com tamanho do histórico técnico, compartilhamento do relatório e limpeza dos registros.
+- Registra inicialização, falhas inesperadas e erros genéricos da API sem salvar mensagens, biblioteca, senhas, e-mails, tokens ou o conteúdo das requisições.
+- Limita e gira automaticamente o arquivo local para impedir crescimento contínuo.
 
 - Remove imediatamente da caixa de entrada toda indicação aceita, guardada ou dispensada.
 - Impede que uma indicação já resolvida volte a mostrar as ações ao atualizar ou reabrir o aplicativo.
@@ -22,4 +26,4 @@
 
 Progresso de episódios continua exigindo a migração `backend/BatCaverna-1.2.0-Supabase.sql`. A alteração do APK não instala funções no Supabase.
 
-Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.3.3, código 42. A chave privada de assinatura é mantida fora do repositório.
+Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.4.0, código 43. A chave privada de assinatura é mantida fora do repositório.

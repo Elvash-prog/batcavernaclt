@@ -182,14 +182,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.13.2');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.14.0');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.13.2');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.14.0');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
@@ -209,4 +209,15 @@ test('indicações resolvidas somem e não podem ser respondidas novamente',()=>
  assert.match(sql,/recipient_id=u and estado='pendente'/);
  assert.match(sql,/c\.recipient_id=u and c\.estado='pendente'/);
  assert.match(migration,/pg_get_functiondef/);
+});
+
+test('estabilidade exporta diagnóstico e o pipeline abre o Tauri real',()=>{
+ const main=read('src/main.tsx'),runtime=read('src-tauri/src/desktop_runtime.rs');
+ const workflow=fs.readFileSync(new URL('../../.github/workflows/desktop-windows.yml',import.meta.url),'utf8');
+ for(const marker of ['BOOT_MODULE','BOOT_READY','BOOT_FAILURE'])assert.match(main,new RegExp(marker));
+ for(const command of ['client_log','diagnostic_status','diagnostic_clear','diagnostic_export'])assert.match(runtime,new RegExp('fn '+command));
+ assert.match(runtime,/DIAGNOSTIC_LIMIT/);assert.match(runtime,/\[dado-protegido\]/);
+ const logger=runtime.slice(runtime.indexOf('fn clean_log'),runtime.indexOf('#[derive(Clone',runtime.indexOf('fn clean_log')));
+ assert.doesNotMatch(logger,/access_token|refresh_token|password/);
+ assert.match(workflow,/Smoke test do Tauri real/);assert.match(workflow,/batcaverna-clt-desktop\.exe/);assert.match(workflow,/BOOT_READY/);assert.match(workflow,/BOOT_FAILURE/);
 });

@@ -315,8 +315,8 @@ public final class AccountRepository {
         if(user.isEmpty()||token.isEmpty()){callback.done(null,"Entre com sua conta para carregar os dados reais.");return;}
         executor.execute(()->{JSONArray rows=null;String error=null;
             try{String active=AuthSession.token(context);if(!user.equals(prefs.getString("user_id","")))throw new IOException("A sessão mudou.");rows=query.run(user,active,SupabaseAuthClient.loadConfig());}
-            catch(IOException e){error=e.getMessage()==null?"Sem conexão. Tente novamente.":e.getMessage();}
-            catch(Exception e){error="O servidor retornou uma resposta inesperada.";}
+            catch(IOException e){NativeDiagnostics.log(context,"ERROR","API_FAILURE",e.getClass().getSimpleName());error=e.getMessage()==null?"Sem conexão. Tente novamente.":e.getMessage();}
+            catch(Exception e){NativeDiagnostics.log(context,"ERROR","API_UNEXPECTED",e.getClass().getSimpleName());error="O servidor retornou uma resposta inesperada.";}
             JSONArray result=rows;String message=error;
             MAIN.post(()->{if(!user.equals(prefs.getString("user_id",""))||prefs.getString("access_token","").isEmpty()){callback.done(null,"A sessão mudou. Entre novamente.");return;}callback.done(result,message);});
         });

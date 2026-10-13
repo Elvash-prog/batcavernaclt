@@ -24,5 +24,7 @@
 .native-desktop-settings label{display:flex;gap:12px;align-items:center;margin:16px 0}
 .native-desktop-settings input{width:auto}
 .native-desktop-settings footer{display:flex;gap:10px;flex-wrap:wrap}
+.native-desktop-settings p[role=status]{min-height:20px;margin:12px 0 0;color:var(--muted);overflow-wrap:anywhere}
+.diagnostic-summary{display:flex;justify-content:space-between;gap:16px;margin:16px 0;padding:13px 15px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--bg) 75%,var(--panel))}.diagnostic-summary span{color:var(--muted)}.diagnostic-summary b{font-variant-numeric:tabular-nums}
 .episode-activation{padding:24px;line-height:1.6;overflow-wrap:anywhere}
 @media(max-width:1100px){.reference-ui #content.chat-reference-active>.modern-chat{grid-template-columns:210px minmax(0,1fr)!important}.chat-reference-active .messages{padding:14px}}

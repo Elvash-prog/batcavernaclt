@@ -5,8 +5,8 @@ android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
         applicationId 'dev.gamersclt.batcaverna.nativeapp'
         minSdk 23
         targetSdk 36
-        versionCode 42
-        versionName '1.3.3'
+        versionCode 43
+        versionName '1.4.0'
         buildConfigField 'String', 'SUPABASE_URL', '"https://luoqlhgfmixvfqbfcdoc.supabase.co"'
         buildConfigField 'String', 'SUPABASE_ANON_KEY', '"' + (project.findProperty('supabaseAnonKey') ?: '') + '"'
     }
@@ -17,6 +17,7 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20240303'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'androidx.core:core:1.15.0'
     implementation 'com.google.firebase:firebase-messaging:24.1.0'
 }
 if (file('google-services.json').exists()) { apply plugin: 'com.google.gms.google-services' }

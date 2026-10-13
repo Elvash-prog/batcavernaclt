@@ -1,6 +1,60 @@
 use super::*;
 use std::collections::HashSet;
+use std::io::Write;
+use std::path::PathBuf;
 use tauri_plugin_notification::NotificationExt;
+
+const DIAGNOSTIC_LIMIT: u64 = 1024 * 1024;
+
+#[derive(Deserialize)]
+pub struct DiagnosticInput { pub level: String, pub stage: String, pub message: String }
+
+fn clean_log(value: &str, limit: usize) -> String {
+    let filtered: String = value.chars().filter(|c| !c.is_control() || *c == ' ').take(limit).collect();
+    filtered.split_whitespace().map(|part| {
+        if part.contains('@') && part.contains('.') { "[email]".to_string() }
+        else if part.starts_with("eyJ") || part.len() > 180 { "[dado-protegido]".to_string() }
+        else { part.to_string() }
+    }).collect::<Vec<_>>().join(" ")
+}
+fn diagnostic_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    if let Ok(path) = std::env::var("BATCAVERNA_SMOKE_LOG") { if !path.trim().is_empty() { return Ok(PathBuf::from(path)); } }
+    Ok(app.path().app_log_dir().map_err(|_| "Pasta de diagnóstico indisponível.")?.join("batcaverna.log"))
+}
+fn append_diagnostic(app: &tauri::AppHandle, level: &str, stage: &str, message: &str) -> Result<(), String> {
+    let path = diagnostic_path(app)?;
+    if let Some(parent) = path.parent() { std::fs::create_dir_all(parent).map_err(|_| "Não foi possível preparar o diagnóstico.")?; }
+    if std::fs::metadata(&path).map(|m| m.len() >= DIAGNOSTIC_LIMIT).unwrap_or(false) {
+        let previous = path.with_extension("previous.log"); let _ = std::fs::remove_file(&previous); let _ = std::fs::rename(&path, previous);
+    }
+    let mut file = std::fs::OpenOptions::new().create(true).append(true).open(path).map_err(|_| "Não foi possível gravar o diagnóstico.")?;
+    writeln!(file, "{} [{}] {} — {}", chrono::Utc::now().to_rfc3339(), clean_log(level, 16).to_uppercase(), clean_log(stage, 80), clean_log(message, 900)).map_err(|_| "Não foi possível gravar o diagnóstico.".to_string())
+}
+
+#[tauri::command]
+pub fn client_log(input: DiagnosticInput, app: tauri::AppHandle) -> Result<(), String> { append_diagnostic(&app, &input.level, &input.stage, &input.message) }
+#[tauri::command]
+pub fn diagnostic_status(app: tauri::AppHandle) -> Result<Value, String> {
+    let path = diagnostic_path(&app)?; let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    Ok(json!({"path":path.to_string_lossy(),"size":size}))
+}
+#[tauri::command]
+pub fn diagnostic_clear(app: tauri::AppHandle) -> Result<(), String> {
+    let path = diagnostic_path(&app)?; let _ = std::fs::remove_file(path.with_extension("previous.log"));
+    std::fs::write(&path, "").map_err(|_| "Não foi possível limpar o diagnóstico.".to_string())?;
+    append_diagnostic(&app, "INFO", "DIAGNOSTIC_CLEAR", "Histórico limpo pelo usuário")
+}
+#[tauri::command]
+pub fn diagnostic_export(app: tauri::AppHandle) -> Result<Value, String> {
+    append_diagnostic(&app, "INFO", "DIAGNOSTIC_EXPORT", "Diagnóstico exportado pelo usuário")?;
+    let source = diagnostic_path(&app)?; let downloads = app.path().download_dir().map_err(|_| "Pasta Downloads indisponível.")?;
+    std::fs::create_dir_all(&downloads).map_err(|_| "Pasta Downloads indisponível.")?;
+    let name = format!("BatCaverna-Diagnostico-{}.txt", chrono::Local::now().format("%Y%m%d-%H%M%S")); let target = downloads.join(name);
+    let logs = std::fs::read_to_string(source).unwrap_or_else(|_| "Nenhum evento registrado.\n".to_string());
+    let report = format!("BatCaverna CLT {}\nSistema: {} {}\nGerado: {}\n\n{}", env!("CARGO_PKG_VERSION"), std::env::consts::OS, std::env::consts::ARCH, chrono::Local::now().to_rfc3339(), logs);
+    std::fs::write(&target, report).map_err(|_| "Não foi possível exportar o diagnóstico.".to_string())?; let _ = open::that(&downloads);
+    Ok(json!({"path":target.to_string_lossy()}))
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -26,6 +80,8 @@ pub fn initialize(app: &tauri::AppHandle) -> Result<(), String> {
             *app.state::<DesktopState>().inner().0.lock().map_err(|_| "Configurações indisponíveis.")? = prefs;
         }
     }
+    // O diagnóstico ajuda a explicar falhas, mas nunca pode impedir o aplicativo de abrir.
+    let _ = append_diagnostic(app, "INFO", "APP_START", &format!("Inicialização nativa {}", env!("CARGO_PKG_VERSION")));
     start_notifications(app.clone()); Ok(())
 }
 #[tauri::command]
@@ -92,5 +148,10 @@ mod tests {
         let seen = HashSet::from(["old".to_string()]);
         assert!(fresh_notifications(&rows, &seen, false).is_empty());
         assert_eq!(fresh_notifications(&rows, &seen, true), vec![json!({"id":"new","read":false})]);
+    }
+    #[test] fn diagnostic_text_hides_email_tokens_and_long_values() {
+        assert_eq!(clean_log("conta exemplo@teste.com", 100), "conta [email]");
+        assert_eq!(clean_log("eyJabc.def.ghi", 100), "[dado-protegido]");
+        assert!(clean_log(&"x".repeat(300), 400).contains("dado-protegido"));
     }
 }

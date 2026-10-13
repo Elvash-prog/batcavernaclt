@@ -29,6 +29,7 @@ public final class MainActivity extends Activity {
     private boolean foreground=false;
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        NativeDiagnostics.install(getApplicationContext());NativeDiagnostics.log(this,"INFO","APP_START","Inicialização nativa "+BuildConfig.VERSION_NAME);
         AppContextHolder.context=getApplicationContext();alerts=new NativeAlerts(this);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setStatusBarColor(Color.rgb(11,14,20));
