@@ -177,7 +177,8 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  const config=fs.readFileSync(new URL('../vite.config.ts',import.meta.url),'utf8');
  const tauri=JSON.parse(read('src-tauri/tauri.conf.json'));
  assert.match(main,/createRoot/);assert.match(main,/flushSync\(\(\)=>root\.render/);assert.match(main,/start\(\)\.catch/);
- assert.match(read('src/app.js'),/document\.readyState==='loading'/);
+ assert.match(read('src/app.js'),/batcaverna:legacy-ready/);
+ assert.match(main,/dispatchEvent\(new Event\('batcaverna:legacy-ready'\)\)/);
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
