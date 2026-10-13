@@ -182,14 +182,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.14.1');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.15.0');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.14.1');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.15.0');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
@@ -229,4 +229,12 @@ test('início mantém atividades à direita sem criar uma linha vazia',()=>{
  assert.match(alignment,/if\(dashboard\)dashboard\.after\(notes\);else if\(hero\)/);
  assert.match(styles,/grid-template-columns:minmax\(0,1fr\) clamp\(280px,22vw,340px\)/);
  assert.match(styles,/\.reference-home \.home-hero[^}]*min-height:300px/);
+});
+
+test('desktop 0.15 entrega notificação realtime sem duplicar o polling',()=>{
+ const runtime=read('src-tauri/src/desktop_runtime.rs'),realtime=read('src-tauri/src/v06.rs');
+ assert.match(runtime,/REALTIME_NOTICES/);assert.match(runtime,/pub fn realtime_notification/);
+ assert.match(runtime,/notice_key\(&owner, n\)/);assert.match(runtime,/realtime\.contains\(&key\)/);
+ assert.match(realtime,/data\["table"\]=="notificacoes"&&data\["type"\]=="INSERT"/);
+ assert.match(realtime,/desktop_runtime::realtime_notification\(&app,&owner,&data\["record"\]\)/);
 });

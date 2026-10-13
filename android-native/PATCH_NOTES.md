@@ -1,4 +1,14 @@
-# BatCaverna Android 1.4.0 — 13/10/2026
+# BatCaverna Android 1.5.0 — 13/10/2026
+
+- Presença da conta passa a atualizar automaticamente a cada minuto enquanto o aplicativo está em primeiro plano.
+- O jogo atual da Steam é publicado no mesmo canal compartilhado pelo desktop e aparece para os amigos sem depender de uma nova abertura da tela.
+- O modo **Invisível** agora remove a conta do canal de presença em vez de publicar metadados invisíveis.
+- Respostas atrasadas de perfil ou Steam são descartadas depois de sair, trocar de conta, desconectar ou iniciar uma atualização mais recente.
+- Mantém o WebSocket autenticado para chat, reações, grupos, leituras, convites e notificações, com consultas autorizadas de reconciliação.
+
+Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.5.0, código 44. A chave privada de assinatura é mantida fora do repositório.
+
+## Histórico 1.4.0
 
 - Adiciona em Configurações a área **Diagnóstico**, com tamanho do histórico técnico, compartilhamento do relatório e limpeza dos registros.
 - Registra inicialização, falhas inesperadas e erros genéricos da API sem salvar mensagens, biblioteca, senhas, e-mails, tokens ou o conteúdo das requisições.

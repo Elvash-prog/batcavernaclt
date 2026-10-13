@@ -1,6 +1,10 @@
-# BatCaverna CLT Windows 0.14.1
+# BatCaverna CLT Windows 0.15.0
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Tempo real 0.15.0
+
+Notificações novas recebidas pelo canal Supabase Realtime agora podem aparecer imediatamente no Windows quando o programa está minimizado ou na bandeja. A sincronização periódica de 15 segundos permanece como recuperação caso o socket esteja reconectando. Os dois caminhos compartilham a deduplicação por conta e identificador, evitando que o mesmo aviso apareça duas vezes.
 
 ## Correção visual 0.14.1
 
