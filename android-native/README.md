@@ -1,6 +1,8 @@
-# BatCaverna Android 1.3.2
+# BatCaverna Android 1.3.3
 
 Atualização do aplicativo Android nativo, separado da TWA. [Notas da atualização](PATCH_NOTES.md).
+
+Indicações aceitas, guardadas ou dispensadas agora somem da caixa de entrada. Para impedir também uma segunda resposta no servidor, execute `backend/BatCaverna-1.3.3-Indicacoes-Resolvidas.sql` no SQL Editor do Supabase.
 
 Em Amigos ou Conversas, toque em **Adicionar amigo** para pesquisar por nome, @usuário ou código. **Convites recebidos** permite aceitar ou recusar solicitações.
 

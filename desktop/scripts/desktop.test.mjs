@@ -182,14 +182,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.13.1');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.13.2');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.13.1');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.13.2');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
@@ -197,4 +197,16 @@ test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
  const android=fs.readFileSync(new URL('../../android-native/app/src/main/java/dev/gamersclt/batcaverna/nativeapp/RecommendationInput.java',import.meta.url),'utf8');
  assert.match(sql,/p_data->>'item_name'/);assert.match(sql,/p_data->>'item_category'/);assert.match(sql,/u,r\.id,false/);assert.doesNotMatch(sql,/r\.id::text,false/);
  assert.match(android,/"item_name"/);assert.match(android,/"item_category"/);
+});
+
+test('indicações resolvidas somem e não podem ser respondidas novamente',()=>{
+ const journey=read('src/journey.js');
+ const sql=fs.readFileSync(new URL('../../supabase/patch-1.1.0-listas-indicacoes.sql',import.meta.url),'utf8');
+ const migration=fs.readFileSync(new URL('../../supabase/patch-1.3.2-indicacoes-resolvidas.sql',import.meta.url),'utf8');
+ assert.match(journey,/function pendingRecommendation/);
+ assert.match(journey,/allRows\.filter\(pendingRecommendation\)/);
+ assert.match(journey,/rows\.splice\(index,1\)/);
+ assert.match(sql,/recipient_id=u and estado='pendente'/);
+ assert.match(sql,/c\.recipient_id=u and c\.estado='pendente'/);
+ assert.match(migration,/pg_get_functiondef/);
 });

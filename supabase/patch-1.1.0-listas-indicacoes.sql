@@ -70,7 +70,7 @@ begin
   else
    if (select count(*) from public.clt_custom_list_items where list_id=l.id)>=500 then raise exception 'Limite de 500 títulos por lista.'; end if;
    if p_action='save_recommendation' then
-    select * into r from public.clt_friend_recommendations where id=(p_data->>'recommendation_id')::uuid and recipient_id=u;
+    select * into r from public.clt_friend_recommendations where id=(p_data->>'recommendation_id')::uuid and recipient_id=u and estado='pendente';
     if r.id is null or not public.clt_feature_friend(u,r.sender_id) then raise exception 'Indicação indisponível.'; end if;
     v:=r.titulo; ident:='rec:'||r.id;
     update public.clt_friend_recommendations set estado='interesse' where id=r.id;
@@ -104,11 +104,11 @@ begin
   return coalesce((select jsonb_agg(x order by x->>'created_at' desc) from (
    select to_jsonb(c)||jsonb_build_object('sender_name',coalesce(p.nome,'Amigo'),'recipient_name',coalesce(q.nome,'Amigo'),'received',c.recipient_id=u) x
    from public.clt_friend_recommendations c left join public.perfis p on p.id=c.sender_id left join public.perfis q on q.id=c.recipient_id
-   where (p_data->>'id' is null or c.id::text=p_data->>'id') and (c.recipient_id=u or c.sender_id=u) and public.clt_feature_friend(c.sender_id,c.recipient_id)
+   where (p_data->>'id' is null or c.id::text=p_data->>'id') and (c.sender_id=u or (c.recipient_id=u and c.estado='pendente')) and public.clt_feature_friend(c.sender_id,c.recipient_id)
    order by c.created_at desc,c.id desc limit 200) z),'[]');
  elsif p_action='recommendation_state' then
   if coalesce(p_data->>'estado','') not in ('interesse','dispensada') then raise exception 'Estado inválido.'; end if;
-  update public.clt_friend_recommendations set estado=p_data->>'estado' where id=(p_data->>'id')::uuid and recipient_id=u and public.clt_feature_friend(u,sender_id);
+  update public.clt_friend_recommendations set estado=p_data->>'estado' where id=(p_data->>'id')::uuid and recipient_id=u and estado='pendente' and public.clt_feature_friend(u,sender_id);
   if not found then raise exception 'Indicação indisponível.'; end if;
   return '[{"ok":true}]';
  elsif p_action in ('preferences','save_preferences') then

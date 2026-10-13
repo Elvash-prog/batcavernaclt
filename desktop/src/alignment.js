@@ -3,6 +3,7 @@
 const statusOptions={online:'Online',jogando:'Jogando',ausente:'Ausente',dnd:'Não incomodar',invisivel:'Invisível'};
 
 const initialPatchNotes=[
+ 'Indicações resolvidas agora somem da caixa de entrada e não podem ser aceitas ou recusadas novamente.',
  'Inicialização reforçada: cada módulo é validado e uma tela de diagnóstico mostra a etapa exata se algo falhar.',
  'O instalador agora é bloqueado no build se algum script ficar incompatível com a segurança do Tauri.',
  'Nova base de interface em React e TypeScript, preservando todas as integrações Tauri existentes.',
@@ -30,7 +31,7 @@ const baseHome=renderHome;
 renderHome=async function(){
  await baseHome();if(state.current!=='home'||$('#initialPatchNotes'))return;
  const notes=document.createElement('details');notes.id='initialPatchNotes';notes.className='initial-patch-notes';
- notes.innerHTML=`<summary><span>✦ Novidades da versão 0.13.1</span><small>13 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Esta é a primeira etapa da reconstrução gradual da interface. Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
+ notes.innerHTML=`<summary><span>✦ Novidades da versão 0.13.2</span><small>13 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Esta é a primeira etapa da reconstrução gradual da interface. Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
  const hero=$('.home-hero');if(hero)hero.after(notes);else $('#content').prepend(notes);
 };
 

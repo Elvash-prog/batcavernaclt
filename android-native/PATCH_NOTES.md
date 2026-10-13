@@ -1,4 +1,8 @@
-# BatCaverna Android 1.3.2 — 13/10/2026
+# BatCaverna Android 1.3.3 — 13/10/2026
+
+- Remove imediatamente da caixa de entrada toda indicação aceita, guardada ou dispensada.
+- Impede que uma indicação já resolvida volte a mostrar as ações ao atualizar ou reabrir o aplicativo.
+- Inclui a migração idempotente `backend/BatCaverna-1.3.3-Indicacoes-Resolvidas.sql` para bloquear respostas duplicadas também no servidor.
 
 - Reconfirma o jogo, filme, série ou anime na biblioteca antes de abrir a escolha de amigo.
 - Envia nome e categoria junto do identificador, permitindo recuperação segura quando o ID local estiver desatualizado.
@@ -18,4 +22,4 @@
 
 Progresso de episódios continua exigindo a migração `backend/BatCaverna-1.2.0-Supabase.sql`. A alteração do APK não instala funções no Supabase.
 
-Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.3.2, código 41. A chave privada de assinatura é mantida fora do repositório.
+Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.3.3, código 42. A chave privada de assinatura é mantida fora do repositório.

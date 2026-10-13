@@ -1,6 +1,10 @@
-# BatCaverna CLT Windows 0.13.1
+# BatCaverna CLT Windows 0.13.2
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Correção 0.13.2
+
+Indicações aceitas, guardadas ou dispensadas saem da caixa de entrada e não exibem os botões novamente após atualizar ou reabrir o programa. O servidor também rejeita uma segunda resposta ao mesmo item. Execute `supabase/patch-1.3.2-indicacoes-resolvidas.sql` no SQL Editor para aplicar a proteção no banco; o filtro do cliente já funciona imediatamente após instalar.
 
 ## Correção 0.13.1
 

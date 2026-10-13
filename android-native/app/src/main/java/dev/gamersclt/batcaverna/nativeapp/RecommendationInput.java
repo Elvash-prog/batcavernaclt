@@ -15,5 +15,9 @@ final class RecommendationInput {
    .put("friend_id",friend)
    .put("mensagem",message==null?"":message);
  }
+ static boolean pending(JSONObject recommendation){
+  String state=recommendation.optString("estado","").trim().toLowerCase(java.util.Locale.ROOT);
+  return state.isEmpty()||state.equals("pendente")||state.equals("enviada");
+ }
  static int type(JSONObject title){String kind=LibraryCategory.classify(title.optString("tipo"));return kind.equals("anime")?2:kind.equals("serie")?1:0;}
 }
