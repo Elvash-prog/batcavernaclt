@@ -1,4 +1,8 @@
-# BatCaverna Android 1.3.0 — 12/10/2026
+# BatCaverna Android 1.3.1 — 13/10/2026
+
+- Corrige o envio de indicações quando `notificacoes.referencia_id` usa o tipo UUID no Supabase.
+- Adiciona a migração curta `backend/BatCaverna-1.3.1-Correcao-Indicacoes.sql`, que preserva todos os dados existentes.
+- Substitui a mensagem técnica do PostgreSQL por uma orientação clara quando a migração ainda não foi aplicada.
 
 - Amigos e conversas: pesquisar pessoas por nome, @usuário ou código e enviar convites. A pesquisa consulta o diretório público autorizado, sem abrir dados privados de quem ainda não é amigo.
 - Convites recebidos: aceitar ou recusar no próprio aplicativo; aceitar atualiza a lista de amigos.
@@ -10,4 +14,4 @@
 
 Progresso de episódios continua exigindo a migração `backend/BatCaverna-1.2.0-Supabase.sql`. A alteração do APK não instala funções no Supabase.
 
-Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.3.0, código 39. A chave privada de assinatura é mantida fora do repositório.
+Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.3.1, código 40. A chave privada de assinatura é mantida fora do repositório.
