@@ -1,0 +1,7 @@
+.gradle/
+build/
+app/build/
+tests/build/
+local.properties
+*.keystore
+app/src/main/res/drawable-nodpi/app_logo.png
