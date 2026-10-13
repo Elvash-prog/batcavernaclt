@@ -1,7 +1,9 @@
-import {copyFileSync,existsSync,mkdirSync} from 'node:fs';
+import {copyFileSync,existsSync,mkdirSync,readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {defineConfig} from 'vite';
 import react from '@vitejs/plugin-react';
+
+const pkg=JSON.parse(readFileSync(resolve('package.json'),'utf8')) as {version:string};
 
 export default defineConfig({
   plugins:[
@@ -17,6 +19,7 @@ export default defineConfig({
       }
     }
   ],
+  define:{__APP_VERSION__:JSON.stringify(pkg.version)},
   server:{strictPort:true},
   build:{target:'es2021',emptyOutDir:true,assetsInlineLimit:0},
   clearScreen:false

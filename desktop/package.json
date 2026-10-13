@@ -1,16 +1,16 @@
 {
   "name": "batcaverna-clt-desktop",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test scripts/desktop.test.mjs",
     "dev:web": "vite --host 127.0.0.1 --port 1420",
     "dev": "tauri dev",
-    "build:web": "vite build",
-    "build": "vite build && tauri build --bundles nsis",
+    "build:web": "vite build && node scripts/verify-bundle.mjs",
+    "build": "npm run build:web && tauri build --bundles nsis",
     "tauri": "tauri",
-    "test:ui": "vite build && node scripts/ui-smoke.mjs"
+    "test:ui": "npm run build:web && node scripts/ui-smoke.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

@@ -1,10 +1,12 @@
-# BatCaverna Android 1.3.1
+# BatCaverna Android 1.3.2
 
 Atualização do aplicativo Android nativo, separado da TWA. [Notas da atualização](PATCH_NOTES.md).
 
 Em Amigos ou Conversas, toque em **Adicionar amigo** para pesquisar por nome, @usuário ou código. **Convites recebidos** permite aceitar ou recusar solicitações.
 
 Em Indicações, **Aceitar e adicionar** abre a revisão normal do título; o aceite só é registrado após a confirmação na biblioteca. As estatísticas têm cálculo alternativo da biblioteca da própria conta se `clt_journey` estiver ausente. Progresso de episódios ainda depende da migração abaixo.
+
+Ao enviar uma indicação, o aplicativo reconfirma o título na biblioteca e envia nome e categoria como recuperação segura. Isso evita a mensagem incorreta de título ausente quando o identificador local ficou desatualizado.
 
 Compilação: JDK 17, Android SDK 36, `bash gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug`. Os testes de 1.3.0 verificam busca, respostas atrasadas, mudança de conta, caminhos de imagens, privacidade dos títulos indicados e estatísticas com mais de 1.200 itens.
 

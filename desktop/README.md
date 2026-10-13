@@ -1,6 +1,10 @@
-# BatCaverna CLT Windows 0.13.0
+# BatCaverna CLT Windows 0.13.1
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Correção 0.13.1
+
+O carregamento do instalador agora valida todos os módulos externos contra a CSP do Tauri. Se uma etapa falhar, a tela de recuperação informa o módulo, permite tentar novamente e copiar um diagnóstico sem dados da conta. O pipeline recusa builds que voltem a embutir scripts como `data:`.
 
 ## Nova interface 0.13.0
 

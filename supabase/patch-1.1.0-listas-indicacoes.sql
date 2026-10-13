@@ -87,12 +87,18 @@ begin
   if not public.clt_feature_friend(u,target) then raise exception 'Selecione um amigo atual, sem bloqueio.'; end if;
   ident:=p_data->>'item_id';
   select jsonb_build_object('nome',i.nome,'categoria',i.categoria,'tipo',i.tipo,'capa',i.capa) into v from public.itens i where i.id::text=ident and i.user_id=u;
-  if v is null then raise exception 'Título indisponível na sua biblioteca.'; end if;
+  if v is null and nullif(trim(p_data->>'item_name'),'') is not null then
+   select jsonb_build_object('nome',i.nome,'categoria',i.categoria,'tipo',i.tipo,'capa',i.capa),i.id::text into v,ident
+   from public.itens i where i.user_id=u and lower(trim(i.nome))=lower(trim(p_data->>'item_name'))
+    and i.categoria=coalesce(nullif(p_data->>'item_category',''),i.categoria)
+   order by i.updated_at desc nulls last,i.id desc limit 1;
+  end if;
+  if v is null then raise exception 'Título indisponível na sua biblioteca. Atualize a biblioteca e escolha o título novamente.'; end if;
   if length(coalesce(p_data->>'mensagem',''))>240 then raise exception 'Mensagem: até 240 caracteres.'; end if;
   if exists(select 1 from public.clt_friend_recommendations where sender_id=u and recipient_id=target and item_id=ident and created_at>now()-interval '1 day') then raise exception 'Você já indicou este título a este amigo hoje.'; end if;
   if (select count(*) from public.clt_friend_recommendations where sender_id=u and created_at>now()-interval '1 day')>=50 then raise exception 'Limite diário de 50 indicações.'; end if;
   insert into public.clt_friend_recommendations(sender_id,recipient_id,item_id,titulo,mensagem) values(u,target,ident,v,trim(coalesce(p_data->>'mensagem',''))) returning * into r;
-  insert into public.notificacoes(destinatario_id,tipo,mensagem,actor_id,referencia_id,read) values(target,'friend_recommendation','Indicou: '||(v->>'nome'),u,r.id::text,false);
+  insert into public.notificacoes(destinatario_id,tipo,mensagem,actor_id,referencia_id,read) values(target,'friend_recommendation','Indicou: '||(v->>'nome'),u,r.id,false);
   return jsonb_build_array(to_jsonb(r));
  elsif p_action='recommendations' then
   return coalesce((select jsonb_agg(x order by x->>'created_at' desc) from (

@@ -176,11 +176,25 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  const main=read('src/main.tsx'),shell=read('src/AppShell.tsx'),motion=read('src/react-motion.css');
  const config=fs.readFileSync(new URL('../vite.config.ts',import.meta.url),'utf8');
  const tauri=JSON.parse(read('src-tauri/tauri.conf.json'));
- assert.match(main,/createRoot/);assert.match(main,/flushSync\(\(\)=>root\.render/);assert.match(main,/start\(\)\.catch/);
+ assert.match(main,/createRoot/);assert.match(main,/flushSync\(\(\)=>root\.render/);assert.match(main,/void start\(\)/);
  assert.match(read('src/app.js'),/batcaverna:legacy-ready/);
  assert.match(main,/dispatchEvent\(new Event\('batcaverna:legacy-ready'\)\)/);
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.13.0');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.13.1');
+});
+
+test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
+ const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+ assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
+ assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.13.1');
+});
+
+test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
+ const sql=fs.readFileSync(new URL('../../supabase/patch-1.1.0-listas-indicacoes.sql',import.meta.url),'utf8');
+ const android=fs.readFileSync(new URL('../../android-native/app/src/main/java/dev/gamersclt/batcaverna/nativeapp/RecommendationInput.java',import.meta.url),'utf8');
+ assert.match(sql,/p_data->>'item_name'/);assert.match(sql,/p_data->>'item_category'/);assert.match(sql,/u,r\.id,false/);assert.doesNotMatch(sql,/r\.id::text,false/);
+ assert.match(android,/"item_name"/);assert.match(android,/"item_category"/);
 });
