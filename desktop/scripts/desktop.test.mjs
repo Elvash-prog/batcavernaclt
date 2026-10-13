@@ -158,3 +158,16 @@ test('desktop 0.11 alinha perfil, biblioteca, comunidade, chat e presença',()=>
  assert.doesNotMatch(chatQuery,/select=[^"\n]*updated_at/);assert.match(chatQuery,/created_at,lida/);
  assert.match(realtime,/interval\(Duration::from_secs\(5\)\)/);
 });
+
+test('desktop 0.12.1 envia indicação da biblioteca e mantém atividades à direita',()=>{
+ const journey=read('src/journey.js'),css=read('src/catalog-library.css');
+ const sql=fs.readFileSync(new URL('../../supabase/ativar-desktop-0.12.1.sql',import.meta.url),'utf8');
+ assert.match(journey,/item_name:selected\.nome/);
+ assert.match(journey,/item_category:selected\.categoria/);
+ assert.match(journey,/Atualize a biblioteca e escolha o título novamente/);
+ assert.match(sql,/i\.user_id=u and lower\(trim\(i\.nome\)\)=lower\(trim\(p_data->>'item_name'\)\)/);
+ assert.match(sql,/referencia_id,read\) values\(target,'friend_recommendation',[\s\S]*?,r\.id,false\)/);
+ assert.doesNotMatch(sql,/r\.id::text,false/);
+ assert.match(css,/dashboard-columns>\.hero-activity\{grid-column:2;justify-self:end/);
+ assert.match(css,/@media\(max-width:1050px\)\{\.reference-ui \.reference-home>\.dashboard-columns>\.hero-activity\{grid-column:1/);
+});
