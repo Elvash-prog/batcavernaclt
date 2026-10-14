@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 public final class AccountRepository {
     public interface Callback {void done(JSONArray rows,String error);}
     private interface Query {JSONArray run(String user,String token,String[] config)throws Exception;}
-    private static final ExecutorService IO=Executors.newFixedThreadPool(2);
+    private static final ExecutorService IO=Executors.newFixedThreadPool(4);
     private static final Handler MAIN=new Handler(Looper.getMainLooper());
     private final Context context;
     public AccountRepository(Context c){context=c.getApplicationContext();}

@@ -2,3 +2,4 @@ html.booting body{visibility:hidden}.screen-pending{visibility:hidden!important}
 @media(max-width:1150px){.reference-ui .library-controls{grid-template-columns:1fr 1fr}.reference-ui .bulk-toolbar{position:static}.reference-ui .detail-media-grid{grid-template-columns:1fr 1fr}.reference-ui .modern-chat{height:calc(100vh / var(--ui-scale) - 185px)}}
 
 .reference-ui .community-hub>.section-head{width:100%;max-width:960px;margin:22px auto 16px}
+.reference-ui #content.screen-pending{visibility:visible!important;opacity:.72;pointer-events:none}

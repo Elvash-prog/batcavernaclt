@@ -210,6 +210,12 @@
   width: min(100%, 1200px);
   margin-inline: auto;
 }
+.complete-profile,
+.profile-tabs,
+[data-profile-page] {
+  width: min(100%, 1200px);
+  margin-inline: auto;
+}
 .library-collection-hero {
   position: relative;
   display: grid;
