@@ -1144,7 +1144,8 @@ try {
       (s) => s.c === "update_profile" && s.p.input.status === "ausente",
     ),
   );
-  await page.locator("#friendsDockClose").click();
+  const friendsDockClose = page.locator("#friendsDockClose");
+  if (await friendsDockClose.isVisible()) await friendsDockClose.click();
   await page.locator("#sidebarAccount").click();
   await page.locator(".complete-profile").waitFor();
   assert.equal(
