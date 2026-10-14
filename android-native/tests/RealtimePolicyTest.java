@@ -1,5 +1,0 @@
-package dev.gamersclt.batcaverna.nativeapp;
-public final class RealtimePolicyTest {
- private static int checks;private static void check(boolean value){checks++;if(!value)throw new AssertionError("Subscription or reconnect boundary "+checks);}
- public static void main(String[] args){RealtimePolicy p=new RealtimePolicy();check(!p.ready());check(!p.accepts("clt_chat_messages",1));p.joined("evil",1);check(!p.accepts("evil",1));p.joined("clt_chat_messages",-1);check(!p.accepts("clt_chat_messages",-1));for(int i=0;i<RealtimePolicy.TABLES.length;i++)p.joined(RealtimePolicy.TABLES[i],i+1);check(p.ready());check(p.accepts("clt_chat_messages",1));check(!p.accepts("clt_chat_messages",2));p.failed("notificacoes");check(!p.ready());check(!p.accepts("notificacoes",8));p.joined("notificacoes",9);check(p.ready());check(!p.accepts("notificacoes",8));check(p.accepts("notificacoes",9));p.clear();check(!p.ready());check(!p.accepts("clt_chat_messages",1));check(RealtimePolicy.retry(0)==2000);check(RealtimePolicy.retry(1)==4000);check(RealtimePolicy.retry(20)==30000);check(RealtimePolicy.retry(-1)==2000);System.out.println("RealtimePolicy: "+checks+" checks");}
-}

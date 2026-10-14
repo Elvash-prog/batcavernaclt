@@ -1,5 +1,0 @@
-package dev.gamersclt.batcaverna.nativeapp;
-public final class ItemInfoInput {
- public static void validate(String name,String platform,String store,String year,String priority,String estimate,String percent,String genres,String price){GameInput.name(name);if(platform.length()>120||store.length()>80||priority.length()>80||estimate.length()>80||genres.length()>500)throw new IllegalArgumentException("Uma das informações ultrapassa o tamanho permitido.");if(!year.isEmpty()&&!year.matches("[12][0-9]{3}"))throw new IllegalArgumentException("Informe um ano com quatro dígitos.");if(!percent.isEmpty()){double v=number(percent);if(v<0||v>100)throw new IllegalArgumentException("Conquistas: informe de 0 a 100%.");}if(!price.isEmpty()){double v=number(price);if(v<0||v>1000000)throw new IllegalArgumentException("Preço inválido.");}}
- public static double number(String text){try{double n=Double.parseDouble(text.replace(',','.'));if(Double.isNaN(n)||Double.isInfinite(n))throw new NumberFormatException();return n;}catch(Exception e){throw new IllegalArgumentException("Informe um número válido.");}}
-}

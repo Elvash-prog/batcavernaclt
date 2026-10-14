@@ -1,8 +1,0 @@
-package dev.gamersclt.batcaverna.nativeapp;
-import java.text.Normalizer;
-import java.util.Locale;
-public final class LibraryStatus {
- public static String group(String status,boolean media){String s=Normalizer.normalize(status==null?"":status,Normalizer.Form.NFD).replaceAll("\\p{M}","").toLowerCase(Locale.ROOT);if(media){if(s.contains("favorit"))return "Favoritos";if(s.contains("assistido")||s.contains("concluid"))return "Assistidos";if(s.contains("assistindo")||s.contains("maraton"))return "Assistindo";if(s.contains("para assistir")||s.contains("pretendo")||s.contains("backlog"))return "Para assistir";}else{if(s.contains("platina")||s.contains("100%"))return "Platinados";if(s.contains("zerado")||s.contains("finalizado"))return "Zerados";if(s.contains("jogando agora"))return "Jogando agora";if(s.contains("progresso")||s.contains("jogando"))return "Em progresso";if(s.contains("backlog")||s.contains("pretendo"))return "Backlog";if(s.contains("wishlist"))return "Wishlist";if(s.contains("biblioteca steam"))return "Biblioteca Steam";}if(s.contains("pausad"))return "Pausados";if(s.contains("abandon"))return "Abandonados";return "Outros";}
- public static boolean finished(String status,boolean media){String g=group(status,media);return media?(g.equals("Assistidos")||g.equals("Favoritos")):(g.equals("Zerados")||g.equals("Platinados"));}
- public static String[] order(boolean media){return media?new String[]{"Assistindo","Para assistir","Assistidos","Favoritos","Pausados","Abandonados","Outros"}:new String[]{"Jogando agora","Em progresso","Backlog","Zerados","Platinados","Wishlist","Biblioteca Steam","Pausados","Abandonados","Outros"};}
-}

@@ -117,6 +117,10 @@ installFriendsDock();
 const baseSettings=renderSettings;
 renderSettings=async function(){
  await baseSettings();if(state.current!=='settings')return;
+ if(state.settingsTab==='notifications'){
+  const panel=$('#settingsPanel');panel?.insertAdjacentHTML('beforeend','<div class="settings-row"><div><strong>Preferências por categoria</strong><small>Escolha alertas de mensagens, comunidade, amizades, indicações e progresso.</small></div><button class="secondary" id="openNotificationPreferences">Configurar</button></div>');
+  $('#openNotificationPreferences')?.addEventListener('click',()=>navigate('preferences'));
+ }
  const admins=$$('.launcher-admin');admins.forEach((section,index)=>{if(state.settingsTab!=='appearance'||index>0)section.remove()});
  $$('[data-theme-range]').forEach(input=>input.addEventListener('input',()=>{
   const value=Number(input.value),key=input.dataset.themeRange;

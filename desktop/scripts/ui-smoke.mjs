@@ -791,7 +791,9 @@ try {
   assert.match(await page.locator(".statistics-summary").innerText(), /30h/);
   assert.equal(await page.locator(".bar-chart>div").count(), 12);
   await page.evaluate(() => (window.missingJourney = false));
-  await page.locator('[data-view="preferences"]').click();
+  await page.locator("#topSettings").click();
+  await page.locator('[data-settings-tab="notifications"]').click();
+  await page.locator("#openNotificationPreferences").click();
   await page.locator("#preferenceForm").waitFor();
   await page.locator('#preferenceForm [name="social"]').uncheck();
   await page.locator("#preferenceForm button.primary").click();
