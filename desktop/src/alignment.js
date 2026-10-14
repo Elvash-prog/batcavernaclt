@@ -2,45 +2,6 @@
 (()=>{
 const statusOptions={online:'Online',jogando:'Jogando',ausente:'Ausente',dnd:'Não incomodar',invisivel:'Invisível'};
 
-const initialPatchNotes=[
- 'Tempo real reforçado: notificações do Windows chegam imediatamente pelo canal conectado, com a consulta periódica mantida como segurança.',
- 'Avisos recebidos em tempo real e pela sincronização alternativa são deduplicados antes de aparecer no Windows.',
- 'Tela Início mais compacta: jogo em progresso e atividades dos amigos ficam alinhados, sem a grande área vazia.',
- 'Novo diagnóstico local: exporte um relatório técnico em Configurações → Aplicativo, sem conversas, biblioteca ou credenciais.',
- 'O instalador só é publicado depois que o executável Tauri real abre e confirma que toda a interface terminou de carregar.',
- 'Indicações resolvidas agora somem da caixa de entrada e não podem ser aceitas ou recusadas novamente.',
- 'Inicialização reforçada: cada módulo é validado e uma tela de diagnóstico mostra a etapa exata se algo falhar.',
- 'O instalador agora é bloqueado no build se algum script ficar incompatível com a segurança do Tauri.',
- 'Nova base de interface em React e TypeScript, preservando todas as integrações Tauri existentes.',
- 'Transições suaves entre telas, entrada progressiva dos blocos, modais animados e interações mais naturais nos cards e botões.',
- 'Animações respeitam a preferência de movimento reduzido do Windows.',
- 'Indicações corrigidas no desktop, com validação segura do título existente na sua biblioteca.',
- 'A barra de atividades da tela Início permanece no canto direito em janelas de desktop.',
- 'Chat ocupa a área disponível da janela, com contatos à esquerda e mensagens no centro.',
- 'Comunidade com publicação e controles sem sobreposição; fotos de contatos no perfil corrigidas.',
- 'Biblioteca organizada por status, como Em progresso, Backlog, Zerados e Platinados.',
- 'Aceitar indicações abre o cadastro normal na sua biblioteca.',
- 'Notificações nativas do Windows e opção de continuar na bandeja ao fechar.',
- 'Estatísticas com cálculo a partir da biblioteca quando o RPC não está disponível.',
- 'Biblioteca restaurada à grade direta de capas, com busca e filtros, sem tela intermediária.',
- 'Amigos em lista compacta, com abas Amigos/Chat, busca, fotos e status.',
- 'Perfil com capa completa e independente do fundo; biblioteca visível ao visitar amigos.',
- 'Amigos e Chat reunidos, com busca e adição de amigos e lista lateral de conversas.',
- 'Correção do histórico de mensagens que não carregava e do posicionamento dos botões.',
- 'Comunidade em três colunas e detalhes dos títulos com visual atualizado.',
- 'Status da conta no rodapé, recuperação de avatares e atualização mais frequente de presença e Steam.',
- 'Ajustes de largura, cards e escala corrigidos; fundo de login administrativo somente em Aparência.',
- 'Listas, indicações, preferências de notificações, progresso de episódios e estatísticas compartilhados com site e APK.'
-];
-const baseHome=renderHome;
-renderHome=async function(){
- await baseHome();if(state.current!=='home'||$('#initialPatchNotes'))return;
- const notes=document.createElement('details');notes.id='initialPatchNotes';notes.className='initial-patch-notes';
- notes.innerHTML=`<summary><span>✦ Novidades da versão 0.15.0</span><small>13 de outubro de 2026 · Ver alterações</small></summary><ul>${initialPatchNotes.map(note=>`<li>${esc(note)}</li>`).join('')}</ul><p>Esta é a primeira etapa da reconstrução gradual da interface. Integrações Steam dependem da visibilidade da conta; recursos compartilhados exigem as atualizações do Supabase.</p>`;
- const hero=$('.home-hero'),dashboard=hero?.closest('.dashboard-columns');
- if(dashboard)dashboard.after(notes);else if(hero)hero.after(notes);else $('#content').prepend(notes);
-};
-
 function safeAvatar(img){if(!img||img.dataset.fallbackReady)return;img.dataset.fallbackReady='1';img.addEventListener('error',()=>{img.removeAttribute('data-private-src');img.src='brand.jpg'},{once:true});}
 document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement&&event.target.src&&!event.target.src.endsWith('/brand.jpg')){event.target.removeAttribute('data-private-src');event.target.src='brand.jpg'}},true);
 new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType!==1)return;if(node.matches?.('img'))safeAvatar(node);node.querySelectorAll?.('img').forEach(safeAvatar)}))).observe(document.body,{childList:true,subtree:true});

@@ -1,14 +1,18 @@
-# BatCaverna CLT Windows 0.15.0
+# BatCaverna CLT Windows 0.15.1
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
 
+## Correções 0.15.1
+
+O bloco **Novidades da versão** foi removido da tela Início. A lista de amigos preserva o último estado conhecido durante reconexões rápidas do canal em tempo real, sem trocar todos os contatos para “Presença indisponível”. As notificações nativas agora também são deduplicadas por tipo, referência, autor e mensagem por uma janela curta, cobrindo eventos equivalentes que cheguem com identificadores diferentes.
+
 ## Tempo real 0.15.0
 
-Notificações novas recebidas pelo canal Supabase Realtime agora podem aparecer imediatamente no Windows quando o programa está minimizado ou na bandeja. A sincronização periódica de 15 segundos permanece como recuperação caso o socket esteja reconectando. Os dois caminhos compartilham a deduplicação por conta e identificador, evitando que o mesmo aviso apareça duas vezes.
+Notificações novas recebidas pelo canal Supabase Realtime agora podem aparecer imediatamente no Windows quando o programa está minimizado ou na bandeja. A sincronização periódica de 15 segundos permanece como recuperação caso o socket esteja reconectando.
 
 ## Correção visual 0.14.1
 
-A tela Início voltou a usar uma única linha principal: o jogo em progresso ocupa a área central e as atividades dos amigos permanecem no trilho direito. As notas da versão ficam abaixo dessa grade, eliminando a grande coluna vazia. O hero também ficou mais baixo e denso, com validações específicas em 1280×720, 1920×1080 e 2560×1440.
+A tela Início voltou a usar uma única linha principal: o jogo em progresso ocupa a área central e as atividades dos amigos permanecem no trilho direito. O hero também ficou mais baixo e denso, com validações específicas em 1280×720, 1920×1080 e 2560×1440.
 
 ## Estabilidade 0.14.0
 

@@ -1,6 +1,8 @@
-# BatCaverna Android 1.5.0
+# BatCaverna Android 1.5.1
 
 Atualização do aplicativo Android nativo, separado da TWA. [Notas da atualização](PATCH_NOTES.md).
+
+O cartão de novidades foi removido da tela inicial. Em reconexões rápidas, a presença mantém o último estado conhecido até o servidor enviar o novo retrato, evitando que todos os amigos apareçam temporariamente como indisponíveis.
 
 Presença online, status e o jogo atual da Steam são republicados a cada minuto enquanto o app está aberto. O modo Invisível sai do canal compartilhado, e callbacks antigos são ignorados após mudança de sessão ou reconexão. Chat, grupos e notificações continuam usando o WebSocket autenticado e o Firebase continua responsável pelos alertas com o aplicativo fechado.
 

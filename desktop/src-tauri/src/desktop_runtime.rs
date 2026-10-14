@@ -1,12 +1,18 @@
 use super::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::LazyLock;
+use std::time::Instant;
 use tauri_plugin_notification::NotificationExt;
 
 const DIAGNOSTIC_LIMIT: u64 = 1024 * 1024;
-static REALTIME_NOTICES: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
+#[derive(Default)]
+struct NotificationMemory {
+    ids: HashSet<String>,
+    fingerprints: HashMap<String, Instant>,
+}
+static NOTIFICATION_MEMORY: LazyLock<Mutex<NotificationMemory>> = LazyLock::new(|| Mutex::new(NotificationMemory::default()));
 
 #[derive(Deserialize)]
 pub struct DiagnosticInput { pub level: String, pub stage: String, pub message: String }
@@ -105,18 +111,29 @@ pub fn test_windows_notification(app: tauri::AppHandle) -> Result<(), String> {
 }
 fn notice_id(n: &Value) -> Option<String> { match &n["id"] { Value::String(id) => Some(id.clone()), Value::Number(id) => Some(id.to_string()), _ => None } }
 fn notice_key(owner: &str, n: &Value) -> Option<String> { notice_id(n).map(|id| format!("{owner}:{id}")) }
+fn notice_fingerprint(owner: &str, n: &Value) -> String {
+    let value = |key: &str| n[key].as_str().unwrap_or("").trim().to_lowercase();
+    format!("{owner}|{}|{}|{}|{}", value("tipo"), value("referencia_id"), value("actor_id"), value("mensagem"))
+}
+fn register_notification(owner: &str, notice: &Value) -> bool {
+    let Some(key) = notice_key(owner, notice) else { return false; };
+    let fingerprint = notice_fingerprint(owner, notice);
+    NOTIFICATION_MEMORY.lock().map(|mut memory| {
+        memory.fingerprints.retain(|_, seen_at| seen_at.elapsed() < Duration::from_secs(12));
+        if memory.ids.len() >= 2000 { memory.ids.retain(|value| value.starts_with(&format!("{owner}:"))); if memory.ids.len() >= 2000 { memory.ids.clear(); } }
+        let id_is_new = memory.ids.insert(key);
+        let fingerprint_is_new = !memory.fingerprints.contains_key(&fingerprint);
+        memory.fingerprints.insert(fingerprint, Instant::now());
+        id_is_new && fingerprint_is_new
+    }).unwrap_or(false)
+}
 fn fresh_notifications(rows: &[Value], seen: &HashSet<String>, initialized: bool) -> Vec<Value> {
     if !initialized { return Vec::new(); }
     rows.iter().filter(|n| n["read"].as_bool() != Some(true) && notice_id(n).is_some_and(|id| !seen.contains(&id))).cloned().collect()
 }
 pub fn realtime_notification(app: &tauri::AppHandle, owner: &str, notice: &Value) {
     if notice["read"].as_bool() == Some(true) { return; }
-    let Some(key) = notice_key(owner, notice) else { return; };
-    let fresh = REALTIME_NOTICES.lock().map(|mut seen| {
-        if seen.len() >= 2000 { let prefix = format!("{owner}:"); seen.retain(|value| value.starts_with(&prefix)); if seen.len() >= 2000 { seen.clear(); } }
-        seen.insert(key)
-    }).unwrap_or(false);
-    if !fresh { return; }
+    if !register_notification(owner, notice) { return; }
     let enabled = app.state::<DesktopState>().inner().0.lock().map(|p| p.notifications).unwrap_or(false);
     let focused = app.get_webview_window("main").is_some_and(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false));
     if !enabled || focused { return; }
@@ -133,12 +150,12 @@ fn start_notifications(app: tauri::AppHandle) {
             let state = app.state::<AppState>();
             let Ok(session) = current(&state).await else { owner.clear(); initialized = false; seen.clear(); continue; };
             if owner != session.user.id { owner = session.user.id.clone(); initialized = false; seen.clear(); }
-            let Ok(data) = get(&state.client, &format!("/rest/v1/notificacoes?select=id,mensagem,read,created_at&destinatario_id=eq.{owner}&order=created_at.desc,id.desc&limit=100"), &session.access_token).await else { continue; };
+            let Ok(data) = get(&state.client, &format!("/rest/v1/notificacoes?select=id,mensagem,tipo,referencia_id,actor_id,read,created_at&destinatario_id=eq.{owner}&order=created_at.desc,id.desc&limit=100"), &session.access_token).await else { continue; };
             let same_owner = state.session.lock().ok().and_then(|s| s.as_ref().map(|s| s.user.id.clone())).as_deref() == Some(owner.as_str());
             if !same_owner { continue; }
             let Some(rows) = data.as_array() else { continue; };
-            if let Ok(realtime) = REALTIME_NOTICES.lock() {
-                seen.extend(rows.iter().filter(|n| notice_key(&owner, n).is_some_and(|key| realtime.contains(&key))).filter_map(notice_id));
+            if let Ok(memory) = NOTIFICATION_MEMORY.lock() {
+                seen.extend(rows.iter().filter(|n| notice_key(&owner, n).is_some_and(|key| memory.ids.contains(&key))).filter_map(notice_id));
             }
             let fresh = fresh_notifications(rows, &seen, initialized);
             let current_ids: HashSet<String> = rows.iter().filter_map(notice_id).collect();
@@ -148,6 +165,7 @@ fn start_notifications(app: tauri::AppHandle) {
             let focused = app.get_webview_window("main").is_some_and(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false));
             if !enabled || focused { continue; }
             for notice in fresh.iter().take(4).rev() {
+                if !register_notification(&owner, notice) { continue; }
                 let body: String = notice["mensagem"].as_str().unwrap_or("Você recebeu uma nova atividade.").chars().take(240).collect();
                 let _ = app.notification().builder().title("BatCaverna CLT").body(body).show();
             }
@@ -173,6 +191,11 @@ mod tests {
         assert_eq!(notice_key("user-a", &json!({"id": 42})), Some("user-a:42".into()));
         assert_eq!(notice_key("user-b", &json!({"id": "42"})), Some("user-b:42".into()));
         assert_eq!(notice_key("user-a", &json!({"message": "sem id"})), None);
+    }
+    #[test] fn notification_fingerprint_groups_the_same_event_for_one_account() {
+        let notice = json!({"id": 42, "tipo":"mensagem", "referencia_id":"chat-1", "actor_id":"friend", "mensagem":"Olá"});
+        assert_eq!(notice_fingerprint("user-a", &notice), "user-a|mensagem|chat-1|friend|olá");
+        assert_ne!(notice_fingerprint("user-a", &notice), notice_fingerprint("user-b", &notice));
     }
     #[test] fn diagnostic_text_hides_email_tokens_and_long_values() {
         assert_eq!(clean_log("conta exemplo@teste.com", 100), "conta [email]");
