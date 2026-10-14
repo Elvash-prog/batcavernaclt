@@ -95,7 +95,6 @@ const baseChat=renderChat;
 renderChat=async function(){await baseChat();if(state.current!=='chat')return;$('#content').classList.add('friends-chat-reference','chat-reference-active');$('.community-tabs')?.remove();};
 
 function installFriendsDock(){
- $('#sidebarCommunity')?.remove();
  if($('#friendsDock'))return;
  const dock=document.createElement('section');dock.id='friendsDock';dock.className='friends-dock';dock.hidden=true;
  dock.innerHTML='<section class="friends-dock-panel" id="friendsDockPanel" hidden><header><div><b>Amigos</b><small id="friendsDockCount">Carregando…</small></div><button id="friendsDockClose" aria-label="Fechar amigos">×</button></header><div class="friends-dock-status"><small>SEU STATUS</small><div id="friendsDockStatuses"></div></div><div class="friends-dock-actions"><label><span>⌕</span><input id="friendsDockSearch" type="search" placeholder="Pesquisar amigos" aria-label="Pesquisar amigos"></label><button id="friendsDockAdd" aria-label="Adicionar amigo">＋</button></div><div id="friendsDockList" class="friends-dock-list"></div></section><button id="friendsDockToggle" class="friends-dock-toggle" aria-expanded="false"><span>♙</span> Amigos <b id="friendsDockBadge"></b></button>';
