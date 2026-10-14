@@ -207,14 +207,51 @@
   position: relative;
 }
 .profile-page {
-  width: min(100%, 1200px);
+  width: min(100%, 1800px);
   margin-inline: auto;
+  min-width: 0;
 }
 .complete-profile,
 .profile-tabs,
 [data-profile-page] {
-  width: min(100%, 1200px);
+  box-sizing: border-box;
+  width: min(100%, 1800px);
   margin-inline: auto;
+  min-width: 0;
+}
+.profile-tabs {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.reference-ui .profile-overview-columns {
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  align-items: start;
+}
+.profile-overview-columns > *,
+.profile-overview-columns .level-card,
+.profile-overview-columns .profile-feature {
+  min-width: 0;
+}
+@media (max-width: 680px) {
+  .complete-profile .profile-body {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 12px;
+    padding: 0 16px 16px;
+  }
+  .complete-profile .profile-avatar {
+    width: 80px;
+    height: 80px;
+    margin-top: -36px;
+  }
+  .complete-profile .profile-info {
+    min-width: 0;
+    padding-top: 10px;
+  }
+  .complete-profile .profile-actions {
+    grid-column: 2;
+    padding-top: 0;
+  }
 }
 .library-collection-hero {
   position: relative;

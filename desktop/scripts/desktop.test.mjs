@@ -182,14 +182,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.1');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.2');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.1');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.2');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
@@ -263,8 +263,10 @@ test('desktop 0.17 mantém XP, diversifica missões e combina ofertas Steam',()=
 
 test('perfil desktop centraliza conteúdo e inicia dados independentes em paralelo',()=>{
  const script=read('src/app.js'),styles=read('src/desktop-fixes.css'),refinement=read('src/refinement.css'),profile=script.slice(script.indexOf('async function renderProfile'),script.indexOf('\nfunction fileData')),redesign=read('src/redesign.js'),rust=read('src-tauri/src/v06.rs'),android=fs.readFileSync(new URL('../../android-native/app/src/main/java/dev/gamersclt/batcaverna/nativeapp/AccountRepository.java',import.meta.url),'utf8');
- assert.match(profile,/profile-page/);assert.match(styles,/\.profile-page\s*\{[^}]*width:\s*min\(100%,\s*1200px\)[^}]*margin-inline:\s*auto/s);
- assert.match(styles,/\.complete-profile,\s*\.profile-tabs,\s*\[data-profile-page\]\s*\{[^}]*width:\s*min\(100%,\s*1200px\)[^}]*margin-inline:\s*auto/s);
+ assert.match(profile,/profile-page/);assert.match(styles,/\.profile-page\s*\{[^}]*width:\s*min\(100%,\s*1800px\)[^}]*margin-inline:\s*auto/s);
+ assert.match(styles,/\.complete-profile,\s*\.profile-tabs,\s*\[data-profile-page\]\s*\{[^}]*width:\s*min\(100%,\s*1800px\)[^}]*margin-inline:\s*auto/s);
+ assert.match(styles,/\.reference-ui \.profile-overview-columns\s*\{[^}]*grid-template-columns:\s*minmax\(240px,\s*300px\)\s+minmax\(0,\s*1fr\)/s);
+ assert.match(styles,/@media\s*\(max-width:\s*680px\)[\s\S]*\.complete-profile \.profile-body\s*\{[^}]*grid-template-columns:\s*80px minmax\(0,\s*1fr\)/);
  assert.match(refinement,/\.reference-ui #content\.screen-pending\{visibility:visible!important;opacity:\.72;pointer-events:none\}/);
  assert.ok(profile.indexOf('Promise.all([loadStats(),api.library')<profile.indexOf('await api.profile'));
  assert.match(profile,/error=>\(\{error\}\)/);assert.match(profile,/Estatísticas indisponíveis/);

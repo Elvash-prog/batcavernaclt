@@ -25,3 +25,9 @@ O nome do Worker deve corresponder a `name` em `wrangler.toml`.
 As imagens são armazenadas como texto para permitir o envio pela integração GitHub disponível. O navegador recebe os bytes PNG originais.
 
 As atualizações no Sites não são sincronizadas automaticamente com este repositório. Envie a versão desejada para `main` para publicar no Cloudflare.
+
+## Aplicativo para Windows
+
+A versão `0.17.2` amplia a área útil do perfil, evita cortes na progressão e nas abas e reorganiza o cartão do perfil em telas estreitas. Os jogos em destaque passam a aproveitar melhor a largura disponível.
+
+O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).
