@@ -1,6 +1,12 @@
-# BatCaverna CLT Windows 0.15.1
+# BatCaverna CLT Windows 0.16.0
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Interface social 0.16.0
+
+O clique esquerdo no ícone da bandeja do Windows agora restaura, desminimiza e coloca a janela em foco. Amigos e Chat saíram do menu lateral: o rodapé ganhou um botão **Amigos** no estilo clássico, que abre uma janela compacta com pesquisa, lista, acesso à conversa, adição de pessoas e fechamento por **X**. As conversas continuam ocupando a área principal quando um contato é escolhido.
+
+A capa do perfil foi reforçada, com imagem nítida em toda a área e sombreamento mais leve para manter os dados legíveis sem apagar a foto.
 
 ## Correções 0.15.1
 

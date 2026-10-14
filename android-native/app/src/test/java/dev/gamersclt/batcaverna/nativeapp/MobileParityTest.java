@@ -5,6 +5,7 @@ import org.json.*;
 import java.util.*;
 
 public class MobileParityTest {
+ @Test public void nativeThemesExposeSixStableChoices(){assertArrayEquals(new String[]{"caverna","oceano","esmeralda","rubi","ambar","aurora"},NativeTheme.KEYS);assertArrayEquals(new String[]{"Caverna","Oceano","Esmeralda","Rubi","Âmbar","Aurora"},NativeTheme.LABELS);}
  @Test public void searchRejectsStaleAccountsAndSyntax(){
   assertEquals("João",FriendSearchInput.term(" @João "));assertEquals("foo id eq",FriendSearchInput.filter("foo),id.eq.*"));
   assertTrue(FriendSearchInput.current(2,2,"one","one",true));assertFalse(FriendSearchInput.current(1,2,"one","one",true));assertFalse(FriendSearchInput.current(2,2,"one","two",true));assertFalse(FriendSearchInput.current(2,2,"one","one",false));

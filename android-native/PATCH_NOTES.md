@@ -1,4 +1,13 @@
-# BatCaverna Android 1.5.1 — 14/10/2026
+# BatCaverna Android 1.6.0 — 14/10/2026
+
+- Renomeia a aba inferior **Chat** para **Amigos**, preservando conversas, grupos, contadores e o restante do fluxo atual.
+- Adiciona seis temas nativos: Caverna, Oceano, Esmeralda, Rubi, Âmbar e Aurora.
+- Aplica o tema escolhido ao fundo, barra inferior, seleção de abas, botões, campos, janelas e barras do sistema.
+- Trocar o tema em **Configurações → Aparência** atualiza a interface imediatamente e mantém a escolha neste aparelho.
+
+Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.6.0, código 46. A chave privada de assinatura é mantida fora do repositório.
+
+## Histórico 1.5.1
 
 - Remove o cartão **Novidades** da tela inicial.
 - Mantém o último estado conhecido dos amigos durante reconexões rápidas, evitando que a lista pisque como indisponível.

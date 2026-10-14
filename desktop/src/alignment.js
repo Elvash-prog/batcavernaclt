@@ -28,7 +28,7 @@ renderLibrary=async function(){
 const friendsNav=$('#mainNav [data-view="friends"]');
 friendsNav?.remove();
 const chatNav=$('#mainNav [data-view="chat"]');
-if(chatNav)chatNav.querySelector('span').textContent='Amigos e chat';
+chatNav?.remove();
 
 function installStatusPicker(){
  const account=$('#sidebarAccount');if(!account)return;
@@ -84,12 +84,10 @@ renderFriends=async function(){
  await baseFriends();if(!['friends','chat'].includes(state.current))return;
  const content=$('#content'),rows=content.querySelector('.reference-friend-list');if(!rows)return;
  const shell=document.createElement('section');shell.className='friends-compact';
- shell.innerHTML='<header><h2>Amigos e chat</h2><button id="unifiedAddFriend" class="secondary">＋ Adicionar amigo</button></header><nav class="tabs compact-friends-tabs"><button id="chatFriendsTab" class="active">Amigos</button><button id="chatConversationsTab">Chat</button></nav><label class="compact-friends-search"><span>⌕</span><input id="compactFriendsSearch" type="search" placeholder="Buscar amigos…" aria-label="Buscar amigos"></label><div class="compact-friends-list"></div><p id="compactFriendsEmpty" class="muted" hidden>Nenhum amigo encontrado.</p>';
+ shell.innerHTML='<header><h2>Amigos</h2><button id="unifiedAddFriend" class="secondary">＋ Adicionar amigo</button></header><label class="compact-friends-search"><span>⌕</span><input id="compactFriendsSearch" type="search" placeholder="Buscar amigos…" aria-label="Buscar amigos"></label><div class="compact-friends-list"></div><p id="compactFriendsEmpty" class="muted" hidden>Nenhum amigo encontrado.</p>';
  content.replaceChildren(shell);content.classList.add('friends-chat-reference');shell.querySelector('.compact-friends-list').append(rows);
  rows.querySelectorAll('.friend-card').forEach(card=>{const info=card.querySelector('.friend-profile span'),status=card.querySelector('.friend-status');info?.querySelector('small')?.remove();if(info&&status)info.append(status);const chat=card.querySelector('[data-choose-chat]');if(chat){chat.textContent='›';chat.setAttribute('aria-label','Conversar com '+(card.querySelector('strong')?.textContent||'amigo'));}});
  $('#unifiedAddFriend').onclick=openFriendSearch;
- $('#chatFriendsTab').onclick=()=>{};
- $('#chatConversationsTab').onclick=()=>{const first=rows.querySelector('[data-choose-chat]');if(first)first.click();else toast('Adicione um amigo para iniciar uma conversa.');};
  $('#compactFriendsSearch').oninput=event=>{const query=event.target.value.trim().toLocaleLowerCase('pt-BR');let visible=0;rows.querySelectorAll('.friend-card').forEach(card=>{card.hidden=!card.textContent.toLocaleLowerCase('pt-BR').includes(query);if(!card.hidden)visible++;});$('#compactFriendsEmpty').hidden=visible>0||!query;};
 };
 function openFriendSearch(){
@@ -101,7 +99,26 @@ function openFriendSearch(){
  overlay.querySelector('input').focus();
 }
 const baseChat=renderChat;
-renderChat=async function(){await baseChat();if(state.current!=='chat')return;$('#content').classList.add('friends-chat-reference','chat-reference-active');const tabs=$('.community-tabs');if(tabs&&!tabs.querySelector('#unifiedAddFriend')){tabs.insertAdjacentHTML('beforeend','<button id="unifiedAddFriend" class="primary">＋ Adicionar amigo</button>');$('#unifiedAddFriend').onclick=openFriendSearch;}};
+renderChat=async function(){await baseChat();if(state.current!=='chat')return;$('#content').classList.add('friends-chat-reference','chat-reference-active');$('.community-tabs')?.remove();};
+
+function installFriendsDock(){
+ $('#sidebarCommunity')?.remove();
+ if($('#friendsDock'))return;
+ const dock=document.createElement('section');dock.id='friendsDock';dock.className='friends-dock';dock.hidden=true;
+ dock.innerHTML='<section class="friends-dock-panel" id="friendsDockPanel" hidden><header><div><b>Amigos</b><small id="friendsDockCount">Carregando…</small></div><button id="friendsDockClose" aria-label="Fechar amigos">×</button></header><div class="friends-dock-actions"><label><span>⌕</span><input id="friendsDockSearch" type="search" placeholder="Pesquisar amigos" aria-label="Pesquisar amigos"></label><button id="friendsDockAdd" aria-label="Adicionar amigo">＋</button></div><div id="friendsDockList" class="friends-dock-list"></div></section><button id="friendsDockToggle" class="friends-dock-toggle" aria-expanded="false"><span>♙</span> Amigos <b id="friendsDockBadge"></b></button>';
+ document.body.append(dock);
+ const panel=$('#friendsDockPanel'),toggle=$('#friendsDockToggle'),list=$('#friendsDockList'),search=$('#friendsDockSearch');
+ let rows=[];
+ const render=()=>{const query=search.value.trim().toLocaleLowerCase('pt-BR'),visible=rows.filter(friend=>`${friend.nome||''} ${friend.slug||''}`.toLocaleLowerCase('pt-BR').includes(query));list.innerHTML=visible.map(friend=>`<button data-dock-friend="${esc(friend.id)}"><span class="friends-dock-avatar"><img src="brand.jpg" data-private-src="${esc(friend.avatar_url||'')}" alt=""></span><span><b>${esc(friend.nome||friend.slug||'Amigo')}</b><small>@${esc(friend.slug||'')}</small></span><em>Conversar</em></button>`).join('')||`<p class="muted">${query?'Nenhum amigo encontrado.':'Sua lista de amigos está vazia.'}</p>`;hydrateMedia(list);list.querySelectorAll('[data-dock-friend]').forEach(button=>button.onclick=()=>{const friend=rows.find(item=>String(item.id)===button.dataset.dockFriend);if(!friend)return;panel.hidden=true;toggle.setAttribute('aria-expanded','false');state.chatFriend=friend;navigate('chat');});};
+ const load=async()=>{list.innerHTML='<div class="loading">Carregando amigos…</div>';try{rows=await api.friends();$('#friendsDockCount').textContent=`${rows.length} ${rows.length===1?'amigo':'amigos'}`;$('#friendsDockBadge').textContent=rows.length||'';render()}catch(error){list.innerHTML=`<p class="form-error">${esc(failure(error))}</p>`}};
+ toggle.onclick=()=>{panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden){load();setTimeout(()=>search.focus(),0)}};
+ $('#friendsDockClose').onclick=()=>{panel.hidden=true;toggle.setAttribute('aria-expanded','false')};
+ $('#friendsDockAdd').onclick=()=>{panel.hidden=true;toggle.setAttribute('aria-expanded','false');openFriendSearch()};
+ search.oninput=render;
+ document.addEventListener('click',event=>{if(!event.target.closest('#friendsDock')){panel.hidden=true;toggle.setAttribute('aria-expanded','false')}});
+ const shell=$('#appShell'),sync=()=>{dock.hidden=!shell||shell.hidden;if(dock.hidden)panel.hidden=true};if(shell){new MutationObserver(sync).observe(shell,{attributes:true,attributeFilter:['hidden']});sync()}
+}
+installFriendsDock();
 
 const baseSettings=renderSettings;
 renderSettings=async function(){

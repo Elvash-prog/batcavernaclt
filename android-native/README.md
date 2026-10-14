@@ -1,6 +1,8 @@
-# BatCaverna Android 1.5.1
+# BatCaverna Android 1.6.0
 
 Atualização do aplicativo Android nativo, separado da TWA. [Notas da atualização](PATCH_NOTES.md).
+
+A navegação inferior agora chama a área social de **Amigos**, mantendo conversas e grupos dentro dela. Em **Perfil → Configurações → Aparência**, é possível escolher entre Caverna, Oceano, Esmeralda, Rubi, Âmbar e Aurora; a escolha altera fundo, painéis, botões, campos, navegação e barras do sistema sem mudar as demais telas.
 
 O cartão de novidades foi removido da tela inicial. Em reconexões rápidas, a presença mantém o último estado conhecido até o servidor enviar o novo retrato, evitando que todos os amigos apareçam temporariamente como indisponíveis.
 

@@ -688,9 +688,9 @@ fn main() {
         .setup(|app| {
             desktop_runtime::initialize(app.handle())?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
-            use tauri::{menu::{Menu,MenuItem}, tray::TrayIconBuilder};
+            use tauri::{menu::{Menu,MenuItem}, tray::{MouseButton,MouseButtonState,TrayIconBuilder,TrayIconEvent}};
             let show=MenuItem::with_id(app,"show","Abrir BatCaverna",true,None::<&str>)?; let hide=MenuItem::with_id(app,"hide","Ocultar na bandeja",true,None::<&str>)?; let quit=MenuItem::with_id(app,"quit","Sair",true,None::<&str>)?;
-            let menu=Menu::with_items(app,&[&show,&hide,&quit])?; let mut tray=TrayIconBuilder::new().tooltip("BatCaverna CLT").menu(&menu).on_menu_event(|app,event| match event.id.as_ref(){"show"=>if let Some(w)=app.get_webview_window("main"){let _=w.show();let _=w.unminimize();let _=w.set_focus();},"hide"=>if let Some(w)=app.get_webview_window("main"){let _=w.hide();},"quit"=>app.exit(0),_=>{}});
+            let menu=Menu::with_items(app,&[&show,&hide,&quit])?; let mut tray=TrayIconBuilder::new().tooltip("BatCaverna CLT").menu(&menu).on_menu_event(|app,event| match event.id.as_ref(){"show"=>desktop_runtime::show_main(app),"hide"=>if let Some(w)=app.get_webview_window("main"){let _=w.hide();},"quit"=>app.exit(0),_=>{}}).on_tray_icon_event(|tray,event|{if let TrayIconEvent::Click{button:MouseButton::Left,button_state:MouseButtonState::Up,..}=event{desktop_runtime::show_main(tray.app_handle());}});
             if let Some(icon)=app.default_window_icon(){tray=tray.icon(icon.clone());} tray.build(app)?; Ok(())
         }).run(tauri::generate_context!()).expect("Erro ao iniciar BatCaverna CLT");
 }
