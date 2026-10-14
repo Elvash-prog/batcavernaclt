@@ -4,7 +4,7 @@ Aplicativo Tauri com interface própria e Supabase compartilhado com site e Andr
 
 ## Perfil, biblioteca e progressão 0.17.0
 
-O perfil desktop recebeu as opções visuais do aplicativo, capa nítida e independente do fundo, atalho pelo avatar do rodapé e transições suaves no chat. Os cabeçalhos das bibliotecas ganharam identidade por categoria, contadores e filtros mais claros; capas horizontais agora preenchem o cartão sem faixas cinzas.
+As **preferências por categoria** agora ficam em **Configurações → Notificações**. O perfil desktop recebeu as opções visuais do aplicativo, capa nítida e independente do fundo, atalho pelo avatar do rodapé e transições suaves no chat. Os cabeçalhos das bibliotecas ganharam identidade por categoria, contadores e filtros mais claros; capas horizontais agora preenchem o cartão sem faixas cinzas.
 
 A busca de capas exige correspondência forte do título para não trocar, por exemplo, **Resident Evil Requiem** por outro jogo da franquia. O painel de amigos reúne o seletor de status e usa a presença confirmada em tempo real.
 
