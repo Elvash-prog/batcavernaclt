@@ -254,8 +254,9 @@ test('desktop 0.16 restaura pela bandeja e usa gaveta de amigos',()=>{
 });
 
 test('desktop 0.17 mantém XP, diversifica missões e combina ofertas Steam',()=>{
- const fixes=read('src/desktop-fixes.js'),rust=read('src-tauri/src/main.rs'),community=read('src-tauri/src/v06.rs'),worker=fs.readFileSync(new URL('../../worker.js',import.meta.url),'utf8'),sql=fs.readFileSync(new URL('../../supabase/patch-1.47-progressao-missoes.sql',import.meta.url),'utf8');
+ const fixes=read('src/desktop-fixes.js'),alignment=read('src/alignment.js'),rust=read('src-tauri/src/main.rs'),community=read('src-tauri/src/v06.rs'),worker=fs.readFileSync(new URL('../../worker.js',import.meta.url),'utf8'),sql=fs.readFileSync(new URL('../../supabase/patch-1.47-progressao-missoes.sql',import.meta.url),'utf8');
  assert.match(fixes,/missions_v2/);assert.match(fixes,/\+\$\{Number\(m\.xp\)/);assert.match(fixes,/library-collection-hero/);
+ assert.match(fixes,/collection-overview['"]\)\?\.remove\(\)/);assert.doesNotMatch(alignment,/sidebarCommunity['"]\)\?\.remove\(\)/);
  assert.match(community,/clt_progression_v2/);assert.match(community,/clt_claim_mission_v2/);assert.match(rust,/\/api\/steam-free/);
  assert.match(worker,/\['21','DLC'\]/);assert.match(sql,/clt_xp_events/);assert.match(sql,/watch_episode/);assert.match(sql,/revoke all on function clt_private\.ensure_missions/);assert.doesNotMatch(sql,/delete from public\.clt_xp_events/i);
 });
