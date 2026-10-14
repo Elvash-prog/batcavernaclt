@@ -18,7 +18,7 @@ globalThis.fetch=async (url, options={})=>{
   }
   if(mode==='upstreamfail') throw new Error('secret='+env.STEAM_KEY);
   if(u.hostname==='www.steamgriddb.com') {
-    if(u.pathname.includes('/search/')) return json({data:[{id:42,name:'Safe Game'}]});
+    if(u.pathname.includes('/search/')) return json({data:mode==='covermatch'?[{id:1,name:'Resident Evil'},{id:9,name:'Resident Evil Requiem'}]:[{id:42,name:'Safe Game'}]});
     return json({data:[{nsfw:true,url:'https://images.test/bad.jpg'},{nsfw:false,url:'https://images.test/safe.jpg'}]});
   }
   if(u.pathname.includes('ResolveVanityURL')) return json({response:{success:1,steamid:'76561198000000000'}});
@@ -59,6 +59,7 @@ await check('distributed rate denial stops providers',async()=>{mode='limited';c
 await check('SQL limit failure fails closed',async()=>{mode='dbfail';assert.equal((await handler(req({op:'gratis'}))).status,503);assert.equal(calls.length,2)});
 await check('provider exceptions do not leak keys',async()=>{mode='upstreamfail';const r=await handler(req({op:'perfil',steamid:'76561198000000000'}));assert.equal(r.status,502);assert.ok(!(await r.text()).includes('test-steam'))});
 await check('explicitly marked adult cover skipped',async()=>{const r=await handler(req({op:'capas',nomes:['Safe Game']}));assert.equal(r.status,200);assert.deepEqual((await r.json()).capas,['https://images.test/safe.jpg'])});
+await check('cover search favors the complete title over another franchise entry',async()=>{mode='covermatch';const r=await handler(req({op:'capas',nomes:['Resident Evil 9 Requiem']}));assert.equal(r.status,200);await r.json();assert.ok(calls.some(x=>x.u.pathname==='/api/v2/grids/game/9'));assert.ok(!calls.some(x=>x.u.pathname==='/api/v2/grids/game/1'))});
 await check('adult Steam metadata excluded',async()=>{mode='adult';const r=await handler(req({op:'steamInfo',appids:[42]}));assert.deepEqual((await r.json()).lista,[])});
 for(const [op,body,key] of [
  ['perfil',{entrada:'https://steamcommunity.com/id/player'},'steamid'],
@@ -68,5 +69,5 @@ for(const [op,body,key] of [
  ['conquistas',{steamid:'76561198000000000',appid:42},'lista'],
  ['steamInfo',{appids:[42],nomes:['Safe Game']},'lista'],
  ['gratis',{},'epic'],
-]) await check('compatible '+op,async()=>{const r=await handler(req({op,...body}));assert.equal(r.status,200, JSON.stringify({op,calls:calls.map(x=>x.u.href)}));const b=await r.json();assert.ok(key in b);assert.equal(r.headers.get('Cache-Control'),'no-store')});
+]) await check('compatible '+op,async()=>{const r=await handler(req({op,...body}));assert.equal(r.status,200, JSON.stringify({op,calls:calls.map(x=>x.u.href)}));const b=await r.json();assert.ok(key in b,JSON.stringify({op,b,calls:calls.map(x=>x.u.href)}));assert.equal(r.headers.get('Cache-Control'),'no-store')});
 console.log(passed+' offline checks passed');

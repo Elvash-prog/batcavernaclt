@@ -51,7 +51,8 @@ function steamFreeRows(html){
     if(/\b(?:5611|6650|12095)\b/.test(tags))continue;
     seen.add(id);
     const nome=title.replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
-    games.push({appid:Number(id),nome,capa:'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/'+id+'/header.jpg',url:'https://store.steampowered.com/app/'+id+'/',agora:true});
+    if(/\b(?:hentai|porn(?:o|ography|ographic)?|nsfw|erotic|sexual content|adult only|sex simulator|nudity)\b/i.test(nome))continue;
+    games.push({appid:Number(id),nome,capa:'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/'+id+'/header.jpg',url:'https://store.steampowered.com/app/'+id+'/',agora:true,tipo:/\bdlc\b/i.test(row)?'DLC':'Jogo'});
   }
   return games;
 }
@@ -61,13 +62,8 @@ async function steamFree(request,ctx){
   const cache=globalThis.caches&&caches.default;
   if(cache){const hit=await cache.match(cacheKey);if(hit)return hit;}
   try{
-    const url='https://store.steampowered.com/search/results/?query&start=0&count=100&maxprice=free&specials=1&category1=998&cc=br&l=brazilian&infinite=1';
-    const res=await fetch(url,{redirect:'manual',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});
-    if(!res.ok||res.status>=300)throw new Error('upstream');
-    const data=await res.json();
-    if(!data.success||typeof data.results_html!=='string')throw new Error('invalid');
-    const games=steamFreeRows(data.results_html);
-    if(Number(data.total_count)>0&&!games.length&&!data.results_html.includes('search_result_row'))throw new Error('markup');
+    const categories=[['998','Jogo'],['21','DLC']],games=[],seen=new Set();
+    for(const [category,type] of categories){const url='https://store.steampowered.com/search/results/?query&start=0&count=100&maxprice=free&specials=1&category1='+category+'&cc=br&l=brazilian&infinite=1';const res=await fetch(url,{redirect:'manual',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});if(!res.ok||res.status>=300)throw new Error('upstream');const data=await res.json();if(!data.success||typeof data.results_html!=='string')throw new Error('invalid');const rows=steamFreeRows(data.results_html);if(Number(data.total_count)>0&&!rows.length&&!data.results_html.includes('search_result_row'))throw new Error('markup');for(const row of rows)if(!seen.has(row.appid)){seen.add(row.appid);games.push({...row,tipo:type})}}
     const response=new Response(JSON.stringify({steam:games,updatedAt:new Date().toISOString()}),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=300'}});
     if(cache&&ctx)ctx.waitUntil(cache.put(cacheKey,response.clone()));
     return response;

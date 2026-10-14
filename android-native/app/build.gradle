@@ -5,8 +5,8 @@ android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
         applicationId 'dev.gamersclt.batcaverna.nativeapp'
         minSdk 23
         targetSdk 36
-        versionCode 46
-        versionName '1.6.0'
+        versionCode 47
+        versionName '1.7.0'
         buildConfigField 'String', 'SUPABASE_URL', '"https://luoqlhgfmixvfqbfcdoc.supabase.co"'
         buildConfigField 'String', 'SUPABASE_ANON_KEY', '"' + (project.findProperty('supabaseAnonKey') ?: '') + '"'
     }

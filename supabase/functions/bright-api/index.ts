@@ -137,6 +137,16 @@ const sg = (p: string) => getJson("https://www.steamgriddb.com/api/v2" + p, { Au
 const st = (p: string) => getJson("https://api.steampowered.com" + p + (p.includes("?") ? "&" : "?") + "key=" + STEAM + "&format=json");
 // styles=alternate -> arte "padrão" do SteamGridDB, a que traz o nome/logo do jogo; 600x900 -> formato de capa
 const gridQuery = (format: string) => `dimensions=${format === "landscape" ? "920x430,460x215" : "600x900,660x930,342x482"}&types=static&nsfw=false`;
+const coverTitleTokens = (value: unknown) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[™®©]/g, "").replace(/\b(?:the|game|edition|deluxe|ultimate|remake)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
+function coverTitleScore(query: unknown, candidate: unknown): number {
+  const q = coverTitleTokens(query), c = coverTitleTokens(candidate);
+  if (!q.length || !c.length) return 0;
+  const a = q.join(" "), b = c.join(" ");
+  if (a === b) return 1;
+  const qs = new Set(q), cs = new Set(c), common = q.filter(x => cs.has(x)).length;
+  const recall = common / qs.size, precision = common / cs.size;
+  return recall * .65 + precision * .35;
+}
 async function capa(nome?: string, appid?: number, format = "poster"): Promise<string | null> {
   if (adultTitle(nome)) return null;
   try {
@@ -145,7 +155,8 @@ async function capa(nome?: string, appid?: number, format = "poster"): Promise<s
     if (appid) path = `/grids/steam/${appid}?${Q}`;
     else {
       const r = await sg("/search/autocomplete/" + encodeURIComponent(String(nome)));
-      const id = r.data?.find((g: any) => !adultTitle(g.name))?.id;
+      const candidate = (r.data ?? []).filter((g: any) => !adultTitle(g.name)).map((g: any) => ({...g,score:coverTitleScore(nome,g.name)})).sort((a: any,b: any) => b.score-a.score)[0];
+      const id = candidate?.score >= .78 ? candidate.id : null;
       if (!Number.isSafeInteger(id) || id < 1) return null;
       path = `/grids/game/${id}?${Q}`;
     }
@@ -223,7 +234,7 @@ async function steamInfo(appids: number[] = [], nomes: string[] = []) {
     try {
       const q = await getJson(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(nome)}&cc=br&l=portuguese`);
       const id = Number(q?.items?.[0]?.id);
-      if (!id || seen.has(id)) return;
+      if (!id || seen.has(id)) continue;
       seen.add(id);
       const z = await steamAppInfo(id);
       if (z) out.push(z);

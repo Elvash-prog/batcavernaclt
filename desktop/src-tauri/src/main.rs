@@ -344,6 +344,15 @@ async fn update_profile(input: ProfileInput, state: tauri::State<'_, AppState>) 
 }
 
 #[tauri::command]
+async fn update_profile_background(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let session=current(&state).await?;let url=input["url"].as_str().unwrap_or("").trim();
+    if !url.is_empty()&&!url.starts_with("https://"){return Err("O fundo precisa usar HTTPS.".into());}
+    let dark=input["escuro"].as_u64().unwrap_or(65).min(90);let blur=input["desfoque"].as_u64().unwrap_or(0).min(20);
+    let body=json!({"fundo":if url.is_empty(){Value::Null}else{json!({"url":url,"escuro":dark,"desfoque":blur})}});
+    value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").header("prefer","return=representation").json(&body).send().await.map_err(|_|"Não foi possível salvar o fundo do perfil.".to_string())?).await
+}
+
+#[tauri::command]
 async fn library(category: String, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session = current(&state).await?; let user = &session.user.id;
     if !matches!(category.as_str(), "jogos"|"filmes"|"series"|"animes") { return Err("Categoria inválida.".into()); }
@@ -573,7 +582,13 @@ async fn upload_profile_image(input: UploadInput, state: tauri::State<'_,AppStat
 async fn bright_api(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?;
     let response=state.client.post(format!("{SUPABASE_URL}/functions/v1/bright-api")).timeout(Duration::from_secs(if input["op"].as_str()==Some("gratis"){50}else{25})).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&input).send().await.map_err(|_|"Não foi possível consultar a Steam.".to_string())?;
-    value(response).await
+    let mut result=value(response).await?;
+    if input["op"].as_str()==Some("gratis")&&result.get("steam").and_then(Value::as_array).is_none_or(|rows|rows.is_empty()){
+        if let Ok(response)=state.client.get(format!("{CATALOG_ORIGIN}/api/steam-free")).timeout(Duration::from_secs(25)).bearer_auth(&session.access_token).send().await{
+            if let Ok(fallback)=value(response).await{if let Some(rows)=fallback.get("steam").and_then(Value::as_array){result["steam"]=json!(rows);}}
+        }
+    }
+    Ok(result)
 }
 
 #[tauri::command]
@@ -684,7 +699,7 @@ fn main() {
             }
         })
         .manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             desktop_runtime::initialize(app.handle())?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;

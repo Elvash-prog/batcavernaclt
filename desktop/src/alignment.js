@@ -30,26 +30,19 @@ friendsNav?.remove();
 const chatNav=$('#mainNav [data-view="chat"]');
 chatNav?.remove();
 
+async function setOwnStatus(status,button){
+ const p=state.profile||{},account=$('#sidebarAccount');if(button)button.disabled=true;
+ try{
+  await api.updateProfile({name:p.nome||p.slug||'CLT',bio:p.bio||'',banner:p.banner_url||p.banner||'',status,steamId:p.steam_id||'',avatar:p.avatar_url||'',games:p.jogos_destaque||[],titleLevel:Number(p.titulo_destaque_nivel)||0,achievements:p.conquistas_destaque||[]});
+  p.status_personalizado=status;const accountStatus=$('#accountStatus');if(accountStatus)accountStatus.textContent=statusOptions[status];account?.querySelector('small')&&(account.querySelector('small').textContent=statusOptions[status]);
+  await call('realtime_presence',{input:{nome:p.nome||'CLT',slug:p.slug||'',avatar:p.avatar_url||'',status,jogo:'',jogo_fonte:''}}).catch(()=>{});
+  toast(`Status alterado para ${statusOptions[status]}.`);return true;
+ }catch(error){toast(failure(error));if(button)button.disabled=false;return false;}
+}
 function installStatusPicker(){
  const account=$('#sidebarAccount');if(!account)return;
- account.onclick=event=>{
-  event.stopPropagation();const current=$('#sidebarStatusMenu');if(current){current.remove();return;}
-  const menu=document.createElement('section');menu.id='sidebarStatusMenu';menu.className='sidebar-status-menu';
-  const active=state.profile?.status_personalizado||'online';
-  menu.innerHTML=`<header><b>Seu status</b><button data-open-own-profile>Ver perfil</button></header>${Object.entries(statusOptions).map(([key,label])=>`<button data-account-status="${key}" class="${key===active?'active':''}"><i class="status-dot status-${key}"></i><span>${label}</span>${key===active?'<b>✓</b>':''}</button>`).join('')}`;
-  account.before(menu);
-  menu.querySelector('[data-open-own-profile]').onclick=()=>{menu.remove();state.profileUser=null;navigate('profile')};
-  menu.querySelectorAll('[data-account-status]').forEach(button=>button.onclick=async()=>{
-   const p=state.profile||{},status=button.dataset.accountStatus;button.disabled=true;
-   try{
-    await api.updateProfile({name:p.nome||p.slug||'CLT',bio:p.bio||'',banner:p.banner_url||p.banner||'',status,steamId:p.steam_id||'',avatar:p.avatar_url||'',games:p.jogos_destaque||[],titleLevel:Number(p.titulo_destaque_nivel)||0,achievements:p.conquistas_destaque||[]});
-    p.status_personalizado=status;$('#accountStatus').textContent=statusOptions[status];account.querySelector('small').textContent=statusOptions[status];
-    await call('realtime_presence',{input:{nome:p.nome||'CLT',slug:p.slug||'',avatar:p.avatar_url||'',status,jogo:'',jogo_fonte:''}}).catch(()=>{});
-    menu.remove();toast(`Status alterado para ${statusOptions[status]}.`);
-   }catch(error){toast(failure(error));button.disabled=false;}
-  });
- };
- document.addEventListener('click',event=>{if(!event.target.closest('#sidebarStatusMenu,#sidebarAccount'))$('#sidebarStatusMenu')?.remove()});
+ account.onclick=()=>{state.profileUser=null;navigate('profile')};
+ account.setAttribute('aria-label','Abrir meu perfil');
 }
 installStatusPicker();
 
@@ -105,13 +98,14 @@ function installFriendsDock(){
  $('#sidebarCommunity')?.remove();
  if($('#friendsDock'))return;
  const dock=document.createElement('section');dock.id='friendsDock';dock.className='friends-dock';dock.hidden=true;
- dock.innerHTML='<section class="friends-dock-panel" id="friendsDockPanel" hidden><header><div><b>Amigos</b><small id="friendsDockCount">Carregando…</small></div><button id="friendsDockClose" aria-label="Fechar amigos">×</button></header><div class="friends-dock-actions"><label><span>⌕</span><input id="friendsDockSearch" type="search" placeholder="Pesquisar amigos" aria-label="Pesquisar amigos"></label><button id="friendsDockAdd" aria-label="Adicionar amigo">＋</button></div><div id="friendsDockList" class="friends-dock-list"></div></section><button id="friendsDockToggle" class="friends-dock-toggle" aria-expanded="false"><span>♙</span> Amigos <b id="friendsDockBadge"></b></button>';
+ dock.innerHTML='<section class="friends-dock-panel" id="friendsDockPanel" hidden><header><div><b>Amigos</b><small id="friendsDockCount">Carregando…</small></div><button id="friendsDockClose" aria-label="Fechar amigos">×</button></header><div class="friends-dock-status"><small>SEU STATUS</small><div id="friendsDockStatuses"></div></div><div class="friends-dock-actions"><label><span>⌕</span><input id="friendsDockSearch" type="search" placeholder="Pesquisar amigos" aria-label="Pesquisar amigos"></label><button id="friendsDockAdd" aria-label="Adicionar amigo">＋</button></div><div id="friendsDockList" class="friends-dock-list"></div></section><button id="friendsDockToggle" class="friends-dock-toggle" aria-expanded="false"><span>♙</span> Amigos <b id="friendsDockBadge"></b></button>';
  document.body.append(dock);
  const panel=$('#friendsDockPanel'),toggle=$('#friendsDockToggle'),list=$('#friendsDockList'),search=$('#friendsDockSearch');
  let rows=[];
- const render=()=>{const query=search.value.trim().toLocaleLowerCase('pt-BR'),visible=rows.filter(friend=>`${friend.nome||''} ${friend.slug||''}`.toLocaleLowerCase('pt-BR').includes(query));list.innerHTML=visible.map(friend=>`<button data-dock-friend="${esc(friend.id)}"><span class="friends-dock-avatar"><img src="brand.jpg" data-private-src="${esc(friend.avatar_url||'')}" alt=""></span><span><b>${esc(friend.nome||friend.slug||'Amigo')}</b><small>@${esc(friend.slug||'')}</small></span><em>Conversar</em></button>`).join('')||`<p class="muted">${query?'Nenhum amigo encontrado.':'Sua lista de amigos está vazia.'}</p>`;hydrateMedia(list);list.querySelectorAll('[data-dock-friend]').forEach(button=>button.onclick=()=>{const friend=rows.find(item=>String(item.id)===button.dataset.dockFriend);if(!friend)return;panel.hidden=true;toggle.setAttribute('aria-expanded','false');if(window.batcavernaChooseChat)window.batcavernaChooseChat(friend);else{state.chatFriend=friend;navigate('chat')}});};
- const load=async()=>{list.innerHTML='<div class="loading">Carregando amigos…</div>';try{rows=await api.friends();$('#friendsDockCount').textContent=`${rows.length} ${rows.length===1?'amigo':'amigos'}`;$('#friendsDockBadge').textContent=rows.length||'';render()}catch(error){list.innerHTML=`<p class="form-error">${esc(failure(error))}</p>`}};
- toggle.onclick=()=>{panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden){load();setTimeout(()=>search.focus(),0)}};
+ const paintStatuses=()=>{const active=state.profile?.status_personalizado||'online',box=$('#friendsDockStatuses');box.innerHTML=Object.entries(statusOptions).map(([key,label])=>`<button data-dock-status="${key}" class="${key===active?'active':''}" title="${label}"><i class="status-dot status-${key}"></i><span>${label}</span></button>`).join('');box.querySelectorAll('[data-dock-status]').forEach(button=>button.onclick=async()=>{if(await setOwnStatus(button.dataset.dockStatus,button))paintStatuses()})};
+ const render=()=>{const query=search.value.trim().toLocaleLowerCase('pt-BR'),visible=rows.filter(friend=>`${friend.nome||''} ${friend.slug||''}`.toLocaleLowerCase('pt-BR').includes(query));list.innerHTML=visible.map(friend=>{const presence=window.batcavernaFriendPresence?.(friend)||{online:false,text:'Sincronizando presença…'};return `<button data-dock-friend="${esc(friend.id)}"><span class="friends-dock-avatar ${presence.online?'online':''}"><img src="brand.jpg" data-private-src="${esc(friend.avatar_url||'')}" alt=""><i></i></span><span><b>${esc(friend.nome||friend.slug||'Amigo')}</b><small>${esc(presence.text)}</small></span><em>Conversar</em></button>`}).join('')||`<p class="muted">${query?'Nenhum amigo encontrado.':'Sua lista de amigos está vazia.'}</p>`;hydrateMedia(list);list.querySelectorAll('[data-dock-friend]').forEach(button=>button.onclick=()=>{const friend=rows.find(item=>String(item.id)===button.dataset.dockFriend);if(!friend)return;panel.hidden=true;toggle.setAttribute('aria-expanded','false');if(window.batcavernaChooseChat)window.batcavernaChooseChat(friend);else{state.chatFriend=friend;navigate('chat')}});};
+ const load=async()=>{list.innerHTML='<div class="loading">Carregando amigos…</div>';try{const live=window.batcavernaFriends?.();rows=Array.isArray(live)&&live.length?live:await api.friends();$('#friendsDockCount').textContent=`${rows.length} ${rows.length===1?'amigo':'amigos'}`;$('#friendsDockBadge').textContent=rows.length||'';render()}catch(error){list.innerHTML=`<p class="form-error">${esc(failure(error))}</p>`}};
+ toggle.onclick=()=>{panel.hidden=!panel.hidden;toggle.setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden){paintStatuses();load();setTimeout(()=>search.focus(),0)}};
  $('#friendsDockClose').onclick=()=>{panel.hidden=true;toggle.setAttribute('aria-expanded','false')};
  $('#friendsDockAdd').onclick=()=>{panel.hidden=true;toggle.setAttribute('aria-expanded','false');openFriendSearch()};
  search.oninput=render;

@@ -151,9 +151,9 @@ test('desktop 0.11 alinha perfil, biblioteca, comunidade, chat e presença',()=>
  const html=read('src/main.tsx'),script=read('src/alignment.js'),css=read('src/alignment.css'),rust=read('src-tauri/src/main.rs'),realtime=read('src-tauri/src/v06.rs');
  new vm.Script(script);
  assert.match(html,/alignment\.css/);assert.match(html,/alignment\.js/);
- assert.doesNotMatch(script,/category-library-card|renderCollectionHub|initialPatchNotes|Novidades da versão/);assert.match(script,/friends-compact/);assert.match(script,/community-reference-layout/);assert.match(script,/data-account-status/);assert.match(script,/unifiedAddFriend/);
+ assert.doesNotMatch(script,/category-library-card|renderCollectionHub|initialPatchNotes|Novidades da versão/);assert.match(script,/friends-compact/);assert.match(script,/community-reference-layout/);assert.match(script,/data-dock-status/);assert.match(script,/unifiedAddFriend/);
  assert.match(script,/data-profile-section="library"/);assert.match(script,/state\.settingsTab!==['"]appearance['"]/);
- assert.match(css,/grid-template-columns:210px minmax\(420px,760px\) 260px/);assert.match(css,/grid-template-columns:230px minmax\(0,1fr\)!important/);
+ assert.match(css,/grid-template-columns:\s*210px minmax\(420px,\s*760px\) 260px/);assert.match(css,/grid-template-columns:\s*230px minmax\(0,\s*1fr\)\s*!important/);
  const chatQuery=rust.match(/async fn chat_messages[\s\S]*?(?=async fn send_message)/)?.[0]||'';
  assert.doesNotMatch(chatQuery,/select=[^"\n]*updated_at/);assert.match(chatQuery,/created_at,lida/);
  assert.match(realtime,/interval\(Duration::from_secs\(5\)\)/);
@@ -182,14 +182,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.16.0');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.0');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.16.0');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.0');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
@@ -226,8 +226,8 @@ test('início mantém atividades à direita e não mostra novidades da versão',
  const alignment=read('src/alignment.js'),styles=read('src/alignment.css');
  assert.doesNotMatch(alignment,/initialPatchNotes|Novidades da versão/);
  assert.doesNotMatch(styles,/initial-patch-notes|initialPatchNotes/);
- assert.match(styles,/grid-template-columns:minmax\(0,1fr\) clamp\(280px,22vw,340px\)/);
- assert.match(styles,/\.reference-home \.home-hero[^}]*min-height:300px/);
+ assert.match(styles,/grid-template-columns:\s*minmax\(0,\s*1fr\) clamp\(280px,\s*22vw,\s*340px\)/);
+ assert.match(styles,/\.reference-home \.home-hero[^}]*min-height:\s*300px/);
 });
 
 test('desktop 0.15 entrega notificação realtime sem duplicar o polling',()=>{
@@ -250,5 +250,12 @@ test('desktop 0.16 restaura pela bandeja e usa gaveta de amigos',()=>{
  const rust=read('src-tauri/src/main.rs'),alignment=read('src/alignment.js'),css=read('src/alignment.css');
  assert.match(rust,/on_tray_icon_event/);assert.match(rust,/MouseButton::Left/);assert.match(rust,/desktop_runtime::show_main\(tray\.app_handle\(\)\)/);
  assert.match(alignment,/chatNav\?\.remove\(\)/);assert.match(alignment,/id='friendsDock'/);assert.match(alignment,/id=\"friendsDockClose\"/);assert.match(alignment,/data-dock-friend/);
- assert.match(css,/\.friends-dock\{/);assert.match(css,/profile-cover-complete:before[^{]*\{[^}]*opacity:1!important/);
+ assert.match(css,/\.friends-dock\s*\{/);assert.match(css,/profile-cover-complete \.profile-cover-art[^{]*\{[^}]*opacity:\s*1\s*!important/);assert.match(alignment,/Abrir meu perfil/);assert.match(alignment,/friendsDockStatuses/);
+});
+
+test('desktop 0.17 mantém XP, diversifica missões e combina ofertas Steam',()=>{
+ const fixes=read('src/desktop-fixes.js'),rust=read('src-tauri/src/main.rs'),community=read('src-tauri/src/v06.rs'),worker=fs.readFileSync(new URL('../../worker.js',import.meta.url),'utf8'),sql=fs.readFileSync(new URL('../../supabase/patch-1.47-progressao-missoes.sql',import.meta.url),'utf8');
+ assert.match(fixes,/missions_v2/);assert.match(fixes,/\+\$\{Number\(m\.xp\)/);assert.match(fixes,/library-collection-hero/);
+ assert.match(community,/clt_progression_v2/);assert.match(community,/clt_claim_mission_v2/);assert.match(rust,/\/api\/steam-free/);
+ assert.match(worker,/\['21','DLC'\]/);assert.match(sql,/clt_xp_events/);assert.match(sql,/watch_episode/);assert.match(sql,/revoke all on function clt_private\.ensure_missions/);assert.doesNotMatch(sql,/delete from public\.clt_xp_events/i);
 });

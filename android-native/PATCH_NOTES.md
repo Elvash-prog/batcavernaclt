@@ -1,4 +1,14 @@
-# BatCaverna Android 1.6.0 — 14/10/2026
+# BatCaverna Android 1.7.0 — 14/10/2026
+
+- O perfil e o ranking passam a usar XP permanente: remover um título não desconta pontos já conquistados.
+- Missões diárias e semanais são garantidas para todas as contas e variam entre adicionar, finalizar, assistir episódios, avaliar e registrar horas.
+- Cada missão mostra objetivo, progresso e recompensa em XP; o período vem do servidor para evitar sumiços por diferença de fuso horário.
+- A aba grátis combina Epic com jogos e DLCs da Steam em 100% de desconto, com bloqueio de conteúdo adulto.
+- Requer a migração `supabase/patch-1.47-progressao-missoes.sql` para ativar a nova progressão e as novas missões.
+
+Aplicativo Android nativo separado da TWA. Pacote da prévia preservado: `dev.gamersclt.batcaverna.nativeapp.preview`; versão 1.7.0, código 47. A chave privada de assinatura é mantida fora do repositório.
+
+## Histórico 1.6.0
 
 - Renomeia a aba inferior **Chat** para **Amigos**, preservando conversas, grupos, contadores e o restante do fluxo atual.
 - Adiciona seis temas nativos: Caverna, Oceano, Esmeralda, Rubi, Âmbar e Aurora.

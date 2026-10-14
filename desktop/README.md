@@ -1,6 +1,16 @@
-# BatCaverna CLT Windows 0.16.0
+# BatCaverna CLT Windows 0.17.0
 
 Aplicativo Tauri com interface própria e Supabase compartilhado com site e Android.
+
+## Perfil, biblioteca e progressão 0.17.0
+
+O perfil desktop recebeu as opções visuais do aplicativo, capa nítida e independente do fundo, atalho pelo avatar do rodapé e transições suaves no chat. Os cabeçalhos das bibliotecas ganharam identidade por categoria, contadores e filtros mais claros; capas horizontais agora preenchem o cartão sem faixas cinzas.
+
+A busca de capas exige correspondência forte do título para não trocar, por exemplo, **Resident Evil Requiem** por outro jogo da franquia. O painel de amigos reúne o seletor de status e usa a presença confirmada em tempo real.
+
+O XP agora é um histórico permanente: excluir conteúdo não remove pontos. Missões diárias e semanais são geradas para todas as contas, variam entre adicionar, finalizar, assistir episódios, avaliar e registrar horas, e informam a recompensa. A página de ofertas combina Epic com jogos e DLCs da Steam em 100% de desconto, aplicando filtro de conteúdo adulto.
+
+Para ativar XP e missões no servidor, execute `supabase/patch-1.47-progressao-missoes.sql` no SQL Editor do Supabase.
 
 ## Interface social 0.16.0
 
