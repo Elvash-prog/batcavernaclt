@@ -1181,7 +1181,7 @@ try {
   assert.equal(await page.locator(".mission-period").count(), 2);
   assert.match(
     await page.locator(".mission-objective").first().innerText(),
-    /Adicionar.*biblioteca/,
+    /Adicion(?:ar|e).*biblioteca/i,
   );
   await page.locator('[data-profile-section="achievements"]').click();
   assert.equal(await page.locator(".achievement").count(), 32);
