@@ -25,7 +25,9 @@
 
  const baseLibrary=renderLibrary;
  renderLibrary=async function(){
-  await baseLibrary();if(state.current!=='library'||$('#libraryCollectionHero'))return;
+  await baseLibrary();if(state.current!=='library')return;
+  $('#content .collection-overview')?.remove();
+  if($('#libraryCollectionHero'))return;
   const rows=state.libraryRows||[],game=state.libraryCategory==='jogos';
   const meta={jogos:['🎮','Biblioteca de jogos','Acompanhe jornadas, horas, conquistas e tudo que ainda quer zerar.'],filmes:['🎬','Seus filmes','Organize o que quer assistir, favoritos e histórias já concluídas.'],series:['📺','Suas séries','Continue temporadas, acompanhe episódios e guarde seus destaques.'],animes:['🌸','Seus animes','Temporadas, episódios e favoritos reunidos em uma coleção só.']}[state.libraryCategory]||['▦','Sua biblioteca','Toda a sua coleção em um só lugar.'];
   const done=rows.filter(x=>['finished','platinum','favorite'].includes(normalizedStatus(x.status))).length,active=rows.filter(x=>normalizedStatus(x.status)==='progress').length;
