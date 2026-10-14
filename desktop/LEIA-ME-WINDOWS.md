@@ -33,11 +33,10 @@ Instale Node.js LTS, Rust MSVC e Visual Studio Build Tools com Desktop developme
 - tokens persistentes ficam no armazenamento seguro do Windows;
 - RLS do Supabase continua protegendo todos os dados.
 
-## Próximas etapas
+## Atualizações automáticas
 
-- chat individual e grupos;
-- criação e edição de títulos;
-- progresso de episódios e estatísticas;
-- notificações nativas do Windows;
-- uploads moderados via Supabase Edge Function;
-- updater assinado pelo GitHub Releases.
+O cliente já verifica, confirma e instala bundles assinados pelo Tauri em **Configurações → Aplicativo**. A publicação está preparada no workflow `.github/workflows/desktop-release.yml`, acionado por tags `desktop-vX.Y.Z`; cada release inclui o instalador NSIS assinado (`.exe` e `.exe.sig`) e `latest.json`.
+
+**Antes da primeira publicação**, gere a chave de assinatura do updater, substitua a chave pública de placeholder em `src-tauri/tauri.conf.json` e salve a chave privada como secret `TAURI_SIGNING_PRIVATE_KEY` no GitHub Actions. `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` é opcional. O workflow falha explicitamente se a chave pública ainda for placeholder ou a chave privada não estiver configurada. Não perca nem compartilhe a chave privada: releases futuras precisam da mesma chave.
+
+O feed HTTPS já aponta para `https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/latest.json`. Siga [docs/ATUALIZACOES-IN-APP.md](../docs/ATUALIZACOES-IN-APP.md) para gerar e armazenar as chaves, publicar uma versão e verificar o feed. Nenhuma release é publicada por alterações comuns ou por este documento.

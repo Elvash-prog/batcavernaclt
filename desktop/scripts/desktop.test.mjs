@@ -260,3 +260,22 @@ test('desktop 0.17 mantém XP, diversifica missões e combina ofertas Steam',()=
  assert.match(community,/clt_progression_v2/);assert.match(community,/clt_claim_mission_v2/);assert.match(rust,/\/api\/steam-free/);
  assert.match(worker,/\['21','DLC'\]/);assert.match(sql,/clt_xp_events/);assert.match(sql,/watch_episode/);assert.match(sql,/revoke all on function clt_private\.ensure_missions/);assert.doesNotMatch(sql,/delete from public\.clt_xp_events/i);
 });
+
+test('perfil desktop centraliza conteúdo e inicia dados independentes em paralelo',()=>{
+ const script=read('src/app.js'),styles=read('src/desktop-fixes.css'),profile=script.slice(script.indexOf('async function renderProfile'),script.indexOf('\nfunction fileData'));
+ assert.match(profile,/profile-page/);assert.match(styles,/\.profile-page\s*\{[^}]*width:\s*min\(100%,\s*1200px\)[^}]*margin-inline:\s*auto/s);
+ assert.ok(profile.indexOf('Promise.all([loadStats(),api.library')<profile.indexOf('await api.profile'));
+ assert.match(profile,/error=>\(\{error\}\)/);assert.match(profile,/Estatísticas indisponíveis/);
+});
+
+test('updater Windows verifica releases, exige confirmação e publica bundles assinados',()=>{
+ const script=read('src/app.js'),guide=fs.readFileSync(new URL('../../docs/ATUALIZACOES-IN-APP.md',import.meta.url),'utf8');
+ const rust=read('src-tauri/src/main.rs'),config=JSON.parse(read('src-tauri/tauri.conf.json'));
+ const workflow=fs.readFileSync(new URL('../../.github/workflows/desktop-release.yml',import.meta.url),'utf8');
+ assert.match(script,/Verificar atualizações/);assert.match(script,/Deseja baixar e instalar agora/);assert.match(script,/check_for_updates/);assert.match(script,/install_update/);
+ assert.match(rust,/UpdaterExt/);assert.match(rust,/download_and_install/);assert.match(rust,/A atualização mudou ou não está mais disponível/);
+ assert.equal(config.plugins.updater.endpoints[0],'https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/latest.json');
+ assert.ok(config.plugins.updater.pubkey);
+ assert.match(workflow,/desktop-v\*/);assert.match(workflow,/TAURI_SIGNING_PRIVATE_KEY/);assert.match(workflow,/latest\.json/);assert.match(workflow,/windows-x86_64/);assert.match(workflow,/softprops\/action-gh-release/);assert.match(workflow,/RELEASE_TAG: \$\{\{ github\.ref_name \}\}/);assert.match(workflow,/package-lock\.json/);assert.match(workflow,/Windows-setup\.exe\.sig/);assert.doesNotMatch(workflow,/nsis\.zip/);
+ assert.match(guide,/signer generate/);assert.match(guide,/TAURI_SIGNING_PRIVATE_KEY/);assert.match(guide,/nenhuma release foi publicada/i);
+});

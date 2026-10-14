@@ -206,6 +206,10 @@
 .profile-user-background > .profile-tabs {
   position: relative;
 }
+.profile-page {
+  width: min(100%, 1200px);
+  margin-inline: auto;
+}
 .library-collection-hero {
   position: relative;
   display: grid;
