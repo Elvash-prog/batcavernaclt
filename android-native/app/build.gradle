@@ -1,0 +1,43 @@
+plugins { id 'com.android.application' }
+
+android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
+    defaultConfig {
+        applicationId 'dev.gamersclt.batcaverna.nativeapp'
+        minSdk 23
+        targetSdk 36
+        versionCode 47
+        versionName '1.7.0'
+        buildConfigField 'String', 'SUPABASE_URL', '"https://luoqlhgfmixvfqbfcdoc.supabase.co"'
+        buildConfigField 'String', 'SUPABASE_ANON_KEY', '"' + (project.findProperty('supabaseAnonKey') ?: '') + '"'
+    }
+    buildTypes { debug { applicationIdSuffix '.preview' } }
+    buildFeatures { buildConfig true }
+}
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'androidx.core:core:1.15.0'
+    implementation 'com.google.firebase:firebase-messaging:24.1.0'
+}
+if (file('google-services.json').exists()) { apply plugin: 'com.google.gms.google-services' }
+
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+
+// Restore the unchanged logo from small source chunks when checked out from GitHub.
+// This keeps large binary uploads out of connector requests and verifies the exact bytes.
+tasks.register('restoreLogo') {
+    doLast {
+        def target = file('src/main/res/drawable-nodpi/app_logo.png')
+        if (!target.exists()) {
+            def chunks = rootProject.file('assets-source').listFiles()?.findAll { it.name.startsWith('app_logo.png.b64.') }?.sort { it.name }
+            if (!chunks) throw new GradleException('Logo source is missing')
+            byte[] bytes = Base64.decoder.decode(chunks.collect { it.getText('UTF-8').trim() }.join(''))
+            def hash = java.security.MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString()
+            if (hash != '708935a9bffc4b10c297a5819bb57bec5bdcc490d0bbcab9c6751c644f10a2d1') throw new GradleException('Logo source checksum mismatch')
+            target.parentFile.mkdirs()
+            target.bytes = bytes
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn('restoreLogo') }

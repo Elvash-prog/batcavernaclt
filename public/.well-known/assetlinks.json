@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.gamersclt.batcaverna",
+      "sha256_cert_fingerprints": [
+        "F4:47:26:8F:A5:B1:E6:11:1F:39:DE:20:3E:53:DE:19:81:3C:C4:86:8A:86:80:73:D4:C8:4E:86:5D:10:1B:A3"
+      ]
+    }
+  }
+]

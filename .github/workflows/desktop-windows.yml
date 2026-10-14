@@ -1,0 +1,85 @@
+name: Gerar programa Windows EXE
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, codex/windows-0.6.0]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop-windows.yml"
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Instalar dependências desktop
+        working-directory: desktop
+        run: npm install
+      - name: Verificar interface desktop
+        working-directory: desktop
+        run: npm test
+      - name: Instalar navegador de teste
+        working-directory: desktop
+        run: npx playwright install chromium
+      - name: Validar fluxos da interface
+        working-directory: desktop
+        run: npm run test:ui
+      - name: Disponibilizar prévias da interface
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BatCaverna-CLT-Windows-Previews
+          path: desktop/preview/*.png
+          if-no-files-found: error
+      - name: Testes Rust
+        working-directory: desktop/src-tauri
+        run: cargo test --release
+      - name: Compilar instalador EXE
+        working-directory: desktop
+        run: npm run build
+      - name: Smoke test do Tauri real
+        shell: pwsh
+        working-directory: desktop
+        run: |
+          $log = Join-Path $PWD "tauri-smoke.log"
+          $env:BATCAVERNA_SMOKE_LOG = $log
+          $exe = Join-Path $PWD "src-tauri/target/release/batcaverna-clt-desktop.exe"
+          if (!(Test-Path $exe)) { throw "Executável Tauri não encontrado: $exe" }
+          $process = Start-Process -FilePath $exe -PassThru
+          try {
+            $ready = $false
+            $deadline = (Get-Date).AddSeconds(50)
+            do {
+              Start-Sleep -Seconds 1
+              $process.Refresh()
+              if ($process.HasExited) { throw "O Tauri encerrou antes de inicializar (código $($process.ExitCode))." }
+              if (Test-Path $log) {
+                $content = Get-Content $log -Raw
+                if ($content -match "BOOT_FAILURE") { throw "A interface Tauri registrou falha de boot.`n$content" }
+                if ($content -match "BOOT_READY") { $ready = $true; break }
+              }
+            } while ((Get-Date) -lt $deadline)
+            if (!$ready) { $content = if (Test-Path $log) { Get-Content $log -Raw } else { "log ausente" }; throw "A interface Tauri não confirmou o boot em 50 segundos.`n$content" }
+            Write-Host "Tauri real iniciou e confirmou BOOT_READY."
+          } finally {
+            if (!$process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+      - name: Publicar log do smoke Tauri
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BatCaverna-Tauri-Smoke
+          path: desktop/tauri-smoke.log
+          if-no-files-found: warn
+      - name: Disponibilizar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: BatCaverna-CLT-Windows-EXE
+          path: desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+
