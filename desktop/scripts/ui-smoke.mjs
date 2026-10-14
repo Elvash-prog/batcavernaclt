@@ -880,7 +880,8 @@ try {
   assert.equal(await page.evaluate(() => window.coverCalls), warm);
   assert.equal(await page.locator(".cinema-tabs").count(), 0);
   assert.equal(await page.locator(".collection-section").count(), 5);
-  assert.equal(await page.locator(".collection-summary article").count(), 4);
+  assert.equal(await page.locator(".collection-overview").count(), 0);
+  assert.equal(await page.locator(".library-hero-metrics article").count(), 3);
   await page.locator("#selectItems").click();
   await page.locator("#selectVisible").click();
   assert.match(
