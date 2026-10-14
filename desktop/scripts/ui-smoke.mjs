@@ -1149,6 +1149,24 @@ try {
   if (await friendsDockClose.isVisible()) await friendsDockClose.click();
   await page.locator("#sidebarAccount").click();
   await page.locator(".complete-profile").waitFor();
+  await page.setViewportSize({ width: 800, height: 900 });
+  assert.equal(
+    Math.round(await page.locator(".sidebar").evaluate((n) => n.getBoundingClientRect().width)),
+    68,
+    "A barra lateral deve compactar em janelas estreitas",
+  );
+  const narrowContent = await page.locator("#content").boundingBox(),
+    narrowProfile = await page.locator(".complete-profile").boundingBox(),
+    narrowOverview = await page.locator(".profile-overview-columns").boundingBox();
+  assert.ok(narrowProfile.x >= narrowContent.x);
+  assert.ok(narrowProfile.x + narrowProfile.width <= narrowContent.x + narrowContent.width);
+  assert.ok(narrowOverview.x >= narrowContent.x);
+  assert.equal(
+    await page.locator(".profile-overview-columns").evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(" ").length),
+    1,
+    "A progressão deve ficar acima do conteúdo em janelas estreitas",
+  );
+  await page.setViewportSize({ width: 1920, height: 1080 });
   assert.equal(
     await page
       .locator(
