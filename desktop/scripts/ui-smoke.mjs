@@ -663,6 +663,32 @@ try {
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
   await page.locator(".friend-activity").waitFor();
+  await page.locator(".recommendation-row .cover-wrap").first().waitFor();
+  const formatCover = page.locator(".recommendation-row .cover-wrap").first();
+  let formatBox = await formatCover.boundingBox();
+  assert.ok(
+    formatBox.height > formatBox.width * 1.4,
+    "O formato vertical deve exibir a capa em proporção de pôster.",
+  );
+  await page.evaluate(() => {
+    document.body.dataset.cardFormat = "landscape";
+  });
+  formatBox = await formatCover.boundingBox();
+  assert.ok(
+    formatBox.width > formatBox.height * 1.6,
+    "O formato horizontal deve exibir a capa em proporção widescreen.",
+  );
+  await page.evaluate(() => {
+    document.body.dataset.cardFormat = "poster";
+    document.documentElement.style.setProperty("--reference-card-width", "420px");
+  });
+  assert.ok(
+    (await page.locator(".recommendation-row .cinema-card").first().boundingBox()).width >= 400,
+    "A largura configurada em Aparência deve dimensionar os cards do início.",
+  );
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--reference-card-width", "300px");
+  });
   const visualSystem = await page.evaluate(() => {
     const sidebar = getComputedStyle(document.querySelector(".sidebar"));
     const activeNavigation = getComputedStyle(
@@ -1069,6 +1095,31 @@ try {
       .evaluate((n) => getComputedStyle(n).position),
     "static",
   );
+  const libraryCover = page.locator("#libraryGroups .cover-wrap").first();
+  let libraryCoverBox = await libraryCover.boundingBox();
+  assert.ok(
+    libraryCoverBox.height > libraryCoverBox.width * 1.4,
+    "A biblioteca deve respeitar o formato vertical selecionado.",
+  );
+  await page.evaluate(() => {
+    document.body.dataset.cardFormat = "landscape";
+  });
+  libraryCoverBox = await libraryCover.boundingBox();
+  assert.ok(
+    libraryCoverBox.width > libraryCoverBox.height * 1.6,
+    "A biblioteca deve respeitar o formato horizontal selecionado.",
+  );
+  await page.evaluate(() => {
+    document.body.dataset.cardFormat = "poster";
+    document.documentElement.style.setProperty("--reference-card-width", "420px");
+  });
+  assert.ok(
+    (await page.locator("#libraryGroups .cinema-card").first().boundingBox()).width >= 400,
+    "A largura configurada em Aparência deve dimensionar os cards da biblioteca.",
+  );
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--reference-card-width", "300px");
+  });
   await page.locator("#libraryStatusFilter").selectOption("platinum");
   assert.equal(await page.locator("#libraryGroups .cinema-card").count(), 1);
   await page.locator("#libraryStatusFilter").selectOption("all");

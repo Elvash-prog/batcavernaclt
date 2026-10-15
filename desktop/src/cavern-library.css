@@ -129,7 +129,7 @@
 }
 
 .reference-ui .cavern-library .reference-collection {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--collection-card-width, 260px)), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--reference-card-width, 300px)), 1fr));
   gap: 22px 16px;
 }
 
@@ -154,6 +154,14 @@
   aspect-ratio: 16 / 9;
   border-radius: 12px 12px 0 0;
   background: #07090e;
+}
+
+body.reference-ui[data-card-format="poster"] .cavern-library .cover-wrap {
+  aspect-ratio: 2 / 3;
+}
+
+body.reference-ui[data-card-format="landscape"] .cavern-library .cover-wrap {
+  aspect-ratio: 16 / 9;
 }
 
 .reference-ui .cavern-library .cinema-card .cover-wrap img {
@@ -183,7 +191,7 @@
 
 @media (min-width: 1700px) {
   .reference-ui .cavern-library .reference-collection {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--collection-card-width, 285px)), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--reference-card-width, 300px)), 1fr));
   }
 }
 
@@ -196,7 +204,6 @@
   .reference-ui .cavern-library .collection-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .reference-ui .cavern-library .library-controls { grid-template-columns: 1fr; }
   .reference-ui .cavern-library .library-controls input { grid-column: auto; }
-  .reference-ui .cavern-library .reference-collection { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

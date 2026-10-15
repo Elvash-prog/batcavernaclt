@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.14` aprimora o sistema visual **Neon Underground** no desktop. Além da identidade grafite, roxa e âmbar aplicada às telas principais, o destaque do Início agora mantém proporção mais equilibrada em monitores QHD, sem criar uma área inicial excessivamente alta. Os temas personalizados, a navegação e o suporte a movimento reduzido foram preservados.
+A versão `0.17.15` permite escolher entre cards com capas verticais e horizontais em Início e Biblioteca. O ajuste **Aparência → Layout → Tamanho dos cards** agora controla o tamanho real das grades, e nenhum card é ocultado só por estar além das primeiras colunas. Os refinamentos visuais e o comportamento responsivo da versão anterior foram preservados.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

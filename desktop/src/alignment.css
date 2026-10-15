@@ -59,7 +59,7 @@
 .reference-ui .reference-library .reference-collection {
   grid-template-columns: repeat(
     auto-fill,
-    minmax(min(100%, var(--collection-card-width, 190px)), 1fr)
+    minmax(min(100%, var(--reference-card-width, 300px)), 1fr)
   );
 }
 .reference-ui .reference-library #statusTabs {
