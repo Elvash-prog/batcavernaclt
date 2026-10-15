@@ -1,4 +1,4 @@
-# BatCaverna CLT para Windows — 0.3.0
+# BatCaverna CLT para Windows — 0.17.12
 
 Aplicativo Tauri com interface própria instalada localmente. Ele não abre nem empacota o site e não depende do endereço `workers.dev`.
 
@@ -14,8 +14,11 @@ Esta versão inaugura a interface completa: ícone oficial, biblioteca editável
 - lista de amigos;
 - central de notificações e marcar todas como lidas;
 - ícone na bandeja e instalador NSIS por usuário.
+- instalador em português com identidade visual BatCaverna e atalho organizado no Menu Iniciar.
 
 O site e o APK Android permanecem separados e não são alterados pelo build desktop.
+
+O instalador é por usuário e não precisa de privilégios de administrador. O idioma acompanha o Windows (com português como única opção disponível), e o aplicativo fica agrupado em **BatCaverna CLT** no Menu Iniciar.
 
 ## Gerar no GitHub
 

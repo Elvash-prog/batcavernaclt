@@ -19,6 +19,31 @@ test('login e aplicativo respeitam o estado oculto', () => {
   assert.match(css, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/i);
 });
 
+test('camada visual profissional preserva temas, foco acessível e movimento reduzido', () => {
+  const shell=read('src/main.tsx'),css=read('src/professional.css');
+  assert.match(shell,/import '\.\/professional\.css'/);
+  assert.match(css,/color-mix\(in srgb, var\(--accent\)/);
+  assert.match(css,/\.reference-ui button:focus-visible/);
+  assert.match(css,/@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css,/\.reference-ui \.sidebar nav button\.active/);
+  assert.match(css,/\.reference-ui \.complete-profile/);
+  assert.match(css,/::-webkit-progress-value/);
+});
+
+test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em português', () => {
+  const config=JSON.parse(read('src-tauri/tauri.conf.json')),nsis=config.bundle.windows.nsis;
+  assert.equal(nsis.installMode,'currentUser');
+  assert.equal(nsis.languages[0],'PortugueseBR');
+  assert.equal(nsis.displayLanguageSelector,false);
+  assert.equal(nsis.startMenuFolder,'BatCaverna CLT');
+  for(const [key,width,height] of [['headerImage',150,57],['sidebarImage',164,314]]){
+    const bitmap=fs.readFileSync(new URL('../src-tauri/'+nsis[key],import.meta.url));
+    assert.equal(bitmap.toString('ascii',0,2),'BM');
+    assert.equal(bitmap.readInt32LE(18),width);
+    assert.equal(Math.abs(bitmap.readInt32LE(22)),height);
+  }
+});
+
 test('login informa andamento e nunca falha silenciosamente', () => {
   const html = read('src/AppShell.tsx');
   const script = read('src/app.js');
@@ -188,14 +213,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.10');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.12');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.10');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.12');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{

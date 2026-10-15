@@ -663,6 +663,30 @@ try {
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
   await page.locator(".friend-activity").waitFor();
+  const visualSystem = await page.evaluate(() => {
+    const sidebar = getComputedStyle(document.querySelector(".sidebar"));
+    const activeNavigation = getComputedStyle(
+      document.querySelector(".sidebar nav button.active"),
+    );
+    const card = getComputedStyle(document.querySelector(".reference-card"));
+    return {
+      sidebarBackground: sidebar.backgroundColor,
+      navigationBorder: activeNavigation.borderColor,
+      cardRadius: card.borderRadius,
+    };
+  });
+  assert.notEqual(visualSystem.sidebarBackground, "rgba(0, 0, 0, 0)");
+  assert.notEqual(visualSystem.navigationBorder, "rgba(0, 0, 0, 0)");
+  assert.notEqual(visualSystem.cardRadius, "0px");
+  await page.locator(".home-hero-content .primary").focus();
+  assert.equal(
+    await page.locator(".home-hero-content .primary").evaluate(
+      (button) => getComputedStyle(button).outlineStyle,
+    ),
+    "solid",
+    "A navegação por teclado deve exibir um foco visível.",
+  );
+  await page.locator(".home-hero-content .primary").evaluate((button) => button.blur());
   assert.match(
     await page.locator(".friend-activity").first().innerText(),
     /Amigo/,
@@ -1324,6 +1348,20 @@ try {
   await page.locator(".complete-profile").waitFor();
   await page.locator("#content.profile-user-background").waitFor();
   assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), true);
+  assert.notEqual(
+    await page.locator(".complete-profile").evaluate(
+      (n) => getComputedStyle(n).boxShadow,
+    ),
+    "none",
+    "O cabeçalho do perfil deve ter uma elevação visual sutil.",
+  );
+  assert.notEqual(
+    await page.locator("#profileOverview .level-card progress").evaluate(
+      (n) => getComputedStyle(n).borderRadius,
+    ),
+    "0px",
+    "A barra de progressão deve usar o estilo arredondado do tema.",
+  );
   assert.equal(
     await page.locator(".sidebar").evaluate((n) => getComputedStyle(n).backgroundColor),
     "rgb(7, 18, 27)",

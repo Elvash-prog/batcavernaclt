@@ -1,0 +1,283 @@
+:root {
+  --surface-raised: color-mix(in srgb, var(--panel) 88%, var(--text) 4%);
+  --surface-hover: color-mix(in srgb, var(--panel) 78%, var(--accent) 12%);
+  --line-strong: color-mix(in srgb, var(--line) 72%, var(--text) 12%);
+  --focus-ring: color-mix(in srgb, var(--accent) 68%, white);
+  font-family: "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 76% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 34rem),
+    var(--bg);
+}
+
+.app-shell {
+  background: transparent;
+}
+
+.sidebar {
+  background: color-mix(in srgb, var(--panel) 91%, var(--bg));
+  border-right-color: var(--line-strong);
+}
+
+.reference-ui .sidebar {
+  background: color-mix(in srgb, var(--panel) 94%, var(--bg));
+}
+
+.reference-ui .logo {
+  min-height: 48px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reference-ui .logo img {
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 3px 12px #0003;
+}
+
+.reference-ui .sidebar nav button {
+  min-height: 40px;
+  color: color-mix(in srgb, var(--text) 68%, var(--muted));
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.reference-ui .sidebar nav button:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 68%, var(--accent) 9%);
+}
+
+.reference-ui .sidebar nav button.active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+}
+
+.reference-ui .sidebar nav button.active > span {
+  color: var(--focus-ring);
+}
+
+.reference-ui .sidebar-foot {
+  border-top: 1px solid var(--line);
+}
+
+.reference-ui .topbar {
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  border-bottom-color: var(--line-strong);
+  backdrop-filter: blur(16px);
+}
+
+.reference-ui .topbar h1 {
+  font-size: clamp(21px, 1.5vw, 26px);
+  letter-spacing: -0.035em;
+}
+
+.reference-ui .account {
+  border: 1px solid transparent;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.reference-ui .account:hover {
+  border-color: var(--line);
+  background: var(--surface-raised);
+}
+
+.reference-ui .content {
+  scrollbar-color: color-mix(in srgb, var(--muted) 35%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.reference-ui .section-head h2,
+.reference-ui .settings h2,
+.reference-ui .profile-feature h3 {
+  letter-spacing: -0.025em;
+}
+
+.reference-ui .home-hero {
+  border-color: var(--line-strong);
+  box-shadow: 0 18px 44px #00000024;
+}
+
+.reference-ui .home-summary article {
+  background: linear-gradient(145deg, var(--surface-raised), var(--panel));
+  border-color: var(--line-strong);
+}
+
+.reference-ui .home-summary strong,
+.reference-ui .library-hero-metrics b,
+.reference-ui .profile-stats b {
+  font-variant-numeric: tabular-nums;
+}
+
+.reference-ui .complete-profile {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line-strong));
+  box-shadow: 0 16px 40px #00000024;
+}
+
+.reference-ui .complete-profile .profile-avatar {
+  border-color: var(--panel);
+  box-shadow: 0 6px 20px #0008;
+}
+
+.reference-ui .profile-overview-columns {
+  gap: 26px;
+}
+
+.reference-ui .profile-feature,
+.reference-ui .level-card {
+  box-shadow: 0 10px 26px #00000018;
+}
+
+.reference-ui .level-card progress,
+.reference-ui .mission-cards progress {
+  height: 9px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 70%, var(--bg));
+}
+
+.reference-ui .level-card progress::-webkit-progress-bar,
+.reference-ui .mission-cards progress::-webkit-progress-bar {
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--panel) 70%, var(--bg));
+}
+
+.reference-ui .level-card progress::-webkit-progress-value,
+.reference-ui .mission-cards progress::-webkit-progress-value {
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 62%, white));
+}
+
+.reference-ui .level-card progress::-moz-progress-bar,
+.reference-ui .mission-cards progress::-moz-progress-bar {
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 62%, white));
+}
+
+.reference-ui .stat,
+.reference-ui .post,
+.reference-ui .person,
+.reference-ui .update,
+.reference-ui .chart-card,
+.reference-ui .profile-feature,
+.reference-ui .level-card,
+.reference-ui .activity-panel,
+.reference-ui .offer-card,
+.reference-ui .reference-card {
+  border-color: var(--line-strong);
+  box-shadow: 0 8px 24px #00000012;
+}
+
+.reference-ui .stat {
+  background: linear-gradient(145deg, var(--surface-raised), var(--panel));
+}
+
+.reference-ui .stat strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+}
+
+.reference-ui .primary,
+.reference-ui .secondary,
+.reference-ui .danger,
+.reference-ui .tabs button,
+.reference-ui .settings-nav button,
+.reference-ui .icon-button {
+  min-height: 36px;
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+
+.reference-ui .primary {
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 19%, transparent);
+}
+
+.reference-ui .primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 20px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.reference-ui .secondary:hover:not(:disabled),
+.reference-ui .icon-button:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+}
+
+.reference-ui input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+.reference-ui textarea,
+.reference-ui select {
+  border-color: var(--line-strong);
+  background-color: color-mix(in srgb, var(--bg) 82%, var(--panel));
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.reference-ui input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]):hover,
+.reference-ui textarea:hover,
+.reference-ui select:hover {
+  border-color: color-mix(in srgb, var(--line-strong) 70%, var(--accent));
+}
+
+.reference-ui input:focus-visible,
+.reference-ui textarea:focus-visible,
+.reference-ui select:focus-visible,
+.reference-ui button:focus-visible,
+.reference-ui [tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.reference-ui .tabs button.active {
+  box-shadow: inset 0 -2px color-mix(in srgb, var(--accent) 78%, white);
+}
+
+.reference-ui .library-collection-hero {
+  box-shadow: 0 12px 34px #0000001a;
+}
+
+.reference-ui .reference-card {
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.reference-ui .reference-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+  box-shadow: 0 14px 32px #00000030;
+}
+
+.reference-ui .settings-row,
+.reference-ui .settings-nav {
+  border-color: var(--line-strong);
+}
+
+.reference-ui .editor,
+.reference-ui .reference-detail,
+.reference-ui .notification-popover,
+.reference-ui .friends-dock,
+.reference-ui .friends-dock-panel {
+  border-color: var(--line-strong);
+  box-shadow: 0 24px 72px #00000055;
+}
+
+.reference-ui .error-card,
+.reference-ui .empty {
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--panel) 48%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reference-ui *,
+  .reference-ui *::before,
+  .reference-ui *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

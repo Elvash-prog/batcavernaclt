@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.10` carrega capas HTTPS direto no WebView, evitando baixar a mesma imagem novamente pelo comando nativo e transferi-la como base64. A assinatura das mídias privadas continua usando o Supabase, mas deixa de bloquear a troca de tela; imagens que falharem ainda recebem fallback nativo e cache de falha por cinco minutos. O diagnóstico identifica telas e comandos nativos acima de 700 ms, registrando cada comando lento no máximo uma vez por minuto sem incluir argumentos, URLs ou dados da conta.
+A versão `0.17.12` aprimora a hierarquia visual do início e do perfil, com superfícies mais definidas e barras de progresso consistentes, sem remover os temas personalizados nem o suporte a movimento reduzido. O instalador Windows agora usa arte própria da BatCaverna, ícone consistente, idioma automático em português e pasta dedicada no Menu Iniciar; continua instalando só para o usuário atual, sem solicitar administrador. Capas HTTPS carregam direto no WebView e mídias privadas não bloqueiam a navegação.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).
