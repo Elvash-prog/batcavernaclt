@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.13` introduz o sistema visual **Neon Underground** no desktop. Início, Biblioteca, Perfil, Amigos, Chat e Comunidade agora compartilham uma identidade grafite, roxa e âmbar, com hero cinematográfico, cards horizontais, capas preenchidas, central social e comportamento responsivo para Full HD e QHD. As APIs, o Supabase, o Realtime, os temas personalizados e o suporte a movimento reduzido foram preservados.
+A versão `0.17.14` aprimora o sistema visual **Neon Underground** no desktop. Além da identidade grafite, roxa e âmbar aplicada às telas principais, o destaque do Início agora mantém proporção mais equilibrada em monitores QHD, sem criar uma área inicial excessivamente alta. Os temas personalizados, a navegação e o suporte a movimento reduzido foram preservados.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

@@ -30,7 +30,7 @@
 
 .reference-ui .cavern-home .home-hero {
   position: relative;
-  min-height: clamp(330px, 38vh, 500px);
+  min-height: clamp(330px, 32vh, 410px);
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line-strong));
   border-radius: 18px;
   background: #080b12;

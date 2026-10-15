@@ -717,7 +717,10 @@ try {
       Math.abs(hero.y - activity.y) < 12,
       `Atividades desalinhadas em ${width}px`,
     );
-    assert.ok(dashboard.height < 420, `Início alto demais em ${width}px`);
+    assert.ok(
+      dashboard.height < 420,
+      `Início alto demais em ${width}px: ${Math.round(dashboard.height)}px`,
+    );
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth > innerWidth,
