@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.20` aprimora os perfis RetroAchievements e mantém os ajustes de cards verticais/horizontais e largura configurável em **Aparência → Layout**. A chave da API permanece no Supabase; o aplicativo armazena somente o usuário validado e o ULID estável.
+A versão `0.17.21` traz diálogo próprio de atualização, detalhes e conquistas da Minha Retro com tratamento de erros, cards Retro vertical/horizontal, menu lateral corrigido (Jogos grátis, Minha Steam, Minha Retro) e mantém os ajustes de cards verticais/horizontais e largura configurável em **Aparência → Layout**. A chave da API permanece no Supabase; o aplicativo armazena somente o usuário validado e o ULID estável.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).
