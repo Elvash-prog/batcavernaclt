@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.9` mantém o cache de tentativas de capas que falharam por cinco minutos e identifica no diagnóstico tanto telas quanto comandos nativos acima de 700 ms. Cada comando lento é registrado no máximo uma vez por minuto; argumentos, URLs e dados da conta não são registrados.
+A versão `0.17.10` carrega capas HTTPS direto no WebView, evitando baixar a mesma imagem novamente pelo comando nativo e transferi-la como base64. A assinatura das mídias privadas continua usando o Supabase, mas deixa de bloquear a troca de tela; imagens que falharem ainda recebem fallback nativo e cache de falha por cinco minutos. O diagnóstico identifica telas e comandos nativos acima de 700 ms, registrando cada comando lento no máximo uma vez por minuto sem incluir argumentos, URLs ou dados da conta.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

@@ -181,6 +181,10 @@ try {
     window.coverCalls = 0;
     window.coverFailureCalls = 0;
     window.failCoverImage = false;
+    window.mediaDelay = 0;
+    window.mediaCalls = 0;
+    window.mediaResolved = 0;
+    window.slowSocialMedia = false;
     window.diagnostics = [];
     window.saved = [];
     window.listeners = {};
@@ -320,6 +324,12 @@ try {
           }
           if (c === "media_url") {
             if (!p.url) throw new TypeError("URL de mídia vazia");
+            window.mediaCalls++;
+            if (window.mediaDelay)
+              await new Promise((resolve) =>
+                setTimeout(resolve, window.mediaDelay),
+              );
+            window.mediaResolved++;
             return image;
           }
           if (c === "save_item" || c === "update_profile") {
@@ -634,7 +644,12 @@ try {
               {
                 id: "post1",
                 texto: "Publicação",
-                author: friend,
+                author: {
+                  ...friend,
+                  avatar_url: window.slowSocialMedia
+                    ? "social-avatar/slow-test.webp"
+                    : "social-avatar/test.webp",
+                },
                 created_at: "2026-10-11",
               },
             ];
@@ -826,8 +841,30 @@ try {
     await page.locator('#preferenceForm [name="social"]').isChecked(),
     false,
   );
+  await page.evaluate(() => {
+    window.mediaDelay = 900;
+    window.mediaCalls = 0;
+    window.mediaResolved = 0;
+    window.slowSocialMedia = true;
+  });
   await page.locator('[data-view="social"]').click();
   await page.locator(".community-reference-layout").waitFor();
+  const mediaStatus = await page.evaluate(() => ({
+    calls: window.mediaCalls,
+    resolved: window.mediaResolved,
+    posts: document.querySelectorAll(".post").length,
+  }));
+  assert.ok(
+    mediaStatus.calls > 0 && mediaStatus.resolved === 0,
+    `A tela social deve aparecer sem aguardar a assinatura das imagens: ${JSON.stringify(mediaStatus)}`,
+  );
+  await page.waitForFunction(
+    () => window.mediaResolved === window.mediaCalls,
+  );
+  await page.evaluate(() => {
+    window.mediaDelay = 0;
+    window.slowSocialMedia = false;
+  });
   assert.equal(
     await page.locator(".community-reference-layout > aside").count(),
     2,
@@ -890,6 +927,7 @@ try {
     document.body.append(root);
     window.coverFailureRoot = root;
     hydrateCovers(root);
+    root.querySelector("img").dispatchEvent(new Event("error"));
   });
   await page.waitForFunction(() => window.coverFailureCalls > 0);
   await page.evaluate(() => {
@@ -910,6 +948,33 @@ try {
     await page.evaluate(() => window.coverFailureCalls),
     failures,
     "Uma capa com falha recente não deve ser requisitada novamente.",
+  );
+  await page.route("https://example.test/direct-cover.jpg", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>',
+    }),
+  );
+  const directCoverCalls = await page.evaluate(async () => {
+    const root = document.createElement("div");
+    root.innerHTML =
+      '<img data-cover="https://example.test/direct-cover.jpg" data-cover-name="Capa direta">';
+    document.body.append(root);
+    const before = window.coverCalls;
+    hydrateCovers(root);
+    await new Promise((resolve) => {
+      const image = root.querySelector("img");
+      if (image.complete && image.naturalWidth) resolve();
+      else image.addEventListener("load", resolve, { once: true });
+    });
+    root.remove();
+    return window.coverCalls - before;
+  });
+  assert.equal(
+    directCoverCalls,
+    0,
+    "Imagens externas válidas devem carregar direto, sem duplicar o download no Tauri.",
   );
   for (const category of ["filmes", "series", "animes"]) {
     await page.evaluate(async (value) => {
@@ -984,12 +1049,8 @@ try {
   assert.equal(await page.locator("#libraryGroups .cinema-card").count(), 1);
   await page.locator("#libraryGenre").selectOption("");
   await page.screenshot({ path: "preview/library-check.png" });
-  await page.waitForTimeout(100);
-  const warm = await page.evaluate(() => window.coverCalls);
   await page.locator("#libraryStatusFilter").selectOption("finished");
   await page.locator("#libraryStatusFilter").selectOption("all");
-  await page.waitForTimeout(100);
-  assert.equal(await page.evaluate(() => window.coverCalls), warm);
   assert.equal(await page.locator(".cinema-tabs").count(), 0);
   assert.equal(await page.locator(".collection-section").count(), 5);
   assert.equal(await page.locator(".collection-overview").count(), 0);

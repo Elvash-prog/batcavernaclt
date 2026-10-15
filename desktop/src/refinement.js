@@ -9,29 +9,29 @@ function installRefinement(env){
  const {ui,xapi,popup,wireShelves,genreList,number,details,catalogDetails,icon}=env;
  const isGame=item=>item.categoria==='jogos'||!item.categoria;
  const format=()=>ui.theme.cardFormat==='landscape'?'landscape':'poster';
+ const coverFallback=async(url,name,appid,game,orientation)=>{
+  if(url){try{return await api.coverImage(await signed(url))}catch{}}
+  if(game&&appid){const steam=`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appid}/${orientation==='poster'?'library_600x900.jpg':'header.jpg'}`;try{return await api.coverImage(steam)}catch{}}
+  if(game&&name){try{const alt=await chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation);if(alt)return await api.coverImage(alt)}catch{}}
+  throw Error('Capa indisponível');
+ };
  async function chooseCover(item,orientation=format(),fallback=''){
   if(!isGame(item))return fallback||coverUrl(item.capa);
   const key=JSON.stringify([item.nome,item.steam_appid||'',orientation]);
   let task=coverChoices.get(key);if(!task){task=api.bright({op:'capas',nomes:[item.nome],...(item.steam_appid?{appids:[Number(item.steam_appid)]}:{}),format:orientation}).then(d=>d.capas?.[0]||fallback||coverUrl(item.capa)).catch(()=>fallback||coverUrl(item.capa));coverChoices.set(key,task)}return task;
  }
  hydrateCovers=function(root){for(const img of root.querySelectorAll('[data-cover]')){
-  const url=img.dataset.cover,name=img.dataset.coverName,appid=img.dataset.steamAppid,game=img.dataset.coverGame==='1',orientation=img.dataset.coverFormat||format(),key=coverKey(url,name,appid,orientation);img.removeAttribute('data-cover');
-  const ready=readyImages.get(key);if(ready){img.src=ready;continue}
-  const failedUntil=failedImages.get(key);if(failedUntil&&failedUntil>Date.now()){img.src=url||emptyImage;continue}failedImages.delete(key);
-  // Show the existing cover while resolving a local image; never replace it with a logo.
-  if(url)img.src=url;else img.src=emptyImage;
-  let task=imageJobs.get(key);if(!task){task=queueCover(async()=>{
-   const urls=[];if(game&&img.dataset.autoFormat==='1'){const preferred=await chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation,url);if(preferred)urls.push(preferred)}if(url)urls.push(url);
-   if(game&&appid)urls.push(`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appid}/${orientation==='poster'?'library_600x900.jpg':'header.jpg'}`);
-   for(const u of urls){try{return await api.coverImage(await signed(u))}catch{}}
-   if(game&&name){const alt=await chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation);if(alt){try{return await api.coverImage(alt)}catch{}}}
-   throw Error('Capa indisponível');
-  }).then(src=>{readyImages.set(key,src);imageJobs.delete(key);if(readyImages.size>160)readyImages.delete(readyImages.keys().next().value);return src}).catch(()=>{imageJobs.delete(key);rememberFailedImage(key);return url||emptyImage});imageJobs.set(key,task)}
-  task.then(src=>{if(!img.isConnected)return;img.src=src;img.onerror=()=>{img.onerror=null;rememberFailedImage(key);img.src=emptyImage;img.classList.add('image-unavailable');img.title='Capa indisponível. Use Atualizar dados e capas.'}});
+  const url=img.dataset.cover,name=img.dataset.coverName,appid=img.dataset.steamAppid,game=img.dataset.coverGame==='1',autoFormat=img.dataset.autoFormat==='1',orientation=img.dataset.coverFormat||format(),key=coverKey(url,name,appid,orientation);img.removeAttribute('data-cover');
+  const fallback=()=>{const task=imageJobs.get(key)||queueCover(()=>coverFallback(url,name,appid,game,orientation)).then(src=>{readyImages.set(key,src);if(readyImages.size>160)readyImages.delete(readyImages.keys().next().value);imageJobs.delete(key);return src}).catch(error=>{imageJobs.delete(key);rememberFailedImage(key);throw error});imageJobs.set(key,task);task.then(src=>{if(!img.isConnected)return;img.src=src;img.onerror=()=>{rememberFailedImage(key);img.src=emptyImage;img.classList.add('image-unavailable');img.title='Capa indisponível. Use Atualizar dados e capas.'}}).catch(()=>{if(!img.isConnected)return;img.src=emptyImage;img.classList.add('image-unavailable');img.title='Capa indisponível. Use Atualizar dados e capas.'})};
+  const ready=readyImages.get(key);if(ready){img.src=ready;img.onerror=()=>{rememberFailedImage(key);img.src=emptyImage;img.classList.add('image-unavailable')};continue}
+  const failedUntil=failedImages.get(key);if(failedUntil&&failedUntil>Date.now()){img.src=url||emptyImage;img.onerror=()=>{img.src=emptyImage;img.classList.add('image-unavailable')};continue}failedImages.delete(key);
+  let fallbackStarted=false;img.onerror=()=>{if(fallbackStarted)return;fallbackStarted=true;fallback()};
+  const setSource=source=>{void (requiresMediaSigning(source)?signed(source):Promise.resolve(source)).then(src=>{if(img.isConnected)img.src=src}).catch(()=>{fallbackStarted=true;if(img.isConnected)fallback()})};
+  if(url){setSource(url);if(autoFormat&&game)void chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation,url).then(preferred=>{if(img.isConnected&&!fallbackStarted&&preferred&&preferred!==url)setSource(preferred)}).catch(()=>{})}else{img.src=emptyImage;if(game){fallbackStarted=true;fallback()}}
  }};
  const mediaURLs=new Map(),baseSigned=signed;
  signed=async function(url){const key=state.userId+':'+url,hit=mediaURLs.get(key);if(hit&&hit.until>Date.now())return hit.task;const task=baseSigned(url);mediaURLs.set(key,{task,until:Date.now()+300000});return task};
- const mediaReady=new Map();hydrateMedia=async function(root=document){await Promise.all([...root.querySelectorAll('[data-private-src]')].map(async n=>{const url=n.dataset.privateSrc,key=state.userId+':'+url,cached=mediaReady.get(key);let src=cached&&Date.now()-cached.at<240000?cached.src:await signed(url);if(/^https:\/\//i.test(src))try{src=await api.coverImage(src)}catch{}if(src!=='brand.jpg')mediaReady.set(key,{src,at:Date.now()});if(n.isConnected){n.src=src;n.removeAttribute('data-private-src')}}))};
+ const mediaReady=new Map();hydrateMedia=function(root=document){for(const n of root.querySelectorAll('[data-private-src]')){const url=String(n.dataset.privateSrc||'').trim(),key=state.userId+':'+url,cached=mediaReady.get(key);n.removeAttribute('data-private-src');if(!url){n.src='brand.jpg';continue}if(cached&&Date.now()-cached.at<240000){n.src=cached.src;continue}void (requiresMediaSigning(url)?signed(url):Promise.resolve(url)).then(src=>{if(src!=='brand.jpg')mediaReady.set(key,{src,at:Date.now()});if(n.isConnected)n.src=src}).catch(()=>{if(n.isConnected)n.src='brand.jpg'})}return Promise.resolve()};
  const baseCard=mediaCard;mediaCard=function(item){let html=baseCard(item);if(String(item.id).startsWith('rec-'))html=html.replace('data-cover-format=', 'data-auto-format="1" data-cover-format=');return html.replace('src="brand.jpg"',`src="${esc(cachedCover(item,format()))}"`)};
  // A single render keeps cached covers and status sections stable.
  let selecting=false,selected=new Set(),visible=[],collection=state.libraryCategory;
