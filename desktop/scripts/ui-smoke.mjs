@@ -210,7 +210,11 @@ try {
       core: {
         invoke: async (c, p) => {
           if (c === "client_log") {
-            if (p.input?.stage === "SLOW_VIEW") window.diagnostics.push(p.input);
+            if (
+              p.input?.stage === "SLOW_VIEW" ||
+              p.input?.stage === "SLOW_COMMAND"
+            )
+              window.diagnostics.push(p.input);
             return {};
           }
           if (c === "diagnostic_status") return { size: 2048 };
@@ -935,6 +939,16 @@ try {
       window.diagnostics.some((entry) => entry.message.includes("ms")),
     ),
     "Uma troca de aba lenta deve registrar sua duração.",
+  );
+  assert.ok(
+    await page.evaluate(() =>
+      window.diagnostics.some(
+        (entry) =>
+          entry.stage === "SLOW_COMMAND" &&
+          entry.message.startsWith("library:"),
+      ),
+    ),
+    "A chamada lenta da biblioteca deve ser identificada no diagnóstico.",
   );
   await page.evaluate(() => {
     window.delayLibrary = false;

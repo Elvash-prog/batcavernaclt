@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.8` evita repetir por cinco minutos tentativas de capas que falharam, mede trocas de tela acima de 700 ms no diagnóstico e mantém fallbacks para mídia opcional. Isso ajuda a reduzir chamadas repetidas e identificar telas lentas sem registrar URLs ou dados pessoais.
+A versão `0.17.9` mantém o cache de tentativas de capas que falharam por cinco minutos e identifica no diagnóstico tanto telas quanto comandos nativos acima de 700 ms. Cada comando lento é registrado no máximo uma vez por minuto; argumentos, URLs e dados da conta não são registrados.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

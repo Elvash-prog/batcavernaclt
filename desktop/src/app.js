@@ -2,7 +2,8 @@
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const invoke=window.__TAURI__?.core?.invoke;
-const call=async(command,payload={})=>{if(!invoke)throw 'Abra pelo programa BatCaverna.';try{return await invoke(command,payload)}catch(error){if(command!=='client_log'&&command!=='cover_image')invoke('client_log',{input:{level:'ERROR',stage:'COMMAND_FAILURE',message:`${command} não concluiu`}}).catch(()=>{});throw error}};
+const slowCommandLogs=new Map();
+const call=async(command,payload={})=>{if(!invoke)throw 'Abra pelo programa BatCaverna.';const started=performance.now();try{return await invoke(command,payload)}catch(error){if(command!=='client_log'&&command!=='cover_image')invoke('client_log',{input:{level:'ERROR',stage:'COMMAND_FAILURE',message:`${command} não concluiu`}}).catch(()=>{});throw error}finally{const elapsed=Math.round(performance.now()-started),now=Date.now(),last=slowCommandLogs.get(command)||0;if(command!=='client_log'&&elapsed>=700&&now-last>=60000){slowCommandLogs.set(command,now);invoke('client_log',{input:{level:'INFO',stage:'SLOW_COMMAND',message:`${command}: ${elapsed} ms`}}).catch(()=>{})}}};
 function normalizeGenres(value){return [...new Set((Array.isArray(value)?value:String(value||'').split(/[•,|]/)).map(g=>typeof g==='string'?g.trim():String(g?.name||g?.description||'').trim()).filter(Boolean))]}
 const api=Object.freeze({
  state:()=>call('app_state'),login:credentials=>call('login',{credentials}),register:input=>call('register',{input}),recover:email=>call('recover_password',{email}),logout:()=>call('logout'),
