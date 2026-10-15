@@ -1,0 +1,279 @@
+/* BatCaverna Neon Underground — início desktop */
+.reference-ui .cavern-home {
+  --home-gold: #f2ba55;
+  --home-online: #39d98a;
+  --home-panel: color-mix(in srgb, var(--panel) 94%, #05070d);
+  max-width: min(1880px, var(--workspace-width));
+  padding-bottom: 64px;
+}
+
+.reference-ui .cavern-home > .hero-greeting {
+  margin: 4px 0 3px !important;
+  color: var(--text);
+  font-size: clamp(24px, 1.8vw, 32px);
+  font-weight: 760;
+  letter-spacing: -.035em;
+}
+
+.reference-ui .cavern-home > .dashboard-intro {
+  margin: 0 0 20px !important;
+  color: color-mix(in srgb, var(--muted) 86%, var(--text));
+  font-size: 13px;
+}
+
+.reference-ui .cavern-home > .dashboard-columns {
+  grid-template-columns: minmax(0, 1fr) clamp(280px, 20vw, 330px);
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 28px;
+}
+
+.reference-ui .cavern-home .home-hero {
+  position: relative;
+  min-height: clamp(330px, 38vh, 500px);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line-strong));
+  border-radius: 18px;
+  background: #080b12;
+  box-shadow: 0 24px 70px #0008;
+  isolation: isolate;
+}
+
+.reference-ui .cavern-home .home-hero-art {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: .86;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(.9) contrast(1.05);
+}
+
+.reference-ui .cavern-home .home-hero::after {
+  background:
+    linear-gradient(90deg, #05070cf5 0%, #070910df 36%, #07091062 70%, #07091018 100%),
+    linear-gradient(0deg, #05070bd9 0%, transparent 48%);
+}
+
+.reference-ui .cavern-home .home-hero-content {
+  display: flex;
+  align-items: center;
+  min-height: inherit;
+  max-width: min(650px, 68%);
+  padding: clamp(28px, 3vw, 48px);
+}
+
+.reference-ui .cavern-home .home-hero-content > .hero-greeting,
+.reference-ui .cavern-home .home-hero-content > .dashboard-intro {
+  display: none;
+}
+
+.reference-ui .cavern-home .resume-game {
+  display: block;
+  min-height: 0;
+  max-width: 560px;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.reference-ui .cavern-home .resume-game > img { display: none; }
+.reference-ui .cavern-home .resume-info { padding: 0; }
+
+.reference-ui .cavern-home .resume-info > small {
+  display: block;
+  margin-bottom: 12px;
+  color: color-mix(in srgb, var(--accent) 72%, white);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .12em;
+}
+
+.reference-ui .cavern-home .resume-info h2 {
+  max-width: 540px;
+  margin: 0 0 22px;
+  color: #fff;
+  font-size: clamp(34px, 3.2vw, 58px);
+  font-weight: 760;
+  line-height: .98;
+  letter-spacing: -.055em;
+  text-shadow: 0 4px 30px #000;
+}
+
+.reference-ui .cavern-home .journey-progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 18px;
+  width: min(420px, 100%);
+  margin: 0 0 22px;
+  color: #d9deeb;
+  font-size: 11px;
+}
+
+.reference-ui .cavern-home .journey-progress b {
+  color: #fff;
+  font-weight: 650;
+}
+
+.reference-ui .cavern-home .journey-progress i {
+  grid-column: 1 / -1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ffffff1c;
+}
+
+.reference-ui .cavern-home .journey-progress u {
+  display: block;
+  width: 62%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 58%, white));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.reference-ui .cavern-home .resume-info .primary,
+.reference-ui .cavern-home .resume-details {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 142px;
+  min-height: 44px;
+  margin: 0 10px 0 0;
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reference-ui .cavern-home .resume-meta {
+  display: block;
+  margin: 16px 0 0;
+  color: #ccd3df;
+  font-size: 11px;
+}
+
+.reference-ui .cavern-home .hero-activity {
+  max-height: none;
+  padding: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--home-panel), color-mix(in srgb, var(--bg) 94%, black));
+  box-shadow: 0 18px 50px #0004;
+}
+
+.reference-ui .cavern-home .hero-activity .section-head {
+  margin: 0 0 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reference-ui .cavern-home .hero-activity h2 {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.reference-ui .cavern-home .hero-activity .friend-activities {
+  max-height: clamp(270px, 34vh, 430px);
+  gap: 0;
+}
+
+.reference-ui .cavern-home .hero-activity .friend-activity {
+  gap: 10px;
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.reference-ui .cavern-home .hero-activity .friend-activity:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.reference-ui .cavern-home .hero-activity .friend-activity img {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--home-online);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--home-online) 12%, transparent);
+}
+
+.reference-ui .cavern-home .shelf-section,
+.reference-ui .cavern-home .recommendations {
+  margin: 0 0 30px;
+}
+
+.reference-ui .cavern-home .section-head { margin-bottom: 14px; }
+
+.reference-ui .cavern-home .section-head h2 {
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+
+.reference-ui .cavern-home .shelf {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  overflow: visible;
+}
+
+.reference-ui .cavern-home .shelf > * { min-width: 0; }
+
+.reference-ui .cavern-home .cinema-card,
+.reference-ui .cavern-home .reference-card {
+  width: 100%;
+  min-width: 0;
+  border-radius: 12px;
+  background: var(--home-panel);
+  box-shadow: 0 10px 28px #0003;
+}
+
+.reference-ui .cavern-home .cover-wrap {
+  aspect-ratio: 16 / 9;
+  border-radius: 11px 11px 0 0;
+  background: #07090e;
+}
+
+.reference-ui .cavern-home .cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reference-ui .cavern-home .cinema-card:hover,
+.reference-ui .cavern-home .reference-card:hover {
+  transform: translateY(-4px) scale(1.015);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  box-shadow: 0 18px 42px #0008;
+}
+
+.reference-ui .cavern-home .recommendations .tabs button {
+  min-height: 30px;
+  padding: 5px 11px;
+}
+
+.reference-ui .cavern-home .stats-drawer { margin-top: 10px; }
+
+@media (max-width: 1400px) {
+  .reference-ui .cavern-home .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .reference-ui .cavern-home .shelf > :nth-child(n + 5) { display: none; }
+}
+
+@media (max-width: 1120px) {
+  .reference-ui .cavern-home > .dashboard-columns { grid-template-columns: 1fr; }
+  .reference-ui .cavern-home .hero-activity { max-height: 250px; }
+  .reference-ui .cavern-home .hero-activity .friend-activities { max-height: 180px; }
+  .reference-ui .cavern-home .home-hero-content { max-width: 78%; }
+}
+
+@media (max-width: 880px) {
+  .reference-ui .cavern-home .shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reference-ui .cavern-home .shelf > :nth-child(n + 3) { display: none; }
+  .reference-ui .cavern-home .home-hero-content { max-width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reference-ui .cavern-home .cinema-card,
+  .reference-ui .cavern-home .reference-card { transform: none !important; }
+}
