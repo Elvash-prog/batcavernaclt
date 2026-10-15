@@ -1,7 +1,8 @@
 'use strict';
 (()=>{
- const nav=$('#mainNav'),steam=nav?.querySelector('[data-discover-kind="steam"]');
- if(steam&&!nav.querySelector('[data-discover-kind="retro"]')){const retro=steam.cloneNode(true);retro.dataset.view='retro';retro.dataset.discoverKind='retro';retro.querySelector('span').textContent='Minha Retro';steam.after(retro)}
+ const nav=$('#mainNav');
+ if(nav&&!nav.querySelector('[data-discover-kind="retro"]')){const retro=document.createElement('button');retro.type='button';retro.dataset.view='retro';retro.dataset.discoverKind='retro';retro.innerHTML='<span aria-hidden="true">🏆</span><span>Minha Retro</span>';const anchor=nav.querySelector('[data-discover-kind="steam"]')||nav.querySelector('[data-view="discover"]');anchor?anchor.after(retro):nav.append(retro)}
+ nav?.addEventListener('click',event=>{const button=event.target.closest('[data-discover-kind="retro"]');if(!button)return;event.stopImmediatePropagation();state.discoverTab='retro';navigate('discover').then(()=>{nav.querySelectorAll('[data-view]').forEach(item=>item.classList.toggle('active',item===button))})},true);
 
  const baseDiscover=renderDiscover;
  renderDiscover=async function(){
