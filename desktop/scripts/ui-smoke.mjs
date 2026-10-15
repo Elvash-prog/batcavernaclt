@@ -772,8 +772,8 @@ try {
   );
   assert.equal(await page.locator(".ranking-podium").count(), 1);
   assert.equal(
-    await page.locator(".home-hero-content h2").innerText(),
-    "Jogo em progresso",
+    (await page.locator(".home-hero-content h2").innerText()).toLowerCase(),
+    "jogo em progresso",
   );
   assert.equal(
     await page.locator("#initialPatchNotes,.initial-patch-notes").count(),
@@ -781,7 +781,7 @@ try {
   );
   assert.equal(
     await page.locator(".dashboard-columns").evaluate((n) => n.children.length),
-    2,
+    1,
   );
   for (const [width, height, name] of [
     [1920, 1080, "home-check.png"],
@@ -793,11 +793,11 @@ try {
       activity = await page.locator(".hero-activity").boundingBox(),
       dashboard = await page.locator(".dashboard-columns").boundingBox();
     assert.ok(
-      Math.abs(hero.y - activity.y) < 12,
-      `Atividades desalinhadas em ${width}px`,
+      activity.y > hero.y + hero.height,
+      `Atividade recente deve ficar abaixo do hero em ${width}px`,
     );
     assert.ok(
-      dashboard.height < 420,
+      dashboard.height < 460,
       `Início alto demais em ${width}px: ${Math.round(dashboard.height)}px`,
     );
     assert.equal(
@@ -1421,8 +1421,8 @@ try {
   );
   await page.evaluate(() => (window.adminMode = false));
   assert.equal(
-    await page.locator('[data-view="chat"],[data-view="friends"]').count(),
-    0,
+    await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"]').count(),
+    2,
   );
   await page.locator("#friendsDockToggle").click();
   await page.locator("#friendsDockPanel").waitFor();

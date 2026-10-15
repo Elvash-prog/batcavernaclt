@@ -1,0 +1,306 @@
+/* BatCaverna — layout principal: sidebar, conteúdo e painel de amigos */
+@media (min-width: 821px) {
+  .reference-ui { --sidebar: 248px; }
+}
+
+.reference-ui .app-shell {
+  --rail: 275px;
+  grid-template-columns: var(--sidebar) minmax(0, 1fr) var(--rail);
+}
+
+.reference-ui .app-shell.profile-background-active > .sidebar,
+.reference-ui .sidebar {
+  position: relative;
+  padding: 22px 14px 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 96%, transparent) 0%, color-mix(in srgb, var(--bg) 82%, transparent) 55%, color-mix(in srgb, var(--bg) 40%, transparent) 100%),
+    url("login-cave.jpg") center bottom / cover no-repeat,
+    var(--bg);
+  border-right: 1px solid var(--line-strong);
+}
+
+.reference-ui .sidebar .logo {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0 18px;
+  border: 0;
+  text-align: center;
+}
+
+.reference-ui .sidebar .logo img {
+  width: 76px;
+  height: 76px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 60%, var(--line));
+  box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.reference-ui .sidebar .logo strong {
+  display: block;
+  font-size: 19px;
+  letter-spacing: -.01em;
+}
+
+.reference-ui .sidebar .logo strong em {
+  color: color-mix(in srgb, var(--accent) 80%, white);
+  font-style: normal;
+}
+
+.reference-ui .sidebar .logo small {
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .2em;
+}
+
+.reference-ui .sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reference-ui .sidebar .shell-nav-main {
+  display: grid;
+  gap: 4px;
+}
+
+.reference-ui .sidebar nav button {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  gap: 14px;
+  justify-content: flex-start;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.reference-ui .sidebar nav button svg {
+  width: 22px;
+  height: 22px;
+}
+
+.reference-ui .sidebar nav button.active {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: color-mix(in srgb, var(--accent) 26%, var(--panel));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.reference-ui .sidebar .shell-nav-more {
+  display: grid;
+  gap: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.reference-ui .sidebar .shell-nav-more small {
+  padding: 0 14px 4px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.reference-ui .sidebar .shell-nav-more button {
+  min-height: 34px;
+  padding: 6px 14px;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.reference-ui .sidebar .shell-nav-more button svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* Painel direito */
+.cavern-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 18px 14px 56px;
+  overflow: auto;
+  border-left: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--panel) 92%, var(--bg));
+  scrollbar-width: thin;
+}
+
+body.rail-off .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+body.rail-off .cavern-rail { display: none; }
+
+.rail-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--panel));
+  color: var(--muted);
+}
+
+.rail-search svg { width: 17px; height: 17px; }
+
+.rail-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.cavern-rail #sidebarCommunity {
+  display: grid !important;
+  gap: 18px;
+  max-height: none;
+}
+
+.cavern-rail #sidebarCommunity h4 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.cavern-rail #sidebarCommunity button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cavern-rail #sidebarCommunity button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cavern-rail #sidebarCommunity button[hidden] { display: none; }
+.cavern-rail #sidebarCommunity img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.cavern-rail #sidebarCommunity span { display: grid; min-width: 0; }
+.cavern-rail #sidebarCommunity b, .cavern-rail #sidebarCommunity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cavern-rail #sidebarCommunity small { color: var(--muted); font-size: 11px; }
+.cavern-rail #sidebarCommunity p { margin: 0; color: var(--muted); font-size: 12px; }
+
+.reference-ui .friends-dock {
+  right: 0 !important;
+  width: var(--rail) !important;
+}
+
+body[data-screen="home"] .cavern-home .resume-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+body[data-screen="home"] .cavern-home .resume-info > small,
+body[data-screen="home"] .cavern-home .resume-info > h2,
+body[data-screen="home"] .cavern-home .resume-info > .journey-progress,
+body[data-screen="home"] .cavern-home .resume-info > .resume-meta {
+  flex: 0 0 100%;
+}
+
+body[data-screen="home"] .cavern-home .resume-info > .resume-meta { order: 5; }
+
+.reference-ui .friends-dock-toggle { border-radius: 0; border-left: 0; border-right: 0; }
+
+@media (max-height: 850px) {
+  .reference-ui #sidebarCommunity { display: grid !important; }
+}
+
+/* Início */
+body[data-screen="home"] .content { padding: 0 0 40px; }
+body[data-screen="home"] .content > * { max-width: none; }
+
+body[data-screen="home"] .cavern-home > .hero-greeting,
+body[data-screen="home"] .cavern-home > .dashboard-intro { display: none; }
+
+body[data-screen="home"] .cavern-home > .dashboard-columns {
+  display: block;
+  margin: 0 0 24px;
+}
+
+body[data-screen="home"] .cavern-home .home-hero {
+  min-height: 385px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body[data-screen="home"] .cavern-home .home-hero-content { padding: 48px 34px; }
+
+body[data-screen="home"] .cavern-home .resume-info h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+
+body[data-screen="home"] .cavern-home > :not(.dashboard-columns) {
+  margin-left: 34px;
+  margin-right: 34px;
+}
+
+body[data-screen="home"] .cavern-home .section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.link-button {
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--accent) 70%, white);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.cavern-recent { margin: 0 34px 30px; }
+
+.cavern-recent .hero-activity {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cavern-recent .hero-activity .friend-activities {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  max-height: none;
+}
+
+.cavern-recent .hero-activity .friend-activity {
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+@media (min-width: 821px) and (max-width: 1180px) {
+  .reference-ui { --sidebar: 210px; }
+  .reference-ui .app-shell { --rail: 230px; }
+}
+
+@media (max-width: 820px) {
+  .reference-ui .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+  .cavern-rail { display: none; }
+  .reference-ui .sidebar .logo strong, .reference-ui .sidebar .logo small, .reference-ui .sidebar .shell-nav-more small { display: none; }
+  .reference-ui .sidebar .logo img { width: 40px; height: 40px; }
+  .reference-ui .sidebar nav button { justify-content: center; padding-inline: 8px; }
+  .reference-ui .sidebar nav button > span { display: none; }
+  .reference-ui .friends-dock { right: 24px !important; width: 320px !important; }
+  body[data-screen="home"] .cavern-home > :not(.dashboard-columns), .cavern-recent { margin-left: 16px; margin-right: 16px; }
+}
