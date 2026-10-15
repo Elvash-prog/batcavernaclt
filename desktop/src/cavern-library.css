@@ -129,7 +129,7 @@
 }
 
 .reference-ui .cavern-library .reference-collection {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--collection-card-width, 260px)), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--reference-card-width, 300px)), 1fr));
   gap: 22px 16px;
 }
 
@@ -154,6 +154,14 @@
   aspect-ratio: 16 / 9;
   border-radius: 12px 12px 0 0;
   background: #07090e;
+}
+
+body.reference-ui[data-card-format="poster"] .cavern-library .cover-wrap {
+  aspect-ratio: 2 / 3;
+}
+
+body.reference-ui[data-card-format="landscape"] .cavern-library .cover-wrap {
+  aspect-ratio: 16 / 9;
 }
 
 .reference-ui .cavern-library .cinema-card .cover-wrap img {
@@ -183,7 +191,7 @@
 
 @media (min-width: 1700px) {
   .reference-ui .cavern-library .reference-collection {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--collection-card-width, 285px)), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--reference-card-width, 300px)), 1fr));
   }
 }
 
@@ -196,9 +204,11 @@
   .reference-ui .cavern-library .collection-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .reference-ui .cavern-library .library-controls { grid-template-columns: 1fr; }
   .reference-ui .cavern-library .library-controls input { grid-column: auto; }
-  .reference-ui .cavern-library .reference-collection { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .reference-ui .cavern-library .cinema-card { transform: none !important; }
 }
+
+.retro-profile{display:flex;align-items:center;gap:18px;padding:22px;margin-bottom:22px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 14%,var(--panel)),var(--panel))}.retro-profile img{width:76px;height:76px;border-radius:16px;object-fit:cover}.retro-profile h2{margin:4px 0}.retro-profile p{margin:0;color:var(--muted)}.retro-profile small{display:block;margin-top:6px;color:var(--muted)}.retro-library-grid progress{width:100%;accent-color:var(--accent)}
+.retro-recent{display:flex;gap:10px;overflow:auto;margin-bottom:24px;padding-bottom:8px}.retro-recent button{display:flex;align-items:center;min-width:220px;gap:10px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);text-align:left}.retro-recent img{width:46px;height:46px;border-radius:8px;object-fit:cover}.retro-recent span,.retro-recent small{display:block}.retro-recent small{margin-top:3px;color:var(--muted)}.retro-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.retro-achievements{display:grid;gap:10px;max-height:65vh;overflow:auto}.retro-achievements article{display:flex;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;opacity:.55}.retro-achievements article.earned{opacity:1;border-color:color-mix(in srgb,var(--accent) 38%,var(--line))}.retro-achievements article.hardcore{box-shadow:inset 3px 0 color-mix(in srgb,#f5c451 80%,var(--accent))}.retro-achievements img{width:54px;height:54px;border-radius:8px}.retro-achievements h3,.retro-achievements p{margin:0 0 4px}.retro-achievements p,.retro-achievements small{color:var(--muted)}

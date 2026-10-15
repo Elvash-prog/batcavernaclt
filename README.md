@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.13` introduz o sistema visual **Neon Underground** no desktop. Início, Biblioteca, Perfil, Amigos, Chat e Comunidade agora compartilham uma identidade grafite, roxa e âmbar, com hero cinematográfico, cards horizontais, capas preenchidas, central social e comportamento responsivo para Full HD e QHD. As APIs, o Supabase, o Realtime, os temas personalizados e o suporte a movimento reduzido foram preservados.
+A versão `0.17.16` adiciona sincronização protegida com o **RetroAchievements**: perfil, pontuação, jogos recentes, progresso, conquistas Hardcore e importação manual para a biblioteca. A chave da API permanece no Supabase; o aplicativo armazena somente o usuário validado e o ULID estável. Os ajustes de capas e layout da `0.17.15` foram preservados.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

@@ -21,8 +21,6 @@ drawLibrary=function(){
 const baseLibrary=renderLibrary;
 renderLibrary=async function(){
  await baseLibrary();if(state.current!=='library')return;
- let theme={};try{theme=JSON.parse(localStorage.getItem('bc-desktop-theme-v2')||'{}')}catch{}
- $('#content').style.setProperty('--collection-card-width',`${Math.max(180,Math.min(500,Number(theme.cardWidth)||190))}px`);
  drawLibrary();
 };
 const friendsNav=$('#mainNav [data-view="friends"]');

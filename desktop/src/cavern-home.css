@@ -30,7 +30,7 @@
 
 .reference-ui .cavern-home .home-hero {
   position: relative;
-  min-height: clamp(330px, 38vh, 500px);
+  min-height: clamp(330px, 32vh, 410px);
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line-strong));
   border-radius: 18px;
   background: #080b12;
@@ -213,7 +213,7 @@
 
 .reference-ui .cavern-home .shelf {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--reference-card-width, 300px)), 1fr));
   gap: 14px;
   overflow: visible;
 }
@@ -233,6 +233,14 @@
   aspect-ratio: 16 / 9;
   border-radius: 11px 11px 0 0;
   background: #07090e;
+}
+
+body.reference-ui[data-card-format="poster"] .cavern-home .cover-wrap {
+  aspect-ratio: 2 / 3;
+}
+
+body.reference-ui[data-card-format="landscape"] .cavern-home .cover-wrap {
+  aspect-ratio: 16 / 9;
 }
 
 .reference-ui .cavern-home .cover-wrap img {
@@ -255,11 +263,6 @@
 
 .reference-ui .cavern-home .stats-drawer { margin-top: 10px; }
 
-@media (max-width: 1400px) {
-  .reference-ui .cavern-home .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .reference-ui .cavern-home .shelf > :nth-child(n + 5) { display: none; }
-}
-
 @media (max-width: 1120px) {
   .reference-ui .cavern-home > .dashboard-columns { grid-template-columns: 1fr; }
   .reference-ui .cavern-home .hero-activity { max-height: 250px; }
@@ -268,8 +271,6 @@
 }
 
 @media (max-width: 880px) {
-  .reference-ui .cavern-home .shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .reference-ui .cavern-home .shelf > :nth-child(n + 3) { display: none; }
   .reference-ui .cavern-home .home-hero-content { max-width: 100%; }
 }
 
