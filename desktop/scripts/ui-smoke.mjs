@@ -1149,6 +1149,16 @@ try {
   if (await friendsDockClose.isVisible()) await friendsDockClose.click();
   await page.locator("#sidebarAccount").click();
   await page.locator(".complete-profile").waitFor();
+  await page.setViewportSize({ width: 980, height: 860 });
+  const minimumWidthProfile = await page.locator(".complete-profile").boundingBox(),
+    minimumWidthContent = await page.locator("#content").boundingBox(),
+    minimumWidthBody = await page.locator(".complete-profile .profile-body").boundingBox(),
+    minimumWidthInfo = await page.locator(".complete-profile .profile-info").boundingBox(),
+    minimumWidthActions = await page.locator(".complete-profile .profile-actions").boundingBox();
+  assert.ok(minimumWidthProfile.x >= minimumWidthContent.x);
+  assert.ok(minimumWidthProfile.x + minimumWidthProfile.width <= minimumWidthContent.x + minimumWidthContent.width);
+  assert.ok(minimumWidthInfo.x + minimumWidthInfo.width <= minimumWidthBody.x + minimumWidthBody.width);
+  assert.ok(minimumWidthActions.x + minimumWidthActions.width <= minimumWidthBody.x + minimumWidthBody.width);
   await page.setViewportSize({ width: 800, height: 900 });
   assert.equal(
     Math.round(await page.locator(".sidebar").evaluate((n) => n.getBoundingClientRect().width)),

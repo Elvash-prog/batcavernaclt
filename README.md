@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.3` amplia a área útil do perfil, empilha a progressão em janelas menores e compacta a barra lateral abaixo de 820px para não espremer o conteúdo. Os jogos em destaque aproveitam melhor a largura disponível.
+A versão `0.17.4` reorganiza o cartão do perfil para caber na largura mínima suportada pela janela, sem cortar informações ou ações; em telas menores, também empilha a progressão e compacta a barra lateral. Os jogos em destaque aproveitam melhor a largura disponível.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).
