@@ -1,0 +1,204 @@
+/* BatCaverna Neon Underground — biblioteca desktop */
+.reference-ui .cavern-library {
+  --library-gold: #f2ba55;
+  --library-green: #48d69b;
+  max-width: min(1880px, var(--workspace-width));
+  padding-bottom: 70px;
+}
+
+.reference-ui .cavern-library .collection-overview {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0 0 22px;
+  padding: clamp(26px, 3vw, 42px);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line-strong));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 32%),
+    linear-gradient(135deg, color-mix(in srgb, var(--panel) 94%, #09070f), color-mix(in srgb, var(--bg) 96%, black));
+  box-shadow: 0 20px 60px #0005;
+}
+
+.reference-ui .cavern-library .collection-overview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .18;
+  background:
+    linear-gradient(115deg, transparent 58%, color-mix(in srgb, var(--accent) 45%, transparent)),
+    repeating-linear-gradient(135deg, transparent 0 22px, #ffffff08 23px 24px);
+  pointer-events: none;
+}
+
+.reference-ui .cavern-library .collection-overview > .eyebrow {
+  color: color-mix(in srgb, var(--accent) 70%, white);
+  letter-spacing: .14em;
+}
+
+.reference-ui .cavern-library .collection-overview h2 {
+  margin: 9px 0 7px;
+  color: var(--text);
+  font-size: clamp(30px, 3vw, 48px);
+  font-weight: 780;
+  line-height: 1;
+  letter-spacing: -.05em;
+}
+
+.reference-ui .cavern-library .collection-overview > p {
+  max-width: 620px;
+  margin: 0 0 28px;
+  color: color-mix(in srgb, var(--muted) 84%, var(--text));
+  font-size: 13px;
+}
+
+.reference-ui .cavern-library .collection-summary {
+  grid-template-columns: repeat(4, minmax(120px, 190px));
+  gap: 10px;
+  padding: 0;
+  border: 0;
+}
+
+.reference-ui .cavern-library .collection-summary article {
+  min-height: 78px;
+  padding: 14px 16px;
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  background: #0709128f;
+  backdrop-filter: blur(12px);
+}
+
+.reference-ui .cavern-library .collection-summary article:first-child { padding-left: 16px; }
+.reference-ui .cavern-library .collection-summary article:last-child { border: 1px solid #ffffff12; }
+.reference-ui .cavern-library .collection-summary small { margin-bottom: 7px; font-size: 10px; }
+.reference-ui .cavern-library .collection-summary strong { font-size: 24px; }
+.reference-ui .cavern-library .collection-summary article:nth-child(2) strong { color: var(--library-green); }
+.reference-ui .cavern-library .collection-summary article:nth-child(4) strong { color: var(--library-gold); }
+
+.reference-ui .cavern-library .library-toolbar {
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.reference-ui .cavern-library .media-kind-tabs,
+.reference-ui .cavern-library #statusTabs {
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg));
+}
+
+.reference-ui .cavern-library .media-kind-tabs button,
+.reference-ui .cavern-library #statusTabs button {
+  min-height: 34px;
+  padding: 7px 13px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.reference-ui .cavern-library .media-kind-tabs button.active,
+.reference-ui .cavern-library #statusTabs button.active {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  color: var(--text);
+  box-shadow: none;
+}
+
+.reference-ui .cavern-library .library-controls {
+  grid-template-columns: minmax(260px, 1fr) repeat(4, minmax(125px, 170px));
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg));
+}
+
+.reference-ui .cavern-library .library-controls input,
+.reference-ui .cavern-library .library-controls select {
+  min-height: 40px;
+  border-radius: 9px;
+}
+
+.reference-ui .cavern-library .collection-result-count {
+  margin: 8px 2px 16px;
+  font-size: 11px;
+}
+
+.reference-ui .cavern-library .reference-collection {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--collection-card-width, 260px)), 1fr));
+  gap: 22px 16px;
+}
+
+.reference-ui .cavern-library .cinema-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--panel) 94%, var(--bg));
+  box-shadow: 0 12px 30px #0003;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.reference-ui .cavern-library .cinema-card:hover {
+  z-index: 2;
+  transform: translateY(-5px) scale(1.012);
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+  box-shadow: 0 22px 50px #0009;
+}
+
+.reference-ui .cavern-library .cover-wrap {
+  aspect-ratio: 16 / 9;
+  border-radius: 12px 12px 0 0;
+  background: #07090e;
+}
+
+.reference-ui .cavern-library .cinema-card .cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #07090e;
+}
+
+.reference-ui .cavern-library .cinema-card .body {
+  min-height: 98px;
+  padding: 13px 14px 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, #0b0b13), var(--panel));
+}
+
+.reference-ui .cavern-library .cinema-card h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.reference-ui .cavern-library .card-status {
+  color: color-mix(in srgb, var(--accent) 65%, white);
+}
+
+@media (min-width: 1700px) {
+  .reference-ui .cavern-library .reference-collection {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--collection-card-width, 285px)), 1fr));
+  }
+}
+
+@media (max-width: 1250px) {
+  .reference-ui .cavern-library .library-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reference-ui .cavern-library .library-controls input { grid-column: 1 / -1; }
+}
+
+@media (max-width: 850px) {
+  .reference-ui .cavern-library .collection-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reference-ui .cavern-library .library-controls { grid-template-columns: 1fr; }
+  .reference-ui .cavern-library .library-controls input { grid-column: auto; }
+  .reference-ui .cavern-library .reference-collection { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reference-ui .cavern-library .cinema-card { transform: none !important; }
+}

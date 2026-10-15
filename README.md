@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.12` aprimora a hierarquia visual do início e do perfil, com superfícies mais definidas e barras de progresso consistentes, sem remover os temas personalizados nem o suporte a movimento reduzido. O instalador Windows agora usa arte própria da BatCaverna, ícone consistente, idioma automático em português e pasta dedicada no Menu Iniciar; continua instalando só para o usuário atual, sem solicitar administrador. Capas HTTPS carregam direto no WebView e mídias privadas não bloqueiam a navegação.
+A versão `0.17.13` introduz o sistema visual **Neon Underground** no desktop. Início, Biblioteca, Perfil, Amigos, Chat e Comunidade agora compartilham uma identidade grafite, roxa e âmbar, com hero cinematográfico, cards horizontais, capas preenchidas, central social e comportamento responsivo para Full HD e QHD. As APIs, o Supabase, o Realtime, os temas personalizados e o suporte a movimento reduzido foram preservados.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

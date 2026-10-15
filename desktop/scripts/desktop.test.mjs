@@ -30,6 +30,65 @@ test('camada visual profissional preserva temas, foco acessível e movimento red
   assert.match(css,/::-webkit-progress-value/);
 });
 
+test('início Neon Underground mantém conteúdo real e cards responsivos', () => {
+  const shell=read('src/main.tsx'),script=read('src/reference.js'),css=read('src/cavern-home.css');
+  assert.match(shell,/import '\.\/cavern-home\.css'/);
+  assert.match(script,/classList\.add\('reference-home','cavern-home'\)/);
+  assert.match(script,/Progresso da jornada/);
+  assert.match(script,/Recomendados para você/);
+  assert.match(script,/Continuar jogando/);
+  assert.match(css,/grid-template-columns:\s*minmax\(0, 1fr\) clamp\(280px, 20vw, 330px\)/);
+  assert.match(css,/object-fit:\s*cover/);
+  assert.match(css,/@media \(max-width: 1120px\)/);
+  assert.match(css,/@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test('biblioteca cinematográfica separa o tema e preenche capas horizontais', () => {
+  const shell=read('src/main.tsx'),script=read('src/reference.js'),css=read('src/cavern-library.css');
+  assert.match(shell,/import '\.\/cavern-library\.css'/);
+  assert.match(script,/classList\.add\('cavern-library'\)/);
+  assert.match(script,/classList\.remove\([^)]*'cavern-home'[^)]*'cavern-library'/);
+  assert.match(css,/\.cavern-library \.collection-overview/);
+  assert.match(css,/aspect-ratio:\s*16 \/ 9/);
+  assert.match(css,/object-fit:\s*cover/);
+  assert.match(css,/@media \(max-width: 850px\)/);
+});
+
+test('perfil Neon Underground preserva capa, progressão e responsividade', () => {
+  const shell=read('src/main.tsx'),script=read('src/alignment.js'),navigation=read('src/reference.js'),css=read('src/cavern-profile.css');
+  assert.match(shell,/import '\.\/cavern-profile\.css'/);
+  assert.match(script,/classList\.add\('cavern-profile'\)/);
+  assert.match(navigation,/classList\.remove\([^)]*'cavern-profile'/);
+  assert.match(css,/\.cavern-profile \.complete-profile::after/);
+  assert.match(css,/background-size:\s*cover/);
+  assert.match(css,/\.cavern-profile \.level-card progress/);
+  assert.match(css,/\.cavern-profile \.achievement\.earned/);
+  assert.match(css,/@media \(max-width: 620px\)/);
+});
+
+test('central social compartilha o visual entre Amigos e Chat', () => {
+  const shell=read('src/main.tsx'),script=read('src/reference.js'),css=read('src/cavern-social.css');
+  assert.match(shell,/import '\.\/cavern-social\.css'/);
+  assert.match(script,/classList\.add\('reference-friends'\)/);
+  assert.match(script,/classList\.add\('reference-chat-page'\)/);
+  assert.match(css,/\.reference-friends \.friends-heading/);
+  assert.match(css,/\.reference-chat-page \.modern-chat/);
+  assert.match(css,/\.reference-chat-page \.chat-compose-panel/);
+  assert.match(css,/\.reference-friends \.search-people/);
+  assert.match(css,/@media \(max-width: 820px\)/);
+});
+
+test('Comunidade Neon Underground preserva publicação, reações e comentários', () => {
+  const shell=read('src/main.tsx'),alignment=read('src/alignment.js'),css=read('src/cavern-community.css');
+  assert.match(shell,/import '\.\/cavern-community\.css'/);
+  assert.match(alignment,/community-reference-layout/);
+  assert.match(css,/\.community-reference-center \.composer/);
+  assert.match(css,/\.community-reference-center \.post-actions/);
+  assert.match(css,/form\[data-comment\]/);
+  assert.match(css,/\.community-reference-right > article/);
+  assert.match(css,/@media \(max-width: 900px\)/);
+});
+
 test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em português', () => {
   const config=JSON.parse(read('src-tauri/tauri.conf.json')),nsis=config.bundle.windows.nsis;
   assert.equal(nsis.installMode,'currentUser');
@@ -213,14 +272,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.12');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.13');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.12');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.13');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{

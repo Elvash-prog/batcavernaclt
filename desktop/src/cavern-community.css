@@ -1,0 +1,256 @@
+/* BatCaverna Neon Underground — Comunidade */
+.reference-ui .community-reference-heading,
+.reference-ui .community-reference-layout {
+  width: min(100%, 1880px);
+}
+
+.reference-ui .community-reference-heading {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  align-items: center;
+  margin: 0 auto 20px;
+  padding: clamp(24px, 3vw, 38px);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line-strong));
+  border-radius: 19px;
+  background: radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--accent) 23%, transparent), transparent 32%),linear-gradient(135deg, color-mix(in srgb, var(--panel) 96%, #09070f), var(--bg));
+  box-shadow: 0 20px 58px #0005;
+}
+
+.reference-ui .community-reference-heading::after {
+  content: '✦';
+  position: absolute;
+  right: clamp(30px, 7vw, 110px);
+  z-index: -1;
+  color: color-mix(in srgb, var(--accent) 16%, transparent);
+  font-size: clamp(95px, 12vw, 180px);
+}
+
+.reference-ui .community-reference-heading h2 {
+  margin: 7px 0;
+  font-size: clamp(30px, 3vw, 46px);
+  font-weight: 780;
+  letter-spacing: -.05em;
+}
+
+.reference-ui .community-reference-heading p { max-width: 680px; }
+
+.reference-ui .community-reference-heading > small {
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, #42d795 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #42d795 8%, transparent);
+  color: #42d795;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.reference-ui .community-reference-layout {
+  grid-template-columns: 210px minmax(440px, 780px) 270px;
+  gap: 20px;
+  margin: 0 auto;
+}
+
+.reference-ui .community-reference-left,
+.reference-ui .community-reference-right {
+  position: sticky;
+  top: 8px;
+  padding: 17px;
+  border: 1px solid var(--line-strong);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--panel) 95%, var(--bg));
+  box-shadow: 0 12px 34px #0003;
+}
+
+.reference-ui .community-reference-left nav { gap: 4px; margin: 12px 0 22px; }
+
+.reference-ui .community-reference-left nav button {
+  min-height: 39px;
+  padding: 9px 11px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--muted);
+}
+
+.reference-ui .community-reference-left nav button.active,
+.reference-ui .community-reference-left nav button:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  color: var(--text);
+}
+
+.reference-ui .community-trends { padding-top: 18px; }
+.reference-ui .community-trends ol { gap: 8px; margin-bottom: 0; }
+
+.reference-ui .community-trends li {
+  gap: 10px;
+  padding: 9px 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reference-ui .community-trends li:last-child { border-bottom: 0; }
+.reference-ui .community-trends li > b { color: color-mix(in srgb, var(--accent) 65%, white); }
+
+.reference-ui .community-reference-center .composer {
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 15px;
+  border: 1px solid var(--line-strong);
+  border-radius: 15px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--panel) 97%, #0b0a12), var(--panel));
+  box-shadow: 0 14px 36px #0004;
+}
+
+.reference-ui .community-reference-center .composer textarea {
+  min-height: 78px;
+  padding: 13px;
+  border-color: var(--line-strong);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--bg) 84%, var(--panel));
+  line-height: 1.55;
+}
+
+.reference-ui .community-reference-center .composer footer {
+  padding-top: 3px;
+}
+
+.reference-ui .community-reference-center > h3 {
+  margin: 22px 2px 12px;
+  font-size: 17px;
+}
+
+.reference-ui .community-reference-center .posts { gap: 12px; }
+
+.reference-ui .community-reference-center .post {
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 15px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--panel) 97%, #0b0a12), var(--panel));
+  box-shadow: 0 12px 32px #0003;
+}
+
+.reference-ui .community-reference-center .post header img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.reference-ui .community-reference-center .post > p {
+  margin: 14px 0;
+  color: color-mix(in srgb, var(--text) 92%, var(--muted));
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.reference-ui .community-reference-center .feed-media {
+  gap: 5px;
+  margin: 12px -4px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #06070c;
+}
+
+.reference-ui .community-reference-center .feed-media img,
+.reference-ui .community-reference-center .feed-media video {
+  max-height: 520px;
+  border-radius: 0;
+  object-fit: cover;
+}
+
+.reference-ui .community-reference-center .post-actions {
+  gap: 5px;
+  padding-top: 10px;
+}
+
+.reference-ui .community-reference-center .post-actions button {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+
+.reference-ui .community-reference-center .post-actions button:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
+}
+
+.reference-ui .community-reference-center .post-actions button.liked {
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: color-mix(in srgb, var(--accent) 65%, white);
+}
+
+.reference-ui .community-reference-center .comment {
+  margin-top: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 76%, var(--panel));
+  line-height: 1.5;
+}
+
+.reference-ui .community-reference-center form[data-comment] {
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 80%, var(--panel));
+}
+
+.reference-ui .community-reference-center form[data-comment] input {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.reference-ui .community-reference-right > h3 { margin-bottom: 5px; }
+.reference-ui .community-reference-right > p { margin-top: 0; }
+
+.reference-ui .community-connections {
+  gap: 3px;
+  margin: 13px 0 20px;
+  padding-bottom: 17px;
+}
+
+.reference-ui .community-connections button {
+  min-height: 49px;
+  padding: 7px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+
+.reference-ui .community-connections button:hover {
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
+}
+
+.reference-ui .community-connections img {
+  border: 2px solid #42d795;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #42d795 9%, transparent);
+}
+
+.reference-ui .community-reference-right > article {
+  padding: 15px;
+  border: 1px solid color-mix(in srgb, #f2ba55 28%, var(--line));
+  border-radius: 12px;
+  background: linear-gradient(145deg, color-mix(in srgb, #f2ba55 8%, var(--panel)), var(--panel));
+}
+
+.reference-ui .community-reference-right > article h2 {
+  margin: 8px 0;
+  font-size: 20px;
+  letter-spacing: -.025em;
+}
+
+@media (max-width: 1320px) {
+  .reference-ui .community-reference-layout { grid-template-columns: 180px minmax(0, 1fr); }
+  .reference-ui .community-reference-right { display: none; }
+}
+
+@media (max-width: 900px) {
+  .reference-ui .community-reference-heading > small { display: none; }
+  .reference-ui .community-reference-layout { grid-template-columns: 1fr; }
+  .reference-ui .community-reference-left { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reference-ui .community-reference-center .post { transition: none; }
+}

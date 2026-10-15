@@ -1,0 +1,305 @@
+/* BatCaverna Neon Underground — perfil desktop */
+.reference-ui .cavern-profile {
+  --profile-gold: #f2ba55;
+  --profile-green: #45d798;
+  max-width: min(1880px, var(--workspace-width));
+  padding-bottom: 72px;
+}
+
+.reference-ui .cavern-profile.complete-profile,
+.reference-ui .cavern-profile .complete-profile {
+  width: 100%;
+}
+
+.reference-ui .cavern-profile .complete-profile {
+  position: relative;
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line-strong));
+  border-radius: 20px;
+  background: #070910;
+  box-shadow: 0 24px 70px #0008;
+}
+
+.reference-ui .cavern-profile .complete-profile::before {
+  inset: 0;
+  opacity: 1;
+  background-size: cover;
+  background-position: var(--profile-position, center);
+  filter: saturate(.9) contrast(1.05);
+}
+
+.reference-ui .cavern-profile .complete-profile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, #05070df2 0%, #060810cf 43%, #07091045 80%),
+    linear-gradient(0deg, #05070df2 0%, transparent 62%);
+  pointer-events: none;
+}
+
+.reference-ui .cavern-profile .profile-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.reference-ui .cavern-profile .profile-cover-art {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  opacity: 1 !important;
+  background-size: cover !important;
+  background-repeat: no-repeat;
+}
+
+.reference-ui .cavern-profile .profile-body,
+.reference-ui .cavern-profile .profile-readable {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 22px;
+  min-height: 420px;
+  margin: 0;
+  padding: clamp(28px, 4vw, 58px);
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.reference-ui .cavern-profile .profile-avatar {
+  width: 112px;
+  height: 112px;
+  margin: 0;
+  border: 4px solid #0b0d15;
+  border-radius: 24px;
+  object-fit: cover;
+  box-shadow: 0 16px 38px #000b, 0 0 0 1px #ffffff26;
+}
+
+.reference-ui .cavern-profile .profile-info {
+  min-width: 0;
+  padding: 0;
+}
+
+.reference-ui .cavern-profile .profile-info > .eyebrow {
+  color: var(--profile-gold);
+  letter-spacing: .13em;
+}
+
+.reference-ui .cavern-profile .profile-info h2 {
+  margin: 7px 0 3px;
+  color: #fff;
+  font-size: clamp(32px, 3.5vw, 54px);
+  font-weight: 780;
+  line-height: 1;
+  letter-spacing: -.055em;
+  text-shadow: 0 5px 30px #000;
+}
+
+.reference-ui .cavern-profile .profile-info > small {
+  color: #d2d8e4;
+  font-size: 12px;
+}
+
+.reference-ui .cavern-profile .profile-info > p {
+  max-width: 720px;
+  margin: 13px 0 16px;
+  color: #e7eaf1;
+  font-size: 13px;
+  line-height: 1.6;
+  text-shadow: 0 2px 10px #000;
+}
+
+.reference-ui .cavern-profile .profile-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reference-ui .cavern-profile .profile-stats > span {
+  display: flex;
+  grid-template-columns: none;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid #ffffff18;
+  border-radius: 9px;
+  background: #070911b5;
+  color: #cbd2df;
+  font-size: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.reference-ui .cavern-profile .profile-stats > span i { display: none; }
+.reference-ui .cavern-profile .profile-stats > span b { color: #fff; font-size: 13px; }
+
+.reference-ui .cavern-profile .profile-actions {
+  align-self: end;
+  padding: 0;
+}
+
+.reference-ui .cavern-profile .profile-actions .primary {
+  min-height: 43px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.reference-ui .cavern-profile .profile-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  gap: 4px;
+  margin: 18px auto 22px;
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--panel) 93%, var(--bg));
+  box-shadow: 0 12px 34px #0004;
+}
+
+.reference-ui .cavern-profile .profile-tabs button {
+  min-height: 38px;
+  padding: 8px 15px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--muted);
+}
+
+.reference-ui .cavern-profile .profile-tabs button.active {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: color-mix(in srgb, var(--accent) 17%, var(--panel));
+  color: var(--text);
+  box-shadow: none;
+}
+
+.reference-ui .cavern-profile .profile-overview-columns {
+  grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.reference-ui .cavern-profile .level-card,
+.reference-ui .cavern-profile .profile-feature {
+  margin: 0 0 18px;
+  padding: 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--panel) 94%, #0d0b16), var(--panel));
+  box-shadow: 0 12px 32px #0003;
+}
+
+.reference-ui .cavern-profile .level-card {
+  position: sticky;
+  top: 72px;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background:
+    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--accent) 25%, transparent), transparent 40%),
+    linear-gradient(145deg, color-mix(in srgb, var(--panel) 96%, #0d0b16), var(--panel));
+}
+
+.reference-ui .cavern-profile .level-card h2 {
+  margin: 12px 0 4px;
+  font-size: 30px;
+  letter-spacing: -.04em;
+}
+
+.reference-ui .cavern-profile .level-card h3 { color: color-mix(in srgb, var(--accent) 62%, white); }
+
+.reference-ui .cavern-profile .level-card progress {
+  height: 8px;
+  margin-top: 8px;
+}
+
+.reference-ui .cavern-profile .profile-feature h2,
+.reference-ui .cavern-profile .profile-feature h3 {
+  margin-top: 5px;
+  letter-spacing: -.025em;
+}
+
+.reference-ui .cavern-profile .detail-badges span.earned {
+  border-color: color-mix(in srgb, var(--profile-gold) 50%, var(--line));
+  background: color-mix(in srgb, var(--profile-gold) 9%, var(--panel));
+  color: color-mix(in srgb, var(--profile-gold) 78%, white);
+}
+
+.reference-ui .cavern-profile .mission-period {
+  margin: 26px 0;
+}
+
+.reference-ui .cavern-profile .mission-period > h2 {
+  margin: 0 0 13px;
+  font-size: 19px;
+}
+
+.reference-ui .cavern-profile .mission-cards {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.reference-ui .cavern-profile .mission-cards article {
+  padding: 18px;
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--panel) 95%, #0d0b16);
+}
+
+.reference-ui .cavern-profile .achievement-grid {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.reference-ui .cavern-profile .achievement {
+  min-height: 150px;
+  padding: 18px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 95%, var(--bg));
+}
+
+.reference-ui .cavern-profile .achievement.earned {
+  border-color: color-mix(in srgb, var(--profile-gold) 48%, var(--line));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--profile-gold) 9%, var(--panel)), var(--panel));
+  opacity: 1;
+}
+
+@media (max-width: 1100px) {
+  .reference-ui .cavern-profile .profile-body,
+  .reference-ui .cavern-profile .profile-readable {
+    grid-template-columns: 88px minmax(0, 1fr);
+    align-items: end;
+    padding: 28px;
+  }
+  .reference-ui .cavern-profile .profile-avatar { width: 84px; height: 84px; border-radius: 19px; }
+  .reference-ui .cavern-profile .profile-actions { grid-column: 2; }
+}
+
+@media (max-width: 820px) {
+  .reference-ui .cavern-profile .complete-profile,
+  .reference-ui .cavern-profile .profile-body,
+  .reference-ui .cavern-profile .profile-readable { min-height: 360px; }
+  .reference-ui .cavern-profile .profile-overview-columns { grid-template-columns: 1fr; }
+  .reference-ui .cavern-profile .level-card { position: static; }
+}
+
+@media (max-width: 620px) {
+  .reference-ui .cavern-profile .profile-body,
+  .reference-ui .cavern-profile .profile-readable {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 14px;
+    padding: 20px;
+  }
+  .reference-ui .cavern-profile .profile-avatar { width: 64px; height: 64px; border-radius: 15px; }
+  .reference-ui .cavern-profile .profile-info h2 { font-size: 29px; }
+  .reference-ui .cavern-profile .profile-stats { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reference-ui .cavern-profile .achievement { transition: none; }
+}
