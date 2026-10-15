@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.11` refina a apresentação do desktop com navegação, superfícies, campos e estados de interação mais consistentes, respeitando as cores escolhidas em Aparência e o movimento reduzido do Windows. Também carrega capas HTTPS diretamente no WebView, enquanto a assinatura de mídias privadas ocorre sem bloquear a troca de tela. O diagnóstico mede telas e comandos lentos sem registrar argumentos, URLs ou dados da conta.
+A versão `0.17.12` aprimora a hierarquia visual do início e do perfil, com superfícies mais definidas e barras de progresso consistentes, sem remover os temas personalizados nem o suporte a movimento reduzido. O instalador Windows agora usa arte própria da BatCaverna, ícone consistente, idioma automático em português e pasta dedicada no Menu Iniciar; continua instalando só para o usuário atual, sem solicitar administrador. Capas HTTPS carregam direto no WebView e mídias privadas não bloqueiam a navegação.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

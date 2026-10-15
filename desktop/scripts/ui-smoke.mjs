@@ -1348,6 +1348,20 @@ try {
   await page.locator(".complete-profile").waitFor();
   await page.locator("#content.profile-user-background").waitFor();
   assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), true);
+  assert.notEqual(
+    await page.locator(".complete-profile").evaluate(
+      (n) => getComputedStyle(n).boxShadow,
+    ),
+    "none",
+    "O cabeçalho do perfil deve ter uma elevação visual sutil.",
+  );
+  assert.notEqual(
+    await page.locator("#profileOverview .level-card progress").evaluate(
+      (n) => getComputedStyle(n).borderRadius,
+    ),
+    "0px",
+    "A barra de progressão deve usar o estilo arredondado do tema.",
+  );
   assert.equal(
     await page.locator(".sidebar").evaluate((n) => getComputedStyle(n).backgroundColor),
     "rgb(7, 18, 27)",

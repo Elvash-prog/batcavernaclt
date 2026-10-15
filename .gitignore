@@ -1,5 +1,8 @@
 node_modules/
 desktop/dist/
+desktop/preview/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/schemas/
 .wrangler/
 .env*
 .dev.vars*
