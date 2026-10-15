@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.16` adiciona sincronização protegida com o **RetroAchievements**: perfil, pontuação, jogos recentes, progresso, conquistas Hardcore e importação manual para a biblioteca. A chave da API permanece no Supabase; o aplicativo armazena somente o usuário validado e o ULID estável. Os ajustes de capas e layout da `0.17.15` foram preservados.
+A versão `0.17.21` traz diálogo próprio de atualização, detalhes e conquistas da Minha Retro com tratamento de erros, cards Retro vertical/horizontal, menu lateral corrigido (Jogos grátis, Minha Steam, Minha Retro) e mantém os ajustes de cards verticais/horizontais e largura configurável em **Aparência → Layout**. A chave da API permanece no Supabase; o aplicativo armazena somente o usuário validado e o ULID estável.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

@@ -100,15 +100,19 @@ test('Comunidade Neon Underground preserva publicação, reações e comentário
   assert.match(css,/@media \(max-width: 900px\)/);
 });
 
-test('desktop 0.17.20 integra RetroAchievements, RAWG e perfis de amigos', () => {
+test('desktop 0.17.21 integra RetroAchievements, RAWG e perfis de amigos', () => {
   const shell=read('src/main.tsx'),retro=read('src/retro.js'),rust=read('src-tauri/src/main.rs'),edge=read('../supabase/functions/bright-api/index.ts'),sql=read('../supabase/patch-1.47-retro-social.sql');
   assert.match(shell,/Integração RetroAchievements/);
-  assert.match(retro,/data-discover-kind="retro"/);
-  assert.match(retro,/document\.createElement\('button'\)/);
-  assert.match(retro,/nav\.querySelector\('\[data-view="discover"\]'\)/);
-  assert.match(retro,/state\.discoverTab='retro';navigate\('discover'\)/);
+  assert.match(retro,/dataset\.discoverKind='retro'/);
+  assert.match(retro,/dataset\.discoverKind='free'/);
+  assert.match(retro,/dataset\.discoverKind='steam'/);
+  assert.match(retro,/dataset\.discoverKind='retro'/);
+  assert.match(retro,/nav\?\.querySelector\('\[data-view="discover"\]'\)/);
   assert.match(retro,/retroachievements_user\|\|profile\?\.retroachievements_ulid/);
   assert.match(retro,/provider:'rawg'/);
+  assert.match(retro,/data-retro-detail/);
+  assert.match(retro,/aria-modal/);
+  assert.match(retro,/retro-achievements-overlay/);
   assert.match(retro,/data-profile-section="retro"/);
   assert.match(retro,/readOnly:true/);
   assert.match(retro,/link_retroachievements/);
@@ -132,6 +136,24 @@ test('desktop 0.17.20 integra RetroAchievements, RAWG e perfis de amigos', () =>
   assert.match(sql,/retroachievements_ulid/);
   assert.match(sql,/clt_private\.friends\(auth\.uid\(\),p_perfil_id\)/);
   assert.match(sql,/grant execute on function public\.perfil_detalhes_autorizado\(uuid\) to authenticated/);
+});
+
+test('desktop mostra atualizações e detalhes do Retro em diálogos próprios e acessíveis', () => {
+  const app=read('src/app.js'),retro=read('src/retro.js'),css=read('src/cavern-library.css');
+  const updateFlow=app.slice(app.indexOf('async function checkForUpdates'),app.indexOf('\nfunction openPassword'));
+  assert.doesNotMatch(updateFlow,/confirm\s*\(/);
+  assert.match(app,/confirmUpdate\(update\)/);
+  assert.match(app,/update-confirm-modal/);
+  assert.match(app,/window\.batcavernaPopup/);
+  assert.match(read('src/redesign.js'),/window\.batcavernaPopup=popup/);
+  assert.match(read('src/redesign.js'),/window\.batcavernaOpenDetails=.*openDetails/);
+  assert.match(app,/data-update-install/);
+  assert.match(retro,/Carregando conquistas/);
+  assert.match(retro,/Não foi possível carregar as conquistas/);
+  assert.match(retro,/data-retry/);
+  assert.match(css,/data-card-format="poster"\] \.retro-library-grid/);
+  assert.match(css,/data-card-format="landscape"\] \.retro-library-grid/);
+  assert.match(css,/#toast\{z-index:250\}/);
 });
 
 test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em português', () => {
@@ -317,14 +339,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.20');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.21');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.20');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.21');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
@@ -419,7 +441,7 @@ test('updater Windows verifica releases, exige confirmação e publica bundles a
  const script=read('src/app.js'),guide=fs.readFileSync(new URL('../../docs/ATUALIZACOES-IN-APP.md',import.meta.url),'utf8');
  const rust=read('src-tauri/src/main.rs'),config=JSON.parse(read('src-tauri/tauri.conf.json'));
  const workflow=fs.readFileSync(new URL('../../.github/workflows/desktop-release.yml',import.meta.url),'utf8');
- assert.match(script,/Verificar atualizações/);assert.match(script,/Deseja baixar e instalar agora/);assert.match(script,/check_for_updates/);assert.match(script,/install_update/);
+ assert.match(script,/Verificar atualizações/);assert.match(script,/Baixar e instalar/);assert.match(script,/check_for_updates/);assert.match(script,/install_update/);
  assert.match(rust,/UpdaterExt/);assert.match(rust,/download_and_install/);assert.match(rust,/A atualização mudou ou não está mais disponível/);
  assert.equal(config.plugins.updater.endpoints[0],'https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/latest.json');
  assert.ok(config.plugins.updater.pubkey);
