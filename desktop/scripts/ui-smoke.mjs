@@ -61,6 +61,7 @@ try {
         status_personalizado: "online",
         bio: "Perfil de teste",
         steam_id: "",
+        retroachievements_user: "RetroTester",
         jogos_destaque: ["Jogo zerado"],
         conquistas_destaque: [0],
         amigos_em_comum: ["friend"],
@@ -187,6 +188,7 @@ try {
     window.slowSocialMedia = false;
     window.diagnostics = [];
     window.saved = [];
+    window.updateChecks = 0;
     window.listeners = {};
     window.unhandledRejections = [];
     window.addEventListener("unhandledrejection", (event) =>
@@ -213,7 +215,19 @@ try {
       },
       core: {
         invoke: async (c, p) => {
-          if (c === "client_log") {
+        if (c === "check_for_updates") {
+          window.updateChecks++;
+          return {
+            available: true,
+            version: "0.17.21",
+            notes: "Melhorias de estabilidade e interface.",
+          };
+        }
+        if (c === "install_update") {
+          window.saved.push({ c, p });
+          return { installed: true };
+        }
+        if (c === "client_log") {
             if (
               p.input?.stage === "SLOW_VIEW" ||
               p.input?.stage === "SLOW_COMMAND"
@@ -352,6 +366,45 @@ try {
                 },
               ],
               progressKnown: false,
+            };
+          if (c === "bright_api" && p.input.op === "raPerfil")
+            return {
+              usuario: "RetroTester",
+              avatar: "",
+              pontos: 120,
+              pontosHardcore: 45,
+            };
+          if (c === "bright_api" && p.input.op === "raJogos")
+            return {
+              total: 1,
+              recentes: [],
+              jogos: [
+                {
+                  gameId: 77,
+                  nome: "Aventura Retrô",
+                  console: "SNES",
+                  desbloqueadas: 3,
+                  total: 10,
+                  hardcore: 1,
+                  capa: "https://shared.cloudflare.steamstatic.com/retro-cover.jpg",
+                },
+              ],
+            };
+          if (c === "bright_api" && p.input.op === "raConquistas")
+            if (window.failRetroAchievements)
+              throw new Error("Falha de rede simulada.");
+          if (c === "bright_api" && p.input.op === "raConquistas")
+            return {
+              nome: "Aventura Retrô",
+              console: "SNES",
+              lista: [
+                {
+                  nome: "Primeira jornada",
+                  desc: "Comece uma aventura.",
+                  pontos: 5,
+                  got: true,
+                },
+              ],
             };
           if (c === "bright_api")
             return {
@@ -1282,7 +1335,52 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "link_steam"),
   );
+  assert.deepEqual(
+    await page.locator('#mainNav [data-discover-kind] span').allTextContents(),
+    ["Jogos grátis", "Minha Steam", "Minha Retro"],
+  );
+  await page.locator('#mainNav [data-discover-kind="free"]').click();
+  await page.waitForFunction(() =>
+    document.querySelector('#mainNav [data-discover-kind="free"].active'),
+  );
+  await page.locator('#mainNav [data-discover-kind="steam"]').click();
+  await page.waitForFunction(() =>
+    document.querySelector('#mainNav [data-discover-kind="steam"].active'),
+  );
+  await page.locator('#mainNav [data-discover-kind="retro"]').click();
+  await page.locator(".retro-game-card").waitFor();
+  await page.waitForFunction(() =>
+    document.querySelector('#mainNav [data-discover-kind="retro"].active'),
+  );
+  await page.evaluate(() => (window.failRetroAchievements = true));
+  await page.locator('[data-retro-achievements="77"]').click();
+  await page.locator(".retro-achievements-modal [data-retry]").waitFor();
+  assert.match(
+    await page.locator(".retro-achievements-modal").innerText(),
+    /Falha de rede simulada/,
+  );
+  await page.evaluate(() => (window.failRetroAchievements = false));
+  await page.locator(".retro-achievements-modal [data-retry]").click();
+  await page.getByText("Primeira jornada").waitFor();
+  await page.locator(".retro-achievements-modal [data-close]").click();
+  await page.locator(".retro-game-card").click();
+  await page.locator(".reference-detail").waitFor();
+  await page.locator(".reference-detail .detail-close").click();
+  await page.evaluate(async () => await navigate("settings"));
   await page.locator('[data-settings-tab="app"]').click();
+  await page.locator("#checkUpdates").click();
+  await page.getByRole("dialog", { name: "Atualização disponível" }).waitFor();
+  assert.match(
+    await page.locator(".update-confirm-modal").innerText(),
+    /0\.17\.21/,
+  );
+  await page.locator(".update-confirm-modal [data-update-cancel]").first().click();
+  await page.locator("#checkUpdates").click();
+  await page.getByRole("dialog", { name: "Atualização disponível" }).waitFor();
+  await page.locator(".update-confirm-modal [data-update-install]").click();
+  await page.waitForFunction(() =>
+    window.saved.some((s) => s.c === "install_update"),
+  );
   await page.locator(".diagnostic-settings").waitFor();
   assert.match(
     await page.locator(".diagnostic-summary").innerText(),

@@ -294,6 +294,15 @@ async fn link_steam(steam_id:String,state:tauri::State<'_,AppState>)->Result<Val
  let session=current(&state).await?;let id=steam_id.trim();if !id.is_empty()&&(id.len()!=17||!id.bytes().all(|x|x.is_ascii_digit())){return Err("Informe o Steam ID da conta com 17 dígitos.".into());}
  value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).json(&json!({"steam_id":if id.is_empty(){Value::Null}else{json!(id)}})).send().await.map_err(|_|"Não foi possível conectar a Steam.".to_string())?).await
 }
+#[tauri::command]
+async fn link_retroachievements(username:String,state:tauri::State<'_,AppState>)->Result<Value,String>{
+ let session=current(&state).await?;let user=username.trim();
+ if user.is_empty(){return value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("prefer","return=representation").json(&json!({"retroachievements_user":Value::Null,"retroachievements_ulid":Value::Null})).send().await.map_err(|_|"Não foi possível desconectar o RetroAchievements.".to_string())?).await;}
+ if user.len()>64||!user.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'_'||b==b'-'){return Err("Informe um usuário RetroAchievements válido.".into());}
+ let profile=value(state.client.post(format!("{SUPABASE_URL}/functions/v1/bright-api")).timeout(Duration::from_secs(25)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&json!({"op":"raPerfil","usuario":user})).send().await.map_err(|_|"Não foi possível validar o RetroAchievements.".to_string())?).await?;
+ let canonical=profile["usuario"].as_str().unwrap_or(user);let ulid=profile["ulid"].as_str().unwrap_or("");
+ value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/perfis?id=eq.{}",session.user.id)).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("prefer","return=representation").json(&json!({"retroachievements_user":canonical,"retroachievements_ulid":if ulid.is_empty(){Value::Null}else{json!(ulid)}})).send().await.map_err(|_|"Não foi possível conectar o RetroAchievements.".to_string())?).await
+}
 
 #[tauri::command]
 fn logout(state: tauri::State<'_, AppState>) -> Result<Value, String> {
@@ -313,7 +322,7 @@ async fn dashboard(state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let finished = count(&state.client, &format!("{games}&or=(status.ilike.*zerado*,status.ilike.*platina*)"), token).await?;
     let total_media = count(&state.client, &media, token).await?;
     let unread = count(&state.client, &format!("/rest/v1/notificacoes?destinatario_id=eq.{user}&read=eq.false"), token).await?;
-    let profiles = get(&state.client, &format!("/rest/v1/perfis?select=id,nome,slug,avatar_url,banner_url,status_personalizado,bio,steam_id,fundo&id=eq.{user}&limit=1"), token).await?;
+    let profiles = get(&state.client, &format!("/rest/v1/perfis?select=id,nome,slug,avatar_url,banner_url,status_personalizado,bio,steam_id,retroachievements_user,retroachievements_ulid,fundo&id=eq.{user}&limit=1"), token).await?;
     let profile = profiles.as_array().and_then(|v| v.first()).cloned().unwrap_or_else(|| json!({"id":user,"nome":"Minha BatCaverna"}));
     let recent = get(&state.client, &format!("{games}&select=id,nome,status,capa,horas,plataforma&order=updated_at.desc,id.desc&limit=8"), token).await?;
     let updates = get(&state.client, &format!("/rest/v1/itens?select=id,nome,categoria,status,updated_at&user_id=eq.{user}&order=updated_at.desc,id.desc&limit=6"), token).await?;
@@ -330,7 +339,7 @@ async fn profile(user_id: Option<String>, state: tauri::State<'_, AppState>) -> 
     let mut p=rows.as_array().and_then(|x|x.first()).cloned().ok_or_else(||"Perfil não encontrado ou privado.".to_string())?;
     if !own {
         if let Ok(detail)=rpc(&state.client,"perfil_detalhes_autorizado",json!({"p_perfil_id":id}),&session.access_token).await {
-            if let Some(row)=detail.as_array().and_then(|x|x.first()){if let Some(obj)=p.as_object_mut(){if let Some(f)=row.get("fundo"){obj.insert("fundo".into(),f.clone());}}}
+            if let Some(row)=detail.as_array().and_then(|x|x.first()){if let Some(obj)=p.as_object_mut(){for key in ["fundo","listas","retroachievements_user","retroachievements_ulid"]{if let Some(value)=row.get(key){obj.insert(key.to_string(),value.clone());}}}}
         }
     }
     let items=get(&state.client,&format!("/rest/v1/itens?select=categoria,status,horas&user_id=eq.{id}&limit=1000"),&session.access_token).await.unwrap_or_else(|_|json!([]));
@@ -580,7 +589,7 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     value(response).await
 }
 fn image_host(host: &str)->bool {
-    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || ["rawg.io","steamgriddb.com","steamstatic.com","tmdb.org","anilist.co"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
+    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || ["rawg.io","steamgriddb.com","steamstatic.com","tmdb.org","anilist.co","retroachievements.org"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
 }
 #[tauri::command]
 async fn cover_image(url: String) -> Result<String,String> {
@@ -724,7 +733,7 @@ fn main() {
             }
         })
         .manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, link_retroachievements, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             desktop_runtime::initialize(app.handle())?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;

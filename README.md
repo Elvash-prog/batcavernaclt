@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.15` permite escolher entre cards com capas verticais e horizontais em Início e Biblioteca. O ajuste **Aparência → Layout → Tamanho dos cards** agora controla o tamanho real das grades, e nenhum card é ocultado só por estar além das primeiras colunas. Os refinamentos visuais e o comportamento responsivo da versão anterior foram preservados.
+A versão `0.17.20` aprimora os perfis RetroAchievements e mantém os ajustes de cards verticais/horizontais e largura configurável em **Aparência → Layout**. A chave da API permanece no Supabase; o aplicativo armazena somente o usuário validado e o ULID estável.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

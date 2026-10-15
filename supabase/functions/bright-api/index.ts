@@ -1,6 +1,6 @@
 // BatCaverna — Patch 1.39.3. Deploy as bright-api; authentication is verified below.
 // Run patch-1.39.3-bright-api.sql before deploying this file.
-// Secrets: SGDB_KEY, STEAM_KEY; SUPABASE_* variables are supplied by Supabase.
+// Secrets: SGDB_KEY, STEAM_KEY, RETROACHIEVEMENTS_KEY; SUPABASE_* variables are supplied by Supabase.
 class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) { super(message); this.status=status; }
@@ -70,6 +70,10 @@ function steamid(v: unknown): string {
   if (typeof v !== "string" || !/^\d{17}$/.test(v)) throw new ApiError(400, "Perfil Steam inválido.");
   return v;
 }
+function rauser(v: unknown): string {
+  if (typeof v !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(v.trim())) throw new ApiError(400, "Perfil RetroAchievements inválido.");
+  return v.trim();
+}
 function entry(v: unknown): string {
   if (typeof v !== "string" || v.length > 200) throw new ApiError(400, "Perfil Steam inválido.");
   let value = v.trim();
@@ -102,6 +106,9 @@ function validate(b: any): {body: any, cost:number} {
     case "jogos": out.steamid=steamid(b.steamid); cost=3; break;
     case "conquistas": if(b.steamid)out.steamid=steamid(b.steamid); out.appid=appid(b.appid); cost=b.steamid?2:1; break;
     case "steamAmigos": out.steamids=array(b.steamids,100,steamid); cost=Math.max(1,Math.ceil(out.steamids.length/10)); break;
+    case "raPerfil": out.usuario=rauser(b.usuario); cost=2; break;
+    case "raJogos": out.usuario=rauser(b.usuario); out.offset=Math.max(0,Math.min(5000,Number(b.offset)||0)); cost=4; break;
+    case "raConquistas": out.usuario=rauser(b.usuario); out.gameId=appid(b.gameId); cost=3; break;
     case "gratis": cost=35; break;
     default: throw new ApiError(400, "Operação inválida.");
   }
@@ -123,9 +130,20 @@ function safeImage(v: unknown): string | null {
   if (typeof v !== "string") return null;
   try { const u=new URL(v); return u.protocol === "https:" && !u.username && !u.password ? u.href : null; } catch { return null; }
 }
+function raMedia(v: unknown, prefix = "", suffix = ""): string {
+  const raw = typeof v === "string" ? v.trim() : "";
+  if (!raw) return "";
+  if (/^https:\/\//i.test(raw)) return safeImage(raw) || "";
+  if (raw.startsWith("//")) return safeImage("https:" + raw) || "";
+  const clean = raw.replace(/^\/+/, "");
+  let path = clean.includes("/") ? clean : prefix + clean;
+  if (suffix && !/\.[a-z0-9]{2,5}$/i.test(path)) path += suffix;
+  return safeImage("https://media.retroachievements.org/" + path) || "";
+}
 const SGDB = Deno.env.get("SGDB_KEY") ?? "";
 
 const STEAM = Deno.env.get("STEAM_KEY") ?? "";
+const RA = Deno.env.get("RETROACHIEVEMENTS_KEY") ?? "";
 
 async function runOperation(b: any, signal: AbortSignal): Promise<unknown> {
 const getJson = async (u: string, h: HeadersInit = {}) => {
@@ -135,6 +153,11 @@ const getJson = async (u: string, h: HeadersInit = {}) => {
 };
 const sg = (p: string) => getJson("https://www.steamgriddb.com/api/v2" + p, { Authorization: "Bearer " + SGDB });
 const st = (p: string) => getJson("https://api.steampowered.com" + p + (p.includes("?") ? "&" : "?") + "key=" + STEAM + "&format=json");
+const ra = (endpoint: string, params: Record<string,string|number>) => {
+  if (!RA) throw new ApiError(503, "Integração RetroAchievements indisponível.");
+  const q = new URLSearchParams({y:RA}); for (const [key,value] of Object.entries(params)) q.set(key,String(value));
+  return getJson(`https://retroachievements.org/API/${endpoint}?${q}`);
+};
 // styles=alternate -> arte "padrão" do SteamGridDB, a que traz o nome/logo do jogo; 600x900 -> formato de capa
 const gridQuery = (format: string) => `dimensions=${format === "landscape" ? "920x430,460x215" : "600x900,660x930,342x482"}&types=static&nsfw=false`;
 const coverTitleTokens = (value: unknown) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[™®©]/g, "").replace(/\b(?:the|game|edition|deluxe|ultimate|remake)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
@@ -375,6 +398,28 @@ async function steamGratis() {
         out = { lista: await steamInfo(b.appids ?? [], b.nomes ?? []) };
         break;
       }
+      case "raPerfil": {
+        const p=await ra("API_GetUserProfile.php",{u:b.usuario});
+        if(!p?.User&&!p?.ULID)throw new ApiError(404,"Perfil RetroAchievements não encontrado.");
+        out={usuario:p.User||b.usuario,ulid:p.ULID||"",avatar:raMedia(p.UserPic,"UserPic/"),pontos:Number(p.TotalPoints)||0,pontosHardcore:Number(p.TotalTruePoints)||0,jogoAtual:Number(p.LastGameID)||null,presenca:p.RichPresenceMsg||"",membroDesde:p.MemberSince||""};
+        break;
+      }
+      case "raJogos": {
+        const [progress,recentes]=await Promise.all([
+          ra("API_GetUserCompletionProgress.php",{u:b.usuario,c:500,o:b.offset||0}),
+          ra("API_GetUserRecentlyPlayedGames.php",{u:b.usuario,c:50,o:0}),
+        ]);
+        const map=(g:any)=>({gameId:Number(g.GameID)||0,nome:g.Title||"Jogo retrô",console:g.ConsoleName||"",capa:raMedia(g.ImageIcon,"Images/"),total:Number(g.MaxPossible??g.NumPossibleAchievements??g.AchievementsTotal)||0,desbloqueadas:Number(g.NumAwarded??g.NumAchieved)||0,hardcore:Number(g.NumAwardedHardcore??g.NumAchievedHardcore)||0,ultimaVez:g.MostRecentAwardedDate||g.LastPlayed||"",premio:g.HighestAwardKind||""});
+        out={total:Number(progress?.Total)||0,jogos:(progress?.Results||[]).map(map),recentes:(recentes||[]).map(map)};
+        break;
+      }
+      case "raConquistas": {
+        const g=await ra("API_GetGameInfoAndUserProgress.php",{u:b.usuario,g:b.gameId,a:1});
+        const source=Array.isArray(g?.Achievements)?g.Achievements:Object.values(g?.Achievements||{});
+        const achievements=source.map((a:any)=>({id:Number(a.ID)||0,nome:a.Title||"Conquista",desc:a.Description||"",pontos:Number(a.Points)||0,got:Boolean(a.DateEarned||a.DateEarnedHardcore),hardcore:Boolean(a.DateEarnedHardcore),quando:a.DateEarnedHardcore||a.DateEarned||"",icon:raMedia(a.BadgeURL||a.BadgeName,"Badge/",".png")}));
+        out={gameId:b.gameId,nome:g?.Title||"",console:g?.ConsoleName||"",lista:achievements};
+        break;
+      }
       case "gratis": {
         const [ep, sd] = await Promise.allSettled([epicGratis(), steamGratis()]);
         out = { epic: ep.status === "fulfilled" ? ep.value : [], steam: sd.status === "fulfilled" ? sd.value : [] };
@@ -399,6 +444,8 @@ Deno.serve(async (req: Request) => {
     await rateLimit(uid,parsed.cost);
     if (["perfil","agora","steamAmigos","jogos","conquistas"].includes(b.op) && !STEAM)
       throw new ApiError(503, "Integração Steam indisponível.");
+    if (["raPerfil","raJogos","raConquistas"].includes(b.op) && !RA)
+      throw new ApiError(503, "Integração RetroAchievements indisponível.");
     const out = await runOperation(b,AbortSignal.timeout(35000));
     return response(req,out);
   } catch (e) {
