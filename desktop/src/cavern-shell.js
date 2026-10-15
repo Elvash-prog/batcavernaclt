@@ -23,7 +23,7 @@
  };
  const main=[
   ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['social','Comunidade','social'],
-  ['friends','Amigos','friends'],['chat','Chat','chat'],['achievements','Conquistas','trophy',{action:'achievements'}],['settings','Configurações','settings']
+  
  ];
  const more=[
   ['media','Filmes e séries','film',{collection:'filmes'}],['anime','Animes','anime',{collection:'animes'}],['lists','Listas','lists'],
@@ -39,42 +39,12 @@
  const logo=$('.sidebar .logo');
  if(logo)logo.innerHTML='<img src="brand.jpg" alt=""><strong>BatCaverna <em>CLT</em></strong><small>JOGOS • PESSOAS • HISTÓRIAS</small>';
 
- const rail=document.createElement('aside');
- rail.className='cavern-rail';rail.setAttribute('aria-label','Amigos e atividade');
- rail.innerHTML=`<label class="rail-search">${svg(icons.search)}<input type="search" id="railSearch" placeholder="Buscar amigos…" aria-label="Buscar amigos" autocomplete="off"></label>`;
- const community=$('#sidebarCommunity');
- if(community)rail.append(community);
- shell.append(rail);
- const applyFilter=()=>{
-  const query=$('#railSearch').value.trim().toLocaleLowerCase('pt-BR');
-  rail.querySelectorAll('[data-sidebar-chat]').forEach(item=>{item.hidden=!!query&&!item.textContent.toLocaleLowerCase('pt-BR').includes(query)});
- };
- $('#railSearch').addEventListener('input',applyFilter);
- if(community)new MutationObserver(applyFilter).observe(community,{childList:true});
-
- let achievements=false;
- nav.addEventListener('click',async event=>{
-  const action=event.target.closest('[data-shell-action="achievements"]');if(!action)return;
-  state.profileUser=null;
-  await navigate('profile');
-  $('[data-profile-section="achievements"]')?.click();
-  achievements=true;syncActive();
- });
- function syncActive(){
-  nav.querySelectorAll('[data-shell-action="achievements"]').forEach(item=>item.classList.toggle('active',achievements&&state.current==='profile'));
-  if(achievements&&state.current==='profile')nav.querySelectorAll('[data-view]').forEach(item=>item.classList.remove('active'));
- }
- function syncView(){
-  document.body.dataset.screen=state.current||'home';
-  document.body.classList.toggle('rail-off',['chat','friends'].includes(state.current));
- }
+ const sync=()=>{document.body.dataset.screen=state.current||'home'};
  const baseNavigate=navigate;
  navigate=async function(view){
-  if(view!=='profile')achievements=false;
-  document.body.dataset.screen=view;syncView();
-  try{await baseNavigate(view)}finally{syncView();syncActive()}
+  document.body.dataset.screen=view;
+  try{await baseNavigate(view)}finally{sync()}
  };
-
  const baseHome=renderHome;
  renderHome=async function(){
   await baseHome();
@@ -92,5 +62,43 @@
   }
   content.querySelectorAll('[data-shell-go]').forEach(item=>item.onclick=()=>navigate(item.dataset.shellGo));
  };
- syncView();
+ sync();
+
+ let pending=null,checking=false;
+ const toast=()=>{
+  let box=$('#updateToast');
+  if(!box){box=document.createElement('aside');box.id='updateToast';box.className='update-toast';box.setAttribute('role','status');document.body.append(box)}
+  return box;
+ };
+ const hideToast=()=>{$('#updateToast')?.remove()};
+ const installNow=async()=>{
+  if(!pending||!await confirmUpdate(pending))return;
+  const box=toast();box.innerHTML=`<strong>Instalando a versão ${esc(pending.version)}…</strong><small>Baixando e verificando a assinatura.</small>`;
+  try{await api.installUpdate(pending.version);box.innerHTML='<strong>Atualização instalada</strong><small>O instalador iniciará a versão nova.</small>'}
+  catch(error){box.innerHTML=`<strong>Não foi possível instalar</strong><small>${esc(failure(error))}</small><div><button type="button" class="secondary" data-update-dismiss>Fechar</button></div>`;box.querySelector('[data-update-dismiss]').onclick=hideToast}
+ };
+ const markSidebar=()=>{
+  const foot=$('.sidebar-foot');if(!foot||!pending)return;
+  let link=$('#updateLink');
+  if(!link){link=document.createElement('button');link.id='updateLink';link.type='button';link.className='update-link';link.onclick=installNow;foot.prepend(link)}
+  link.textContent=`⬆ Atualizar para ${pending.version}`;
+ };
+ const announce=update=>{
+  pending=update;markSidebar();
+  if(sessionStorage.getItem('bc-update-dismissed')===update.version)return;
+  const box=toast();
+  box.innerHTML=`<strong>Nova versão ${esc(update.version)} disponível</strong><small>Atualize para receber as melhorias mais recentes.</small><div><button type="button" class="primary" data-update-now>Ver e instalar</button><button type="button" class="secondary" data-update-later>Depois</button></div>`;
+  box.querySelector('[data-update-now]').onclick=installNow;
+  box.querySelector('[data-update-later]').onclick=()=>{sessionStorage.setItem('bc-update-dismissed',update.version);hideToast()};
+ };
+ let lastCheck=0;
+ const autoCheck=async()=>{
+  if(checking||$('#appShell').hidden||!state.userId||Date.now()-lastCheck<6*60*60*1000)return;
+  checking=true;lastCheck=Date.now();
+  try{const update=await api.checkForUpdates();if(update?.available&&update.version)announce(update)}
+  catch{}
+  finally{checking=false}
+ };
+ setTimeout(autoCheck,5000);
+ setInterval(autoCheck,60*1000);
 })();
