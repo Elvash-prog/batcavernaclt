@@ -66,6 +66,18 @@ test('perfil Neon Underground preserva capa, progressão e responsividade', () =
   assert.match(css,/@media \(max-width: 620px\)/);
 });
 
+test('central social compartilha o visual entre Amigos e Chat', () => {
+  const shell=read('src/main.tsx'),script=read('src/reference.js'),css=read('src/cavern-social.css');
+  assert.match(shell,/import '\.\/cavern-social\.css'/);
+  assert.match(script,/classList\.add\('reference-friends'\)/);
+  assert.match(script,/classList\.add\('reference-chat-page'\)/);
+  assert.match(css,/\.reference-friends \.friends-heading/);
+  assert.match(css,/\.reference-chat-page \.modern-chat/);
+  assert.match(css,/\.reference-chat-page \.chat-compose-panel/);
+  assert.match(css,/\.reference-friends \.search-people/);
+  assert.match(css,/@media \(max-width: 820px\)/);
+});
+
 test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em português', () => {
   const config=JSON.parse(read('src-tauri/tauri.conf.json')),nsis=config.bundle.windows.nsis;
   assert.equal(nsis.installMode,'currentUser');
