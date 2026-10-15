@@ -100,13 +100,17 @@ test('Comunidade Neon Underground preserva publicação, reações e comentário
   assert.match(css,/@media \(max-width: 900px\)/);
 });
 
-test('desktop 0.17.19 integra RetroAchievements e mantém Minha Retro acessível', () => {
-  const shell=read('src/main.tsx'),retro=read('src/retro.js'),rust=read('src-tauri/src/main.rs'),edge=read('../supabase/functions/bright-api/index.ts'),sql=read('../supabase/patch-1.46-retroachievements.sql');
+test('desktop 0.17.20 integra RetroAchievements, RAWG e perfis de amigos', () => {
+  const shell=read('src/main.tsx'),retro=read('src/retro.js'),rust=read('src-tauri/src/main.rs'),edge=read('../supabase/functions/bright-api/index.ts'),sql=read('../supabase/patch-1.47-retro-social.sql');
   assert.match(shell,/Integração RetroAchievements/);
   assert.match(retro,/data-discover-kind="retro"/);
   assert.match(retro,/document\.createElement\('button'\)/);
   assert.match(retro,/nav\.querySelector\('\[data-view="discover"\]'\)/);
   assert.match(retro,/state\.discoverTab='retro';navigate\('discover'\)/);
+  assert.match(retro,/retroachievements_user\|\|profile\?\.retroachievements_ulid/);
+  assert.match(retro,/provider:'rawg'/);
+  assert.match(retro,/data-profile-section="retro"/);
+  assert.match(retro,/readOnly:true/);
   assert.match(retro,/link_retroachievements/);
   assert.match(retro,/raPerfil/);
   assert.match(retro,/raJogos/);
@@ -119,11 +123,15 @@ test('desktop 0.17.19 integra RetroAchievements e mantém Minha Retro acessível
   assert.doesNotMatch(retro,/RETROACHIEVEMENTS_KEY/);
   assert.match(rust,/async fn link_retroachievements/);
   assert.match(rust,/retroachievements_ulid/);
+  assert.match(rust,/"retroachievements_user","retroachievements_ulid"/);
   assert.match(edge,/Deno\.env\.get\("RETROACHIEVEMENTS_KEY"\)/);
+  assert.match(edge,/function raMedia/);
   assert.match(edge,/API_GetUserCompletionProgress\.php/);
   assert.match(edge,/API_GetGameInfoAndUserProgress\.php/);
   assert.match(sql,/retroachievements_user/);
   assert.match(sql,/retroachievements_ulid/);
+  assert.match(sql,/clt_private\.friends\(auth\.uid\(\),p_perfil_id\)/);
+  assert.match(sql,/grant execute on function public\.perfil_detalhes_autorizado\(uuid\) to authenticated/);
 });
 
 test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em português', () => {
@@ -309,14 +317,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.19');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.20');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.19');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.20');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
