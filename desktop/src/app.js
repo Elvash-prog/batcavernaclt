@@ -2,7 +2,7 @@
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const invoke=window.__TAURI__?.core?.invoke;
-const call=async(command,payload={})=>{if(!invoke)throw 'Abra pelo programa BatCaverna.';try{return await invoke(command,payload)}catch(error){if(command!=='client_log')invoke('client_log',{input:{level:'ERROR',stage:'COMMAND_FAILURE',message:`${command} não concluiu`}}).catch(()=>{});throw error}};
+const call=async(command,payload={})=>{if(!invoke)throw 'Abra pelo programa BatCaverna.';try{return await invoke(command,payload)}catch(error){if(command!=='client_log'&&command!=='cover_image')invoke('client_log',{input:{level:'ERROR',stage:'COMMAND_FAILURE',message:`${command} não concluiu`}}).catch(()=>{});throw error}};
 function normalizeGenres(value){return [...new Set((Array.isArray(value)?value:String(value||'').split(/[•,|]/)).map(g=>typeof g==='string'?g.trim():String(g?.name||g?.description||'').trim()).filter(Boolean))]}
 const api=Object.freeze({
  state:()=>call('app_state'),login:credentials=>call('login',{credentials}),register:input=>call('register',{input}),recover:email=>call('recover_password',{email}),logout:()=>call('logout'),
@@ -31,8 +31,8 @@ function applyPrefs(){const p=JSON.parse(localStorage.getItem('bc-desktop-prefs'
 function savePref(key,value){const p=JSON.parse(localStorage.getItem('bc-desktop-prefs')||'{}');p[key]=value;localStorage.setItem('bc-desktop-prefs',JSON.stringify(p));applyPrefs()}
 
 async function signed(value){const url=String(value||'').trim();if(!url)return 'brand.jpg';if(/^data:image\//i.test(url))return url;try{return await api.mediaUrl(url)}catch{return /^https:\/\//i.test(url)?url:'brand.jpg'}}
-async function hydrateMedia(root=document){const nodes=[...root.querySelectorAll('[data-private-src]')];await Promise.all(nodes.map(async n=>{const src=await signed(n.dataset.privateSrc);n.src=src;n.removeAttribute('data-private-src')}))}
-function applyBrand(profile){const logo=profile?.fundo?.logo;if(logo&&(/^(https:|data:image)/i.test(logo))){$$('.logo img,.brand-mark img,.welcome img').forEach(async n=>n.src=await signed(logo))}}
+async function hydrateMedia(root=document){const nodes=[...root.querySelectorAll('[data-private-src]')];await Promise.all(nodes.map(async n=>{const url=String(n.dataset.privateSrc||'').trim();if(!url){n.src='brand.jpg';n.removeAttribute('data-private-src');return}try{n.src=await signed(url)}catch{n.src='brand.jpg'}finally{n.removeAttribute('data-private-src')}}))}
+function applyBrand(profile){const logo=profile?.fundo?.logo;if(logo&&(/^(https:|data:image)/i.test(logo))){$$('.logo img,.brand-mark img,.welcome img').forEach(n=>{void signed(logo).then(src=>{if(n.isConnected)n.src=src}).catch(()=>{if(n.isConnected)n.src='brand.jpg'})})}}
 async function navigate(view){const request=state.navigationSequence=(state.navigationSequence||0)+1;state.current=view;$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));loading();try{if(view==='home')await renderHome();if(view==='library')await renderLibrary();if(view==='discover')await renderDiscover();if(view==='social')await renderSocial();if(view==='chat')await renderChat();if(view==='friends')await renderFriends();if(view==='notifications')await renderNotifications();if(view==='profile')await renderProfile(state.profileUser);if(view==='settings')await renderSettings()}catch(e){if(request===state.navigationSequence)errorCard(e)}}
 
 function normalizedStatus(value){const v=String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();if(/platina|100%/.test(v))return 'platinum';if(/zerado|finaliz|conclu|assistido/.test(v))return 'finished';if(/favorit/.test(v))return 'favorite';if(/progresso|jogando|assistindo/.test(v))return 'progress';if(/abandon|desist/.test(v))return 'abandoned';if(/paus/.test(v))return 'paused';if(/steam/.test(v))return 'steam';return 'backlog'}
@@ -85,9 +85,9 @@ async function renderProfile(userId=null){
  $('#content').innerHTML=`<div class="profile-page"><section class="profile-card"><div class="profile-cover"><div class="profile-cover-art"></div></div><div class="profile-body"><img class="profile-avatar" data-private-src="${esc(p.avatar_url||'')}" src="brand.jpg" alt="Foto de perfil"><div class="profile-info"><h2>${esc(p.nome||p.slug||'Perfil')}</h2><small>@${esc(p.slug||'batcaverna')} · ${esc(statusLabels[p.status_personalizado]||p.status_personalizado||'Online')}</small><p>${esc(p.bio||'Ainda não adicionou uma bio.')}</p><div class="profile-stats"><span><b>${p.stats?.total||0}</b> títulos</span><span><b>${p.stats?.finished||0}</b> concluídos</span><span><b>${p.stats?.hours||0}h</b> jogadas</span></div></div><div class="profile-actions">${own?'<button class="primary" id="editProfile">Editar perfil</button>':'<button class="secondary" id="profileChat">Conversar</button>'}</div></div></section><div id="profileHighlights"></div><div id="profileCharts"></div></div>`;
  const content=$('#content'),art=$('.profile-cover-art');
  void hydrateMedia(content);
- if(cover.url)void signed(cover.url).then(url=>{if(art.isConnected){art.style.backgroundImage=`url(${JSON.stringify(url)})`;art.style.backgroundPosition=`${cover.x}% ${cover.y}%`;art.style.transform=`scale(${cover.z/100})`}});
+ if(cover.url)void signed(cover.url).then(url=>{if(art.isConnected){art.style.backgroundImage=`url(${JSON.stringify(url)})`;art.style.backgroundPosition=`${cover.x}% ${cover.y}%`;art.style.transform=`scale(${cover.z/100})`}}).catch(()=>{if(art.isConnected)art.style.backgroundImage=''});
  $('#editProfile')?.addEventListener('click',()=>openProfileEditor(p).catch(e=>toast(failure(e))));
- $('#profileChat')?.addEventListener('click',async()=>{const f=(await api.friends()).find(x=>String(x.id)===String(p.id));if(f){state.chatFriend=f;navigate('chat')}});
+ $('#profileChat')?.addEventListener('click',async()=>{try{const f=(await api.friends()).find(x=>String(x.id)===String(p.id));if(f){state.chatFriend=f;navigate('chat')}}catch(error){toast(failure(error))}});
  if(own){
   state.profile=p;$('#accountName').textContent=p.nome||p.slug;$('#accountStatus').textContent=statusLabels[p.status_personalizado]||'Online';$('#accountAvatar').dataset.privateSrc=p.avatar_url||'';void hydrateMedia($('.topbar'));
   const highlight=$('#profileHighlights'),charts=$('#profileCharts');

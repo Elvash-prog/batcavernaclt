@@ -26,6 +26,6 @@ function FatalError({failure}:{failure:BootFailure}){const [copied,setCopied]=us
 
 const root=createRoot(document.getElementById('root')!);
 window.addEventListener('error',event=>{void nativeLog('ERROR','WINDOW_ERROR',event.error?.name||'Erro inesperado na interface')});
-window.addEventListener('unhandledrejection',event=>{const reason=event.reason;void nativeLog('ERROR','UNHANDLED_REJECTION',reason instanceof Error?reason.name:'Falha assíncrona inesperada')});
+window.addEventListener('unhandledrejection',event=>{const reason=event.reason,description=reason instanceof Error?`${reason.name}: ${reason.message}`:String(reason||'Falha assíncrona inesperada');void nativeLog('ERROR','UNHANDLED_REJECTION',description.slice(0,500))});
 async function start(){let stage='Preparação da interface';try{applyBootTheme();flushSync(()=>root.render(<AppShell/>));for(const module of modules){stage=module.name;await load(module);await nativeLog('INFO','BOOT_MODULE',module.name)}stage='Ativação da sessão';document.documentElement.dataset.reactShell='ready';window.dispatchEvent(new Event('batcaverna:legacy-ready'));await nativeLog('INFO','BOOT_READY','Interface e módulos carregados')}catch(error){const failure={stage,message:error instanceof Error?error.message:String(error||'Falha desconhecida.')};console.error('Falha na inicialização',failure,error);await nativeLog('ERROR','BOOT_FAILURE',`${stage}: ${failure.message}`);document.documentElement.classList.remove('booting');root.render(<FatalError failure={failure}/>);}}
 void start();

@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.6` alinha o banner, os filtros e os grupos da biblioteca em todas as categorias (jogos, filmes, séries e animes), além das correções responsivas do perfil.
+A versão `0.17.7` evita chamadas de mídia com URLs vazias, usa uma imagem substituta quando mídias opcionais não carregam e registra a mensagem de rejeições assíncronas para facilitar diagnósticos. Falhas individuais de capa são tratadas como alternativas esperadas e não poluem o diagnóstico.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

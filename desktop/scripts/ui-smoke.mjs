@@ -181,6 +181,10 @@ try {
     window.coverCalls = 0;
     window.saved = [];
     window.listeners = {};
+    window.unhandledRejections = [];
+    window.addEventListener("unhandledrejection", (event) =>
+      window.unhandledRejections.push(String(event.reason)),
+    );
     window.emitIncoming = () => {
       messages.push({
         id: "incoming",
@@ -298,7 +302,10 @@ try {
             window.coverCalls++;
             return image;
           }
-          if (c === "media_url") return image;
+          if (c === "media_url") {
+            if (!p.url) throw new TypeError("URL de mídia vazia");
+            return image;
+          }
           if (c === "save_item" || c === "update_profile") {
             window.saved.push({ c, p });
             return {};
@@ -1331,6 +1338,7 @@ try {
   await page.locator("#loginScreen").waitFor({ state: "visible" });
   await page.screenshot({ path: "preview/login-check.png" });
   assert.deepEqual(errors, []);
+  assert.deepEqual(await page.evaluate(() => window.unhandledRejections), []);
   console.log(
     "UI OK: início, biblioteca por categorias, comunidade, amigos/chat, detalhes, aparência, presença, notificações, perfil e Full HD/QHD/HD. APIs e eventos simulados.",
   );
