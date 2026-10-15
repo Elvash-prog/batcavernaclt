@@ -179,6 +179,9 @@ try {
       };
     window.missionRows = [];
     window.coverCalls = 0;
+    window.coverFailureCalls = 0;
+    window.failCoverImage = false;
+    window.diagnostics = [];
     window.saved = [];
     window.listeners = {};
     window.unhandledRejections = [];
@@ -206,7 +209,10 @@ try {
       },
       core: {
         invoke: async (c, p) => {
-          if (c === "client_log") return {};
+          if (c === "client_log") {
+            if (p.input?.stage === "SLOW_VIEW") window.diagnostics.push(p.input);
+            return {};
+          }
           if (c === "diagnostic_status") return { size: 2048 };
           if (c === "diagnostic_export") {
             window.saved.push({ c, p });
@@ -267,7 +273,9 @@ try {
             };
           if (c === "journey_stats") throw "RPC ausente";
           if (c === "library" && window.delayLibrary)
-            await new Promise((r) => setTimeout(r, 120));
+            await new Promise((r) =>
+              setTimeout(r, window.libraryDelay || 120),
+            );
           if (c === "library")
             return p.category === "jogos"
               ? rows
@@ -300,6 +308,10 @@ try {
           if (c === "friends" || c === "search_people") return [friend];
           if (c === "cover_image") {
             window.coverCalls++;
+            if (window.failCoverImage) {
+              window.coverFailureCalls++;
+              throw new Error("Falha simulada ao carregar capa");
+            }
             return image;
           }
           if (c === "media_url") {
@@ -866,6 +878,35 @@ try {
     Math.max(...libraryLeftEdges) - Math.min(...libraryLeftEdges) <= 1,
     `Biblioteca desalinhada: ${libraryLeftEdges.join(", ")}`,
   );
+  await page.evaluate(() => {
+    window.failCoverImage = true;
+    const root = document.createElement("div");
+    root.innerHTML =
+      '<img data-cover="https://media.rawg.io/failing-cover-smoke-test.jpg" data-cover-name="Falha simulada" data-cover-game="0">';
+    document.body.append(root);
+    window.coverFailureRoot = root;
+    hydrateCovers(root);
+  });
+  await page.waitForFunction(() => window.coverFailureCalls > 0);
+  await page.evaluate(() => {
+    window.coverFailureRoot.remove();
+    window.failCoverImage = false;
+  });
+  const failures = await page.evaluate(() => window.coverFailureCalls);
+  await page.evaluate(() => {
+    const root = document.createElement("div");
+    root.innerHTML =
+      '<img data-cover="https://media.rawg.io/failing-cover-smoke-test.jpg" data-cover-name="Falha simulada" data-cover-game="0">';
+    document.body.append(root);
+    hydrateCovers(root);
+    root.remove();
+  });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.coverFailureCalls),
+    failures,
+    "Uma capa com falha recente não deve ser requisitada novamente.",
+  );
   for (const category of ["filmes", "series", "animes"]) {
     await page.evaluate(async (value) => {
       state.libraryCategory = value;
@@ -884,6 +925,21 @@ try {
       `${category} desalinhada: ${categoryLeftEdges.join(", ")}`,
     );
   }
+  await page.evaluate(async () => {
+    window.delayLibrary = true;
+    window.libraryDelay = 800;
+    await navigate("library");
+  });
+  assert.ok(
+    await page.evaluate(() =>
+      window.diagnostics.some((entry) => entry.message.includes("ms")),
+    ),
+    "Uma troca de aba lenta deve registrar sua duração.",
+  );
+  await page.evaluate(() => {
+    window.delayLibrary = false;
+    window.libraryDelay = 120;
+  });
   await page.evaluate(async () => {
     state.libraryCategory = "jogos";
     state.libraryStatus = "all";

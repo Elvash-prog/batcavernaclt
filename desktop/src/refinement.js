@@ -1,6 +1,8 @@
 'use strict';
-const readyImages=new Map(),imageJobs=new Map(),coverChoices=new Map();
+const readyImages=new Map(),imageJobs=new Map(),coverChoices=new Map(),failedImages=new Map();
+const COVER_RETRY_MS=300000;
 const emptyImage='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/%3E';
+function rememberFailedImage(key){failedImages.delete(key);failedImages.set(key,Date.now()+COVER_RETRY_MS);if(failedImages.size>160)failedImages.delete(failedImages.keys().next().value)}
 const coverKey=(url,name,appid,format)=>JSON.stringify([state.userId,url||'',name||'',appid||'',format||'']);
 function cachedCover(item,format){return readyImages.get(coverKey(coverUrl(item.capa),item.nome,String(item.steam_appid||''),format))||coverUrl(item.capa)||emptyImage;}
 function installRefinement(env){
@@ -15,6 +17,7 @@ function installRefinement(env){
  hydrateCovers=function(root){for(const img of root.querySelectorAll('[data-cover]')){
   const url=img.dataset.cover,name=img.dataset.coverName,appid=img.dataset.steamAppid,game=img.dataset.coverGame==='1',orientation=img.dataset.coverFormat||format(),key=coverKey(url,name,appid,orientation);img.removeAttribute('data-cover');
   const ready=readyImages.get(key);if(ready){img.src=ready;continue}
+  const failedUntil=failedImages.get(key);if(failedUntil&&failedUntil>Date.now()){img.src=url||emptyImage;continue}failedImages.delete(key);
   // Show the existing cover while resolving a local image; never replace it with a logo.
   if(url)img.src=url;else img.src=emptyImage;
   let task=imageJobs.get(key);if(!task){task=queueCover(async()=>{
@@ -23,8 +26,8 @@ function installRefinement(env){
    for(const u of urls){try{return await api.coverImage(await signed(u))}catch{}}
    if(game&&name){const alt=await chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation);if(alt){try{return await api.coverImage(alt)}catch{}}}
    throw Error('Capa indisponível');
-  }).then(src=>{readyImages.set(key,src);imageJobs.delete(key);if(readyImages.size>160)readyImages.delete(readyImages.keys().next().value);return src}).catch(()=>{imageJobs.delete(key);return url||emptyImage});imageJobs.set(key,task)}
-  task.then(src=>{if(!img.isConnected)return;img.src=src;img.onerror=()=>{img.onerror=null;img.src=emptyImage;img.classList.add('image-unavailable');img.title='Capa indisponível. Use Atualizar dados e capas.'}});
+  }).then(src=>{readyImages.set(key,src);imageJobs.delete(key);if(readyImages.size>160)readyImages.delete(readyImages.keys().next().value);return src}).catch(()=>{imageJobs.delete(key);rememberFailedImage(key);return url||emptyImage});imageJobs.set(key,task)}
+  task.then(src=>{if(!img.isConnected)return;img.src=src;img.onerror=()=>{img.onerror=null;rememberFailedImage(key);img.src=emptyImage;img.classList.add('image-unavailable');img.title='Capa indisponível. Use Atualizar dados e capas.'}});
  }};
  const mediaURLs=new Map(),baseSigned=signed;
  signed=async function(url){const key=state.userId+':'+url,hit=mediaURLs.get(key);if(hit&&hit.until>Date.now())return hit.task;const task=baseSigned(url);mediaURLs.set(key,{task,until:Date.now()+300000});return task};
