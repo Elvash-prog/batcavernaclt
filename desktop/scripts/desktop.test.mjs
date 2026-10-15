@@ -54,6 +54,18 @@ test('biblioteca cinematográfica separa o tema e preenche capas horizontais', (
   assert.match(css,/@media \(max-width: 850px\)/);
 });
 
+test('perfil Neon Underground preserva capa, progressão e responsividade', () => {
+  const shell=read('src/main.tsx'),script=read('src/alignment.js'),navigation=read('src/reference.js'),css=read('src/cavern-profile.css');
+  assert.match(shell,/import '\.\/cavern-profile\.css'/);
+  assert.match(script,/classList\.add\('cavern-profile'\)/);
+  assert.match(navigation,/classList\.remove\([^)]*'cavern-profile'/);
+  assert.match(css,/\.cavern-profile \.complete-profile::after/);
+  assert.match(css,/background-size:\s*cover/);
+  assert.match(css,/\.cavern-profile \.level-card progress/);
+  assert.match(css,/\.cavern-profile \.achievement\.earned/);
+  assert.match(css,/@media \(max-width: 620px\)/);
+});
+
 test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em português', () => {
   const config=JSON.parse(read('src-tauri/tauri.conf.json')),nsis=config.bundle.windows.nsis;
   assert.equal(nsis.installMode,'currentUser');
