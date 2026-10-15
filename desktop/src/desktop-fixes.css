@@ -185,6 +185,9 @@
   position: relative;
   isolation: isolate;
 }
+.app-shell.profile-background-active > .sidebar {
+  background: var(--bg);
+}
 .profile-user-background:before {
   content: "";
   position: fixed;
@@ -199,7 +202,6 @@
   background-position: center;
   background-size: cover;
   filter: blur(var(--user-profile-blur, 0));
-  transform: scale(1.02);
   pointer-events: none;
 }
 .profile-user-background > [data-profile-page],

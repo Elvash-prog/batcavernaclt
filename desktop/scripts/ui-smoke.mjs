@@ -64,6 +64,7 @@ try {
         jogos_destaque: ["Jogo zerado"],
         conquistas_destaque: [0],
         amigos_em_comum: ["friend"],
+        fundo: { url: "https://luoqlhgfmixvfqbfcdoc.supabase.co/storage/v1/object/public/avatars/test/background.webp", escuro: 65, desfoque: 0 },
         stats: { total: 5, finished: 2, hours: 30 },
       },
       friend = {
@@ -1149,6 +1150,13 @@ try {
   if (await friendsDockClose.isVisible()) await friendsDockClose.click();
   await page.locator("#sidebarAccount").click();
   await page.locator(".complete-profile").waitFor();
+  await page.locator("#content.profile-user-background").waitFor();
+  assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), true);
+  assert.equal(
+    await page.locator(".sidebar").evaluate((n) => getComputedStyle(n).backgroundColor),
+    "rgb(7, 18, 27)",
+    "O fundo personalizado não pode aparecer por trás da barra lateral",
+  );
   await page.setViewportSize({ width: 980, height: 860 });
   const minimumWidthProfile = await page.locator(".complete-profile").boundingBox(),
     minimumWidthContent = await page.locator("#content").boundingBox(),
