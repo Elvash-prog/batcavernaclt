@@ -130,6 +130,16 @@ function safeImage(v: unknown): string | null {
   if (typeof v !== "string") return null;
   try { const u=new URL(v); return u.protocol === "https:" && !u.username && !u.password ? u.href : null; } catch { return null; }
 }
+function raMedia(v: unknown, prefix = "", suffix = ""): string {
+  const raw = typeof v === "string" ? v.trim() : "";
+  if (!raw) return "";
+  if (/^https:\/\//i.test(raw)) return safeImage(raw) || "";
+  if (raw.startsWith("//")) return safeImage("https:" + raw) || "";
+  const clean = raw.replace(/^\/+/, "");
+  let path = clean.includes("/") ? clean : prefix + clean;
+  if (suffix && !/\.[a-z0-9]{2,5}$/i.test(path)) path += suffix;
+  return safeImage("https://media.retroachievements.org/" + path) || "";
+}
 const SGDB = Deno.env.get("SGDB_KEY") ?? "";
 
 const STEAM = Deno.env.get("STEAM_KEY") ?? "";
@@ -391,7 +401,7 @@ async function steamGratis() {
       case "raPerfil": {
         const p=await ra("API_GetUserProfile.php",{u:b.usuario});
         if(!p?.User&&!p?.ULID)throw new ApiError(404,"Perfil RetroAchievements não encontrado.");
-        out={usuario:p.User||b.usuario,ulid:p.ULID||"",avatar:p.UserPic?`https://media.retroachievements.org${p.UserPic}`:"",pontos:Number(p.TotalPoints)||0,pontosHardcore:Number(p.TotalTruePoints)||0,jogoAtual:Number(p.LastGameID)||null,presenca:p.RichPresenceMsg||"",membroDesde:p.MemberSince||""};
+        out={usuario:p.User||b.usuario,ulid:p.ULID||"",avatar:raMedia(p.UserPic,"UserPic/"),pontos:Number(p.TotalPoints)||0,pontosHardcore:Number(p.TotalTruePoints)||0,jogoAtual:Number(p.LastGameID)||null,presenca:p.RichPresenceMsg||"",membroDesde:p.MemberSince||""};
         break;
       }
       case "raJogos": {
@@ -399,13 +409,14 @@ async function steamGratis() {
           ra("API_GetUserCompletionProgress.php",{u:b.usuario,c:500,o:b.offset||0}),
           ra("API_GetUserRecentlyPlayedGames.php",{u:b.usuario,c:50,o:0}),
         ]);
-        const map=(g:any)=>({gameId:Number(g.GameID)||0,nome:g.Title||"Jogo retrô",console:g.ConsoleName||"",capa:g.ImageIcon?`https://media.retroachievements.org${g.ImageIcon}`:"",total:Number(g.MaxPossible??g.NumPossibleAchievements??g.AchievementsTotal)||0,desbloqueadas:Number(g.NumAwarded??g.NumAchieved)||0,hardcore:Number(g.NumAwardedHardcore??g.NumAchievedHardcore)||0,ultimaVez:g.MostRecentAwardedDate||g.LastPlayed||"",premio:g.HighestAwardKind||""});
+        const map=(g:any)=>({gameId:Number(g.GameID)||0,nome:g.Title||"Jogo retrô",console:g.ConsoleName||"",capa:raMedia(g.ImageIcon,"Images/"),total:Number(g.MaxPossible??g.NumPossibleAchievements??g.AchievementsTotal)||0,desbloqueadas:Number(g.NumAwarded??g.NumAchieved)||0,hardcore:Number(g.NumAwardedHardcore??g.NumAchievedHardcore)||0,ultimaVez:g.MostRecentAwardedDate||g.LastPlayed||"",premio:g.HighestAwardKind||""});
         out={total:Number(progress?.Total)||0,jogos:(progress?.Results||[]).map(map),recentes:(recentes||[]).map(map)};
         break;
       }
       case "raConquistas": {
         const g=await ra("API_GetGameInfoAndUserProgress.php",{u:b.usuario,g:b.gameId,a:1});
-        const achievements=Object.values(g?.Achievements||{}).map((a:any)=>({id:Number(a.ID)||0,nome:a.Title||"Conquista",desc:a.Description||"",pontos:Number(a.Points)||0,got:Boolean(a.DateEarned||a.DateEarnedHardcore),hardcore:Boolean(a.DateEarnedHardcore),quando:a.DateEarnedHardcore||a.DateEarned||"",icon:a.BadgeName?`https://media.retroachievements.org/Badge/${a.BadgeName}.png`:""}));
+        const source=Array.isArray(g?.Achievements)?g.Achievements:Object.values(g?.Achievements||{});
+        const achievements=source.map((a:any)=>({id:Number(a.ID)||0,nome:a.Title||"Conquista",desc:a.Description||"",pontos:Number(a.Points)||0,got:Boolean(a.DateEarned||a.DateEarnedHardcore),hardcore:Boolean(a.DateEarnedHardcore),quando:a.DateEarnedHardcore||a.DateEarned||"",icon:raMedia(a.BadgeURL||a.BadgeName,"Badge/",".png")}));
         out={gameId:b.gameId,nome:g?.Title||"",console:g?.ConsoleName||"",lista:achievements};
         break;
       }

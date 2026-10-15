@@ -1,28 +1,82 @@
 'use strict';
 (()=>{
  const nav=$('#mainNav');
- if(nav&&!nav.querySelector('[data-discover-kind="retro"]')){const retro=document.createElement('button');retro.type='button';retro.dataset.view='retro';retro.dataset.discoverKind='retro';retro.innerHTML='<span aria-hidden="true">🏆</span><span>Minha Retro</span>';const anchor=nav.querySelector('[data-discover-kind="steam"]')||nav.querySelector('[data-view="discover"]');anchor?anchor.after(retro):nav.append(retro)}
- nav?.addEventListener('click',event=>{const button=event.target.closest('[data-discover-kind="retro"]');if(!button)return;event.stopImmediatePropagation();state.discoverTab='retro';navigate('discover').then(()=>{nav.querySelectorAll('[data-view]').forEach(item=>item.classList.toggle('active',item===button))})},true);
+ const trophy='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z M8 6H4v2a4 4 0 0 0 4 4 M16 6h4v2a4 4 0 0 1-4 4 M12 13v4 M8 21h8 M9 17h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+ if(nav&&!nav.querySelector('[data-discover-kind="retro"]')){
+  const retro=document.createElement('button');
+  retro.type='button';retro.dataset.view='retro';retro.dataset.discoverKind='retro';retro.innerHTML=`${trophy}<span>Minha Retro</span>`;
+  const anchor=nav.querySelector('[data-discover-kind="steam"]')||nav.querySelector('[data-view="discover"]');
+  anchor?anchor.after(retro):nav.append(retro);
+ }
+ nav?.addEventListener('click',event=>{
+  const button=event.target.closest('[data-discover-kind="retro"]');if(!button)return;
+  event.stopImmediatePropagation();state.discoverTab='retro';navigate('discover').then(()=>{nav.querySelectorAll('[data-view]').forEach(item=>item.classList.toggle('active',item===button))});
+ },true);
+
+ const retroCoverCache=new Map();
+ const titleTokens=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[™®©]/g,'').replace(/\b(?:the|game|edition|deluxe|ultimate|remake)\b/g,' ').replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean);
+ const titleScore=(query,candidate)=>{const q=titleTokens(query),c=titleTokens(candidate);if(!q.length||!c.length)return 0;const a=q.join(' '),b=c.join(' ');if(a===b)return 1;const cs=new Set(c),common=q.filter(x=>cs.has(x)).length;return common/q.length*.7+common/c.length*.3};
+ async function rawgCover(name,fallback){
+  const key=titleTokens(name).join(' ');if(!key)return fallback;
+  if(!retroCoverCache.has(key))retroCoverCache.set(key,(async()=>{try{const data=await api.catalog({provider:'rawg',query:name,page:1}),candidate=(data.results||[]).filter(g=>g?.background_image).map(g=>({...g,score:titleScore(name,g.name)})).sort((a,b)=>b.score-a.score)[0];if(candidate?.score>=.78)return candidate.background_image}catch{}return fallback})());
+  return retroCoverCache.get(key);
+ }
+ function hydrateRetroImages(root){
+  root.querySelectorAll('[data-retro-image]').forEach(image=>{const url=image.dataset.retroImage;image.removeAttribute('data-retro-image');if(!url){image.src='brand.jpg';return}queueCover(()=>api.coverImage(url)).then(src=>{if(image.isConnected)image.src=src}).catch(()=>{if(image.isConnected)image.src='brand.jpg'})});
+ }
+ function hydrateRetroCovers(root,rows){
+  const load=image=>{if(image.dataset.retroLoading)return;image.dataset.retroLoading='1';const matches=rows.filter(item=>String(item.gameId)===image.dataset.retroCoverId),fallback=image.dataset.retroFallback||matches[0]?.capa||'';queueCover(()=>rawgCover(image.dataset.retroCoverName,fallback)).then(async url=>{if(!url)throw Error('Capa indisponível');matches.forEach(row=>row.capa=url);return api.coverImage(url)}).then(src=>{if(image.isConnected)image.src=src}).catch(()=>{if(image.isConnected)image.src='brand.jpg'})};
+  const images=[...root.querySelectorAll('[data-retro-cover-name]')];
+  if(!('IntersectionObserver' in window)){images.slice(0,24).forEach(load);return}
+  const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){observer.unobserve(entry.target);load(entry.target)}}),{rootMargin:'280px'});
+  images.forEach(image=>observer.observe(image));
+ }
+ function retroImage(item,compact=false){return `<img loading="lazy" src="brand.jpg" data-retro-cover-id="${Number(item.gameId)||0}" data-retro-cover-name="${esc(item.nome)}" data-retro-fallback="${esc(item.capa||'')}" alt="Capa de ${esc(item.nome)}"${compact?' width="46" height="46"':''}>`}
+ async function openRetroAchievements(button,user){
+  button.disabled=true;
+  try{
+   const game=await api.bright({op:'raConquistas',usuario:String(user),gameId:Number(button.dataset.retroAchievements)}),list=game.lista||[];
+   const modal=popup(`<header><div><span class="eyebrow">${esc(game.console)}</span><h2>${esc(game.nome)}</h2><p>${list.filter(a=>a.got).length} de ${list.length} desbloqueadas</p></div><button class="icon-button" data-close>×</button></header><div class="retro-achievements">${list.map(a=>`<article class="${a.got?'earned':''} ${a.hardcore?'hardcore':''}"><img src="brand.jpg" data-retro-image="${esc(a.icon||'')}" alt=""><div><h3>${esc(a.nome)}</h3><p>${esc(a.desc)}</p><small>${a.pontos} pontos${a.hardcore?' · Hardcore':a.got?' · Desbloqueada':''}</small></div></article>`).join('')||'<p class="empty">Este jogo não retornou conquistas para essa conta.</p>'}</div>`,'retro-achievements-modal');
+   modal.querySelector('[data-close]').onclick=()=>modal.remove();hydrateRetroImages(modal);
+  }catch(error){toast(failure(error))}finally{button.disabled=false}
+ }
+ async function renderRetroContent(out,user,{readOnly=false}={}){
+  const [account,data]=await Promise.all([api.bright({op:'raPerfil',usuario:String(user)}),api.bright({op:'raJogos',usuario:String(user),offset:0})]);
+  const rows=(data.jogos||[]).map(g=>({...g,id:'retro-'+g.gameId,categoria:'jogos',status:g.premio?'🏆 100% (Platina)':'🎮 Em Progresso',plataforma:g.console||'Retro',loja:'RetroAchievements',conquistas:g.total?Math.round(g.desbloqueadas/g.total*100):0}));
+  const recent=(data.recentes||[]).slice(0,8),allImages=[...recent,...rows.filter(row=>!recent.some(item=>item.gameId===row.gameId))];
+  out.innerHTML=`<section class="retro-profile"><img src="brand.jpg" data-retro-image="${esc(account.avatar||'')}" alt="Foto de ${esc(account.usuario)}"><div><span class="eyebrow">RETROACHIEVEMENTS</span><h2>${esc(account.usuario)}</h2><p>${Number(account.pontos).toLocaleString('pt-BR')} pontos · ${Number(account.pontosHardcore).toLocaleString('pt-BR')} true points</p>${account.presenca?`<small>${esc(account.presenca)}</small>`:''}</div></section>${recent.length?`<div class="section-head"><div><h2>Jogados recentemente</h2><p>Atividade mais recente da conta.</p></div></div><div class="retro-recent">${recent.map(r=>`<button data-retro-achievements="${r.gameId}">${retroImage(r,true)}<span>${esc(r.nome)}<small>${esc(r.console)}</small></span></button>`).join('')}</div>`:''}<div class="section-head"><div><h2>Progresso retrô <small>${Number(data.total)||rows.length}</small></h2><p>Conquistas normais e Hardcore sincronizadas.</p></div></div><div class="steam-library-grid retro-library-grid">${rows.map(r=>`<div><article class="offer-card">${retroImage(r)}<div class="body"><h3>${esc(r.nome)}</h3><p>${esc(r.console)} · ${r.desbloqueadas}/${r.total} conquistas · ${r.hardcore} Hardcore</p><progress max="${r.total||1}" value="${r.desbloqueadas||0}"></progress></div></article><div class="retro-actions ${readOnly?'retro-actions-readonly':''}"><button class="secondary" data-retro-achievements="${r.gameId}">Ver conquistas</button>${readOnly?'':`<button class="secondary" data-retro-add="${esc(r.id)}">＋ Adicionar</button>`}</div></div>`).join('')||'<div class="empty">Nenhum progresso encontrado.</div>'}</div>`;
+  hydrateRetroImages(out);hydrateRetroCovers(out,allImages);
+  out.querySelectorAll('[data-retro-achievements]').forEach(button=>button.onclick=()=>openRetroAchievements(button,user));
+  if(!readOnly)out.querySelectorAll('[data-retro-add]').forEach(button=>button.onclick=async()=>{button.disabled=true;const row=rows.find(r=>r.id===button.dataset.retroAdd);try{const library=await api.library('jogos');if(library.some(x=>String(x.nome).toLocaleLowerCase('pt-BR')===row.nome.toLocaleLowerCase('pt-BR')))throw Error('Este jogo já está na sua biblioteca.');await api.saveItem({nome:row.nome,categoria:'jogos',plataforma:row.plataforma,loja:'RetroAchievements',status:row.status,capa:row.capa,conquistas:row.conquistas});button.textContent='✓ Adicionado';toast('Jogo do RetroAchievements adicionado à biblioteca.')}catch(error){toast(failure(error));button.disabled=false}});
+ }
 
  const baseDiscover=renderDiscover;
  renderDiscover=async function(){
   if(state.discoverTab!=='retro')return baseDiscover();
   setPage('Minha Retro','RETROACHIEVEMENTS');const content=$('#content');content.innerHTML='<div id="discoverBody"><div class="loading"><span class="spinner"></span>Sincronizando RetroAchievements…</div></div>';const out=$('#discoverBody');
   try{
-   const profile=await api.profile(null),user=profile?.retroachievements_ulid||profile?.retroachievements_user;
+   const profile=await api.profile(null),user=profile?.retroachievements_user||profile?.retroachievements_ulid;
    if(!user){out.innerHTML='<div class="empty">Conecte sua conta RetroAchievements em Configurações → Integrações.</div>';return}
-   const [account,data]=await Promise.all([api.bright({op:'raPerfil',usuario:String(user)}),api.bright({op:'raJogos',usuario:String(user),offset:0})]);if(state.current!=='discover'||state.discoverTab!=='retro')return;
-   const rows=(data.jogos||[]).map(g=>({...g,id:'retro-'+g.gameId,categoria:'jogos',status:g.premio?'🏆 100% (Platina)':'🎮 Em Progresso',plataforma:g.console||'Retro',loja:'RetroAchievements',conquistas:g.total?Math.round(g.desbloqueadas/g.total*100):0}));
-   const recent=(data.recentes||[]).slice(0,8);
-   out.innerHTML=`<section class="retro-profile"><img src="${validImage(account.avatar)}" alt=""><div><span class="eyebrow">RETROACHIEVEMENTS</span><h2>${esc(account.usuario)}</h2><p>${Number(account.pontos).toLocaleString('pt-BR')} pontos · ${Number(account.pontosHardcore).toLocaleString('pt-BR')} true points</p>${account.presenca?`<small>${esc(account.presenca)}</small>`:''}</div></section>${recent.length?`<div class="section-head"><div><h2>Jogados recentemente</h2><p>Atividade mais recente da sua conta.</p></div></div><div class="retro-recent">${recent.map(r=>`<button data-retro-achievements="${r.gameId}"><img src="${validImage(r.capa)}" alt=""><span>${esc(r.nome)}<small>${esc(r.console)}</small></span></button>`).join('')}</div>`:''}<div class="section-head"><div><h2>Progresso retrô <small>${Number(data.total)||rows.length}</small></h2><p>Conquistas normais e Hardcore sincronizadas.</p></div></div><div class="steam-library-grid retro-library-grid">${rows.map(r=>`<div><article class="offer-card"><img src="${validImage(r.capa)}" alt=""><div class="body"><h3>${esc(r.nome)}</h3><p>${esc(r.console)} · ${r.desbloqueadas}/${r.total} conquistas · ${r.hardcore} Hardcore</p><progress max="${r.total||1}" value="${r.desbloqueadas||0}"></progress></div></article><div class="retro-actions"><button class="secondary" data-retro-achievements="${r.gameId}">Ver conquistas</button><button class="secondary" data-retro-add="${esc(r.id)}">＋ Adicionar</button></div></div>`).join('')||'<div class="empty">Nenhum progresso encontrado.</div>'}</div>`;
-   out.querySelectorAll('[data-retro-achievements]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{const game=await api.bright({op:'raConquistas',usuario:String(user),gameId:Number(button.dataset.retroAchievements)}),list=game.lista||[],modal=popup(`<header><div><span class="eyebrow">${esc(game.console)}</span><h2>${esc(game.nome)}</h2></div><button class="icon-button" data-close>×</button></header><div class="retro-achievements">${list.map(a=>`<article class="${a.got?'earned':''} ${a.hardcore?'hardcore':''}"><img src="${validImage(a.icon)}" alt=""><div><h3>${esc(a.nome)}</h3><p>${esc(a.desc)}</p><small>${a.pontos} pontos${a.hardcore?' · Hardcore':a.got?' · Desbloqueada':''}</small></div></article>`).join('')||'<p class="empty">Nenhuma conquista disponível.</p>'}</div>`,'retro-achievements-modal');modal.querySelector('[data-close]').onclick=()=>modal.remove()}catch(error){toast(failure(error))}finally{button.disabled=false}});
-  out.querySelectorAll('[data-retro-add]').forEach(button=>button.onclick=async()=>{button.disabled=true;const row=rows.find(r=>r.id===button.dataset.retroAdd);try{const library=await api.library('jogos');if(library.some(x=>String(x.nome).toLocaleLowerCase('pt-BR')===row.nome.toLocaleLowerCase('pt-BR')))throw Error('Este jogo já está na sua biblioteca.');await api.saveItem({nome:row.nome,categoria:'jogos',plataforma:row.plataforma,loja:'RetroAchievements',status:row.status,capa:row.capa,conquistas:row.conquistas});button.textContent='✓ Adicionado';toast('Jogo do RetroAchievements adicionado à biblioteca.')}catch(error){toast(failure(error));button.disabled=false}});
+   await renderRetroContent(out,user);if(state.current!=='discover'||state.discoverTab!=='retro')return;
   }catch(error){if(out.isConnected)out.innerHTML=`<div class="empty"><strong>Não foi possível sincronizar o RetroAchievements.</strong><p>${esc(failure(error))}</p><button class="secondary" id="retryRetro">Tentar novamente</button></div>`;$('#retryRetro')?.addEventListener('click',renderDiscover)}
+ };
+
+ const baseProfile=renderProfile;
+ renderProfile=async function(userId=null){
+  await baseProfile(userId);if(state.current!=='profile')return;
+  try{
+   const profile=userId?await api.profile(userId):state.profile,user=profile?.retroachievements_user||profile?.retroachievements_ulid;
+   if(!user)return;
+   const tabs=$('.profile-tabs');if(!tabs||tabs.querySelector('[data-profile-section="retro"]'))return;
+   const tab=document.createElement('button');tab.dataset.profileSection='retro';tab.innerHTML='🏆 Retro';tabs.append(tab);
+   const panel=document.createElement('section');panel.dataset.profilePage='retro';panel.className='profile-retro-page';panel.hidden=true;panel.innerHTML='<div class="loading"><span class="spinner"></span>Sincronizando RetroAchievements…</div>';tabs.after(panel);
+   let loaded=false;tab.onclick=async()=>{$$('[data-profile-page]').forEach(node=>node.hidden=node!==panel);$$('[data-profile-section]').forEach(node=>node.classList.toggle('active',node===tab));if(loaded)return;try{await renderRetroContent(panel,user,{readOnly:true});loaded=true}catch(error){panel.innerHTML=`<div class="empty"><strong>Não foi possível abrir o RetroAchievements deste amigo.</strong><p>${esc(failure(error))}</p></div>`}};
+  }catch{}
  };
 
  const baseSettings=renderSettings;
  renderSettings=async function(){await baseSettings();if(state.current!=='settings')return;const panel=$('#settingsPanel'),settingsNav=$('.settings-nav');if(!panel||!settingsNav)return;let integrationsTab=settingsNav.querySelector('[data-settings-tab="integrations"]');if(!integrationsTab){integrationsTab=document.createElement('button');integrationsTab.dataset.settingsTab='integrations';integrationsTab.textContent='Integrações';const appTab=settingsNav.querySelector('[data-settings-tab="app"]');appTab?settingsNav.insertBefore(integrationsTab,appTab):settingsNav.append(integrationsTab);integrationsTab.onclick=()=>{if(typeof ui!=='undefined')ui.configSection='integrations';state.settingsTab='account';renderSettings()}}
-  const steamForm=$('#steamConnection'),showingIntegrations=(typeof ui!=='undefined'&&ui.configSection==='integrations')||!!steamForm;if(!showingIntegrations||$('#retroConnection'))return;const markup=`<form id="retroConnection" class="integration-form"><h3>RetroAchievements</h3><label>Usuário da conta<input name="username" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" value="${esc(state.profile?.retroachievements_user||'')}" placeholder="Seu usuário"></label><p class="muted">Sincronize perfil, jogos recentes, progresso e conquistas Hardcore. A chave da API permanece protegida no servidor.</p><button class="primary">Salvar conexão</button><p class="form-error" role="status"></p></form>`;steamForm?steamForm.insertAdjacentHTML('afterend',markup):panel.insertAdjacentHTML('beforeend',markup);const retroForm=$('#retroConnection');if(!retroForm)return;
+  const steamForm=$('#steamConnection'),showingIntegrations=(typeof ui!=='undefined'&&ui.configSection==='integrations')||!!steamForm;if(!showingIntegrations||$('#retroConnection'))return;const markup=`<form id="retroConnection" class="integration-form"><h3>RetroAchievements</h3><label>Usuário da conta<input name="username" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" value="${esc(state.profile?.retroachievements_user||'')}" placeholder="Seu usuário"></label><p class="muted">Sincronize perfil, jogos recentes, progresso e conquistas Hardcore. Seus amigos também poderão ver essa aba no seu perfil. A chave da API permanece protegida no servidor.</p><button class="primary">Salvar conexão</button><p class="form-error" role="status"></p></form>`;steamForm?steamForm.insertAdjacentHTML('afterend',markup):panel.insertAdjacentHTML('beforeend',markup);const retroForm=$('#retroConnection');if(!retroForm)return;
   retroForm.onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');button.disabled=true;try{const rows=await call('link_retroachievements',{username:form.elements.username.value.trim()}),profile=Array.isArray(rows)?rows[0]:rows;state.profile.retroachievements_user=profile?.retroachievements_user||'';state.profile.retroachievements_ulid=profile?.retroachievements_ulid||'';form.querySelector('.form-error').textContent=form.elements.username.value?'RetroAchievements conectado.':'RetroAchievements desconectado.'}catch(error){form.querySelector('.form-error').textContent=failure(error)}finally{button.disabled=false}};
  };
 })();

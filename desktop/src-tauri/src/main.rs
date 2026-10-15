@@ -339,7 +339,7 @@ async fn profile(user_id: Option<String>, state: tauri::State<'_, AppState>) -> 
     let mut p=rows.as_array().and_then(|x|x.first()).cloned().ok_or_else(||"Perfil não encontrado ou privado.".to_string())?;
     if !own {
         if let Ok(detail)=rpc(&state.client,"perfil_detalhes_autorizado",json!({"p_perfil_id":id}),&session.access_token).await {
-            if let Some(row)=detail.as_array().and_then(|x|x.first()){if let Some(obj)=p.as_object_mut(){if let Some(f)=row.get("fundo"){obj.insert("fundo".into(),f.clone());}}}
+            if let Some(row)=detail.as_array().and_then(|x|x.first()){if let Some(obj)=p.as_object_mut(){for key in ["fundo","listas","retroachievements_user","retroachievements_ulid"]{if let Some(value)=row.get(key){obj.insert(key.to_string(),value.clone());}}}}
         }
     }
     let items=get(&state.client,&format!("/rest/v1/itens?select=categoria,status,horas&user_id=eq.{id}&limit=1000"),&session.access_token).await.unwrap_or_else(|_|json!([]));
