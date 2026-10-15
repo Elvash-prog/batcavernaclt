@@ -43,6 +43,17 @@ test('início Neon Underground mantém conteúdo real e cards responsivos', () =
   assert.match(css,/@media \(prefers-reduced-motion: reduce\)/);
 });
 
+test('biblioteca cinematográfica separa o tema e preenche capas horizontais', () => {
+  const shell=read('src/main.tsx'),script=read('src/reference.js'),css=read('src/cavern-library.css');
+  assert.match(shell,/import '\.\/cavern-library\.css'/);
+  assert.match(script,/classList\.add\('cavern-library'\)/);
+  assert.match(script,/classList\.remove\([^)]*'cavern-home'[^)]*'cavern-library'/);
+  assert.match(css,/\.cavern-library \.collection-overview/);
+  assert.match(css,/aspect-ratio:\s*16 \/ 9/);
+  assert.match(css,/object-fit:\s*cover/);
+  assert.match(css,/@media \(max-width: 850px\)/);
+});
+
 test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em português', () => {
   const config=JSON.parse(read('src-tauri/tauri.conf.json')),nsis=config.bundle.windows.nsis;
   assert.equal(nsis.installMode,'currentUser');
