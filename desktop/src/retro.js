@@ -17,7 +17,7 @@
   if(!retroButton){
    retroButton=discoverButton.cloneNode(true);
    retroButton.dataset.discoverKind='retro';
-   retroButton.innerHTML=`${trophy}<span>Minha Retro</span>`;
+   retroButton.innerHTML='♛<span>Minha Retro</span>';
    steamButton.after(retroButton);
   }
  }
