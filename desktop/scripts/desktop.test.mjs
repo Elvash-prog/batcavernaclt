@@ -409,6 +409,6 @@ test('updater Windows verifica releases, exige confirmação e publica bundles a
  assert.match(rust,/UpdaterExt/);assert.match(rust,/download_and_install/);assert.match(rust,/A atualização mudou ou não está mais disponível/);
  assert.equal(config.plugins.updater.endpoints[0],'https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/latest.json');
  assert.ok(config.plugins.updater.pubkey);
- assert.match(workflow,/desktop-v\*/);assert.match(workflow,/TAURI_SIGNING_PRIVATE_KEY/);assert.match(workflow,/latest\.json/);assert.match(workflow,/windows-x86_64/);assert.match(workflow,/softprops\/action-gh-release/);assert.match(workflow,/RELEASE_TAG: \$\{\{ github\.ref_name \}\}/);assert.match(workflow,/package-lock\.json/);assert.match(workflow,/Windows-setup\.exe\.sig/);assert.doesNotMatch(workflow,/nsis\.zip/);
+ assert.match(workflow,/desktop-v\*/);assert.match(workflow,/TAURI_SIGNING_PRIVATE_KEY/);assert.match(workflow,/latest\.json/);assert.match(workflow,/windows-x86_64/);assert.match(workflow,/softprops\/action-gh-release/);assert.match(workflow,/RELEASE_TAG: \$\{\{ (?:github\.ref_name|needs\.release-metadata\.outputs\.tag) \}\}/);assert.match(workflow,/package-lock\.json/);assert.match(workflow,/Windows-setup\.exe\.sig/);assert.doesNotMatch(workflow,/nsis\.zip/);
  assert.match(guide,/signer generate/);assert.match(guide,/TAURI_SIGNING_PRIVATE_KEY/);assert.match(guide,/nenhuma release foi publicada/i);
 });
