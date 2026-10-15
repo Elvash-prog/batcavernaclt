@@ -28,6 +28,6 @@ As atualizações no Sites não são sincronizadas automaticamente com este repo
 
 ## Aplicativo para Windows
 
-A versão `0.17.5` mantém o fundo personalizado restrito à área do perfil e a barra lateral com fundo opaco, sem deixar a imagem passar por trás dela. Também adapta o cartão e a progressão às larguras menores.
+A versão `0.17.6` alinha o banner, os filtros e os grupos da biblioteca em todas as categorias (jogos, filmes, séries e animes), além das correções responsivas do perfil.
 
 O aplicativo verifica atualizações assinadas em **Configurações → Aplicativo → Verificar atualizações**. As versões do Windows são distribuídas pelas [releases do GitHub](https://github.com/Elvash-prog/batcavernaclt/releases).

@@ -849,6 +849,40 @@ try {
   await page.evaluate(() => (window.delayLibrary = false));
   await page.locator('[data-view="library"]').click();
   await page.locator("#libraryGroups").waitFor();
+  const libraryLeftEdges = await page.evaluate(() =>
+    ["#libraryCollectionHero", ".library-controls", "#libraryGroups"].map(
+      (selector) =>
+        Math.round(document.querySelector(selector).getBoundingClientRect().left),
+    ),
+  );
+  assert.ok(
+    Math.max(...libraryLeftEdges) - Math.min(...libraryLeftEdges) <= 1,
+    `Biblioteca desalinhada: ${libraryLeftEdges.join(", ")}`,
+  );
+  for (const category of ["filmes", "series", "animes"]) {
+    await page.evaluate(async (value) => {
+      state.libraryCategory = value;
+      state.libraryStatus = "all";
+      await renderLibrary();
+    }, category);
+    await page.locator("#libraryGroups").waitFor();
+    const categoryLeftEdges = await page.evaluate(() =>
+      ["#libraryCollectionHero", ".library-controls", "#libraryGroups"].map(
+        (selector) =>
+          Math.round(document.querySelector(selector).getBoundingClientRect().left),
+      ),
+    );
+    assert.ok(
+      Math.max(...categoryLeftEdges) - Math.min(...categoryLeftEdges) <= 1,
+      `${category} desalinhada: ${categoryLeftEdges.join(", ")}`,
+    );
+  }
+  await page.evaluate(async () => {
+    state.libraryCategory = "jogos";
+    state.libraryStatus = "all";
+    await renderLibrary();
+  });
+  await page.locator("#libraryGroups").waitFor();
   assert.equal(await page.locator(".category-library-card").count(), 0);
   assert.equal(await page.locator("#statusTabs").isVisible(), true);
   await page.locator('#statusTabs [data-status="progress"]').click();

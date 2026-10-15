@@ -296,7 +296,7 @@
   align-items: center;
   gap: 22px;
   min-height: 170px;
-  margin: 0 0 22px !important;
+  margin: 0 auto 22px !important;
   padding: 26px 30px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
