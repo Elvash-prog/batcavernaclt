@@ -78,6 +78,17 @@ test('central social compartilha o visual entre Amigos e Chat', () => {
   assert.match(css,/@media \(max-width: 820px\)/);
 });
 
+test('Comunidade Neon Underground preserva publicação, reações e comentários', () => {
+  const shell=read('src/main.tsx'),alignment=read('src/alignment.js'),css=read('src/cavern-community.css');
+  assert.match(shell,/import '\.\/cavern-community\.css'/);
+  assert.match(alignment,/community-reference-layout/);
+  assert.match(css,/\.community-reference-center \.composer/);
+  assert.match(css,/\.community-reference-center \.post-actions/);
+  assert.match(css,/form\[data-comment\]/);
+  assert.match(css,/\.community-reference-right > article/);
+  assert.match(css,/@media \(max-width: 900px\)/);
+});
+
 test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em português', () => {
   const config=JSON.parse(read('src-tauri/tauri.conf.json')),nsis=config.bundle.windows.nsis;
   assert.equal(nsis.installMode,'currentUser');
