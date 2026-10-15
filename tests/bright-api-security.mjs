@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 const uid='2d3268d1-4993-46d6-abba-340a2ffdd0fa';
 const site='https://batcavernaclt.gamersclt.workers.dev';
 let handler, calls=[], mode='ok';
-const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'test-anon',SUPABASE_SERVICE_ROLE_KEY:'test-service',SGDB_KEY:'test-grid',STEAM_KEY:'test-steam'};
+const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'test-anon',SUPABASE_SERVICE_ROLE_KEY:'test-service',SGDB_KEY:'test-grid',STEAM_KEY:'test-steam',RETROACHIEVEMENTS_KEY:'test-retro'};
 globalThis.Deno={env:{get:k=>env[k]},serve:fn=>{handler=fn}};
 const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
 globalThis.fetch=async (url, options={})=>{
@@ -31,6 +31,10 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('freeGamesPromotions')) return json({data:{Catalog:{searchStore:{elements:[]}}}});
   if(u.pathname.includes('featuredcategories')) return json({});
   if(u.pathname.includes('/search/results')) return new Response('');
+  if(u.pathname.includes('API_GetUserProfile.php')) return json({User:'RetroPlayer',ULID:'00003EMFWR7XB8SDPEHB3K56ZQ',UserPic:'/UserPic/RetroPlayer.png',TotalPoints:123,TotalTruePoints:456});
+  if(u.pathname.includes('API_GetUserCompletionProgress.php')) return json({Total:1,Results:[{GameID:7,Title:'Retro Game',ConsoleName:'SNES',MaxPossible:10,NumAwarded:5,NumAwardedHardcore:4}]});
+  if(u.pathname.includes('API_GetUserRecentlyPlayedGames.php')) return json([{GameID:7,Title:'Retro Game',ConsoleName:'SNES',NumPossibleAchievements:10,NumAchieved:5,NumAchievedHardcore:4}]);
+  if(u.pathname.includes('API_GetGameInfoAndUserProgress.php')) return json({Title:'Retro Game',ConsoleName:'SNES',Achievements:{1:{ID:1,Title:'Start',Description:'Begin',Points:5,BadgeName:'00001',DateEarnedHardcore:'2026-10-15'}}});
   throw new Error('Unexpected simulated URL '+u);
 };
 const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8'));
@@ -55,6 +59,7 @@ await check('large batch rejected before rate or provider',async()=>{assert.equa
 await check('query injection rejected',async()=>{assert.equal((await handler(req({op:'conquistas',steamid:'76561198000000000&key=evil',appid:42}))).status,400);assert.equal(calls.length,1)});
 await check('foreign vanity URL rejected',async()=>{assert.equal((await handler(req({op:'perfil',entrada:'https://evil.test/id/player'}))).status,400)});
 await check('unknown operation rejected',async()=>{assert.equal((await handler(req({op:'admin'}))).status,400)});
+await check('invalid RetroAchievements user rejected',async()=>{assert.equal((await handler(req({op:'raPerfil',usuario:'player&y=evil'}))).status,400)});
 await check('distributed rate denial stops providers',async()=>{mode='limited';const r=await handler(req({op:'gratis'}));assert.equal(r.status,429);assert.equal(calls.length,2);assert.equal(r.headers.get('Retry-After'),'60')});
 await check('SQL limit failure fails closed',async()=>{mode='dbfail';assert.equal((await handler(req({op:'gratis'}))).status,503);assert.equal(calls.length,2)});
 await check('provider exceptions do not leak keys',async()=>{mode='upstreamfail';const r=await handler(req({op:'perfil',steamid:'76561198000000000'}));assert.equal(r.status,502);assert.ok(!(await r.text()).includes('test-steam'))});
@@ -69,5 +74,8 @@ for(const [op,body,key] of [
  ['conquistas',{steamid:'76561198000000000',appid:42},'lista'],
  ['steamInfo',{appids:[42],nomes:['Safe Game']},'lista'],
  ['gratis',{},'epic'],
+ ['raPerfil',{usuario:'RetroPlayer'},'ulid'],
+ ['raJogos',{usuario:'00003EMFWR7XB8SDPEHB3K56ZQ'},'jogos'],
+ ['raConquistas',{usuario:'RetroPlayer',gameId:7},'lista'],
 ]) await check('compatible '+op,async()=>{const r=await handler(req({op,...body}));assert.equal(r.status,200, JSON.stringify({op,calls:calls.map(x=>x.u.href)}));const b=await r.json();assert.ok(key in b,JSON.stringify({op,b,calls:calls.map(x=>x.u.href)}));assert.equal(r.headers.get('Cache-Control'),'no-store')});
 console.log(passed+' offline checks passed');
