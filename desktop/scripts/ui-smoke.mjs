@@ -663,6 +663,30 @@ try {
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
   await page.locator(".friend-activity").waitFor();
+  const visualSystem = await page.evaluate(() => {
+    const sidebar = getComputedStyle(document.querySelector(".sidebar"));
+    const activeNavigation = getComputedStyle(
+      document.querySelector(".sidebar nav button.active"),
+    );
+    const card = getComputedStyle(document.querySelector(".reference-card"));
+    return {
+      sidebarBackground: sidebar.backgroundColor,
+      navigationBorder: activeNavigation.borderColor,
+      cardRadius: card.borderRadius,
+    };
+  });
+  assert.notEqual(visualSystem.sidebarBackground, "rgba(0, 0, 0, 0)");
+  assert.notEqual(visualSystem.navigationBorder, "rgba(0, 0, 0, 0)");
+  assert.notEqual(visualSystem.cardRadius, "0px");
+  await page.locator(".home-hero-content .primary").focus();
+  assert.equal(
+    await page.locator(".home-hero-content .primary").evaluate(
+      (button) => getComputedStyle(button).outlineStyle,
+    ),
+    "solid",
+    "A navegação por teclado deve exibir um foco visível.",
+  );
+  await page.locator(".home-hero-content .primary").evaluate((button) => button.blur());
   assert.match(
     await page.locator(".friend-activity").first().innerText(),
     /Amigo/,
