@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use base64::Engine;
 use serde_json::{json, Value};
 use std::{collections::HashMap, sync::Mutex, time::{Duration, SystemTime, UNIX_EPOCH}};
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_updater::UpdaterExt;
 
 const SUPABASE_URL: &str = "https://luoqlhgfmixvfqbfcdoc.supabase.co";
 const SUPABASE_KEY: &str = "sb_publishable_g_dTf0TrTXy_p8PjjHip2Q_ByqI2r_e";
@@ -177,6 +178,29 @@ async fn app_state(state: tauri::State<'_, AppState>) -> Result<Value, String> {
     }
     let owner = state.session.lock().map_err(|_| "Sessão indisponível.".to_string())?.clone();
     Ok(json!({"authenticated": owner.is_some(), "user": owner.map(|s| s.user), "version": env!("CARGO_PKG_VERSION")}))
+}
+
+#[tauri::command]
+async fn check_for_updates(app: AppHandle) -> Result<Value, String> {
+    let updater = app.updater().map_err(|error| format!("Não foi possível preparar a verificação de atualizações: {error}"))?;
+    match updater.check().await.map_err(|error| format!("Não foi possível verificar atualizações: {error}"))? {
+        Some(update) => Ok(json!({"available":true,"version":update.version,"notes":update.body,"date":update.date.map(|date|date.to_string())})),
+        None => Ok(json!({"available":false})),
+    }
+}
+
+#[tauri::command]
+async fn install_update(version: String, app: AppHandle) -> Result<Value, String> {
+    if version.trim().is_empty() || version.len() > 64 {
+        return Err("Versão de atualização inválida.".into());
+    }
+    let updater = app.updater().map_err(|error| format!("Não foi possível preparar a atualização: {error}"))?;
+    let update = updater.check().await.map_err(|error| format!("Não foi possível confirmar a atualização: {error}"))?
+        .filter(|update| update.version == version)
+        .ok_or_else(|| "A atualização mudou ou não está mais disponível. Verifique novamente.".to_string())?;
+    update.download_and_install(|_, _| {}, || {}).await
+        .map_err(|error| format!("Não foi possível baixar ou instalar a atualização: {error}"))?;
+    Ok(json!({"installed":true}))
 }
 
 #[tauri::command]
@@ -692,6 +716,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| desktop_runtime::show_main(app)))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(desktop_runtime::DesktopState::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -699,7 +724,7 @@ fn main() {
             }
         })
         .manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             desktop_runtime::initialize(app.handle())?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
@@ -738,4 +763,3 @@ mod tests {
     #[test] fn invalid_steam_launch_ids_are_rejected() { assert!(launch_game(0).is_err()); assert!(launch_game(10_000_000_000).is_err()); }
     #[test] fn direct_backend_only() { assert!(SUPABASE_URL.starts_with("https://")); assert!(SUPABASE_URL.ends_with(".supabase.co")); }
 }
-

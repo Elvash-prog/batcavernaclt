@@ -64,6 +64,7 @@ try {
         jogos_destaque: ["Jogo zerado"],
         conquistas_destaque: [0],
         amigos_em_comum: ["friend"],
+        fundo: { url: "https://luoqlhgfmixvfqbfcdoc.supabase.co/storage/v1/object/public/avatars/test/background.webp", escuro: 65, desfoque: 0 },
         stats: { total: 5, finished: 2, hours: 30 },
       },
       friend = {
@@ -178,8 +179,19 @@ try {
       };
     window.missionRows = [];
     window.coverCalls = 0;
+    window.coverFailureCalls = 0;
+    window.failCoverImage = false;
+    window.mediaDelay = 0;
+    window.mediaCalls = 0;
+    window.mediaResolved = 0;
+    window.slowSocialMedia = false;
+    window.diagnostics = [];
     window.saved = [];
     window.listeners = {};
+    window.unhandledRejections = [];
+    window.addEventListener("unhandledrejection", (event) =>
+      window.unhandledRejections.push(String(event.reason)),
+    );
     window.emitIncoming = () => {
       messages.push({
         id: "incoming",
@@ -201,7 +213,14 @@ try {
       },
       core: {
         invoke: async (c, p) => {
-          if (c === "client_log") return {};
+          if (c === "client_log") {
+            if (
+              p.input?.stage === "SLOW_VIEW" ||
+              p.input?.stage === "SLOW_COMMAND"
+            )
+              window.diagnostics.push(p.input);
+            return {};
+          }
           if (c === "diagnostic_status") return { size: 2048 };
           if (c === "diagnostic_export") {
             window.saved.push({ c, p });
@@ -262,7 +281,9 @@ try {
             };
           if (c === "journey_stats") throw "RPC ausente";
           if (c === "library" && window.delayLibrary)
-            await new Promise((r) => setTimeout(r, 120));
+            await new Promise((r) =>
+              setTimeout(r, window.libraryDelay || 120),
+            );
           if (c === "library")
             return p.category === "jogos"
               ? rows
@@ -295,9 +316,22 @@ try {
           if (c === "friends" || c === "search_people") return [friend];
           if (c === "cover_image") {
             window.coverCalls++;
+            if (window.failCoverImage) {
+              window.coverFailureCalls++;
+              throw new Error("Falha simulada ao carregar capa");
+            }
             return image;
           }
-          if (c === "media_url") return image;
+          if (c === "media_url") {
+            if (!p.url) throw new TypeError("URL de mídia vazia");
+            window.mediaCalls++;
+            if (window.mediaDelay)
+              await new Promise((resolve) =>
+                setTimeout(resolve, window.mediaDelay),
+              );
+            window.mediaResolved++;
+            return image;
+          }
           if (c === "save_item" || c === "update_profile") {
             window.saved.push({ c, p });
             return {};
@@ -610,7 +644,12 @@ try {
               {
                 id: "post1",
                 texto: "Publicação",
-                author: friend,
+                author: {
+                  ...friend,
+                  avatar_url: window.slowSocialMedia
+                    ? "social-avatar/slow-test.webp"
+                    : "social-avatar/test.webp",
+                },
                 created_at: "2026-10-11",
               },
             ];
@@ -802,8 +841,30 @@ try {
     await page.locator('#preferenceForm [name="social"]').isChecked(),
     false,
   );
+  await page.evaluate(() => {
+    window.mediaDelay = 900;
+    window.mediaCalls = 0;
+    window.mediaResolved = 0;
+    window.slowSocialMedia = true;
+  });
   await page.locator('[data-view="social"]').click();
   await page.locator(".community-reference-layout").waitFor();
+  const mediaStatus = await page.evaluate(() => ({
+    calls: window.mediaCalls,
+    resolved: window.mediaResolved,
+    posts: document.querySelectorAll(".post").length,
+  }));
+  assert.ok(
+    mediaStatus.calls > 0 && mediaStatus.resolved === 0,
+    `A tela social deve aparecer sem aguardar a assinatura das imagens: ${JSON.stringify(mediaStatus)}`,
+  );
+  await page.waitForFunction(
+    () => window.mediaResolved === window.mediaCalls,
+  );
+  await page.evaluate(() => {
+    window.mediaDelay = 0;
+    window.slowSocialMedia = false;
+  });
   assert.equal(
     await page.locator(".community-reference-layout > aside").count(),
     2,
@@ -848,6 +909,122 @@ try {
   await page.evaluate(() => (window.delayLibrary = false));
   await page.locator('[data-view="library"]').click();
   await page.locator("#libraryGroups").waitFor();
+  const libraryLeftEdges = await page.evaluate(() =>
+    ["#libraryCollectionHero", ".library-controls", "#libraryGroups"].map(
+      (selector) =>
+        Math.round(document.querySelector(selector).getBoundingClientRect().left),
+    ),
+  );
+  assert.ok(
+    Math.max(...libraryLeftEdges) - Math.min(...libraryLeftEdges) <= 1,
+    `Biblioteca desalinhada: ${libraryLeftEdges.join(", ")}`,
+  );
+  await page.evaluate(() => {
+    window.failCoverImage = true;
+    const root = document.createElement("div");
+    root.innerHTML =
+      '<img data-cover="https://media.rawg.io/failing-cover-smoke-test.jpg" data-cover-name="Falha simulada" data-cover-game="0">';
+    document.body.append(root);
+    window.coverFailureRoot = root;
+    hydrateCovers(root);
+    root.querySelector("img").dispatchEvent(new Event("error"));
+  });
+  await page.waitForFunction(() => window.coverFailureCalls > 0);
+  await page.evaluate(() => {
+    window.coverFailureRoot.remove();
+    window.failCoverImage = false;
+  });
+  const failures = await page.evaluate(() => window.coverFailureCalls);
+  await page.evaluate(() => {
+    const root = document.createElement("div");
+    root.innerHTML =
+      '<img data-cover="https://media.rawg.io/failing-cover-smoke-test.jpg" data-cover-name="Falha simulada" data-cover-game="0">';
+    document.body.append(root);
+    hydrateCovers(root);
+    root.remove();
+  });
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.evaluate(() => window.coverFailureCalls),
+    failures,
+    "Uma capa com falha recente não deve ser requisitada novamente.",
+  );
+  await page.route("https://example.test/direct-cover.jpg", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>',
+    }),
+  );
+  const directCoverCalls = await page.evaluate(async () => {
+    const root = document.createElement("div");
+    root.innerHTML =
+      '<img data-cover="https://example.test/direct-cover.jpg" data-cover-name="Capa direta">';
+    document.body.append(root);
+    const before = window.coverCalls;
+    hydrateCovers(root);
+    await new Promise((resolve) => {
+      const image = root.querySelector("img");
+      if (image.complete && image.naturalWidth) resolve();
+      else image.addEventListener("load", resolve, { once: true });
+    });
+    root.remove();
+    return window.coverCalls - before;
+  });
+  assert.equal(
+    directCoverCalls,
+    0,
+    "Imagens externas válidas devem carregar direto, sem duplicar o download no Tauri.",
+  );
+  for (const category of ["filmes", "series", "animes"]) {
+    await page.evaluate(async (value) => {
+      state.libraryCategory = value;
+      state.libraryStatus = "all";
+      await renderLibrary();
+    }, category);
+    await page.locator("#libraryGroups").waitFor();
+    const categoryLeftEdges = await page.evaluate(() =>
+      ["#libraryCollectionHero", ".library-controls", "#libraryGroups"].map(
+        (selector) =>
+          Math.round(document.querySelector(selector).getBoundingClientRect().left),
+      ),
+    );
+    assert.ok(
+      Math.max(...categoryLeftEdges) - Math.min(...categoryLeftEdges) <= 1,
+      `${category} desalinhada: ${categoryLeftEdges.join(", ")}`,
+    );
+  }
+  await page.evaluate(async () => {
+    window.delayLibrary = true;
+    window.libraryDelay = 800;
+    await navigate("library");
+  });
+  assert.ok(
+    await page.evaluate(() =>
+      window.diagnostics.some((entry) => entry.message.includes("ms")),
+    ),
+    "Uma troca de aba lenta deve registrar sua duração.",
+  );
+  assert.ok(
+    await page.evaluate(() =>
+      window.diagnostics.some(
+        (entry) =>
+          entry.stage === "SLOW_COMMAND" &&
+          entry.message.startsWith("library:"),
+      ),
+    ),
+    "A chamada lenta da biblioteca deve ser identificada no diagnóstico.",
+  );
+  await page.evaluate(() => {
+    window.delayLibrary = false;
+    window.libraryDelay = 120;
+  });
+  await page.evaluate(async () => {
+    state.libraryCategory = "jogos";
+    state.libraryStatus = "all";
+    await renderLibrary();
+  });
+  await page.locator("#libraryGroups").waitFor();
   assert.equal(await page.locator(".category-library-card").count(), 0);
   assert.equal(await page.locator("#statusTabs").isVisible(), true);
   await page.locator('#statusTabs [data-status="progress"]').click();
@@ -872,12 +1049,8 @@ try {
   assert.equal(await page.locator("#libraryGroups .cinema-card").count(), 1);
   await page.locator("#libraryGenre").selectOption("");
   await page.screenshot({ path: "preview/library-check.png" });
-  await page.waitForTimeout(100);
-  const warm = await page.evaluate(() => window.coverCalls);
   await page.locator("#libraryStatusFilter").selectOption("finished");
   await page.locator("#libraryStatusFilter").selectOption("all");
-  await page.waitForTimeout(100);
-  assert.equal(await page.evaluate(() => window.coverCalls), warm);
   assert.equal(await page.locator(".cinema-tabs").count(), 0);
   assert.equal(await page.locator(".collection-section").count(), 5);
   assert.equal(await page.locator(".collection-overview").count(), 0);
@@ -1149,6 +1322,41 @@ try {
   if (await friendsDockClose.isVisible()) await friendsDockClose.click();
   await page.locator("#sidebarAccount").click();
   await page.locator(".complete-profile").waitFor();
+  await page.locator("#content.profile-user-background").waitFor();
+  assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), true);
+  assert.equal(
+    await page.locator(".sidebar").evaluate((n) => getComputedStyle(n).backgroundColor),
+    "rgb(7, 18, 27)",
+    "O fundo personalizado não pode aparecer por trás da barra lateral",
+  );
+  await page.setViewportSize({ width: 980, height: 860 });
+  const minimumWidthProfile = await page.locator(".complete-profile").boundingBox(),
+    minimumWidthContent = await page.locator("#content").boundingBox(),
+    minimumWidthBody = await page.locator(".complete-profile .profile-body").boundingBox(),
+    minimumWidthInfo = await page.locator(".complete-profile .profile-info").boundingBox(),
+    minimumWidthActions = await page.locator(".complete-profile .profile-actions").boundingBox();
+  assert.ok(minimumWidthProfile.x >= minimumWidthContent.x);
+  assert.ok(minimumWidthProfile.x + minimumWidthProfile.width <= minimumWidthContent.x + minimumWidthContent.width);
+  assert.ok(minimumWidthInfo.x + minimumWidthInfo.width <= minimumWidthBody.x + minimumWidthBody.width);
+  assert.ok(minimumWidthActions.x + minimumWidthActions.width <= minimumWidthBody.x + minimumWidthBody.width);
+  await page.setViewportSize({ width: 800, height: 900 });
+  assert.equal(
+    Math.round(await page.locator(".sidebar").evaluate((n) => n.getBoundingClientRect().width)),
+    68,
+    "A barra lateral deve compactar em janelas estreitas",
+  );
+  const narrowContent = await page.locator("#content").boundingBox(),
+    narrowProfile = await page.locator(".complete-profile").boundingBox(),
+    narrowOverview = await page.locator(".profile-overview-columns").boundingBox();
+  assert.ok(narrowProfile.x >= narrowContent.x);
+  assert.ok(narrowProfile.x + narrowProfile.width <= narrowContent.x + narrowContent.width);
+  assert.ok(narrowOverview.x >= narrowContent.x);
+  assert.equal(
+    await page.locator(".profile-overview-columns").evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(" ").length),
+    1,
+    "A progressão deve ficar acima do conteúdo em janelas estreitas",
+  );
+  await page.setViewportSize({ width: 1920, height: 1080 });
   assert.equal(
     await page
       .locator(
@@ -1261,6 +1469,7 @@ try {
   await page.locator("#loginScreen").waitFor({ state: "visible" });
   await page.screenshot({ path: "preview/login-check.png" });
   assert.deepEqual(errors, []);
+  assert.deepEqual(await page.evaluate(() => window.unhandledRejections), []);
   console.log(
     "UI OK: início, biblioteca por categorias, comunidade, amigos/chat, detalhes, aparência, presença, notificações, perfil e Full HD/QHD/HD. APIs e eventos simulados.",
   );

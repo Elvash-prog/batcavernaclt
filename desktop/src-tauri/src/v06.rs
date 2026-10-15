@@ -43,13 +43,31 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
  "claim_mission_v2"=>{let id=safe_id(input["missionId"].as_str().unwrap_or(""))?;rpc(&state.client,"clt_claim_mission_v2",json!({"p_id":id}),token).await},
  "profile_bundle"=>{
    let id=safe_id(ident)?;if id!=me{let f=get(&state.client,&format!("/rest/v1/amigos?select=amigo_id&user_id=eq.{me}&amigo_id=eq.{id}&limit=1"),token).await?;if f.as_array().is_none_or(|a|a.is_empty()){return Err("Este perfil é restrito aos amigos.".into());}}
-   let personalization=rpc(&state.client,"clt_desktop_profile",json!({"p_id":id}),token).await?;
-   let mut detail=rpc(&state.client,"perfil_detalhes_autorizado",json!({"p_perfil_id":id}),token).await?;
+   let (personalization,mut detail)=tokio::try_join!(
+     rpc(&state.client,"clt_desktop_profile",json!({"p_id":id}),token),
+     rpc(&state.client,"perfil_detalhes_autorizado",json!({"p_perfil_id":id}),token)
+   )?;
    if let Some(a)=detail.as_array_mut(){if a.is_empty(){a.push(json!({}));}if let (Some(obj),Some(p))=(a[0].as_object_mut(),personalization.as_object()){obj.extend(p.clone());}}
 
    if input["light"].as_bool()==Some(true){return Ok(json!({"detail":detail}));}
-   let mut items=Vec::new();for offset in (0..10000).step_by(1000){let r=get(&state.client,&format!("/rest/v1/itens?select=id,user_id,categoria,nome,plataforma,status,nota,data,inicio,horas,loja,ano,prioridade,tempo_est,conquistas,capa,tipo,onde,duracao,steam_appid,generos,created_at,updated_at&user_id=eq.{id}&order=id.asc&offset={offset}&limit=1000"),token).await?;let rows=r.as_array().cloned().unwrap_or_default();let count=rows.len();items.extend(rows);if count<1000{break;}}
-   let ranking=match rpc(&state.client,"clt_progression_v2",json!({}),token).await{Ok(rows)=>rows,Err(_)=>rpc(&state.client,"ranking_clt",json!({}),token).await.unwrap_or(json!([]))};
+   let (items,ranking)=tokio::try_join!(
+     async {
+       let mut items=Vec::new();
+       for offset in (0..10000).step_by(1000){
+         let r=get(&state.client,&format!("/rest/v1/itens?select=id,user_id,categoria,nome,plataforma,status,nota,data,inicio,horas,loja,ano,prioridade,tempo_est,conquistas,capa,tipo,onde,duracao,steam_appid,generos,created_at,updated_at&user_id=eq.{id}&order=id.asc&offset={offset}&limit=1000"),token).await?;
+         let rows=r.as_array().cloned().unwrap_or_default();
+         let count=rows.len();items.extend(rows);
+         if count<1000{break;}
+       }
+       Ok::<_,String>(items)
+     },
+     async {
+       match rpc(&state.client,"clt_progression_v2",json!({}),token).await{
+         Ok(rows)=>Ok(rows),
+         Err(_)=>rpc(&state.client,"ranking_clt",json!({}),token).await
+       }
+     }
+   )?;
    Ok(json!({"detail":detail,"items":items,"ranking":ranking}))
  },
  "reactions"=>{let ids=input["ids"].as_array().ok_or("Mensagens inválidas.")?;if ids.len()>300{return Err("Muitas mensagens.".into());}let values:Result<Vec<&str>,String>=ids.iter().map(|i|safe_id(i.as_str().unwrap_or(""))).collect();let values=values?;if values.is_empty(){return Ok(json!([]));}get(&state.client,&format!("/rest/v1/{reaction_table}?select=message_id,user_id,emoji&message_id=in.({})",values.join(",")),token).await},

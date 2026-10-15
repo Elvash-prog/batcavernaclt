@@ -1,6 +1,6 @@
 [package]
 name = "batcaverna-clt-desktop"
-version = "0.17.0"
+version = "0.17.10"
 edition = "2021"
 
 [build-dependencies]
@@ -10,6 +10,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-notification = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }

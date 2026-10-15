@@ -185,6 +185,9 @@
   position: relative;
   isolation: isolate;
 }
+.app-shell.profile-background-active > .sidebar {
+  background: var(--bg);
+}
 .profile-user-background:before {
   content: "";
   position: fixed;
@@ -199,12 +202,92 @@
   background-position: center;
   background-size: cover;
   filter: blur(var(--user-profile-blur, 0));
-  transform: scale(1.02);
   pointer-events: none;
 }
 .profile-user-background > [data-profile-page],
 .profile-user-background > .profile-tabs {
   position: relative;
+}
+.profile-page {
+  width: min(100%, 1800px);
+  margin-inline: auto;
+  min-width: 0;
+}
+.complete-profile,
+.profile-tabs,
+[data-profile-page] {
+  box-sizing: border-box;
+  width: min(100%, 1800px);
+  margin-inline: auto;
+  min-width: 0;
+}
+.profile-tabs {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.reference-ui .profile-overview-columns {
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  align-items: start;
+}
+.profile-overview-columns > *,
+.profile-overview-columns .level-card,
+.profile-overview-columns .profile-feature {
+  min-width: 0;
+}
+@media (max-width: 1000px) {
+  .reference-ui .profile-overview-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1100px) {
+  .complete-profile .profile-body {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 12px;
+    padding: 0 16px 16px;
+  }
+  .complete-profile .profile-avatar {
+    width: 80px;
+    height: 80px;
+    margin-top: -36px;
+  }
+  .complete-profile .profile-info {
+    min-width: 0;
+    padding-top: 10px;
+  }
+  .complete-profile .profile-actions {
+    grid-column: 2;
+    padding-top: 0;
+  }
+}
+@media (max-width: 680px) {
+  .complete-profile .profile-body {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .complete-profile .profile-avatar {
+    width: 64px;
+    height: 64px;
+    margin-top: -30px;
+  }
+}
+@media (max-width: 820px) {
+  .reference-ui {
+    --sidebar: 68px;
+  }
+  .reference-ui .sidebar {
+    padding-inline: 8px;
+  }
+  .reference-ui .sidebar .logo {
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .reference-ui .sidebar nav button {
+    justify-content: center;
+    padding-inline: 8px;
+  }
+  .reference-ui #sidebarCommunity {
+    display: none;
+  }
 }
 .library-collection-hero {
   position: relative;
@@ -213,7 +296,7 @@
   align-items: center;
   gap: 22px;
   min-height: 170px;
-  margin: 0 0 22px !important;
+  margin: 0 auto 22px !important;
   padding: 26px 30px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));

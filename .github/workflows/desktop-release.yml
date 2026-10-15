@@ -1,0 +1,95 @@
+name: Release desktop Windows
+on:
+  push:
+    tags:
+      - "desktop-v*"
+permissions:
+  contents: write
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Validate version, updater key and signing secrets
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          $tagVersion = $env:RELEASE_TAG -replace '^desktop-v', ''
+          $tauri = Get-Content desktop/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $cargo = Get-Content desktop/src-tauri/Cargo.toml -Raw
+          $package = Get-Content desktop/package.json -Raw | ConvertFrom-Json
+          $lock = Get-Content desktop/package-lock.json -Raw
+          $lockVersionPattern = '(?s)^\s*\{\s*"name"\s*:\s*"batcaverna-clt-desktop"\s*,\s*"version"\s*:\s*"' + [regex]::Escape($tagVersion) + '"'
+          if ($tauri.version -ne $tagVersion -or $package.version -ne $tagVersion -or $lock -notmatch $lockVersionPattern -or $cargo -notmatch "(?m)^version = `"$([regex]::Escape($tagVersion))`"$") {
+            throw "Tag, package.json, Cargo.toml e tauri.conf.json precisam usar a mesma versão ($tagVersion)."
+          }
+          if ($tauri.plugins.updater.pubkey -eq "REPLACE_WITH_TAURI_UPDATER_PUBLIC_KEY") {
+            throw "Configure a chave pública Tauri em desktop/src-tauri/tauri.conf.json antes de publicar."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw "Configure o secret TAURI_SIGNING_PRIVATE_KEY do GitHub Actions."
+          }
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Test desktop
+        working-directory: desktop
+        run: npm test
+      - name: Build frontend
+        working-directory: desktop
+        run: npm run build:web
+      - name: Test Rust
+        working-directory: desktop/src-tauri
+        run: cargo test --release
+      - name: Build signed updater and NSIS installer
+        working-directory: desktop
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --bundles nsis --config src-tauri/tauri.release.conf.json
+      - name: Prepare signed release manifest
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          $directory = "desktop/src-tauri/target/release/bundle/nsis"
+          $installer = @(Get-ChildItem $directory -Filter "*-setup.exe")
+          if ($installer.Count -ne 1) { throw "Esperado um único instalador NSIS." }
+          $signaturePath = "$($installer[0].FullName).sig"
+          if (!(Test-Path $signaturePath)) { throw "Assinatura do instalador NSIS ausente." }
+
+          $assets = "desktop/release-assets"
+          New-Item -ItemType Directory -Force -Path $assets | Out-Null
+          Copy-Item $installer[0].FullName "$assets/BatCaverna-CLT-Windows-setup.exe"
+          Copy-Item $signaturePath "$assets/BatCaverna-CLT-Windows-setup.exe.sig"
+
+          $version = $env:RELEASE_TAG -replace '^desktop-v', ''
+          $manifest = @{
+            version = $version
+            notes = "Atualização BatCaverna CLT para Windows $version."
+            pub_date = [DateTimeOffset]::UtcNow.ToString("o")
+            platforms = @{
+              "windows-x86_64" = @{
+                url = "https://github.com/$env:REPOSITORY/releases/download/$env:RELEASE_TAG/BatCaverna-CLT-Windows-setup.exe"
+                signature = (Get-Content $signaturePath -Raw).Trim()
+              }
+            }
+          } | ConvertTo-Json -Depth 6
+          [System.IO.File]::WriteAllText("$assets/latest.json", $manifest, [System.Text.UTF8Encoding]::new($false))
+      - name: Publish GitHub Release and updater assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: BatCaverna CLT Windows ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            desktop/release-assets/BatCaverna-CLT-Windows-setup.exe
+            desktop/release-assets/BatCaverna-CLT-Windows-setup.exe.sig
+            desktop/release-assets/latest.json
