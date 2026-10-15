@@ -4,8 +4,7 @@
 }
 
 .reference-ui .app-shell {
-  --rail: 275px;
-  grid-template-columns: var(--sidebar) minmax(0, 1fr) var(--rail);
+  grid-template-columns: var(--sidebar) minmax(0, 1fr);
 }
 
 .reference-ui .app-shell.profile-background-active > .sidebar,
@@ -116,112 +115,71 @@
   height: 17px;
 }
 
-/* Painel direito */
-.cavern-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-height: 0;
-  padding: 18px 14px 56px;
-  overflow: auto;
-  border-left: 1px solid var(--line-strong);
-  background: color-mix(in srgb, var(--panel) 92%, var(--bg));
-  scrollbar-width: thin;
-}
-
-body.rail-off .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
-body.rail-off .cavern-rail { display: none; }
-
-.rail-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  height: 40px;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--bg) 70%, var(--panel));
-  color: var(--muted);
-}
-
-.rail-search svg { width: 17px; height: 17px; }
-
-.rail-search input {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--text);
-  font-size: 13px;
-}
-
-.cavern-rail #sidebarCommunity {
-  display: grid !important;
-  gap: 18px;
-  max-height: none;
-}
-
-.cavern-rail #sidebarCommunity h4 {
-  margin: 0 0 8px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 750;
-}
-
-.cavern-rail #sidebarCommunity button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 7px 6px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.cavern-rail #sidebarCommunity button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.cavern-rail #sidebarCommunity button[hidden] { display: none; }
-.cavern-rail #sidebarCommunity img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
-.cavern-rail #sidebarCommunity span { display: grid; min-width: 0; }
-.cavern-rail #sidebarCommunity b, .cavern-rail #sidebarCommunity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cavern-rail #sidebarCommunity small { color: var(--muted); font-size: 11px; }
-.cavern-rail #sidebarCommunity p { margin: 0; color: var(--muted); font-size: 12px; }
+/* Amigos ficam apenas na gaveta do rodapé */
+#sidebarCommunity { display: none !important; }
 
 .reference-ui .friends-dock {
-  right: 0 !important;
-  width: var(--rail) !important;
+  right: 24px;
+  width: 340px;
 }
 
-body[data-screen="home"] .cavern-home .resume-info {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+.friends-dock-actions label {
+  min-width: 0;
+  flex: 1;
 }
 
-body[data-screen="home"] .cavern-home .resume-info > small,
-body[data-screen="home"] .cavern-home .resume-info > h2,
-body[data-screen="home"] .cavern-home .resume-info > .journey-progress,
-body[data-screen="home"] .cavern-home .resume-info > .resume-meta {
-  flex: 0 0 100%;
+.friends-dock-actions input {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-size: 13px;
 }
 
-body[data-screen="home"] .cavern-home .resume-info > .resume-meta { order: 5; }
-
-.reference-ui .friends-dock-toggle { border-radius: 0; border-left: 0; border-right: 0; }
-
-@media (max-height: 850px) {
-  .reference-ui #sidebarCommunity { display: grid !important; }
+.friends-dock-actions label:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
 }
 
+/* Aviso de atualização */
+.update-toast {
+  position: fixed;
+  top: 84px;
+  right: 24px;
+  z-index: 300;
+  display: grid;
+  gap: 6px;
+  width: 330px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 96%, black);
+  box-shadow: 0 18px 50px #000a, 0 0 28px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.update-toast strong { font-size: 14px; }
+.update-toast small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.update-toast div { display: flex; gap: 8px; margin-top: 8px; }
+.update-toast button { min-height: 34px; padding: 6px 14px; font-size: 12px; }
+
+.update-link {
+  width: 100%;
+  min-height: 34px;
+  margin-bottom: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 22%, var(--panel));
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
 /* Início */
 body[data-screen="home"] .content { padding: 0 0 40px; }
-body[data-screen="home"] .content > * { max-width: none; }
+body[data-screen="home"] .content > * { max-width: none !important; }
+body[data-screen="home"] .reference-ui .cavern-home, body[data-screen="home"].reference-ui .cavern-home { max-width: none !important; }
 
 body[data-screen="home"] .cavern-home > .hero-greeting,
 body[data-screen="home"] .cavern-home > .dashboard-intro { display: none; }
@@ -291,16 +249,13 @@ body[data-screen="home"] .cavern-home .section-head {
 
 @media (min-width: 821px) and (max-width: 1180px) {
   .reference-ui { --sidebar: 210px; }
-  .reference-ui .app-shell { --rail: 230px; }
 }
 
 @media (max-width: 820px) {
   .reference-ui .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
-  .cavern-rail { display: none; }
   .reference-ui .sidebar .logo strong, .reference-ui .sidebar .logo small, .reference-ui .sidebar .shell-nav-more small { display: none; }
   .reference-ui .sidebar .logo img { width: 40px; height: 40px; }
   .reference-ui .sidebar nav button { justify-content: center; padding-inline: 8px; }
   .reference-ui .sidebar nav button > span { display: none; }
-  .reference-ui .friends-dock { right: 24px !important; width: 320px !important; }
   body[data-screen="home"] .cavern-home > :not(.dashboard-columns), .cavern-recent { margin-left: 16px; margin-right: 16px; }
 }

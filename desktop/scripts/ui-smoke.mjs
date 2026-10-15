@@ -771,6 +771,9 @@ try {
     /Amigo/,
   );
   assert.equal(await page.locator(".ranking-podium").count(), 1);
+  await page.locator("#updateToast [data-update-later]").click({ timeout: 15000 });
+  assert.equal(await page.locator("#updateToast").count(), 0);
+  assert.match(await page.locator("#updateLink").innerText(), /Atualizar para/);
   assert.equal(
     (await page.locator(".home-hero-content h2").innerText()).toLowerCase(),
     "jogo em progresso",
@@ -1422,7 +1425,7 @@ try {
   await page.evaluate(() => (window.adminMode = false));
   assert.equal(
     await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"]').count(),
-    2,
+    0,
   );
   await page.locator("#friendsDockToggle").click();
   await page.locator("#friendsDockPanel").waitFor();
