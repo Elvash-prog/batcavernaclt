@@ -50,6 +50,7 @@ const baseProfile=renderProfile;
 renderProfile=async function(userId=null){
  await baseProfile(userId);if(state.current!=='profile')return;
  const own=!userId||String(userId)===String(state.userId),card=$('.complete-profile');
+ $('#content').classList.add('cavern-profile');
  card?.classList.add('profile-cover-complete');
  if(own){
   $('[data-profile-section="library"]')?.remove();$('[data-profile-section="statistics"]')?.remove();
