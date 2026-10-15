@@ -306,14 +306,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.17');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.18');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.17');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.18');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
@@ -383,6 +383,7 @@ test('desktop 0.17 mantém XP, diversifica missões e combina ofertas Steam',()=
  assert.match(fixes,/collection-overview['"]\)\?\.remove\(\)/);assert.doesNotMatch(alignment,/sidebarCommunity['"]\)\?\.remove\(\)/);
  assert.match(community,/clt_progression_v2/);assert.match(community,/clt_claim_mission_v2/);assert.match(rust,/\/api\/steam-free/);
  assert.match(worker,/\['21','DLC'\]/);assert.match(sql,/clt_xp_events/);assert.match(sql,/watch_episode/);assert.match(sql,/revoke all on function clt_private\.ensure_missions/);assert.doesNotMatch(sql,/delete from public\.clt_xp_events/i);
+ assert.match(read('src/redesign.js'),/Date\.now\(\)-friendRefreshAt>60000/);
 });
 
 test('perfil desktop centraliza conteúdo e inicia dados independentes em paralelo',()=>{
