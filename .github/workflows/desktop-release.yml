@@ -16,7 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - id: version
         shell: bash
-        run: echo "tag=desktop-v$(node -p \"require('./desktop/package.json').version\")" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION=$(node -p "require('./desktop/package.json').version")
+          echo "tag=desktop-v${VERSION}" >> "$GITHUB_OUTPUT"
 
   create-release-tag:
     needs: release-metadata
