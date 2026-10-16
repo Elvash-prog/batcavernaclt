@@ -207,3 +207,5 @@
  setTimeout(autoCheck,5000);
  setInterval(autoCheck,60*1000);
 })();
+
+(()=>{const previous=renderFriends;renderFriends=async function(){await previous();if(['friends','chat'].includes(state.current))try{await window.batcavernaGroupHub?.()}catch(error){toast(failure(error))}}})();

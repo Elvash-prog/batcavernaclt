@@ -555,7 +555,9 @@ try {
                 ["weekly-media", "semana:2026-10-12", "finish_media", "Créditos finais", "Conclua 3 filmes, séries ou animes.", 3, 0, 90],
                 ["weekly-hours", "semana:2026-10-12", "play_hours", "Tempo de jogo", "Registre 8 novas horas jogadas.", 8, 4, 85],
               ].map(([id, periodo, missao_id, nome, objetivo, meta, progresso, xp]) => ({ id, periodo, missao_id, nome, objetivo, meta, progresso, xp, reivindicada: false }));
-            if (i.op === "groups") return [];
+            if (i.op === "groups") return window.testGroups||[];
+            if (i.op === 'group_messages') return [];
+            if (i.op === 'group_manage') { window.saved.push({c:'group_manage',p:i});if(i.action==='members')return [{user_id:'test',admin:true},{user_id:'member-2',admin:false}];return []; }
             if (i.op === "reactions") return reactions;
             if (i.op === "react") {
               reactions = i.remove
@@ -1695,6 +1697,23 @@ try {
     false,
   );
   await page.screenshot({ path: "preview/library-hd-check.png" });
+  // Preset ratings preserve text; deletion uses an in-app confirmation.
+  await page.evaluate(async()=>{state.libraryCategory='jogos';await navigate('library')});
+  await page.locator('#addItem').click();
+  await page.locator('[name="nota"]').selectOption('⭐⭐⭐⭐ Muito bom');
+  assert.equal(await page.locator('[name="nota"]').inputValue(),'⭐⭐⭐⭐ Muito bom');
+  await page.locator('.editor-overlay [data-close]').first().click();
+  await page.evaluate(()=>{window.batcavernaConfirm('Excluir teste?').then(value=>window.confirmResult=value)});
+  await page.locator('.app-confirm-dialog [data-cancel]').click();
+  await page.waitForFunction(()=>window.confirmResult===false);
+  await page.evaluate(async()=>{window.testGroups=[{id:'group-test',nome:'Grupo de teste',criado_por:'test'}];await navigate('friends')});
+  await page.locator('.community-split-tabs [data-pane="groups"]').click();
+  await page.locator('[data-group="group-test"]').click();
+  await page.getByRole('button',{name:'⚙ Configurações do grupo'}).click();
+  await page.locator('.group-settings-dialog [data-photo]').waitFor();
+  assert.equal(await page.locator('.group-settings-dialog [data-remove="member-2"]').count(),1);
+  await page.screenshot({path:'preview/group-settings-check.png'});
+  await page.locator('.group-settings-dialog [data-close]').click();
   await page.evaluate(() => showLogin());
   await page.locator("#loginScreen").waitFor({ state: "visible" });
   await page.screenshot({ path: "preview/login-check.png" });

@@ -109,6 +109,22 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
  "save_sticker"=>{let path=input["path"].as_str().unwrap_or("");let name=input["name"].as_str().unwrap_or("Figurinha");if !path.starts_with(&format!("{me}/"))||path.len()>300||name.chars().count()>80{return Err("Figurinha inválida.".into());}write(&state,&session,reqwest::Method::POST,"/rest/v1/clt_account_stickers",json!({"id":format!("desktop-{me}-{}",SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis()),"user_id":me,"name":name,"filename":name,"path":path})).await},
  "delete_sticker"=>{let id=safe_id(ident)?;write(&state,&session,reqwest::Method::DELETE,&format!("/rest/v1/clt_account_stickers?id=eq.{id}&user_id=eq.{me}"),json!({})).await},
  "groups"=>{let memberships=get(&state.client,&format!("/rest/v1/clt_chat_group_members?select=group_id&user_id=eq.{me}"),token).await?;let ids:Vec<&str>=memberships.as_array().into_iter().flatten().filter_map(|m|m["group_id"].as_str()).collect();if ids.is_empty(){return Ok(json!([]));}get(&state.client,&format!("/rest/v1/clt_chat_groups?select=*&id=in.({})",ids.join(",")),token).await},
+ "group_manage"=>{
+  let action=input["action"].as_str().unwrap_or("");
+  if action=="create"{let name=input["name"].as_str().unwrap_or("").trim();if name.is_empty()||name.chars().count()>60{return Err("Informe um nome de até 60 caracteres.".into());}let members=input["members"].as_array().cloned().unwrap_or_default();if members.len()>50{return Err("Escolha até 50 amigos.".into());}for member in &members{safe_id(member.as_str().unwrap_or(""))?;}return rpc(&state.client,"criar_grupo_convites_clt",json!({"p_nome":name,"p_membros":members}),token).await;}
+  let id=safe_id(ident)?;
+  let membership=get(&state.client,&format!("/rest/v1/clt_chat_group_members?select=user_id,admin&group_id=eq.{id}&user_id=eq.{me}&limit=1"),token).await?;
+  let member=membership.as_array().and_then(|rows|rows.first()).ok_or_else(||"Você não participa deste grupo.".to_string())?;
+  if action=="members"{let mut members=get(&state.client,&format!("/rest/v1/clt_chat_group_members?select=user_id,admin&group_id=eq.{id}&limit=1000"),token).await?;let ids=members.as_array().into_iter().flatten().filter_map(|m|m["user_id"].as_str()).collect::<Vec<_>>().join(",");if !ids.is_empty(){let profiles=get(&state.client,&format!("/rest/v1/perfis_publicos_clt?select=id,nome,slug&id=in.({ids})"),token).await?;for member in members.as_array_mut().into_iter().flatten(){if let Some(profile)=profiles.as_array().into_iter().flatten().find(|p|p["id"]==member["user_id"]){member["nome"]=profile["nome"].clone();}}}return Ok(members);}
+  if action=="leave"{return rpc(&state.client,"sair_grupo_clt",json!({"p_group_id":id}),token).await;}
+  if member["admin"].as_bool()!=Some(true){return Err("Somente administradores podem alterar o grupo.".into());}
+  match action{
+   "rename"=>{let name=input["name"].as_str().unwrap_or("").trim();if name.is_empty()||name.chars().count()>60{return Err("Nome inválido.".into());}write(&state,&session,reqwest::Method::PATCH,&format!("/rest/v1/clt_chat_groups?id=eq.{id}"),json!({"nome":name})).await},
+   "invite"|"remove"|"admin"=>{let user=safe_id(input["user_id"].as_str().unwrap_or(""))?;let mut args=json!({"p_group_id":id,"p_user_id":user});let function=match action{"invite"=>"convidar_grupo_clt","remove"=>"remover_membro_grupo_clt",_=>{args["p_admin"]=json!(input["admin"].as_bool().unwrap_or(false));"definir_admin_grupo_clt"}};rpc(&state.client,function,args,token).await},
+   "photo"=>{let upload:UploadInput=serde_json::from_value(input["image"].clone()).map_err(|_|"Imagem inválida.".to_string())?;let uploaded=moderated_upload_at(upload,&state,"group-avatars",&id).await?;write(&state,&session,reqwest::Method::PATCH,&format!("/rest/v1/clt_chat_groups?id=eq.{id}"),json!({"foto_path":uploaded["path"]})).await},
+   _=>Err("Configuração de grupo inválida.".into())
+  }
+ },
  "group_messages"=>{let id=safe_id(ident)?;get(&state.client,&format!("/rest/v1/clt_chat_group_messages?select=*&group_id=eq.{id}&order=created_at.desc&limit=300"),token).await},
  "group_send"=>{let id=safe_id(ident)?;let text=input["text"].as_str().unwrap_or("").trim();let media=input["media"].as_str();if let Some(path)=media{if !path.starts_with(&format!("{me}/"))||path.contains(".."){return Err("Imagem de grupo inválida.".into());}}if (text.is_empty()&&media.is_none())||text.chars().count()>2000{return Err("Escreva até 2.000 caracteres.".into());}write(&state,&session,reqwest::Method::POST,"/rest/v1/clt_chat_group_messages",json!({"group_id":id,"remetente_id":me,"texto":text,"midia_path":media})).await},
  "read_group"=>{let id=safe_id(ident)?;let response=state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_chat_group_reads?on_conflict=group_id,user_id")).header("apikey",SUPABASE_KEY).bearer_auth(token).header("content-type","application/json").header("prefer","resolution=merge-duplicates").json(&json!({"group_id":id,"user_id":me,"last_read_at":chrono::Utc::now().to_rfc3339()})).send().await.map_err(|_|"Falha ao marcar leitura.".to_string())?;value(response).await},
@@ -127,10 +143,13 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
 #[tauri::command]
 pub async fn upload_chat_image(input:UploadInput,group:Option<bool>,state:tauri::State<'_,AppState>)->Result<Value,String>{moderated_upload(input,&state,if group==Some(true){"group-chat-media"}else{"chat-media"}).await}
 pub async fn moderated_upload(input:UploadInput,state:&AppState,bucket:&str)->Result<Value,String>{
+ let session=current(state).await?;moderated_upload_at(input,state,bucket,&session.user.id).await
+}
+async fn moderated_upload_at(input:UploadInput,state:&AppState,bucket:&str,owner:&str)->Result<Value,String>{
  let session=current(state).await?;if input.base64.len()>14_000_000||!matches!(input.mime.as_str(),"image/png"|"image/jpeg"|"image/webp"){return Err("Imagem inválida.".into());}
  let bytes=base64::engine::general_purpose::STANDARD.decode(input.base64).map_err(|_|"Imagem inválida.".to_string())?;
  if bytes.is_empty()||bytes.len()>if bucket=="chat-media"||bucket=="group-chat-media"{5*1024*1024}else{10*1024*1024}{return Err("Imagem maior que o limite permitido.".into());}
- let ext=match input.mime.as_str(){"image/png"=>"png","image/jpeg"=>"jpg",_=>"webp"};let path=format!("{}/desktop-{}.{ext}",session.user.id,SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis());
+ let ext=match input.mime.as_str(){"image/png"=>"png","image/jpeg"=>"jpg",_=>"webp"};let path=format!("{}/desktop-{}.{ext}",owner,SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis());
  let r=state.client.post(format!("{CATALOG_ORIGIN}/api/media/upload")).query(&[("bucket",bucket),("path",path.as_str())]).bearer_auth(&session.access_token).header("content-type",&input.mime).body(bytes).send().await.map_err(|_|"Não foi possível enviar a imagem.".to_string())?;value(r).await?;
  Ok(json!({"path":path,"url":format!("{SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}")}))
 }
