@@ -1425,8 +1425,8 @@ try {
   );
   await page.evaluate(() => (window.adminMode = false));
   assert.equal(
-    await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"],#mainNav [data-view="settings"],#mainNav [data-view="profile"]').count(),
-    4,
+    await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"],#mainNav [data-view="profile"]').count(),
+    0,
   );
   await page.locator("#friendsDockToggle").click();
   await page.locator("#friendsDockPanel").waitFor();
