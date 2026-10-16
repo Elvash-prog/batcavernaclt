@@ -7,10 +7,8 @@ import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-/** Dependency-free Auth client. The anon key is supplied at build time. */
+/** Dependency-free Auth client. The public application key is supplied at build time. */
 public final class SupabaseAuthClient {
     public interface Callback { void done(boolean ok, String message); }
     public void recover(String email,Callback callback){java.util.concurrent.ExecutorService executor=Executors.newSingleThreadExecutor();executor.execute(()->{boolean success=false;String message="Não foi possível enviar. Tente novamente mais tarde.";try{String[] config=loadConfig();HttpURLConnection c=(HttpURLConnection)new URL(config[0]+"/auth/v1/recover?redirect_to="+URLEncoder.encode("https://batcavernaclt.gamersclt.workers.dev/","UTF-8")).openConnection();try{c.setInstanceFollowRedirects(false);c.setRequestMethod("POST");c.setDoOutput(true);c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("apikey",config[1]);c.setRequestProperty("Content-Type","application/json");try(OutputStream out=c.getOutputStream()){out.write(new JSONObject().put("email",email).toString().getBytes(StandardCharsets.UTF_8));}success=c.getResponseCode()>=200&&c.getResponseCode()<300;if(success)message="Se o e-mail estiver cadastrado, você receberá um link para recuperar sua senha.";}finally{c.disconnect();}}catch(Exception ignored){}boolean ok=success;String result=message;new Handler(Looper.getMainLooper()).post(()->callback.done(ok,result));executor.shutdown();});}
@@ -70,19 +68,9 @@ public final class SupabaseAuthClient {
             }catch(Exception ignored){}finally{executor.shutdown();}
         });
     }
-    private static String[] cachedConfig;private static long configAt;
-    static synchronized String[] loadConfig() throws Exception {
-        if(cachedConfig!=null&&android.os.SystemClock.elapsedRealtime()-configAt<300000)return cachedConfig.clone();
-        HttpURLConnection c=(HttpURLConnection)new URL("https://batcavernaclt.gamersclt.workers.dev/config.js").openConnection();
-        c.setInstanceFollowRedirects(false); c.setConnectTimeout(12000); c.setReadTimeout(12000);
-        try{
-            if(c.getResponseCode()!=200)throw new IOException("Configuração indisponível");
-            String body=read(c.getInputStream()).trim();int start=body.indexOf('{'),end=body.lastIndexOf('}');
-            if(start<0||end<start)throw new IOException("Configuração inválida");
-            JSONObject config=new JSONObject(body.substring(start,end+1));String url=config.optString("SUPABASE_URL",""),key=config.optString("SUPABASE_ANON_KEY","");
-            if(!url.equals(BuildConfig.SUPABASE_URL)||key.isEmpty())throw new IOException("Configuração inválida");
-            cachedConfig=new String[]{url,key};configAt=android.os.SystemClock.elapsedRealtime();return cachedConfig.clone();
-        }finally{c.disconnect();}
+    /** Local bootstrap: no request to the website is needed to reach Auth or REST. */
+    static String[] loadConfig() {
+        return new String[]{BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_PUBLISHABLE_KEY};
     }
     private static String read(InputStream in)throws IOException{
         if(in==null)return "";try(InputStream source=in;ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] b=new byte[4096];int n;while((n=source.read(b))!=-1){if(out.size()+n>524288)throw new IOException("Resposta muito grande");out.write(b,0,n);}return new String(out.toByteArray(),StandardCharsets.UTF_8);}

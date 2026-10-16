@@ -15,3 +15,9 @@ O download usa HTTPS, verifica SHA-256, pacote, versão e a mesma assinatura do 
 5. Instale a primeira versão com atualizador manualmente. Para validar ponta a ponta, publique uma versão posterior assinada com a mesma chave, verifique consulta, progresso, autorização do Android e preservação dos dados.
 
 A compilação existente continua entregando APK de CI para assinatura posterior. Não há assinatura automática com chave persistente configurada neste patch.
+
+## 1.7.6 — configuração local
+
+O bootstrap do Supabase agora usa `BuildConfig.SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` e não consulta `/config.js`. A chave pública padrão corresponde à do cliente Windows. Builds podem usar `-PsupabasePublishableKey=...`; o Gradle rejeita chaves fora do formato publishable, inclusive chaves administrativas. A antiga propriedade `supabaseAnonKey` foi substituída.
+
+Esta etapa elimina somente a dependência do arquivo de configuração do site. Login por usuário, catálogos, moderação de mídia, fundo padrão e redirects de confirmação/recuperação ainda usam o Worker atual. O site e o Worker não devem ser desligados nesta versão.
