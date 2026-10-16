@@ -116,7 +116,7 @@
 }
 
 /* Amigos ficam apenas na gaveta do rodapé */
-#sidebarCommunity { display: none !important; }
+
 
 .reference-ui .friends-dock {
   right: 24px;
@@ -235,7 +235,7 @@ body[data-screen="home"] .cavern-home .section-head {
 
 .cavern-recent .hero-activity .friend-activities {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--reference-card-width, 300px)), 1fr));
   gap: 12px;
   max-height: none;
 }
@@ -258,4 +258,111 @@ body[data-screen="home"] .cavern-home .section-head {
   .reference-ui .sidebar nav button { justify-content: center; padding-inline: 8px; }
   .reference-ui .sidebar nav button > span { display: none; }
   body[data-screen="home"] .cavern-home > :not(.dashboard-columns), .cavern-recent { margin-left: 16px; margin-right: 16px; }
+}
+
+/* Painel direito: amigos online e jogando na Steam */
+.reference-ui .app-shell { --rail: 275px; grid-template-columns: var(--sidebar) minmax(0, 1fr) var(--rail); }
+body.rail-off.reference-ui .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+body.rail-off .cavern-rail { display: none; }
+.cavern-rail { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; padding: 20px 14px 64px; overflow: auto; border-left: 1px solid var(--line-strong); background: color-mix(in srgb, var(--panel) 92%, var(--bg)); scrollbar-width: thin; }
+.cavern-rail #sidebarCommunity { display: grid !important; gap: 20px; max-height: none; }
+.cavern-rail #sidebarCommunity h4 { margin: 0 0 8px; color: var(--text); font-size: 13px; font-weight: 750; }
+.cavern-rail #sidebarCommunity button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 6px; border: 0; border-radius: 9px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.cavern-rail #sidebarCommunity button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cavern-rail #sidebarCommunity img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.cavern-rail #sidebarCommunity span { display: grid; min-width: 0; }
+.cavern-rail #sidebarCommunity b, .cavern-rail #sidebarCommunity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cavern-rail #sidebarCommunity small { color: var(--muted); font-size: 11px; }
+.cavern-rail #sidebarCommunity p { margin: 0; color: var(--muted); font-size: 12px; }
+.profile-user-background:before { right: var(--rail) !important; }
+body.rail-off .profile-user-background:before { right: 0 !important; }
+@media (max-width: 1180px) { .reference-ui .app-shell { --rail: 230px; } }
+@media (max-width: 820px) {
+  .reference-ui .app-shell, body.rail-off.reference-ui .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
+  .cavern-rail { display: none; }
+}
+/* Cabeçalhos de página enxutos, como na referência */
+.reference-ui .library-collection-hero,
+.reference-ui .community-reference-heading {
+  min-height: 0;
+  margin: 0 0 18px;
+  padding: 14px 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.reference-ui .library-collection-hero::before,
+.reference-ui .library-collection-hero::after,
+.reference-ui .community-reference-heading::before,
+.reference-ui .community-reference-heading::after { display: none; }
+
+.reference-ui .library-collection-hero h2,
+.reference-ui .community-reference-heading h2 {
+  margin: 4px 0 2px;
+  font-size: 26px;
+  letter-spacing: -.02em;
+}
+
+.reference-ui .library-collection-hero p,
+.reference-ui .community-reference-heading p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.reference-ui .library-collection-hero .library-hero-icon { display: none; }
+.reference-ui .library-collection-hero .library-hero-metrics { gap: 10px; }
+
+/* Cards e painéis com o mesmo acabamento em todas as abas */
+.reference-ui .community-layout > *,
+.reference-ui .reference-collection .reference-card,
+.reference-ui .settings,
+.reference-ui .journey-title-card {
+  border-radius: 14px;
+  border-color: var(--line-strong);
+}
+
+.reference-ui .tabs button,
+.reference-ui .profile-tabs button,
+.reference-ui .library-status-tabs button {
+  border-radius: 8px;
+}
+/* Cards mais compactos: vertical (capa) e horizontal */
+body.reference-ui[data-card-format="poster"] .cavern-library .reference-collection {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--reference-card-width, 190px)), 1fr));
+  gap: 18px 14px;
+}
+body.reference-ui[data-card-format="landscape"] .cavern-library .reference-collection {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--reference-card-width, 300px)), 1fr));
+  gap: 18px 14px;
+}
+
+/* Perfil: conquistas legíveis e em grade densa, fundo menos pesado */
+.profile-user-background { --user-profile-dark: .55; }
+.reference-ui .cavern-profile .achievement-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.reference-ui .cavern-profile .achievement:not(.earned) { opacity: .82; }
+.reference-ui .cavern-profile .achievement:not(.earned) h3 { color: var(--text); }
+.reference-ui .cavern-profile .achievement:not(.earned) p { color: var(--muted); }
+/* Chat: bolhas compactas, imagens limitadas */
+.reference-ui .messages .message { max-width: min(520px, 70%); border-radius: 16px; }
+.reference-ui .messages .message.mine { border-bottom-right-radius: 4px; }
+.reference-ui .messages .message:not(.mine) { border-bottom-left-radius: 4px; }
+.reference-ui .messages .message-media {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 10px;
+  object-fit: cover;
+  cursor: zoom-in;
+}.reference-ui .messages img.message-media {
+  height: auto !important;
+  aspect-ratio: auto !important;
+  max-height: 220px !important;
+  width: auto !important;
+  max-width: 260px !important;
 }
