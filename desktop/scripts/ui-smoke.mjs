@@ -1355,6 +1355,8 @@ try {
   await page.waitForFunction(() =>
     document.querySelector('#mainNav [data-discover-kind="retro"].active'),
   );
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "preview/retro-check.png" });
   await page.evaluate(() => (window.failRetroAchievements = true));
   await page.locator('[data-retro-achievements="77"]').click();
   await page.locator(".retro-achievements-modal [data-retry]").waitFor();
