@@ -366,3 +366,20 @@ body.reference-ui[data-card-format="landscape"] .cavern-library .reference-colle
   width: auto !important;
   max-width: 260px !important;
 }
+/* Painel direito no padrão da referência */
+.cavern-rail .rail-search { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: color-mix(in srgb, var(--panel) 80%, var(--bg)); color: var(--muted); }
+.cavern-rail .rail-search svg { width: 18px; height: 18px; flex: none; }
+.cavern-rail .rail-search input { width: 100%; min-height: 38px; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 13px; }
+.cavern-rail #sidebarCommunity img { width: 40px; height: 40px; border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); box-shadow: 0 0 0 2px #0006; }
+.cavern-rail #sidebarCommunity h4 { margin: 4px 0 10px; font-size: 15px; }
+.cavern-rail #sidebarCommunity b { font-size: 14px; }
+.cavern-rail #sidebarCommunity small { font-size: 12px; }
+.cavern-rail .rail-offline img { filter: grayscale(.85); opacity: .75; border-color: var(--line-strong); }
+.cavern-rail .rail-offline b { color: var(--muted); }
+.cavern-rail .rail-all { position: sticky; bottom: 0; margin-top: auto; min-height: 42px; border: 1px solid var(--line-strong); border-radius: 10px; background: color-mix(in srgb, var(--panel) 85%, var(--bg)); color: var(--text); font-weight: 650; cursor: pointer; }
+.cavern-rail .rail-all:hover { border-color: var(--accent); }
+
+/* Abas em pílula e item ativo do menu */
+.reference-ui .status-tabs button, .reference-ui .tabs:not(.profile-tabs) > button { border: 1px solid var(--line-strong); border-radius: 8px; background: color-mix(in srgb, var(--panel) 80%, var(--bg)); }
+.reference-ui .status-tabs button.active, .reference-ui .tabs > button.active { border-color: var(--accent); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 80%, #fff 5%), var(--accent)); color: #fff; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.reference-ui .sidebar .shell-nav-main svg { width: 22px; height: 22px; }

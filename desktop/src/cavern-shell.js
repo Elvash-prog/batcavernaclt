@@ -7,7 +7,8 @@
   home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-6h4v6"/>',
   library:'<path d="M7 8h10a4 4 0 0 1 3.9 4.9l-.7 3.2a2.4 2.4 0 0 1-4 1.2L14 15.5h-4l-2.2 1.8a2.4 2.4 0 0 1-4-1.2l-.7-3.2A4 4 0 0 1 7 8z"/><path d="M8 10.5v3M6.5 12h3"/><circle cx="15.5" cy="11" r=".6"/><circle cx="17.5" cy="13" r=".6"/>',
   social:'<circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.3 3-5 6-5s5.4 1.7 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14c2.6 0 4.1 1.3 4.5 4"/>',
-  friends:'<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.7-3.8 3.4-6 7-6s6.3 2.2 7 6"/>',
+  user:'<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.7-3.8 3.4-6 7-6s6.3 2.2 7 6"/>',
+  friends:'<circle cx="10" cy="8" r="3.4"/><path d="M3.5 20c.6-3.6 3.2-5.6 6.5-5.6s5.9 2 6.5 5.6"/><path d="M19 7v6M16 10h6"/>',
   chat:'<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>',
   trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/>',
@@ -22,19 +23,20 @@
   search:'<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/>'
  };
  const main=[
-  ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['social','Comunidade','social'],
-  
+  ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['media','Filmes, Séries e Animes','film',{collection:'filmes'}],
+  ['discover','Minha Steam','steam',{kind:'steam'}],['discover','Minha Retro','retro',{kind:'retro'}],
+  ['social','Comunidade','social'],['friends','Amigos','friends'],['chat','Chat','chat'],
+  ['','Conquistas','trophy',{action:'achievements'}],['profile','Perfil','user'],['settings','Configurações','settings']
  ];
  const more=[
-  ['media','Filmes e séries','film',{collection:'filmes'}],['anime','Animes','anime',{collection:'animes'}],['lists','Listas','lists'],
-  ['recommendations','Indicações','recommend'],['statistics','Estatísticas','stats'],
-  ['discover','Jogos grátis','gift',{kind:'free'}],['discover','Minha Steam','steam',{kind:'steam'}],['discover','Minha Retro','retro',{kind:'retro'}]
+  ['anime','Animes','anime',{collection:'animes'}],['lists','Listas','lists'],['recommendations','Indicações','recommend'],
+  ['statistics','Estatísticas','stats'],['discover','Jogos grátis','gift',{kind:'free'}]
  ];
  const button=([view,label,icon,extra={}])=>{
   const attrs=extra.action?`data-shell-action="${extra.action}"`:`data-view="${view}"`;
   return `<button type="button" ${attrs}${extra.collection?` data-collection="${extra.collection}"`:''}${extra.kind?` data-discover-kind="${extra.kind}"`:''}>${svg(icons[icon])}<span>${label}</span></button>`;
  };
- nav.innerHTML=`<div class="shell-nav-main">${main.map(button).join('')}</div><div class="shell-nav-more"><small>EXPLORAR</small>${more.map(button).join('')}</div>`;
+ nav.innerHTML=`<div class="shell-nav-main">${main.map(button).join('')}</div><div class="shell-nav-more"><small>MAIS</small>${more.map(button).join('')}</div>`;
 
  const logo=$('.sidebar .logo');
  if(logo)logo.innerHTML='<img src="brand.jpg" alt=""><strong>BatCaverna <em>CLT</em></strong><small>JOGOS • PESSOAS • HISTÓRIAS</small>';
@@ -44,6 +46,16 @@
  const community=$('#sidebarCommunity');
  if(community)rail.append(community);
  shell.append(rail);
+ rail.insertAdjacentHTML('afterbegin',`<label class="rail-search">${svg(icons.search)}<input type="search" placeholder="Buscar amigos..." aria-label="Buscar amigos"></label>`);
+ rail.insertAdjacentHTML('beforeend','<button type="button" class="rail-all" data-shell-go="friends">Ver todos os amigos</button>');
+ rail.querySelector('.rail-search input').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();rail.querySelectorAll('[data-sidebar-chat]').forEach(b=>b.hidden=!!q&&!b.textContent.toLowerCase().includes(q))});
+ rail.querySelector('.rail-all').onclick=()=>navigate('friends');
+ nav.addEventListener('click',async e=>{
+  if(!e.target.closest('[data-shell-action="achievements"]'))return;
+  state.profileUser=null;
+  await navigate('profile');
+  $('[data-profile-section="achievements"]')?.click();
+ });
  const sync=()=>{document.body.dataset.screen=state.current||'home';document.body.classList.toggle('rail-off',['chat','friends'].includes(state.current))};
  const baseNavigate=navigate;
  navigate=async function(view){

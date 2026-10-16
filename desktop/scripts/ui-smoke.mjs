@@ -1340,7 +1340,7 @@ try {
   );
   assert.deepEqual(
     await page.locator('#mainNav [data-discover-kind] span').allTextContents(),
-    ["Jogos grátis", "Minha Steam", "Minha Retro"],
+    ["Minha Steam", "Minha Retro", "Jogos grátis"],
   );
   await page.locator('#mainNav [data-discover-kind="free"]').click();
   await page.waitForFunction(() =>
@@ -1424,8 +1424,8 @@ try {
   );
   await page.evaluate(() => (window.adminMode = false));
   assert.equal(
-    await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"]').count(),
-    0,
+    await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"],#mainNav [data-view="settings"],#mainNav [data-view="profile"]').count(),
+    4,
   );
   await page.locator("#friendsDockToggle").click();
   await page.locator("#friendsDockPanel").waitFor();
