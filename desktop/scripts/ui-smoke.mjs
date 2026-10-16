@@ -261,6 +261,10 @@ try {
             window.saved.push({ c, p });
             return { wallpaper: p.url };
           }
+          if(c === "verify_email_change") {
+            window.saved.push({c,p});const complete=window.saved.filter(x=>x.c===c).length===2;
+            return {complete,email:complete?'novo@exemplo.com':'old@exemplo.com',message:complete?'E-mail alterado. Use o novo endereço no próximo login.':'Código aceito. Confirme também o código enviado ao outro endereço.'};
+          }
           if (c === "change_email" || c === "link_steam") {
             window.saved.push({ c, p });
             return { message: "Confirme o e-mail" };
@@ -1449,7 +1453,18 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "change_email"),
   );
-  await page.locator("#emailForm [data-close]").click();
+  await page.locator('#emailChangeProof [name="code"]').fill('123456');
+  await page.locator('#emailChangeProof .primary').click();
+  await page.getByText('Código aceito. Confirme também o código enviado ao outro endereço.',{exact:true}).waitFor();
+  assert.equal(await page.locator('#emailChangeProof [name="code"]').inputValue(),'');
+  await page.locator('#emailChangeProof [name="email"]').fill('old@exemplo.com');
+  await page.locator('#emailChangeProof [name="code"]').fill('654321');
+  await page.locator('#emailChangeProof .primary').click();
+  await page.getByText('E-mail alterado. Use o novo endereço no próximo login.',{exact:true}).waitFor();
+  assert.equal(await page.locator('#emailChangeProof .primary').isVisible(),false);
+  assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='verify_email_change').length),2);
+  await page.screenshot({path:'preview/email-change-check.png'});
+  await page.locator('#emailChangeProof [data-close]').click();
   await page.evaluate(() => (window.adminMode = true));
   await page.locator('[data-settings-tab="appearance"]').click();
   await page.locator(".launcher-admin").waitFor();
