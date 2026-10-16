@@ -54,7 +54,7 @@ public final class MainActivity extends Activity {
     public void openProfile(){login=null;home=new HomeView(this);home.setForeground(foreground);display(home);handleNotificationIntent();}
     private void applyWindowTheme(){getWindow().setStatusBarColor(NativeTheme.backgroundStart(this));getWindow().setNavigationBarColor(NativeTheme.backgroundEnd(this));}
     public void applyTheme(){applyWindowTheme();if(home!=null)openProfile();else showLogin();}
-    @Override protected void onResume(){super.onResume();foreground=true;PushSetup.register(this);if(alerts!=null)alerts.foreground(true);if(home!=null)home.setForeground(true);}
+    @Override protected void onResume(){super.onResume();AppUpdater.automatic(this);foreground=true;PushSetup.register(this);if(alerts!=null)alerts.foreground(true);if(home!=null)home.setForeground(true);}
     @Override protected void onPause(){foreground=false;if(alerts!=null)alerts.foreground(false);if(home!=null)home.setForeground(false);super.onPause();}
     public void showLogin(){home=null;login=new LoginView(this);display(login);}
     public void logout(){notificationRequest++;getIntent().removeExtra("notification_id");getIntent().removeExtra("notification_user");getIntent().removeExtra("notifications");PushSetup.revoke(this);AccountImageLoader.clear();getSharedPreferences("batcaverna",MODE_PRIVATE).edit().clear().apply();showLogin();}

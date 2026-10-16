@@ -3,7 +3,7 @@ on:
   push:
     branches: [codex/retro-steam-0.17.36, codex/desktop-0.17.37-fixes, codex/desktop-0.17.38-fixes]
   pull_request:
-    paths: ['desktop/**', 'supabase/functions/bright-api/**', 'tests/bright-api-security.mjs']
+    paths: ['desktop/**', 'supabase/functions/bright-api/**', 'tests/bright-api-security.mjs', 'supabase/functions/native-api/**', 'tests/native-api.mjs', 'tests/native-dependencies.mjs']
 permissions:
   contents: read
 jobs:
@@ -14,6 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: node tests/native-dependencies.mjs
+      - run: node tests/native-api.mjs
       - run: node tests/bright-api-security.mjs
       - run: npm ci
         working-directory: desktop

@@ -1,14 +1,21 @@
 plugins { id 'com.android.application' }
 
+// Public application key, intentionally shipped like the Windows client.
+// Reject administrative keys before they can enter an APK.
+def publicSupabaseKey = (project.findProperty('supabasePublishableKey') ?: 'sb_publishable_g_dTf0TrTXy_p8PjjHip2Q_ByqI2r_e').toString().trim()
+if (!(publicSupabaseKey ==~ /sb_publishable_[A-Za-z0-9_-]+/)) {
+    throw new GradleException('Use only a Supabase publishable key for the Android client')
+}
+
 android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
     defaultConfig {
         applicationId 'dev.gamersclt.batcaverna.nativeapp'
         minSdk 23
         targetSdk 36
-        versionCode 51
-        versionName '1.7.4'
+        versionCode 55
+        versionName '1.7.8'
         buildConfigField 'String', 'SUPABASE_URL', '"https://luoqlhgfmixvfqbfcdoc.supabase.co"'
-        buildConfigField 'String', 'SUPABASE_ANON_KEY', '"' + (project.findProperty('supabaseAnonKey') ?: '') + '"'
+        buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', groovy.json.JsonOutput.toJson(publicSupabaseKey)
     }
     buildTypes { debug { applicationIdSuffix '.preview' } }
     buildFeatures { buildConfig true }
@@ -28,6 +35,9 @@ java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 // This keeps large binary uploads out of connector requests and verifies the exact bytes.
 tasks.register('restoreLogo') {
     doLast {
+        def wallpaper = file('src/main/res/drawable-nodpi/login_background.jpg')
+        wallpaper.parentFile.mkdirs()
+        wallpaper.bytes = rootProject.file('../desktop/src/login-cave.jpg').bytes
         def target = file('src/main/res/drawable-nodpi/app_logo.png')
         if (!target.exists()) {
             def chunks = rootProject.file('assets-source').listFiles()?.findAll { it.name.startsWith('app_logo.png.b64.') }?.sort { it.name }

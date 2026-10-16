@@ -223,7 +223,7 @@ test('renderer usa somente comandos Tauri', () => {
   assert.doesNotMatch(script, /fetch\(|workers\.dev|supabase\.co/);
 });
 
-test('Rust usa Supabase e limita o Worker ao proxy do catálogo', () => {
+test('Rust usa Supabase também para o catálogo e mídia', () => {
   const rust = read('src-tauri/src/main.rs');
   assert.match(rust, /\.supabase\.co/);
   assert.match(rust, /email_login_por_usuario/);
@@ -360,14 +360,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.38');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,JSON.parse(read('package.json')).version);
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.38');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,JSON.parse(read('src-tauri/tauri.conf.json')).version);
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{

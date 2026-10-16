@@ -1,2 +1,7 @@
 [functions.login-username]
 verify_jwt = false
+
+[functions.native-api]
+# Every business route validates the user with Auth and applies the SQL limiter.
+# Only health is public. This also supports the clients' publishable API key.
+verify_jwt = false

@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod native_auth;
 mod v06;
 mod desktop_runtime;
 use serde::{Deserialize, Serialize};
@@ -236,7 +237,9 @@ async fn register(input: RegisterInput, state: tauri::State<'_, AppState>) -> Re
     let response=auth(&state.client,"/auth/v1/signup").json(&json!({"email":email,"password":input.password,"data":{"nome":name,"slug":username,"username":username}})).send().await.map_err(|_|"Não foi possível criar a conta.".to_string())?;
     let status=response.status(); let body=response.text().await.map_err(|_|"A resposta foi interrompida.".to_string())?;
     if !status.is_success(){return Err(message(&body,status));}
-    Ok(json!({"message":"Conta criada. Confira seu e-mail para confirmar o cadastro."}))
+    let created: Value=serde_json::from_str(&body).map_err(|_|"O serviço enviou uma resposta inválida ao cadastro.".to_string())?;
+    let confirmation_required=created["access_token"].as_str().map(|v|v.is_empty()).unwrap_or(true);
+    Ok(json!({"confirmationRequired":confirmation_required,"message":if confirmation_required{"Conta criada. Confira seu e-mail para confirmar o cadastro."}else{"Conta criada. Você já pode entrar."}}))
 }
 
 #[tauri::command]
@@ -569,7 +572,7 @@ async fn media_url(url: String, state: tauri::State<'_, AppState>) -> Result<Str
     Ok(if value.starts_with("http"){value.to_string()}else{format!("{SUPABASE_URL}/storage/v1{value}")})
 }
 
-const CATALOG_ORIGIN: &str = "https://batcavernaclt.gamersclt.workers.dev";
+const CATALOG_ORIGIN: &str = "https://luoqlhgfmixvfqbfcdoc.supabase.co/functions/v1/native-api";
 #[tauri::command]
 async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?;
@@ -743,7 +746,7 @@ fn main() {
             }
         })
         .manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, link_retroachievements, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+        .invoke_handler(tauri::generate_handler![desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, native_auth::resend_confirmation, native_auth::verify_email_proof, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, link_retroachievements, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             desktop_runtime::initialize(app.handle())?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
