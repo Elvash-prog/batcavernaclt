@@ -25,7 +25,7 @@
  const main=[
   ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['media','Filmes, Séries e Animes','film',{collection:'filmes'}],
   ['discover','Minha Steam','steam',{kind:'steam'}],['discover','Minha Retro','retro',{kind:'retro'}],
-  ['social','Comunidade','social'],['friends','Amigos','friends'],['chat','Chat','chat'],
+  ['social','Comunidade','social'],
   ['','Conquistas','trophy',{action:'achievements'}],['profile','Perfil','user'],['settings','Configurações','settings']
  ];
  const more=[
