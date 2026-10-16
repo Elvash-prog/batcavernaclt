@@ -39,7 +39,12 @@
  const logo=$('.sidebar .logo');
  if(logo)logo.innerHTML='<img src="brand.jpg" alt=""><strong>BatCaverna <em>CLT</em></strong><small>JOGOS • PESSOAS • HISTÓRIAS</small>';
 
- const sync=()=>{document.body.dataset.screen=state.current||'home'};
+ const rail=document.createElement('aside');
+ rail.className='cavern-rail';rail.setAttribute('aria-label','Amigos online e jogando na Steam');
+ const community=$('#sidebarCommunity');
+ if(community)rail.append(community);
+ shell.append(rail);
+ const sync=()=>{document.body.dataset.screen=state.current||'home';document.body.classList.toggle('rail-off',['chat','friends'].includes(state.current))};
  const baseNavigate=navigate;
  navigate=async function(view){
   document.body.dataset.screen=view;
