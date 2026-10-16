@@ -469,3 +469,13 @@ body[data-screen="discover"] .retro-recent > button { flex: 0 0 240px; }
 .cavern-list .reference-card .card-shade, .cavern-list .reference-card .card-open { display: none; }
 .cavern-list .reference-card .body { position: static; padding: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .cavern-list .reference-card .body h3 { margin: 0; font-size: 16px; }
+
+/* O rolagem ocupa toda a área; o conteúdo se limita por padding, sem faixa vazia à direita */
+.reference-ui #content.cavern-library,
+.reference-ui #content.cavern-home,
+.reference-ui #content.cavern-profile {
+  max-width: none;
+  padding-inline: max(22px, calc((100% - 2200px) / 2));
+}
+.reference-ui .app-shell > .cavern-rail { grid-column: 3; grid-row: 1; }
+.reference-ui body.rail-off .app-shell > .cavern-rail { display: none !important; }
