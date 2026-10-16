@@ -479,3 +479,285 @@ body[data-screen="discover"] .retro-recent > button { flex: 0 0 240px; }
 }
 .reference-ui .app-shell > .cavern-rail { grid-column: 3; grid-row: 1; }
 .reference-ui body.rail-off .app-shell > .cavern-rail { display: none !important; }
+
+/* 0.17.33 — linguagem visual unificada dos conceitos BatCaverna */
+:root {
+  --cavern-ink: #050910;
+  --cavern-surface: #09111d;
+  --cavern-panel: #0d1725;
+  --cavern-violet: #762dff;
+  --cavern-violet-bright: #a56cff;
+  --cavern-gold: #f2bc53;
+}
+
+body.reference-ui {
+  background:
+    radial-gradient(circle at 56% -15%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 36%),
+    linear-gradient(145deg, var(--cavern-ink), #07111b 58%, #05080e);
+}
+
+/* Os títulos já existem dentro de cada tela. A barra antiga só repetia informação. */
+@media (min-width: 821px) {
+  .reference-ui .app-shell > main { grid-template-rows: minmax(0, 1fr); }
+  .reference-ui .app-shell > main > .topbar { display: none; }
+}
+
+.reference-ui .app-shell.profile-background-active > .sidebar,
+.reference-ui .sidebar {
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, #050a12f5 0%, #070d17ed 52%, #040810b5 100%),
+    url("login-cave.jpg") 42% bottom / auto 58% no-repeat,
+    var(--cavern-ink);
+}
+
+.reference-ui .sidebar::after {
+  content: "";
+  position: absolute;
+  inset: auto -30% 0;
+  z-index: -1;
+  height: 38%;
+  background: radial-gradient(circle at 50% 100%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 66%);
+  pointer-events: none;
+}
+
+.reference-ui .sidebar .logo img {
+  width: 72px;
+  height: 72px;
+  border-color: color-mix(in srgb, var(--accent) 66%, #fff 12%);
+  box-shadow: 0 0 0 4px #070b13cc, 0 0 30px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.reference-ui .sidebar nav button {
+  color: #b9c4d8;
+  letter-spacing: -.01em;
+}
+
+.reference-ui .sidebar nav button:hover {
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.reference-ui .sidebar nav button.active {
+  border-color: color-mix(in srgb, var(--accent) 62%, #c9b5ff 14%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 48%, #111028), color-mix(in srgb, var(--accent) 20%, #0a0c16));
+  box-shadow: inset 3px 0 var(--cavern-violet-bright), 0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.reference-ui .sidebar-foot {
+  margin-inline: -14px;
+  padding: 13px 15px 14px !important;
+  border-top-color: #61718c40;
+  background: #040810d9;
+  backdrop-filter: blur(15px);
+}
+
+.reference-ui .sidebar-account {
+  min-height: 54px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+}
+
+.reference-ui .sidebar-account:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background: color-mix(in srgb, var(--accent) 13%, #09101b);
+}
+
+.reference-ui .sidebar-account img {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 13px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.cavern-rail {
+  background:
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 34%),
+    linear-gradient(180deg, #07101bea, #050a12f6);
+  border-left-color: #7084a533;
+}
+
+.cavern-rail .rail-search,
+.reference-ui input,
+.reference-ui textarea,
+.reference-ui select {
+  border-color: #66799b55;
+  background: #091321d9;
+}
+
+.cavern-rail #sidebarCommunity section + section {
+  padding-top: 16px;
+  border-top: 1px solid #65738f36;
+}
+
+.cavern-rail #sidebarCommunity button {
+  min-height: 52px;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.cavern-rail #sidebarCommunity button:hover {
+  transform: translateX(2px);
+}
+
+.cavern-rail #sidebarCommunity img {
+  box-shadow: 0 0 0 2px #050912, 0 0 15px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.cavern-rail .rail-all {
+  background: linear-gradient(180deg, #101b2b, #09121e);
+}
+
+.reference-ui .content {
+  background:
+    linear-gradient(180deg, #06101aeb, #050a12f2),
+    radial-gradient(circle at 70% 0%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 42%);
+}
+
+.reference-ui .library-collection-hero,
+.reference-ui .community-reference-heading,
+.reference-ui .journey-heading,
+.reference-ui .friends-heading {
+  position: relative;
+}
+
+.reference-ui .library-collection-hero h2,
+.reference-ui .community-reference-heading h2,
+.reference-ui .journey-heading h2,
+.reference-ui .friends-heading h2 {
+  color: #f5f7ff;
+  font-size: clamp(27px, 2.2vw, 38px);
+  font-weight: 780;
+  letter-spacing: -.045em;
+}
+
+.reference-ui .library-collection-hero p,
+.reference-ui .community-reference-heading p,
+.reference-ui .journey-heading p,
+.reference-ui .friends-heading p {
+  color: #aebbd0;
+}
+
+.reference-ui .cavern-library .library-controls,
+.reference-ui .search-people,
+.reference-ui .community-reference-composer,
+.reference-ui .settings,
+.reference-ui .profile-feature,
+.reference-ui .journey-title-card,
+.reference-ui .notification,
+.reference-ui .offer-card {
+  border-color: #6377973d;
+  background: linear-gradient(145deg, #0d1827e8, #09111cf2);
+  box-shadow: 0 12px 32px #0004;
+}
+
+.reference-ui .cinema-card,
+.reference-ui .reference-card,
+.reference-ui .retro-game-card,
+.reference-ui .post,
+.reference-ui .friend-card {
+  border-color: #657b9e42;
+  background: linear-gradient(155deg, #0d1826, #080f19);
+  box-shadow: 0 10px 28px #0005;
+}
+
+.reference-ui .cinema-card:hover,
+.reference-ui .reference-card:hover,
+.reference-ui .retro-game-card:hover,
+.reference-ui .post:hover,
+.reference-ui .friend-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 62%, #9ab4d0 12%);
+  box-shadow: 0 17px 38px #0008, 0 0 19px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.reference-ui .primary,
+.reference-ui .cavern-lib-tabs button.active,
+.reference-ui .cavern-view-toggle button.active,
+.reference-ui .tabs > button.active {
+  background: linear-gradient(135deg, #6021ef, var(--cavern-violet-bright));
+  box-shadow: 0 7px 22px #6428e84d;
+}
+
+.reference-ui .secondary,
+.reference-ui .cavern-lib-tabs button,
+.reference-ui .cavern-view-toggle button,
+.reference-ui .tabs > button {
+  border-color: #697c9e59;
+  background: linear-gradient(180deg, #111c2d, #0a121f);
+}
+
+.reference-ui progress {
+  overflow: hidden;
+  border-radius: 999px;
+  accent-color: var(--cavern-violet-bright);
+}
+
+.reference-ui .cavern-featured-card {
+  min-height: 220px;
+  border-color: #7185a94d;
+  box-shadow: 0 16px 42px #0007;
+}
+
+.reference-ui .cavern-featured-card::after {
+  background: linear-gradient(180deg, transparent 14%, #050b14f1 92%);
+}
+
+.reference-ui .cavern-stats {
+  border-color: #6c7f9e42;
+  background: linear-gradient(90deg, #0b1522ed, #08111ced);
+  box-shadow: 0 14px 34px #0004;
+}
+
+.reference-ui .cavern-stat:nth-child(2) > svg,
+.reference-ui .achievement.earned > span,
+.reference-ui .detail-badges span.earned {
+  color: var(--cavern-gold);
+}
+
+.reference-ui .profile-tabs {
+  backdrop-filter: blur(16px);
+}
+
+.reference-ui .modern-chat,
+.reference-ui .chat-lobby {
+  border-color: #687c9e4d;
+  background: linear-gradient(145deg, #0c1725f2, #07101bed);
+}
+
+.reference-ui .settings-layout {
+  width: min(1220px, 100%);
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #697c9b42;
+  border-radius: 16px;
+  background: #08111d;
+  box-shadow: 0 20px 55px #0006;
+}
+
+.reference-ui .settings-nav {
+  padding: 18px 12px;
+  border-right: 1px solid #697c9b36;
+  background: #070f19;
+}
+
+.reference-ui .settings-layout > .settings {
+  width: 100%;
+  max-width: none;
+  min-height: 560px;
+  padding: 28px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 1180px) {
+  .reference-ui .sidebar .logo img { width: 58px; height: 58px; }
+  .reference-ui .sidebar nav button { min-height: 41px; font-size: 12px; }
+  .reference-ui .settings-layout { grid-template-columns: 185px minmax(0, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .reference-ui .settings-layout { grid-template-columns: 1fr; }
+  .reference-ui .settings-nav { border-right: 0; border-bottom: 1px solid #697c9b36; }
+}
