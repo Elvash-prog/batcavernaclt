@@ -54,6 +54,7 @@ public final class LoginView extends FrameLayout {
         GradientDrawable red=new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{0xffe60012,0xffb70410});red.setCornerRadius(dp(12));submit.setBackground(red);submit.setElevation(dp(3));form.addView(submit,params(-1,50,0,4,0,10));submit.setOnClickListener(v->submit());
         feedback=label("",13,MUTED,false);feedback.setGravity(Gravity.CENTER);feedback.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);form.addView(feedback,params(-1,-2,0,0,0,16));
         if(!registration){TextView recovery=link("Esqueci minha senha");form.addView(recovery,params(-1,48,0,0,0,4));recovery.setOnClickListener(v->{if(!busy)recovery();});
+            TextView confirmEmail=link("Confirmar meu cadastro");form.addView(confirmEmail,params(-1,48,0,0,0,4));confirmEmail.setOnClickListener(v->{if(!busy)AuthCodeSheet.show(getContext(),"",false);});
             TextView register=link("Ainda não tem perfil? Criar meu perfil");form.addView(register,params(-1,48,0,0,0,0));register.setOnClickListener(v->showForm(true));}
         password.setImeOptions(registration?android.view.inputmethod.EditorInfo.IME_ACTION_NEXT:android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
         (registration?confirmation:password).setOnEditorActionListener((v,action,event)->{if(action==android.view.inputmethod.EditorInfo.IME_ACTION_DONE){submit();return true;}return false;});
@@ -69,13 +70,14 @@ public final class LoginView extends FrameLayout {
     private void complete(boolean ok,String message){
         // Ignore a result belonging to a login screen the activity has already left.
         if(!isAttachedToWindow())return;busy=false;submit.setEnabled(true);username.setEnabled(true);password.setEnabled(true);if(registering){name.setEnabled(true);email.setEnabled(true);confirmation.setEnabled(true);}else remember.setEnabled(true);feedback.setText(message);
+        if(registering&&!ok&&message.contains("Confira seu e-mail")){String address=email.getText().toString();showForm(false);AuthCodeSheet.show(getContext(),address,false);return;}
         if(ok){password.setText("");if(confirmation!=null)confirmation.setText("");((MainActivity)getContext()).openProfile();}
     }
     boolean back(){if(registering&&!busy){showForm(false);return true;}return false;}
     private void recovery(){
         NativeSheet sheet=new NativeSheet(getContext(),"Recuperar senha");EditText address=NativeSheet.input(getContext(),"E-mail da conta",254);address.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);sheet.body.addView(address);
-        TextView state=NativeSheet.text(getContext(),"",13,MUTED);sheet.body.addView(state);Button send=new Button(getContext());send.setText("Enviar link de recuperação");AppStyle.button(send,true);sheet.body.addView(send);
-        send.setOnClickListener(v->{String mail=address.getText().toString().trim();if(!android.util.Patterns.EMAIL_ADDRESS.matcher(mail).matches()){state.setText("Informe um e-mail válido.");return;}send.setEnabled(false);sheet.busy(true);new SupabaseAuthClient().recover(mail,(ok,msg)->{sheet.busy(false);send.setEnabled(!ok);state.setText(msg);});});sheet.show();
+        TextView state=NativeSheet.text(getContext(),"",13,MUTED);sheet.body.addView(state);Button send=new Button(getContext());send.setText("Enviar e-mail de recuperação");AppStyle.button(send,true);sheet.body.addView(send);
+        send.setOnClickListener(v->{String mail=address.getText().toString().trim();if(!android.util.Patterns.EMAIL_ADDRESS.matcher(mail).matches()){state.setText("Informe um e-mail válido.");return;}send.setEnabled(false);sheet.busy(true);new SupabaseAuthClient().recover(mail,(ok,msg)->{sheet.busy(false);send.setEnabled(!ok);state.setText(msg);if(ok){sheet.dialog.dismiss();AuthCodeSheet.show(getContext(),mail,true);}});});Button already=new Button(getContext());already.setText("Já recebi o e-mail");AppStyle.button(already,false);sheet.body.addView(already);already.setOnClickListener(v->{String mail=address.getText().toString();sheet.dialog.dismiss();AuthCodeSheet.show(getContext(),mail,true);});sheet.show();
     }
     private EditText field(String caption,int input,int max){
         TextView label=label(caption,11,MUTED,false);label.setLetterSpacing(.04f);form.addView(label,params(-1,-2,0,0,0,9));
