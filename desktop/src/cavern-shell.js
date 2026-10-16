@@ -26,11 +26,10 @@
   ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['media','Filmes, Séries e Animes','film',{collection:'filmes'}],
   ['discover','Minha Steam','steam',{kind:'steam'}],['discover','Minha Retro','retro',{kind:'retro'}],
   ['social','Comunidade','social'],
-  ['','Conquistas','trophy',{action:'achievements'}],['profile','Perfil','user'],['settings','Configurações','settings']
+  ['','Conquistas','trophy',{action:'achievements'}],['settings','Configurações','settings']
  ];
  const more=[
-  ['anime','Animes','anime',{collection:'animes'}],['lists','Listas','lists'],['recommendations','Indicações','recommend'],
-  ['statistics','Estatísticas','stats'],['discover','Jogos grátis','gift',{kind:'free'}]
+  ['lists','Listas','lists'],['recommendations','Indicações','recommend'],['discover','Jogos grátis','gift',{kind:'free'}]
  ];
  const button=([view,label,icon,extra={}])=>{
   const attrs=extra.action?`data-shell-action="${extra.action}"`:`data-view="${view}"`;
@@ -47,9 +46,7 @@
  if(community)rail.append(community);
  shell.append(rail);
  rail.insertAdjacentHTML('afterbegin',`<label class="rail-search">${svg(icons.search)}<input type="search" placeholder="Buscar amigos..." aria-label="Buscar amigos"></label>`);
- rail.insertAdjacentHTML('beforeend','<button type="button" class="rail-all" data-shell-go="friends">Ver todos os amigos</button>');
  rail.querySelector('.rail-search input').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();rail.querySelectorAll('[data-sidebar-chat]').forEach(b=>b.hidden=!!q&&!b.textContent.toLowerCase().includes(q))});
- rail.querySelector('.rail-all').onclick=()=>navigate('friends');
  nav.addEventListener('click',async e=>{
   if(!e.target.closest('[data-shell-action="achievements"]'))return;
   state.profileUser=null;

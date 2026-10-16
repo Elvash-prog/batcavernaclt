@@ -100,7 +100,7 @@ test('Comunidade Neon Underground preserva publicação, reações e comentário
   assert.match(css,/@media \(max-width: 900px\)/);
 });
 
-test('desktop 0.17.33 integra RetroAchievements, RAWG e perfis de amigos', () => {
+test('desktop 0.17.34 integra RetroAchievements, RAWG e perfis de amigos', () => {
   const shell=read('src/main.tsx'),retro=read('src/retro.js'),rust=read('src-tauri/src/main.rs'),edge=read('../supabase/functions/bright-api/index.ts'),sql=read('../supabase/patch-1.47-retro-social.sql');
   assert.match(shell,/Integração RetroAchievements/);
   assert.match(retro,/dataset\.discoverKind='retro'/);
@@ -138,13 +138,20 @@ test('desktop 0.17.33 integra RetroAchievements, RAWG e perfis de amigos', () =>
   assert.match(sql,/grant execute on function public\.perfil_detalhes_autorizado\(uuid\) to authenticated/);
 });
 
-test('layout conceitual mantém amigos e chat fora da navegação esquerda', () => {
-  const shell=read('src/cavern-shell.js'),css=read('src/cavern-shell.css');
+test('layout conceitual remove atalhos duplicados e usa capas verticais na Steam', () => {
+  const shell=read('src/cavern-shell.js'),css=read('src/cavern-shell.css'),redesign=read('src/redesign.js');
   const mainNavigation=shell.match(/const main=\[([\s\S]*?)\];\n const more=/)?.[1]||'';
+  const extraNavigation=shell.match(/const more=\[([\s\S]*?)\];\n const button=/)?.[1]||'';
   assert.doesNotMatch(mainNavigation,/\['friends','Amigos'/);
   assert.doesNotMatch(mainNavigation,/\['chat','Chat'/);
-  assert.match(shell,/data-shell-go="friends"/);
-  assert.match(css,/0\.17\.33 — linguagem visual unificada/);
+  assert.doesNotMatch(mainNavigation,/\['profile','Perfil'/);
+  assert.doesNotMatch(extraNavigation,/\['anime','Animes'/);
+  assert.doesNotMatch(extraNavigation,/\['statistics','Estatísticas'/);
+  assert.doesNotMatch(shell,/rail-all/);
+  assert.match(redesign,/library_600x900\.jpg/);
+  assert.match(redesign,/steam-portrait-library/);
+  assert.match(css,/0\.17\.34 — linguagem visual unificada/);
+  assert.match(css,/\.steam-portrait-library \.steam-library-grid/);
   assert.match(css,/> main > \.topbar \{ display: none/);
 });
 
@@ -349,14 +356,14 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
- assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.33');
+ assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,'0.17.34');
 });
 
 test('desktop 0.13.1 diagnostica a etapa de boot e valida o bundle do instalador',()=>{
  const main=read('src/main.tsx'),motion=read('src/react-motion.css'),verify=read('scripts/verify-bundle.mjs'),pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.match(main,/type BootFailure/);assert.match(main,/Copiar diagnóstico/);assert.match(main,/Tentar novamente/);assert.match(main,/stage=module\.name/);
  assert.match(motion,/\.fatal-error-panel/);assert.match(verify,/data:\(\?:text\|application\)/);assert.match(verify,/desktop-fixes/);
- assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.33');
+ assert.match(pkg.scripts['build:web'],/verify-bundle\.mjs/);assert.equal(pkg.version,'0.17.34');
 });
 
 test('SQL base e APK recuperam indicações por nome e preservam UUID',()=>{
