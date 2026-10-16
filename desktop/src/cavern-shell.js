@@ -118,6 +118,48 @@
   const cell=(icon,value,label)=>`<div class="cavern-stat">${svg(icons[icon])}<span><b>${esc(value)}</b><small>${label}</small></span></div>`;
   hero.insertAdjacentHTML('afterend',`<section class="cavern-stats cavern-retro-stats" aria-label="Resumo retrô">${cell('trophy',points[0]||'0','Pontos')}${cell('stats',points[1]||'0','True points')}${cell('library',cards.length,'Jogos')}${cell('trophy',`${got}/${total}`,'Conquistas')}${cell('trophy',hard,'Hardcore')}</section>`);
  };
+ const hoursOf=v=>Number(String(v??'').match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(',','.'))||0;
+ const libTabs=games=>[['all','Todos',()=>true],['progress',games?'Em progresso':'Assistindo',s=>s==='progress'],['done',games?'Concluídos':'Concluídos',s=>['finished','platinum'].includes(s)],['backlog',games?'Não iniciados':'Para assistir',s=>s==='backlog'],['favorite','Favoritos',s=>s==='favorite']];
+ const baseLibraryDraw=drawLibrary;
+ drawLibrary=function(){
+  baseLibraryDraw();
+  if(state.current!=='library')return;
+  const content=$('#content'),box=$('#libraryGroups');
+  if(!content||!box||!state.libraryRows)return;
+  const games=state.libraryCategory==='jogos',tabs=libTabs(games),key=tabs.some(t=>t[0]===state.cavernFilter)?state.cavernFilter:'all',view=localStorage.getItem('cavern-lib-view')==='list'?'list':'grid';
+  state.cavernFilter=key;
+  const match=tabs.find(t=>t[0]===key)[2];
+  if(key!=='all'){
+   box.querySelectorAll('[data-detail]').forEach(card=>{const row=state.libraryRows.find(r=>String(r.id)===String(card.dataset.detail));if(!row||!match(normalizedStatus(row.status)))card.remove()});
+   box.querySelectorAll('.collection-section').forEach(s=>{if(!s.querySelector('[data-detail]'))s.remove()});
+   const total=box.querySelectorAll('[data-detail]').length,count=box.querySelector('.collection-result-count');
+   if(count)count.textContent=`${total} títulos na sua coleção`;
+   if(!total&&!box.querySelector('.empty'))box.innerHTML='<div class="empty">Nenhum título neste filtro.</div>';
+  }
+  box.classList.toggle('cavern-list',view==='list');
+  content.querySelector('.cavern-lib-bar')?.remove();
+  content.querySelector('.cavern-featured')?.remove();
+  const bar=document.createElement('div');
+  bar.className='cavern-lib-bar';
+  bar.innerHTML=`<div class="cavern-lib-tabs" role="tablist">${tabs.map(([k,l,f])=>`<button type="button" role="tab" data-lib-filter="${k}" aria-selected="${k===key}" class="${k===key?'active':''}">${l} (${state.libraryRows.filter(r=>f(normalizedStatus(r.status))).length})</button>`).join('')}</div><div class="cavern-view-toggle" role="group" aria-label="Modo de exibição"><button type="button" data-lib-view="grid" aria-label="Grade" aria-pressed="${view==='grid'}" class="${view==='grid'?'active':''}">${svg('<rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/>')}</button><button type="button" data-lib-view="list" aria-label="Lista" aria-pressed="${view==='list'}" class="${view==='list'?'active':''}">${svg('<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>')}</button></div>`;
+  (content.querySelector('.library-controls')||box).after(bar);
+  bar.querySelectorAll('[data-lib-filter]').forEach(b=>b.onclick=()=>{state.cavernFilter=b.dataset.libFilter;drawLibrary()});
+  bar.querySelectorAll('[data-lib-view]').forEach(b=>b.onclick=()=>{localStorage.setItem('cavern-lib-view',b.dataset.libView);drawLibrary()});
+  const featured=games&&key==='all'&&!state.libraryQuery?[...state.libraryRows].filter(r=>hoursOf(r.horas)>0).sort((a,b)=>hoursOf(b.horas)-hoursOf(a.horas)).slice(0,2):[];
+  if(!featured.length)return;
+  const section=document.createElement('section');
+  section.className='cavern-featured';
+  section.innerHTML=`<header><h2>Em destaque</h2><button type="button" class="cavern-link" data-featured-all>Ver todos →</button></header><div class="cavern-featured-grid">${featured.map(r=>`<article class="cavern-featured-card" data-featured="${esc(r.id)}"><img src="brand.jpg" data-cover="${esc(coverUrl(r.capa))}" data-cover-name="${esc(r.nome)}" data-cover-game="1" data-cover-format="landscape" data-steam-appid="${esc(r.steam_appid||'')}" alt=""><div class="cavern-featured-body"><h3>${esc(r.nome)}</h3><small>${hoursOf(r.horas)}h jogadas · ${esc(r.status||'Na biblioteca')}</small><div class="cavern-featured-actions">${r.steam_appid?'<button type="button" class="primary" data-featured-play>▶ Jogar</button>':''}<button type="button" class="secondary" data-featured-details aria-label="Ver detalhes de ${esc(r.nome)}">…</button></div></div></article>`).join('')}</div>`;
+  bar.after(section);
+  section.querySelector('[data-featured-all]').onclick=()=>{state.librarySort='hours';const sort=$('#librarySort');if(sort)sort.value='hours';drawLibrary();box.scrollIntoView({block:'start'})};
+  section.querySelectorAll('.cavern-featured-card').forEach(card=>{
+   const row=featured.find(r=>String(r.id)===card.dataset.featured);
+   card.querySelector('[data-featured-details]').onclick=()=>box.querySelector(`[data-detail="${CSS.escape(String(row.id))}"]`)?.click();
+   const play=card.querySelector('[data-featured-play]');
+   if(play)play.onclick=()=>call('launch_game',{appid:Number(row.steam_appid)}).catch(e=>globalThis.toast(failure(e)));
+  });
+  hydrateCovers(section);
+ };
  sync();
 
  let pending=null,checking=false;

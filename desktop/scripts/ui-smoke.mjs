@@ -1137,10 +1137,10 @@ try {
   });
   await page.locator("#libraryGroups").waitFor();
   assert.equal(await page.locator(".category-library-card").count(), 0);
-  assert.equal(await page.locator("#statusTabs").isVisible(), true);
-  await page.locator('#statusTabs [data-status="progress"]').click();
+  assert.equal(await page.locator(".cavern-lib-tabs").isVisible(), true);
+  await page.locator('[data-lib-filter="progress"]').click();
   assert.equal(await page.locator("#libraryGroups .cinema-card").count(), 1);
-  await page.locator('#statusTabs [data-status="all"]').click();
+  await page.locator('[data-lib-filter="all"]').click();
   assert.equal(await page.locator("#content.reference-library").count(), 1);
   assert.equal(
     await page.locator("#libraryGroups .cinema-card > .body").count(),
@@ -1184,7 +1184,6 @@ try {
   await page.locator("#libraryGenre").selectOption("Ação");
   assert.equal(await page.locator("#libraryGroups .cinema-card").count(), 1);
   await page.locator("#libraryGenre").selectOption("");
-  await page.screenshot({ path: "preview/library-check.png" });
   await page.locator("#libraryStatusFilter").selectOption("finished");
   await page.locator("#libraryStatusFilter").selectOption("all");
   assert.equal(await page.locator(".cinema-tabs").count(), 0);
