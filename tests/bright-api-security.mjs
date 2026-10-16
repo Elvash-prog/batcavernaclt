@@ -86,3 +86,6 @@ await check('Retro collection scoped to authenticated UID',async()=>{const r=awa
 await check('foreign Retro cover rejected',async()=>{assert.equal((await handler(req({op:'raSaveCollection',cover_url:'https://evil.test/a.jpg'}))).status,400)});
 await check('duplicate Retro game does not duplicate collection',async()=>{const r=await handler(req({op:'raSaveCollection',gameId:7}));assert.equal(r.status,200);assert.deepEqual((await r.json()).game_ids,[7]);});
 await check('Retro catalog searches cached console list',async()=>{for(let i=0;i<2;i++){const r=await handler(req({op:'raSearch',consoleId:3,query:'Retro'}));assert.equal(r.status,200);assert.equal((await r.json()).jogos[0].gameId,7)}assert.equal(calls.filter(x=>x.u.pathname.includes('API_GetGameList.php')).length,1)});
+
+await check('published client PlayStation selector uses official RA system 12',async()=>{const r=await handler(req({op:'raSearch',consoleId:11,query:'Retro'}));assert.equal(r.status,200);assert.ok(calls.some(x=>x.u.pathname.includes('API_GetGameList.php')&&x.u.searchParams.get('i')==='12'))});
+await check('published client GameCube selector uses official RA system 16',async()=>{const r=await handler(req({op:'raSearch',consoleId:78,query:'Retro'}));assert.equal(r.status,200);assert.ok(calls.some(x=>x.u.pathname.includes('API_GetGameList.php')&&x.u.searchParams.get('i')==='16'))});

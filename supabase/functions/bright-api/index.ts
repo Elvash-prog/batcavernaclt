@@ -110,7 +110,13 @@ function validate(b: any): {body: any, cost:number} {
     case "raSaveCollection":
       if(b.cover_url!==undefined){const url=String(b.cover_url);if(url.length>2000||url&&!url.startsWith(SB_URL+"/storage/v1/object/public/"))throw new ApiError(400,"Capa inválida.");out.cover_url=url;}
       if(b.gameId!==undefined)out.gameId=appid(b.gameId);break;
-    case "raSearch": out.consoleId=appid(b.consoleId);out.query=name(b.query);cost=3;break;
+    case "raSearch": {
+      // Compatibility keys used by desktop 0.17.36 and Android 1.7.3 dropdowns.
+      // These UI keys differ from the official RA system IDs for these systems.
+      const legacySystems: Record<number,number>={10:11,11:12,12:13,13:14,14:15,57:53,78:16};
+      const id=appid(b.consoleId);out.consoleId=b.canonicalId===true?id:(legacySystems[id]??id);
+      out.query=name(b.query);cost=3;break;
+    }
     case "raPerfil": out.usuario=rauser(b.usuario); cost=2; break;
     case "raJogos": out.usuario=rauser(b.usuario); out.offset=Math.max(0,Math.min(5000,Number(b.offset)||0)); cost=4; break;
     case "raConquistas": out.usuario=rauser(b.usuario); out.gameId=appid(b.gameId); cost=3; break;
