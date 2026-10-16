@@ -939,7 +939,7 @@ try {
   assert.match(await page.locator(".statistics-summary").innerText(), /30h/);
   assert.equal(await page.locator(".bar-chart>div").count(), 12);
   await page.evaluate(() => (window.missingJourney = false));
-  await page.locator("#topSettings").click();
+  await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('[data-settings-tab="notifications"]').click();
   await page.locator("#openNotificationPreferences").click();
   await page.locator("#preferenceForm").waitFor();
@@ -1301,7 +1301,7 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "save_item"),
   );
-  await page.locator("#topSettings").click();
+  await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('[data-settings-tab="appearance"]').click();
   await page.locator('[data-theme-range="cardWidth"]').evaluate((el) => {
     el.value = "420";
