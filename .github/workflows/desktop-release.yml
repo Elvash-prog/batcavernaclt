@@ -78,6 +78,18 @@ jobs:
       - name: Test desktop
         working-directory: desktop
         run: npm test
+      - name: Install UI test browser
+        working-directory: desktop
+        run: npx playwright install chromium
+      - name: Validate interface before release
+        working-directory: desktop
+        run: npm run test:ui
+      - name: UI diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Release-UI-diagnostics
+          path: desktop/preview/
       - name: Build frontend
         working-directory: desktop
         run: npm run build:web
