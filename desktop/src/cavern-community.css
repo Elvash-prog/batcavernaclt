@@ -159,6 +159,7 @@
 }
 
 .reference-ui .community-reference-center .post-actions {
+  align-items: center;
   gap: 5px;
   padding-top: 10px;
 }
@@ -189,6 +190,10 @@
 }
 
 .reference-ui .community-reference-center form[data-comment] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
   padding: 5px;
   border: 1px solid var(--line-strong);
   border-radius: 10px;
@@ -196,9 +201,16 @@
 }
 
 .reference-ui .community-reference-center form[data-comment] input {
+  min-width: 0;
+  height: 40px;
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.reference-ui .community-reference-center form[data-comment] button {
+  height: 40px;
+  align-self: center;
 }
 
 .reference-ui .community-reference-right > h3 { margin-bottom: 5px; }
