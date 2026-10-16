@@ -927,19 +927,19 @@ try {
     assert.equal(media.nota, null);
   }
   await page.evaluate(() => (window.testRecommendations = null));
-  await page.locator('[data-view="statistics"]').click();
+  await page.evaluate(async()=>await navigate('statistics'));
   await page.locator(".statistics-summary").waitFor();
   assert.equal(await page.locator(".sidebar").evaluate((n) => n.scrollTop), 0);
   assert.match(await page.locator(".statistics-summary").innerText(), /30h/);
   assert.equal(await page.locator(".bar-chart>div").count(), 12);
   await page.screenshot({ path: "preview/journey-check.png" });
   await page.evaluate(() => (window.missingJourney = true));
-  await page.locator('[data-view="statistics"]').click();
+  await page.evaluate(async()=>await navigate('statistics'));
   await page.locator(".statistics-summary").waitFor();
   assert.match(await page.locator(".statistics-summary").innerText(), /30h/);
   assert.equal(await page.locator(".bar-chart>div").count(), 12);
   await page.evaluate(() => (window.missingJourney = false));
-  await page.locator("#topSettings").click();
+  await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('[data-settings-tab="notifications"]').click();
   await page.locator("#openNotificationPreferences").click();
   await page.locator("#preferenceForm").waitFor();
@@ -1301,7 +1301,7 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "save_item"),
   );
-  await page.locator("#topSettings").click();
+  await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('[data-settings-tab="appearance"]').click();
   await page.locator('[data-theme-range="cardWidth"]').evaluate((el) => {
     el.value = "420";
@@ -1341,7 +1341,7 @@ try {
   );
   assert.deepEqual(
     await page.locator('#mainNav [data-discover-kind] span').allTextContents(),
-    ["Minha Steam", "Minha Retro", "Jogos grátis"],
+    ["Minha Steam", "Meu Retrô", "Jogos grátis"],
   );
   await page.locator('#mainNav [data-discover-kind="free"]').click();
   await page.waitForFunction(() =>
@@ -1359,19 +1359,17 @@ try {
   await page.waitForTimeout(800);
   await page.screenshot({ path: "preview/retro-check.png" });
   await page.evaluate(() => (window.failRetroAchievements = true));
-  await page.locator('[data-retro-achievements="77"]').click();
-  await page.locator(".retro-achievements-modal [data-retry]").waitFor();
-  assert.match(
-    await page.locator(".retro-achievements-modal").innerText(),
-    /Falha de rede simulada/,
-  );
-  await page.evaluate(() => (window.failRetroAchievements = false));
-  await page.locator(".retro-achievements-modal [data-retry]").click();
-  await page.getByText("Primeira jornada").waitFor();
-  await page.locator(".retro-achievements-modal [data-close]").click();
-  await page.locator(".retro-game-card").click();
-  await page.locator(".reference-detail").waitFor();
-  await page.locator(".reference-detail .detail-close").click();
+  assert.equal(await page.locator('.retro-actions [data-retro-achievements]').count(),0);
+  await page.locator('.retro-toolbar input').fill('inexistente');
+  assert.equal(await page.locator('.retro-library-item:visible').count(),0);
+  await page.locator('.retro-toolbar input').fill('');
+  await page.locator('.retro-game-card').click();
+  await page.locator('.reference-detail [data-detail-tab="achievements"]').click();
+  await page.getByText('Falha de rede simulada.').waitFor();
+  await page.evaluate(() => {window.failRetroAchievements=false});
+  await page.locator('.reference-detail [data-detail-tab="achievements"]').click();
+  await page.getByText('Primeira jornada').waitFor();
+  await page.locator('.reference-detail .detail-close').click();
   await page.evaluate(async () => await navigate("settings"));
   await page.locator('[data-settings-tab="app"]').click();
   await page.locator("#checkUpdates").click();
@@ -1427,8 +1425,8 @@ try {
   );
   await page.evaluate(() => (window.adminMode = false));
   assert.equal(
-    await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"],#mainNav [data-view="settings"],#mainNav [data-view="profile"]').count(),
-    4,
+    await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"],#mainNav [data-view="profile"]').count(),
+    0,
   );
   await page.locator("#friendsDockToggle").click();
   await page.locator("#friendsDockPanel").waitFor();
@@ -1521,9 +1519,12 @@ try {
     "A barra de progressão deve usar o estilo arredondado do tema.",
   );
   assert.equal(
-    await page.locator(".sidebar").evaluate((n) => getComputedStyle(n).backgroundColor),
-    "rgb(7, 18, 27)",
-    "O fundo personalizado não pode aparecer por trás da barra lateral",
+    await page.locator(".sidebar").evaluate((n) => {
+      const color=getComputedStyle(n).backgroundColor;
+      return color.startsWith('rgb(')||/rgba\([^)]*,\s*1\)$/.test(color);
+    }),
+    true,
+    "A barra lateral deve manter fundo opaco independente da cor do tema",
   );
   await page.setViewportSize({ width: 980, height: 860 });
   const minimumWidthProfile = await page.locator(".complete-profile").boundingBox(),

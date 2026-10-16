@@ -24,7 +24,7 @@
  };
  const main=[
   ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['media','Filmes e Séries','film',{collection:'filmes'}],['anime','Animes','anime',{collection:'animes'}],
-  ['discover','Minha Steam','steam',{kind:'steam'}],['discover','Minha Retro','retro',{kind:'retro'}],
+  ['discover','Minha Steam','steam',{kind:'steam'}],['discover','Meu Retrô','retro',{kind:'retro'}],
   ['social','Comunidade','social'],['settings','Configurações','settings']
  ];
  const more=[
@@ -39,6 +39,7 @@
  const logo=$('.sidebar .logo');
  if(logo)logo.innerHTML='<img src="brand.jpg" alt=""><strong>BatCaverna <em>CLT</em></strong><small>JOGOS • PESSOAS • HISTÓRIAS</small>';
 
+ const bell=$('#notificationBell');if(bell&&logo)logo.after(bell);
  const rail=document.createElement('aside');
  rail.className='cavern-rail';rail.setAttribute('aria-label','Amigos online e jogando na Steam');
  const community=$('#sidebarCommunity');
@@ -106,8 +107,8 @@
     const data=await api.bright({op:'gratis'});
     if(state.current!=='discover'||state.discoverTab!=='free'||!out.isConnected)return;
     const rows=[...(data.epic||[]).map(item=>({...item,store:'Epic'})),...(data.steam||[]).map(item=>({...item,store:'Steam'}))];
-    out.innerHTML=`<div class="section-head"><div><span class="eyebrow">OFERTAS DA SEMANA</span><h2>Jogos 100% grátis <small>${rows.length}</small></h2><p>Resgate enquanto as ofertas ainda estão disponíveis.</p></div></div><section class="offers">${rows.map(offerCard).join('')||'<div class="empty">Nenhuma oferta encontrada agora.</div>'}</section>`;
-    out.querySelectorAll('.offer-card').forEach(card=>{const store=card.querySelector('small')?.textContent||'';card.classList.toggle('offer-steam',/steam/i.test(store));card.classList.toggle('offer-epic',/epic/i.test(store));const tag=document.createElement('span');tag.className='offer-discount';tag.textContent='−100%';card.querySelector('.body')?.prepend(tag)});
+    out.innerHTML=`<div class="section-head"><div><span class="eyebrow">OFERTAS DA SEMANA</span><h2>Jogos 100% grátis <small>${rows.length}</small></h2><p>Resgate enquanto as ofertas ainda estão disponíveis.</p></div></div>${['Epic','Steam'].map(store=>`<section class="free-store-section"><h2>${store==='Epic'?'Epic Games':'Steam'}</h2><section class="offers">${rows.filter(r=>r.store===store).map(offerCard).join('')||'<p class="empty">Nenhuma oferta disponível nesta loja.</p>'}</section></section>`).join('')}`;
+    out.querySelectorAll('.offer-card').forEach((card,index)=>{const row=rows.filter(r=>r.store==='Epic').concat(rows.filter(r=>r.store==='Steam'))[index],image=card.querySelector('img'),id=Number(row.appid||row.steamAppid||String(row.url||'').match(/app\/(\d+)/)?.[1]);if(image&&!id){const repair=async()=>{image.onerror=null;try{const cover=await window.batcavernaRetroCover(row.nome,'');if(cover)image.src=await api.coverImage(cover);else image.alt='Imagem indisponível — '+row.nome}catch{image.alt='Imagem indisponível — '+row.nome}};image.onerror=repair;if(!row.capa||/brand\.jpg$/.test(image.getAttribute('src')||''))void repair()}if(image&&id){image.onerror=async()=>{image.onerror=null;try{const data=await api.bright({op:'steamInfo',appids:[id]});const cover=data.lista?.[0]?.capa||`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`;image.src=await api.coverImage(cover)}catch{image.alt='Imagem indisponível — '+row.nome}};image.src=`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${id}/header.jpg`;}const store=card.querySelector('small')?.textContent||'';card.classList.toggle('offer-steam',/steam/i.test(store));card.classList.toggle('offer-epic',/epic/i.test(store));const tag=document.createElement('span');tag.className='offer-discount';tag.textContent='−100%';card.querySelector('.body')?.prepend(tag)});
     out.querySelectorAll('[data-open-url]').forEach(button=>button.onclick=()=>api.open(button.dataset.openUrl));
    }catch(error){if(out.isConnected)out.innerHTML=`<div class="error-card"><p>Não foi possível carregar os jogos grátis.</p><p>${esc(failure(error))}</p><button class="secondary" id="retryFreeGames">Tentar novamente</button></div>`;$('#retryFreeGames')?.addEventListener('click',renderDiscover)}
    return;

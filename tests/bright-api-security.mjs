@@ -31,6 +31,8 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('freeGamesPromotions')) return json({data:{Catalog:{searchStore:{elements:[]}}}});
   if(u.pathname.includes('featuredcategories')) return json({});
   if(u.pathname.includes('/search/results')) return new Response('');
+  if(u.pathname==='/rest/v1/clt_retro_collection'){if(options.method==='POST'){const body=JSON.parse(options.body);assert.equal(body.user_id,uid);return json({})}return json([{cover_url:'',game_ids:[7]}])}
+  if(u.pathname.includes('API_GetGameList.php'))return json([{ID:7,Title:'Retro Game',ConsoleName:'SNES',NumAchievements:10}]);
   if(u.pathname.includes('API_GetUserProfile.php')) return json({User:'RetroPlayer',ULID:'00003EMFWR7XB8SDPEHB3K56ZQ',UserPic:'/UserPic/RetroPlayer.png',TotalPoints:123,TotalTruePoints:456});
   if(u.pathname.includes('API_GetUserCompletionProgress.php')) return json({Total:1,Results:[{GameID:7,Title:'Retro Game',ConsoleName:'SNES',MaxPossible:10,NumAwarded:5,NumAwardedHardcore:4}]});
   if(u.pathname.includes('API_GetUserRecentlyPlayedGames.php')) return json([{GameID:7,Title:'Retro Game',ConsoleName:'SNES',NumPossibleAchievements:10,NumAchieved:5,NumAchievedHardcore:4}]);
@@ -79,3 +81,11 @@ for(const [op,body,key] of [
  ['raConquistas',{usuario:'RetroPlayer',gameId:7},'lista'],
 ]) await check('compatible '+op,async()=>{const r=await handler(req({op,...body}));assert.equal(r.status,200, JSON.stringify({op,calls:calls.map(x=>x.u.href)}));const b=await r.json();assert.ok(key in b,JSON.stringify({op,b,calls:calls.map(x=>x.u.href)}));assert.equal(r.headers.get('Cache-Control'),'no-store')});
 console.log(passed+' offline checks passed');
+
+await check('Retro collection scoped to authenticated UID',async()=>{const r=await handler(req({op:'raCollection',user_id:'someone-else'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).game_ids,[7]);assert.ok(calls.some(x=>x.u.pathname==='/rest/v1/clt_retro_collection'&&x.u.searchParams.get('user_id')==='eq.'+uid));});
+await check('foreign Retro cover rejected',async()=>{assert.equal((await handler(req({op:'raSaveCollection',cover_url:'https://evil.test/a.jpg'}))).status,400)});
+await check('duplicate Retro game does not duplicate collection',async()=>{const r=await handler(req({op:'raSaveCollection',gameId:7}));assert.equal(r.status,200);assert.deepEqual((await r.json()).game_ids,[7]);});
+await check('Retro catalog searches cached console list',async()=>{for(let i=0;i<2;i++){const r=await handler(req({op:'raSearch',consoleId:3,query:'Retro'}));assert.equal(r.status,200);assert.equal((await r.json()).jogos[0].gameId,7)}assert.equal(calls.filter(x=>x.u.pathname.includes('API_GetGameList.php')).length,1)});
+
+await check('published client PlayStation selector uses official RA system 12',async()=>{const r=await handler(req({op:'raSearch',consoleId:11,query:'Retro'}));assert.equal(r.status,200);assert.ok(calls.some(x=>x.u.pathname.includes('API_GetGameList.php')&&x.u.searchParams.get('i')==='12'))});
+await check('published client GameCube selector uses official RA system 16',async()=>{const r=await handler(req({op:'raSearch',consoleId:78,query:'Retro'}));assert.equal(r.status,200);assert.ok(calls.some(x=>x.u.pathname.includes('API_GetGameList.php')&&x.u.searchParams.get('i')==='16'))});
