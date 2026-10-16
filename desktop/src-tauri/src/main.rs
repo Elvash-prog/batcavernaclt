@@ -150,7 +150,14 @@ fn rest(client: &reqwest::Client, path: &str, token: &str) -> reqwest::RequestBu
 }
 
 async fn get(client: &reqwest::Client, path: &str, token: &str) -> Result<Value, String> {
-    value(rest(client, path, token).send().await.map_err(|_| "Não foi possível consultar o Supabase.".to_string())?).await
+    let mut last=None;
+    for attempt in 0..2 {
+        match rest(client,path,token).send().await {
+            Ok(response)=>{let status=response.status();if attempt==0&&(status.as_u16()==429||status.is_server_error()){tokio::time::sleep(Duration::from_millis(500)).await;continue;}return value(response).await;},
+            Err(error)=>{last=Some(if error.is_timeout(){"A consulta demorou demais. Tente novamente."}else{"Não foi possível conectar ao Supabase. Verifique sua conexão."});if attempt==0{tokio::time::sleep(Duration::from_millis(400)).await;}}
+        }
+    }
+    Err(last.unwrap_or("Consulta indisponível.").to_string())
 }
 
 async fn rpc(client: &reqwest::Client, function: &str, body: Value, token: &str) -> Result<Value, String> {
@@ -586,7 +593,7 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     let request=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","40"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,100).to_string()),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]);
     let request=if recommend{request.query(&[("ordering","-added"),("sort_by","popularity.desc")])}else{request};
     let retry=request.try_clone();
-    let response=match request.send().await{Ok(r)=>r,Err(_)=>{tokio::time::sleep(Duration::from_millis(400)).await;retry.ok_or_else(||"Não foi possível consultar o catálogo.".to_string())?.send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?}};
+    let response=match request.send().await{Ok(r) if r.status().as_u16()!=429&&!r.status().is_server_error()=>r,Ok(_)|Err(_)=>{tokio::time::sleep(Duration::from_millis(400)).await;retry.ok_or_else(||"Não foi possível consultar o catálogo.".to_string())?.send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?}};
     value(response).await
 }
 fn image_host(host: &str)->bool {
