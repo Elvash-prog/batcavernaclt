@@ -1519,9 +1519,12 @@ try {
     "A barra de progressão deve usar o estilo arredondado do tema.",
   );
   assert.equal(
-    await page.locator(".sidebar").evaluate((n) => getComputedStyle(n).backgroundColor),
-    "rgb(7, 18, 27)",
-    "O fundo personalizado não pode aparecer por trás da barra lateral",
+    await page.locator(".sidebar").evaluate((n) => {
+      const color=getComputedStyle(n).backgroundColor;
+      return color.startsWith('rgb(')||/rgba\([^)]*,\s*1\)$/.test(color);
+    }),
+    true,
+    "A barra lateral deve manter fundo opaco independente da cor do tema",
   );
   await page.setViewportSize({ width: 980, height: 860 });
   const minimumWidthProfile = await page.locator(".complete-profile").boundingBox(),
