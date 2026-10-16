@@ -815,3 +815,5 @@ body.reference-ui {
 .steam-search-results span{display:grid;gap:4px}.steam-search-results small{color:var(--muted)}
 
 .reference-ui .editor>form>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.reference-ui .editor>header>div,.reference-ui .editor>form>header>div{min-width:0;flex:1}.reference-ui .editor>header h2,.reference-ui .editor>form>header h2{overflow-wrap:anywhere}.reference-ui .editor>[data-close]{position:absolute;top:14px;right:14px;width:34px;height:34px;padding:0;display:grid;place-items:center;line-height:1}
+
+.reference-ui .free-store-section .offer-card h3{font-family:inherit;font-size:15px;line-height:1.35}

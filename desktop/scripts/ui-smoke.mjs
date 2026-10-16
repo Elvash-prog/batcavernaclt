@@ -1296,12 +1296,12 @@ try {
   );
   const previousName=await page.locator('[name="nome"]').inputValue();
   await page.locator('[name="nome"]').fill('Devil May Cry V Special Edition');
-  await page.locator('[name="steam_appid"]').fill('');
+  await page.evaluate(()=>document.querySelector('[name="steam_appid"]').value='');
   await page.getByRole('button',{name:'Buscar dados da Steam',exact:true}).click();
   await page.locator('.steam-search-dialog [data-steam-result="601150"]').click();
   await page.waitForFunction(()=>document.querySelector('[name="steam_appid"]').value==='601150');
   await page.locator('[name="nome"]').fill(previousName);
-  await page.locator('[name="steam_appid"]').fill('10');
+  await page.evaluate(()=>document.querySelector('[name="steam_appid"]').value='10');
   await page.locator(".item-editor-modern button.primary").click();
   await page.waitForFunction(() =>
     window.saved.some(
