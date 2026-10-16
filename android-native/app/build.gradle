@@ -12,8 +12,8 @@ android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
         applicationId 'dev.gamersclt.batcaverna.nativeapp'
         minSdk 23
         targetSdk 36
-        versionCode 54
-        versionName '1.7.7'
+        versionCode 55
+        versionName '1.7.8'
         buildConfigField 'String', 'SUPABASE_URL', '"https://luoqlhgfmixvfqbfcdoc.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', groovy.json.JsonOutput.toJson(publicSupabaseKey)
     }
@@ -35,6 +35,9 @@ java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 // This keeps large binary uploads out of connector requests and verifies the exact bytes.
 tasks.register('restoreLogo') {
     doLast {
+        def wallpaper = file('src/main/res/drawable-nodpi/login_background.jpg')
+        wallpaper.parentFile.mkdirs()
+        wallpaper.bytes = rootProject.file('../desktop/src/login-cave.jpg').bytes
         def target = file('src/main/res/drawable-nodpi/app_logo.png')
         if (!target.exists()) {
             def chunks = rootProject.file('assets-source').listFiles()?.findAll { it.name.startsWith('app_logo.png.b64.') }?.sort { it.name }

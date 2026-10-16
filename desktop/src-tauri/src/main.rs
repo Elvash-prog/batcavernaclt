@@ -572,7 +572,7 @@ async fn media_url(url: String, state: tauri::State<'_, AppState>) -> Result<Str
     Ok(if value.starts_with("http"){value.to_string()}else{format!("{SUPABASE_URL}/storage/v1{value}")})
 }
 
-const CATALOG_ORIGIN: &str = "https://batcavernaclt.gamersclt.workers.dev";
+const CATALOG_ORIGIN: &str = "https://luoqlhgfmixvfqbfcdoc.supabase.co/functions/v1/native-api";
 #[tauri::command]
 async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?;

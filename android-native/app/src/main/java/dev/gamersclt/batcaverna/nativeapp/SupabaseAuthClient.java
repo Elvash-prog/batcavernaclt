@@ -18,9 +18,9 @@ public final class SupabaseAuthClient {
         executor.execute(() -> {
             boolean ok=false; String message="Não foi possível entrar.";
             try{
-                URL u=new URL("https://batcavernaclt.gamersclt.workers.dev/api/account/login");
+                String[] config=loadConfig();URL u=new URL(config[0]+"/functions/v1/login-username");
                 HttpURLConnection c=(HttpURLConnection)u.openConnection(); c.setInstanceFollowRedirects(false); c.setRequestMethod("POST"); c.setDoOutput(true); c.setConnectTimeout(12000); c.setReadTimeout(12000);
-                c.setRequestProperty("Content-Type","application/json");
+                c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("apikey",config[1]);
                 try{
                 byte[] body=new JSONObject().put("username",username).put("password",password).toString().getBytes(StandardCharsets.UTF_8); try(OutputStream out=c.getOutputStream()){out.write(body);}
                 int code=c.getResponseCode(); InputStream in=code<400?c.getInputStream():c.getErrorStream(); String response=read(in);
@@ -60,10 +60,10 @@ public final class SupabaseAuthClient {
     }
     interface Darkness {void accept(int dim);}
     void loginBackground(android.widget.ImageView image,Darkness darkness){
-        AccountImageLoader.load(image,"https://batcavernaclt.gamersclt.workers.dev/fundo.jpg");
+        image.setImageResource(R.drawable.login_background);
         java.util.concurrent.ExecutorService executor=Executors.newSingleThreadExecutor();executor.execute(()->{
             try{String[] config=loadConfig();HttpURLConnection c=(HttpURLConnection)new URL(config[0]+"/rest/v1/configuracoes_site?id=eq.global&select=fundo_login").openConnection();
-                try{c.setInstanceFollowRedirects(false);c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setRequestProperty("apikey",config[1]);if(c.getResponseCode()==200){org.json.JSONArray rows=new org.json.JSONArray(read(c.getInputStream()));JSONObject f=rows.length()==0?null:rows.optJSONObject(0).optJSONObject("fundo_login");if(f!=null){String source=f.optString("url","");if(!source.isEmpty()){if(!source.startsWith("https://"))source=new URL(new URL("https://batcavernaclt.gamersclt.workers.dev/"),source).toString();String url=source;int dim=Math.max(0,Math.min(90,f.optInt("escuro",40)));new Handler(Looper.getMainLooper()).post(()->{AccountImageLoader.load(image,url);darkness.accept(dim);});}}}
+                try{c.setInstanceFollowRedirects(false);c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setRequestProperty("apikey",config[1]);if(c.getResponseCode()==200){org.json.JSONArray rows=new org.json.JSONArray(read(c.getInputStream()));JSONObject f=rows.length()==0?null:rows.optJSONObject(0).optJSONObject("fundo_login");if(f!=null){String source=f.optString("url","");if(!source.isEmpty()){if(!source.startsWith("https://"))return;String url=source;int dim=Math.max(0,Math.min(90,f.optInt("escuro",40)));new Handler(Looper.getMainLooper()).post(()->{AccountImageLoader.load(image,url);darkness.accept(dim);});}}}
                 }finally{c.disconnect();}
             }catch(Exception ignored){}finally{executor.shutdown();}
         });

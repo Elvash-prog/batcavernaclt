@@ -223,7 +223,7 @@ test('renderer usa somente comandos Tauri', () => {
   assert.doesNotMatch(script, /fetch\(|workers\.dev|supabase\.co/);
 });
 
-test('Rust usa Supabase e limita o Worker ao proxy do catálogo', () => {
+test('Rust usa Supabase também para o catálogo e mídia', () => {
   const rust = read('src-tauri/src/main.rs');
   assert.match(rust, /\.supabase\.co/);
   assert.match(rust, /email_login_por_usuario/);
