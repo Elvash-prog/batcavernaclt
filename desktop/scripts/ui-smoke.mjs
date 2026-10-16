@@ -367,6 +367,8 @@ try {
               ],
               progressKnown: false,
             };
+          if(c==='bright_api'&&p.input.op==='raCollection')return {cover_url:'https://luoqlhgfmixvfqbfcdoc.supabase.co/storage/v1/object/public/avatars/test/retro-private.webp',game_ids:[]};
+          if(c==='bright_api'&&p.input.op==='gratis')return {epic:[{nome:'Oferta teste',capa:'https://cdn2.epicgames.com/offer.jpg',url:'https://store.epicgames.com/p/test'}],steam:[{nome:'DLC teste',appid:10,tipo:'DLC',capa:'https://shared.cloudflare.steamstatic.com/header.jpg',url:'https://store.steampowered.com/app/10/'}]};
           if (c === "bright_api" && p.input.op === "raPerfil")
             return {
               usuario: "RetroTester",
@@ -582,10 +584,11 @@ try {
               messages = messages.filter((m) => m.id !== i.id);
               return {};
             }
+            if(i.op==='steam_search')return {results:[{appid:601150,nome:'Devil May Cry 5',capa:'https://shared.cloudflare.steamstatic.com/header.jpg'},{appid:220440,nome:'DmC: Devil May Cry',capa:'https://shared.cloudflare.steamstatic.com/header.jpg'}]};
             if (i.op === "steam_details")
               return {
                 nome: i.query || "Resultado Steam",
-                steam_appid: 10,
+                steam_appid: i.appid||10,
                 generos: [{ description: "Ação" }, { description: "Aventura" }],
                 descricao: "Descrição da Steam",
                 metacritic: { score: 90 },
@@ -1019,6 +1022,13 @@ try {
   await page.locator('[data-view="library"]').click();
   await page.locator("#libraryGroups").waitFor();
   await page.waitForTimeout(800);
+  const featured=page.locator('.cavern-featured-card').first();
+  if(await featured.count()){
+    let bounds=await featured.boundingBox();assert.ok(bounds.height>bounds.width*1.4,'Destaques devem seguir o formato vertical');
+    await page.evaluate(()=>document.body.dataset.cardFormat='landscape');
+    bounds=await featured.boundingBox();assert.ok(bounds.width>bounds.height*1.6,'Destaques devem seguir o formato horizontal');
+    await page.evaluate(()=>document.body.dataset.cardFormat='poster');
+  }
   await page.screenshot({ path: "preview/library-check.png" });
   const libraryLeftEdges = await page.evaluate(() =>
     ["#libraryCollectionHero", ".library-controls", "#libraryGroups"].map(
@@ -1269,6 +1279,9 @@ try {
     /11\/10\/2026/,
   );
   await page.locator('[data-detail-tab="about"]').click();
+  const editBounds=await page.locator('#editInformation').boundingBox(),listBounds=await page.locator('[data-detail-list]').boundingBox(),dialogBounds=await page.locator('.reference-detail').boundingBox(),closeBounds=await page.locator('.reference-detail .detail-close').boundingBox();
+  assert.ok(Math.abs(editBounds.y-listBounds.y)<3,'Ações dos detalhes devem estar alinhadas');
+  assert.ok(closeBounds.x>=dialogBounds.x&&closeBounds.x+closeBounds.width<=dialogBounds.x+dialogBounds.width&&closeBounds.y>=dialogBounds.y,'Fechar deve permanecer dentro da janela');
   await page.screenshot({ path: "preview/details-check.png" });
   await page.locator("#editInformation").click();
   await page
@@ -1281,6 +1294,14 @@ try {
     await page.locator('[name="generos"]').inputValue(),
     "Ação • Aventura",
   );
+  const previousName=await page.locator('[name="nome"]').inputValue();
+  await page.locator('[name="nome"]').fill('Devil May Cry V Special Edition');
+  await page.evaluate(()=>document.querySelector('[name="steam_appid"]').value='');
+  await page.getByRole('button',{name:'Buscar dados da Steam',exact:true}).click();
+  await page.locator('.steam-search-dialog [data-steam-result="601150"]').click();
+  await page.waitForFunction(()=>document.querySelector('[name="steam_appid"]').value==='601150');
+  await page.locator('[name="nome"]').fill(previousName);
+  await page.evaluate(()=>document.querySelector('[name="steam_appid"]').value='10');
   await page.locator(".item-editor-modern button.primary").click();
   await page.waitForFunction(() =>
     window.saved.some(
@@ -1347,6 +1368,14 @@ try {
   await page.waitForFunction(() =>
     document.querySelector('#mainNav [data-discover-kind="free"].active'),
   );
+  await page.locator('.free-store-section .offer-card img').first().waitFor();
+  let offerBox=await page.locator('.free-store-section .offer-card img').first().boundingBox();
+  assert.ok(offerBox.height>offerBox.width*1.4,'Ofertas devem respeitar o formato vertical');
+  await page.evaluate(()=>document.body.dataset.cardFormat='landscape');
+  offerBox=await page.locator('.free-store-section .offer-card img').first().boundingBox();
+  assert.ok(offerBox.width>offerBox.height*1.6,'Ofertas devem respeitar o formato horizontal');
+  await page.screenshot({path:'preview/free-landscape-check.png'});
+  await page.evaluate(()=>document.body.dataset.cardFormat='poster');
   await page.locator('#mainNav [data-discover-kind="steam"]').click();
   await page.waitForFunction(() =>
     document.querySelector('#mainNav [data-discover-kind="steam"].active'),
@@ -1357,6 +1386,7 @@ try {
     document.querySelector('#mainNav [data-discover-kind="retro"].active'),
   );
   await page.waitForTimeout(800);
+  assert.match(await page.locator('.retro-profile').evaluate(n=>getComputedStyle(n).backgroundImage),/data:image/,'A capa privada do Retrô deve ser carregada autenticada');
   await page.screenshot({ path: "preview/retro-check.png" });
   await page.evaluate(() => (window.failRetroAchievements = true));
   assert.equal(await page.locator('.retro-actions [data-retro-achievements]').count(),0);
@@ -1484,6 +1514,9 @@ try {
   assert.ok(compose.y + compose.height <= 1080);
   await page.screenshot({ path: "preview/chat-check.png" });
   await page.locator("#notificationBell").click();
+  const bellBox=await page.locator('#notificationBell').boundingBox(),noticeBox=await page.locator('#notificationPopup').boundingBox();
+  assert.ok(Math.abs(noticeBox.x-bellBox.x)<16,'Notificações devem abrir junto do sininho');
+  assert.ok(noticeBox.y>=bellBox.y+bellBox.height&&noticeBox.y-bellBox.y-bellBox.height<20,'Notificações devem abrir logo abaixo do sininho');
   await page.screenshot({ path: "preview/notifications-reference.png" });
   await page.locator('[data-notice="n1"]').click();
   await page.locator("#liveMessages").waitFor();

@@ -1,7 +1,7 @@
 name: Retro Steam validation
 on:
   push:
-    branches: [codex/retro-steam-0.17.36]
+    branches: [codex/retro-steam-0.17.36, codex/desktop-0.17.37-fixes]
   pull_request:
     paths: ['desktop/**', 'supabase/functions/bright-api/**', 'tests/bright-api-security.mjs']
 permissions:
