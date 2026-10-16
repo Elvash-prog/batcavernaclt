@@ -1341,7 +1341,7 @@ try {
   );
   assert.deepEqual(
     await page.locator('#mainNav [data-discover-kind] span').allTextContents(),
-    ["Minha Steam", "Minha Retro", "Jogos grátis"],
+    ["Minha Steam", "Meu Retrô", "Jogos grátis"],
   );
   await page.locator('#mainNav [data-discover-kind="free"]').click();
   await page.waitForFunction(() =>
@@ -1359,19 +1359,17 @@ try {
   await page.waitForTimeout(800);
   await page.screenshot({ path: "preview/retro-check.png" });
   await page.evaluate(() => (window.failRetroAchievements = true));
-  await page.locator('[data-retro-achievements="77"]').click();
-  await page.locator(".retro-achievements-modal [data-retry]").waitFor();
-  assert.match(
-    await page.locator(".retro-achievements-modal").innerText(),
-    /Falha de rede simulada/,
-  );
-  await page.evaluate(() => (window.failRetroAchievements = false));
-  await page.locator(".retro-achievements-modal [data-retry]").click();
-  await page.getByText("Primeira jornada").waitFor();
-  await page.locator(".retro-achievements-modal [data-close]").click();
-  await page.locator(".retro-game-card").click();
-  await page.locator(".reference-detail").waitFor();
-  await page.locator(".reference-detail .detail-close").click();
+  assert.equal(await page.locator('.retro-actions [data-retro-achievements]').count(),0);
+  await page.locator('.retro-toolbar input').fill('inexistente');
+  assert.equal(await page.locator('.retro-library-item:visible').count(),0);
+  await page.locator('.retro-toolbar input').fill('');
+  await page.locator('.retro-game-card').click();
+  await page.locator('.reference-detail [data-detail-tab="achievements"]').click();
+  await page.getByText('Falha de rede simulada.').waitFor();
+  await page.evaluate(() => {window.failRetroAchievements=false});
+  await page.locator('.reference-detail [data-detail-tab="achievements"]').click();
+  await page.getByText('Primeira jornada').waitFor();
+  await page.locator('.reference-detail .detail-close').click();
   await page.evaluate(async () => await navigate("settings"));
   await page.locator('[data-settings-tab="app"]').click();
   await page.locator("#checkUpdates").click();
