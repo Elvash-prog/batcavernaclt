@@ -9,9 +9,9 @@ final class NativeAuthFlow {
  private static final OkHttpClient HTTP=new OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(25,TimeUnit.SECONDS).followRedirects(false).build();
  static void resend(String email,SupabaseAuthClient.Callback cb){run(email,"",false,null,true,cb);}
  static void finish(String email,String proof,boolean recovery,String password,SupabaseAuthClient.Callback cb){run(email,proof,recovery,password,false,cb);}
- private static JSONObject request(String path,String method,JSONObject body,String token)throws Exception{
+ static JSONObject request(String path,String method,JSONObject body,String token)throws Exception{
   String[] cfg=SupabaseAuthClient.loadConfig();Request.Builder b=new Request.Builder().url(cfg[0]+"/auth/v1/"+path).header("apikey",cfg[1]);if(token!=null)b.header("Authorization","Bearer "+token);
-  b.method(method,RequestBody.create(body.toString(),MediaType.get("application/json")));
+  b.method(method,"GET".equals(method)?null:RequestBody.create(body.toString(),MediaType.get("application/json")));
   try(Response response=HTTP.newCall(b.build()).execute()){
    if(!response.isSuccessful())throw new Exception(response.code()==429?"Aguarde antes de tentar novamente.":"Não foi possível concluir. Confira o código e solicite outro se ele expirou ou já foi utilizado.");
    String text=response.body()==null?"":response.body().string();return text.isEmpty()?new JSONObject():new JSONObject(text);
