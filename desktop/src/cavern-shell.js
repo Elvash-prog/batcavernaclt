@@ -105,6 +105,19 @@
   const favorites=overview.querySelector('.profile-featured')?.closest('.shelf-section')||overview.querySelector('.shelf-section');
   if(favorites){favorites.classList.add('cavern-favorites');favorites.querySelector('h2')&&(favorites.querySelector('h2').textContent='Jogos favoritos');favorites.querySelectorAll('.cinema-card').forEach((c,i)=>c.insertAdjacentHTML('afterbegin',`<em class="cavern-rank">${i+1}</em>`))}
  };
+ const baseRetroDiscover=renderDiscover;
+ renderDiscover=async function(){
+  await baseRetroDiscover();
+  if(state.current!=='discover'||state.discoverTab!=='retro')return;
+  const out=$('#discoverBody'),hero=out?.querySelector('.retro-profile');
+  if(!hero||out.querySelector('.cavern-stats'))return;
+  const cards=[...out.querySelectorAll('.retro-game-card')];
+  let got=0,total=0,hard=0;
+  cards.forEach(c=>{const m=c.querySelector('.body p')?.textContent.match(/(\d+)\/(\d+) conquistas · (\d+) Hardcore/);if(m){got+=+m[1];total+=+m[2];hard+=+m[3]}});
+  const points=(hero.querySelector('p')?.textContent.match(/^([\d.,]+) pontos · ([\d.,]+)/)||[]).slice(1);
+  const cell=(icon,value,label)=>`<div class="cavern-stat">${svg(icons[icon])}<span><b>${esc(value)}</b><small>${label}</small></span></div>`;
+  hero.insertAdjacentHTML('afterend',`<section class="cavern-stats cavern-retro-stats" aria-label="Resumo retrô">${cell('trophy',points[0]||'0','Pontos')}${cell('stats',points[1]||'0','True points')}${cell('library',cards.length,'Jogos')}${cell('trophy',`${got}/${total}`,'Conquistas')}${cell('trophy',hard,'Hardcore')}</section>`);
+ };
  sync();
 
  let pending=null,checking=false;
