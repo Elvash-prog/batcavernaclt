@@ -1018,6 +1018,8 @@ try {
   await page.evaluate(() => (window.delayLibrary = false));
   await page.locator('[data-view="library"]').click();
   await page.locator("#libraryGroups").waitFor();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "preview/library-check.png" });
   const libraryLeftEdges = await page.evaluate(() =>
     ["#libraryCollectionHero", ".library-controls", "#libraryGroups"].map(
       (selector) =>
