@@ -2,6 +2,10 @@
 
 Windows 0.17.39 e Android 1.7.7 verificam códigos e links originais do Supabase via POST /auth/v1/verify. Não navegam para o link colado nem usam seu redirect_to. Links precisam pertencer ao projeto, à rota verify e ao propósito correto. Senhas e provas não são registradas ou salvas como sessão normal. A sessão temporária é encerrada com logout local ao final (melhor esforço).
 
+## Configuração atual
+
+A consulta pública de Auth em 16/10/2026 informou mailer_autoconfirm=true. O cadastro atual não exige e-mail de confirmação: os apps preservam esse comportamento. Não foi alterado. A recuperação continua necessitando prova por e-mail.
+
 ## Configuração pendente no Supabase
 
 No painel Authentication → Email Templates, aplicar confirmation.html em Confirm signup e recovery.html em Reset password. Preservar as demais configurações e provedores de e-mail. Estas alterações não foram aplicadas ao projeto por este patch.

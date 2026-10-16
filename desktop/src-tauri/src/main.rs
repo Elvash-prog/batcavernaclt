@@ -237,7 +237,9 @@ async fn register(input: RegisterInput, state: tauri::State<'_, AppState>) -> Re
     let response=auth(&state.client,"/auth/v1/signup").json(&json!({"email":email,"password":input.password,"data":{"nome":name,"slug":username,"username":username}})).send().await.map_err(|_|"Não foi possível criar a conta.".to_string())?;
     let status=response.status(); let body=response.text().await.map_err(|_|"A resposta foi interrompida.".to_string())?;
     if !status.is_success(){return Err(message(&body,status));}
-    Ok(json!({"message":"Conta criada. Confira seu e-mail para confirmar o cadastro."}))
+    let created: Value=serde_json::from_str(&body).map_err(|_|"O serviço enviou uma resposta inválida ao cadastro.".to_string())?;
+    let confirmation_required=created["access_token"].as_str().map(|v|v.is_empty()).unwrap_or(true);
+    Ok(json!({"confirmationRequired":confirmation_required,"message":if confirmation_required{"Conta criada. Confira seu e-mail para confirmar o cadastro."}else{"Conta criada. Você já pode entrar."}}))
 }
 
 #[tauri::command]

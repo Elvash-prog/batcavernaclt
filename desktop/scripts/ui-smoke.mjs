@@ -252,6 +252,7 @@ try {
             window.saved.push({ c, p });
             return {};
           }
+          if(c === "register") return {confirmationRequired:!window.autoConfirm,message:"Conta criada. Você já pode entrar."};
           if(c === "verify_email_proof") { window.saved.push({c,p});return {message:p.input.recovery?"Senha atualizada. Entre com sua nova senha.":"E-mail confirmado. Você já pode entrar."}; }
           if(c === "resend_confirmation" || c === "recover_password") return {sent:true};
           if (c === "launcher_settings") return { wallpaper: null };
@@ -1740,6 +1741,16 @@ try {
   await proofForm.locator('.primary').click();
   await page.locator('.editor-overlay').waitFor({state:'detached'});
   assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='verify_email_proof').at(-1).p.input.recovery),false);
+  await page.evaluate(()=>window.autoConfirm=true);
+  await page.locator('[data-auth="register"]').click();
+  const registration=page.locator('#registerForm');
+  await registration.locator('[name="name"]').fill('Conta de teste');
+  await registration.locator('[name="username"]').fill('contateste');
+  await registration.locator('[name="email"]').fill('teste@example.com');
+  await registration.locator('[name="password"]').fill('SenhaSeguraTeste123');
+  await registration.locator('.primary').click();
+  await page.locator('#loginForm').waitFor({state:'visible'});
+  assert.equal(await page.locator('.editor-overlay').count(),0);
   await page.screenshot({ path: "preview/login-check.png" });
   assert.deepEqual(errors, []);
   assert.deepEqual(await page.evaluate(() => window.unhandledRejections), []);
