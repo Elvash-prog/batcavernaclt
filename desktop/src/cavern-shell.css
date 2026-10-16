@@ -224,6 +224,19 @@ body[data-screen="home"] .cavern-home .section-head {
   cursor: pointer;
 }
 
+.login-panel .auth-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 18px;
+}
+
+.login-panel .auth-switch .link-button {
+  padding: 6px 0;
+  line-height: 1.5;
+}
+
 .cavern-recent { margin: 0 34px 30px; }
 
 .cavern-recent .hero-activity {
