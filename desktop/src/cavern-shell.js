@@ -79,6 +79,32 @@
   }
   content.querySelectorAll('[data-shell-go]').forEach(item=>item.onclick=()=>navigate(item.dataset.shellGo));
  };
+ const baseProfile=renderProfile;
+ renderProfile=async function(userId){
+  await baseProfile(userId);
+  if(state.current!=='profile')return;
+  const card=$('.complete-profile'),overview=$('#profileOverview');
+  if(!card||!overview||card.dataset.cavern)return;
+  card.dataset.cavern='1';
+  const stat=label=>[...card.querySelectorAll('.profile-stats span')].find(s=>s.textContent.includes(label))?.querySelector('b')?.textContent||'0';
+  const level=(overview.querySelector('.level-card h2')?.textContent||'').replace(/\D/g,'')||'1';
+  const xp=overview.querySelector('.level-card p')?.textContent||'';
+  const progress=overview.querySelector('.level-card progress');
+  const unlocked=(overview.querySelector('.profile-feature p')?.textContent.match(/^(\d+) de/)||[])[1]||'0';
+  const friends=overview.querySelectorAll('.friend-grid .friend-card').length;
+  const cell=(icon,value,label,extra='')=>`<div class="cavern-stat">${svg(icons[icon])}<span><b>${esc(value)}</b><small>${label}</small>${extra}</span></div>`;
+  card.insertAdjacentHTML('afterend',`<section class="cavern-stats" aria-label="Resumo do perfil"><div class="cavern-stat cavern-level"><i>${esc(level)}</i><span><b>Nível ${esc(level)}</b><small>${esc(xp.replace(' acumulados',''))}</small><progress max="${progress?.max||1}" value="${progress?.value||0}"></progress></span></div>${cell('trophy',unlocked,'Conquistas')}${cell('library',stat('jogos'),'Jogos')}${cell('stats',stat('jogadas'),'Tempo de jogo')}${cell('friends',friends,'Amigos')}</section>`);
+  const highlights=[...overview.querySelectorAll('.profile-feature')].find(n=>n.querySelector('h3')?.textContent==='Conquistas em destaque');
+  const bio=card.querySelector('.profile-info>p');
+  const about=document.createElement('article');about.className='profile-feature cavern-about';
+  about.innerHTML=`<h3>Sobre mim</h3><p>${esc(bio?.textContent||'Este perfil ainda não tem uma bio.')}</p>`;
+  const columns=document.createElement('div');columns.className='cavern-overview-grid';
+  columns.append(about);if(highlights)columns.append(highlights);
+  overview.prepend(columns);
+  overview.querySelector('.profile-overview-columns')?.classList.add('cavern-hidden-level');
+  const favorites=overview.querySelector('.profile-featured')?.closest('.shelf-section')||overview.querySelector('.shelf-section');
+  if(favorites){favorites.classList.add('cavern-favorites');favorites.querySelector('h2')&&(favorites.querySelector('h2').textContent='Jogos favoritos');favorites.querySelectorAll('.cinema-card').forEach((c,i)=>c.insertAdjacentHTML('afterbegin',`<em class="cavern-rank">${i+1}</em>`))}
+ };
  sync();
 
  let pending=null,checking=false;

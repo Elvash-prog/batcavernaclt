@@ -383,3 +383,34 @@ body.reference-ui[data-card-format="landscape"] .cavern-library .reference-colle
 .reference-ui .status-tabs button, .reference-ui .tabs:not(.profile-tabs) > button { border: 1px solid var(--line-strong); border-radius: 8px; background: color-mix(in srgb, var(--panel) 80%, var(--bg)); }
 .reference-ui .status-tabs button.active, .reference-ui .tabs > button.active { border-color: var(--accent); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 80%, #fff 5%), var(--accent)); color: #fff; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
 .reference-ui .sidebar .shell-nav-main svg { width: 22px; height: 22px; }
+/* Perfil no padrão da referência */
+body[data-screen="profile"] .cavern-hidden-level { height: 0; margin: 0; overflow: hidden; visibility: hidden; }
+body[data-screen="profile"] .complete-profile { min-height: 300px; margin-bottom: 0; border-radius: 16px 16px 0 0; overflow: hidden; }
+body[data-screen="profile"] .complete-profile .profile-cover { height: 300px; }
+body[data-screen="profile"] .complete-profile .profile-body { align-items: flex-end; }
+body[data-screen="profile"] .complete-profile .profile-avatar { width: 150px; height: 150px; border: 4px solid var(--accent); box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 55%, transparent); }
+body[data-screen="profile"] .complete-profile .profile-info > .eyebrow,
+body[data-screen="profile"] .complete-profile .profile-stats { display: none; }
+body[data-screen="profile"] .complete-profile .profile-info h2 { font-size: 34px; }
+.cavern-stats { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); gap: 0; margin: 0 0 16px; border: 1px solid var(--line-strong); border-top: 0; border-radius: 0 0 16px 16px; background: color-mix(in srgb, var(--panel) 92%, var(--bg)); }
+.cavern-stat { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-left: 1px solid var(--line); }
+.cavern-stat:first-child { border-left: 0; }
+.cavern-stat > svg { width: 30px; height: 30px; color: var(--muted); flex: none; }
+.cavern-stat:nth-child(2) > svg { color: #f5b942; }
+.cavern-stat b { display: block; font-size: 20px; line-height: 1.1; }
+.cavern-stat small { color: var(--muted); font-size: 12px; }
+.cavern-level i { display: grid; place-items: center; width: 46px; height: 52px; clip-path: polygon(50% 0, 100% 18%, 100% 72%, 50% 100%, 0 72%, 0 18%); background: linear-gradient(160deg, var(--accent), #3b1d8f); font-style: normal; font-weight: 800; font-size: 18px; }
+.cavern-level progress { display: block; width: 150px; height: 5px; margin-top: 6px; }
+.cavern-overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; margin-bottom: 16px; }
+.cavern-overview-grid .profile-feature { margin: 0; }
+.cavern-favorites .cinema-card { position: relative; }
+.cavern-rank { position: absolute; z-index: 3; left: 8px; bottom: 44px; font-style: normal; font-weight: 800; font-size: 20px; text-shadow: 0 2px 6px #000; }
+body[data-screen="profile"] .profile-tabs { margin-top: 0; }
+@media (max-width: 1100px) { .cavern-stats { grid-template-columns: repeat(2, 1fr); } .cavern-overview-grid { grid-template-columns: 1fr; } }
+body[data-screen="profile"] .complete-profile .profile-body { grid-template-columns: 150px minmax(0, 1fr) auto !important; gap: 26px !important; min-height: 300px !important; }
+body[data-screen="profile"] .complete-profile .profile-info { padding-bottom: 24px; }
+body[data-screen="profile"] .complete-profile .profile-avatar { margin-bottom: -10px; }
+body[data-screen="profile"] .complete-profile .profile-info { margin: 0 !important; padding-left: 0 !important; grid-column: 2 !important; }
+body[data-screen="profile"] .complete-profile { position: relative; }
+body[data-screen="profile"] .complete-profile .profile-cover { position: absolute; inset: 0; height: auto; }
+body[data-screen="profile"] .complete-profile .profile-body { min-height: 300px !important; padding-bottom: 28px !important; }
