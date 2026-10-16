@@ -39,6 +39,7 @@
  const logo=$('.sidebar .logo');
  if(logo)logo.innerHTML='<img src="brand.jpg" alt=""><strong>BatCaverna <em>CLT</em></strong><small>JOGOS • PESSOAS • HISTÓRIAS</small>';
 
+ const bell=$('#notificationBell');if(bell&&logo)logo.after(bell);
  const rail=document.createElement('aside');
  rail.className='cavern-rail';rail.setAttribute('aria-label','Amigos online e jogando na Steam');
  const community=$('#sidebarCommunity');
