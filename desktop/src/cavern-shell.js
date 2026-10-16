@@ -23,10 +23,9 @@
   search:'<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/>'
  };
  const main=[
-  ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['media','Filmes, Séries e Animes','film',{collection:'filmes'}],
+  ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['media','Filmes e Séries','film',{collection:'filmes'}],['anime','Animes','anime',{collection:'animes'}],
   ['discover','Minha Steam','steam',{kind:'steam'}],['discover','Minha Retro','retro',{kind:'retro'}],
-  ['social','Comunidade','social'],
-  ['','Conquistas','trophy',{action:'achievements'}],['settings','Configurações','settings']
+  ['social','Comunidade','social'],['settings','Configurações','settings']
  ];
  const more=[
   ['lists','Listas','lists'],['recommendations','Indicações','recommend'],['discover','Jogos grátis','gift',{kind:'free'}]
@@ -47,12 +46,6 @@
  shell.append(rail);
  rail.insertAdjacentHTML('afterbegin',`<label class="rail-search">${svg(icons.search)}<input type="search" placeholder="Buscar amigos..." aria-label="Buscar amigos"></label>`);
  rail.querySelector('.rail-search input').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();rail.querySelectorAll('[data-sidebar-chat]').forEach(b=>b.hidden=!!q&&!b.textContent.toLowerCase().includes(q))});
- nav.addEventListener('click',async e=>{
-  if(!e.target.closest('[data-shell-action="achievements"]'))return;
-  state.profileUser=null;
-  await navigate('profile');
-  $('[data-profile-section="achievements"]')?.click();
- });
  const sync=()=>{document.body.dataset.screen=state.current||'home';document.body.classList.toggle('rail-off',['chat','friends'].includes(state.current))};
  const baseNavigate=navigate;
  navigate=async function(view){
@@ -104,6 +97,21 @@
  };
  const baseRetroDiscover=renderDiscover;
  renderDiscover=async function(){
+  if(state.discoverTab==='free'){
+   setPage('Jogos grátis','OFERTAS PARA RESGATAR');
+   const content=$('#content');
+   content.innerHTML='<div id="discoverBody" class="free-offers-page"><div class="loading"><span class="spinner"></span>Buscando jogos grátis…</div></div>';
+   const out=$('#discoverBody');
+   try{
+    const data=await api.bright({op:'gratis'});
+    if(state.current!=='discover'||state.discoverTab!=='free'||!out.isConnected)return;
+    const rows=[...(data.epic||[]).map(item=>({...item,store:'Epic'})),...(data.steam||[]).map(item=>({...item,store:'Steam'}))];
+    out.innerHTML=`<div class="section-head"><div><span class="eyebrow">OFERTAS DA SEMANA</span><h2>Jogos 100% grátis <small>${rows.length}</small></h2><p>Resgate enquanto as ofertas ainda estão disponíveis.</p></div></div><section class="offers">${rows.map(offerCard).join('')||'<div class="empty">Nenhuma oferta encontrada agora.</div>'}</section>`;
+    out.querySelectorAll('.offer-card').forEach(card=>{const store=card.querySelector('small')?.textContent||'';card.classList.toggle('offer-steam',/steam/i.test(store));card.classList.toggle('offer-epic',/epic/i.test(store));const tag=document.createElement('span');tag.className='offer-discount';tag.textContent='−100%';card.querySelector('.body')?.prepend(tag)});
+    out.querySelectorAll('[data-open-url]').forEach(button=>button.onclick=()=>api.open(button.dataset.openUrl));
+   }catch(error){if(out.isConnected)out.innerHTML=`<div class="error-card"><p>Não foi possível carregar os jogos grátis.</p><p>${esc(failure(error))}</p><button class="secondary" id="retryFreeGames">Tentar novamente</button></div>`;$('#retryFreeGames')?.addEventListener('click',renderDiscover)}
+   return;
+  }
   await baseRetroDiscover();
   if(state.current!=='discover'||state.discoverTab!=='retro')return;
   const out=$('#discoverBody'),hero=out?.querySelector('.retro-profile');

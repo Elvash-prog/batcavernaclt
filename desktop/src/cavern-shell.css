@@ -478,7 +478,7 @@ body[data-screen="discover"] .retro-recent > button { flex: 0 0 240px; }
 .reference-ui .app-shell > .cavern-rail { grid-column: 3; grid-row: 1; }
 .reference-ui body.rail-off .app-shell > .cavern-rail { display: none !important; }
 
-/* 0.17.34 — linguagem visual unificada dos conceitos BatCaverna */
+/* 0.17.35 — linguagem visual unificada dos conceitos BatCaverna */
 :root {
   --cavern-ink: #050910;
   --cavern-surface: #09111d;
@@ -615,6 +615,11 @@ body.reference-ui {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* As abas Filmes/Séries ficam abaixo do cabeçalho, sem cobrir título ou descrição. */
+.reference-ui .cavern-library .library-toolbar:has(.media-kind-tabs) {
+  margin-top: 14px;
 }
 
 .reference-ui .content {
