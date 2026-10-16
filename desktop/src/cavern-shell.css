@@ -414,3 +414,6 @@ body[data-screen="profile"] .complete-profile .profile-info { margin: 0 !importa
 body[data-screen="profile"] .complete-profile { position: relative; }
 body[data-screen="profile"] .complete-profile .profile-cover { position: absolute; inset: 0; height: auto; }
 body[data-screen="profile"] .complete-profile .profile-body { min-height: 300px !important; padding-bottom: 28px !important; }
+body[data-screen="home"].reference-ui .cavern-home .home-hero, body[data-screen="home"] .reference-ui .cavern-home .home-hero, .reference-ui .cavern-home .home-hero.reference-dashboard { min-height: 300px !important; }
+.reference-ui .cavern-home .home-hero .home-hero-content { padding: 32px 34px !important; }
+.reference-ui .cavern-home .home-hero .resume-info h2 { font-size: clamp(30px, 3vw, 46px) !important; line-height: 1.05 !important; max-width: 640px; }
