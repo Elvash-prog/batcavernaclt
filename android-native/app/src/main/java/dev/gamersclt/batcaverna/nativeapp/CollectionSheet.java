@@ -8,14 +8,14 @@ final class CollectionSheet {
  private final Context c;private final AccountRepository repo;private final NativeSheet sheet;private final String owner;
  private int generation;private boolean saving;private TextView state;
  private interface Rows {void render(JSONArray rows);}
- private CollectionSheet(Context context,String title){c=context;repo=new AccountRepository(c);owner=c.getSharedPreferences("batcaverna",0).getString("user_id","");sheet=new NativeSheet(c,title);sheet.show();}
+ private CollectionSheet(Context context,String title){c=context;repo=new AccountRepository(c);owner=SessionPreferences.get(c).getString("user_id","");sheet=new NativeSheet(c,title);sheet.show();}
  static void lists(Context c){new CollectionSheet(c,"Listas").lists();}
  static void recommendations(Context c,String id){new CollectionSheet(c,"Indicações entre amigos").recommendations(id);}
  static void preferences(Context c){new CollectionSheet(c,"Preferências de notificações").preferences();}
  static void add(Context c,String item){new CollectionSheet(c,"Guardar em lista").chooseList(item,"");}
  static void recommend(Context c,String item){new CollectionSheet(c,"Indicar a um amigo").recommendItem(item);}
  static void recommend(Context c,JSONObject item){new CollectionSheet(c,"Indicar a um amigo").friends(item,0);}
- private boolean active(){return sheet.dialog.isShowing()&&owner.equals(c.getSharedPreferences("batcaverna",0).getString("user_id",""));}
+ private boolean active(){return sheet.dialog.isShowing()&&owner.equals(SessionPreferences.get(c).getString("user_id",""));}
  private int reset(String message){generation++;sheet.body.removeAllViews();state=text(message,13);return generation;}
  private TextView text(String value,int size){TextView t=NativeSheet.text(c,value,size,0xffd7cbe7);sheet.body.addView(t);return t;}
  private Button button(String label,Runnable click){Button b=new Button(c);b.setText(label);AppStyle.button(b,false);sheet.body.addView(b,new LinearLayout.LayoutParams(-1,-2));b.setOnClickListener(v->{if(active()&&!saving)click.run();});return b;}

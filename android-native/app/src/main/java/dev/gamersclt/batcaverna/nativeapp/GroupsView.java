@@ -33,7 +33,7 @@ final class GroupsView extends LinearLayout {
  private void confirm(String title,Runnable action){NativeSheet s=new NativeSheet(getContext(),title);Button yes=button("Confirmar",true);s.body.addView(yes);yes.setOnClickListener(v->{s.dialog.dismiss();action.run();});s.show();}
  private ImageView avatar(String path,boolean group){ImageView image=new ImageView(getContext());image.setImageResource(R.drawable.app_logo);image.setScaleType(ImageView.ScaleType.CENTER_CROP);image.setBackground(AppStyle.shape(image,0xff30253e,42));image.setClipToOutline(true);AccountImageLoader.load(image,group?photoUrl(path):path);return image;}
  private String photoUrl(String path){return path.matches("[a-zA-Z0-9-]+/[a-zA-Z0-9._-]+\\.(jpg|jpeg|png|webp)")?BuildConfig.SUPABASE_URL+"/storage/v1/object/public/group-avatars/"+path:"";}
- private String me(){return getContext().getSharedPreferences("batcaverna",0).getString("user_id","");}
+ private String me(){return SessionPreferences.get(getContext()).getString("user_id","");}
  private LinearLayout panel(){LinearLayout p=new LinearLayout(getContext());p.setOrientation(VERTICAL);p.setPadding(dp(12),dp(10),dp(12),dp(10));p.setBackground(AppStyle.shape(p,0xdd211b2e,16));LayoutParams lp=new LayoutParams(-1,-2);lp.setMargins(0,dp(4),0,dp(4));p.setLayoutParams(lp);return p;}
  private LinearLayout row(){LinearLayout p=panel();p.setOrientation(HORIZONTAL);p.setGravity(Gravity.CENTER_VERTICAL);return p;}
  private Button button(String value,boolean primary){Button b=new Button(getContext());b.setText(value);b.setMinWidth(0);AppStyle.button(b,primary);return b;}

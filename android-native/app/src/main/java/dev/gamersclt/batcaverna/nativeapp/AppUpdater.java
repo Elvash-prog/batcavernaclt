@@ -26,7 +26,7 @@ final class AppUpdater {
  private static final Handler UI=new Handler(Looper.getMainLooper());
  private static volatile boolean checking;
  static void automatic(Activity a){
-  android.content.SharedPreferences p=a.getSharedPreferences("batcaverna",0);
+  android.content.SharedPreferences p=SessionPreferences.get(a);
   if(!p.getBoolean("check_app_updates",true)||System.currentTimeMillis()-p.getLong("update_checked",0)<86400000L)return;
   p.edit().putLong("update_checked",System.currentTimeMillis()).apply();check(a,true);
  }
@@ -34,7 +34,7 @@ final class AppUpdater {
   NativeSheet s=new NativeSheet(a,"Atualizações");
   s.body.addView(NativeSheet.text(a,"Versão instalada • "+BuildConfig.VERSION_NAME,16,0xfff3eafa));
   Switch automatic=new Switch(a);automatic.setText("Verificar ao abrir o aplicativo");automatic.setTextColor(0xffdcd1e8);
-  android.content.SharedPreferences p=a.getSharedPreferences("batcaverna",0);automatic.setChecked(p.getBoolean("check_app_updates",true));
+  android.content.SharedPreferences p=SessionPreferences.get(a);automatic.setChecked(p.getBoolean("check_app_updates",true));
   automatic.setOnCheckedChangeListener((b,on)->p.edit().putBoolean("check_app_updates",on).apply());s.body.addView(automatic);
   Button b=button(a,"Verificar atualização");s.body.addView(b);b.setOnClickListener(v->{s.dialog.dismiss();check(a,false);});s.show();
  }

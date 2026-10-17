@@ -35,17 +35,17 @@ jobs:
               subprocess.run(['java', '-cp', 'build/policy-tests', name], check=True)
           PY
       - name: Testes, compilação e Android Lint
-        run: bash gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --no-daemon
+        run: bash gradlew :app:testReleaseUnitTest :app:assembleRelease :app:lintRelease --no-daemon
       - name: Preparar artefatos
         run: |
           mkdir -p build/delivery
-          cp app/build/outputs/apk/debug/app-debug.apk build/delivery/BatCaverna-1.7.10-ci.apk
+          cp app/build/outputs/apk/release/app-release-unsigned.apk build/delivery/BatCaverna-1.7.11-ci.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/delivery/
           cp "$ANDROID_HOME/build-tools/35.0.0/aapt" build/delivery/
       - name: Publicar APK para assinatura local
         uses: actions/upload-artifact@v4
         with:
-          name: BatCaverna-Android-1.7.10-build
+          name: BatCaverna-Android-1.7.11-build
           path: android-native/build/delivery/
           retention-days: 30
       - name: Relatórios de validação
@@ -55,4 +55,4 @@ jobs:
           name: Android-validation
           path: |
             android-native/app/build/reports/tests/
-            android-native/app/build/reports/lint-results-debug.html
+            android-native/app/build/reports/lint-results-release.html

@@ -56,9 +56,9 @@ public final class FriendsDataView extends LinearLayout {
     @Override protected void onDetachedFromWindow(){attached=false;syncHandler.removeCallbacks(liveDrain);liveDirty=false;syncEpoch++;syncing=false;syncHandler.removeCallbacks(syncTick);super.onDetachedFromWindow();}
     private void scheduleSync(){
         syncHandler.removeCallbacks(syncTick);
-        if(foreground&&attached&&activeId!=null&&getContext().getSharedPreferences("batcaverna",0).getBoolean("chat_sync",true))syncHandler.postDelayed(syncTick,realtimeReady?Math.max(45000,syncPolicy.delayMillis()):syncPolicy.delayMillis());
+        if(foreground&&attached&&activeId!=null&&SessionPreferences.get(getContext()).getBoolean("chat_sync",true))syncHandler.postDelayed(syncTick,realtimeReady?Math.max(45000,syncPolicy.delayMillis()):syncPolicy.delayMillis());
     }
-    private void synchronize(){if(!getContext().getSharedPreferences("batcaverna",0).getBoolean("chat_sync",true))return;
+    private void synchronize(){if(!SessionPreferences.get(getContext()).getBoolean("chat_sync",true))return;
         if(!syncPolicy.canPoll(foreground,attached,activeId!=null,busy,sending,syncing)){scheduleSync();return;}
         syncing=true;int epoch=syncEpoch,request=generation;String target=activeId;
         repository.messages(target,0,(rows,error)->{
@@ -107,7 +107,7 @@ public final class FriendsDataView extends LinearLayout {
         });
     }
     private void render(){
-        list.removeAllViews();String me=getContext().getSharedPreferences("batcaverna",0).getString("user_id","");search.setVisibility(activeId==null?VISIBLE:GONE);friendActions.setVisibility(activeId==null?VISIBLE:GONE);
+        list.removeAllViews();String me=SessionPreferences.get(getContext()).getString("user_id","");search.setVisibility(activeId==null?VISIBLE:GONE);friendActions.setVisibility(activeId==null?VISIBLE:GONE);
         if(activeId==null){
             String q=search.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);int visible=0;
             for(int i=0;i<records.length();i++){JSONObject friend=records.optJSONObject(i);if(friend==null)continue;String label=friend.optString("nome","Amigo");if(!label.toLowerCase(java.util.Locale.ROOT).contains(q)&&!friend.optString("slug","").toLowerCase(java.util.Locale.ROOT).contains(q))continue;visible++;LinearLayout card=card(0xff211c2e);card.setPadding(dp(12),dp(8),dp(12),dp(8));card.setOrientation(HORIZONTAL);card.setGravity(Gravity.CENTER_VERTICAL);
@@ -142,7 +142,7 @@ public final class FriendsDataView extends LinearLayout {
         Button reply=new Button(getContext());reply.setText("Responder mensagem");AppStyle.button(reply,false);AppStyle.icon(reply,ActionIcon.REPLY,0xff9fdff5);sheet.body.addView(reply);
         reply.setOnClickListener(v->{sheet.dialog.dismiss();if(!target.equals(activeId))return;String quote=(content.isEmpty()?"Figurinha":content).replace("\n"," ");draft.setText("> "+quote.substring(0,Math.min(180,quote.length()))+"\n"+draft.getText());draft.setSelection(draft.length());draft.requestFocus();draft.post(()->((android.view.inputmethod.InputMethodManager)getContext().getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(draft,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT));});
         if(!content.isEmpty()){Button copy=new Button(getContext());copy.setText("Copiar texto");AppStyle.button(copy,false);AppStyle.icon(copy,ActionIcon.COPY,0xffccb0ff);sheet.body.addView(copy);copy.setOnClickListener(v->{((android.content.ClipboardManager)getContext().getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(android.content.ClipData.newPlainText("Mensagem",content));sheet.dialog.dismiss();});}
-        sheet.body.addView(NativeSheet.text(getContext(),"Reagir",12,0xffb3a3c8));LinearLayout reactionsRow=new LinearLayout(getContext());sheet.body.addView(reactionsRow);String me=getContext().getSharedPreferences("batcaverna",0).getString("user_id","");
+        sheet.body.addView(NativeSheet.text(getContext(),"Reagir",12,0xffb3a3c8));LinearLayout reactionsRow=new LinearLayout(getContext());sheet.body.addView(reactionsRow);String me=SessionPreferences.get(getContext()).getString("user_id","");
         for(String emoji:new String[]{"❤️","😂","🔥","👍"}){boolean own=false;JSONArray reactions=message.optJSONArray("_reactions");if(reactions!=null)for(int i=0;i<reactions.length();i++){JSONObject r=reactions.optJSONObject(i);if(r!=null&&me.equals(r.optString("user_id"))&&emoji.equals(r.optString("emoji")))own=true;}boolean add=!own;Button react=new Button(getContext());react.setText(emoji);react.setContentDescription(own?"Remover minha reação "+emoji:"Reagir com "+emoji);AppStyle.button(react,own);react.setTextSize(23);react.setPadding(dp(4),dp(8),dp(4),dp(8));LayoutParams rp=new LayoutParams(0,dp(40),1);rp.setMargins(dp(2),dp(4),dp(2),dp(8));reactionsRow.addView(react,rp);
             react.setOnClickListener(v->{if(!target.equals(activeId)){sheet.dialog.dismiss();return;}sheet.busy(true);enableChildren(sheet.body,false);repository.reaction(message.optString("id"),emoji,add,(rows,error)->{sheet.busy(false);if(error!=null){preview.setText(error);enableChildren(sheet.body,true);return;}sheet.dialog.dismiss();if(target.equals(activeId))synchronize();});});
         }
