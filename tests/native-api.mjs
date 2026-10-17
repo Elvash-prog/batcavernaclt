@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import {createHandler} from '../supabase/functions/native-api/router.js';
 const uid='2d3268d1-4993-46d6-abba-340a2ffdd0fa',other='2d3268d1-4993-46d6-abba-340a2ffdd0fb';
 const token='eyJtest.payload.signature';
-const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'private-service',RAWG_KEY:'private-rawg',TMDB_KEY:'private-tmdb',SIGHTENGINE_API_USER:'private-user',SIGHTENGINE_API_SECRET:'private-moderation',USER_RATE_LIMITER:{limit:async()=>({success:mode!=='limited'})}};
+const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'private-service',IGDB_CLIENT_ID:'private-client',IGDB_CLIENT_SECRET:'private-secret',TMDB_KEY:'private-tmdb',SIGHTENGINE_API_USER:'private-user',SIGHTENGINE_API_SECRET:'private-moderation',USER_RATE_LIMITER:{limit:async()=>({success:mode!=='limited'})}};
 let mode='ok',calls=[];const json=(d,status=200)=>new Response(JSON.stringify(d),{status});
 globalThis.fetch=async(url,options={})=>{const u=new URL(url);calls.push({u,options});
  if(u.pathname==='/auth/v1/user')return mode==='invalid'?json({},401):json({id:uid});
- if(u.hostname==='api.rawg.io'){if(mode==='upstreamfail')throw Error('private-rawg');return json({next:'https://api.rawg.io/?key=private-rawg',previous:'private-rawg',results:[{name:'Safe Game'},{name:'Hentai Game'}]});}
+ if(u.hostname==='id.twitch.tv')return json({access_token:'private-application-token',expires_in:3600});
+ if(u.hostname==='api.igdb.com'){if(mode==='upstreamfail')throw Error('private-secret');return json([{id:1,name:'Safe Game',cover:{image_id:'safe_cover'}},{id:2,name:'Hentai Game'}]);}
  if(u.hostname==='api.themoviedb.org')return json({adult:true,title:'Explicit'});
  if(u.pathname.includes('clt_can_view_media'))return json(mode==='denied'?false:true);
  if(u.pathname.includes('clt_chat_group_members'))return json([]);
@@ -23,7 +24,9 @@ async function request(path,method='GET',body=null){calls=[];return handler(new 
 let edgeResponse=await handler(new Request('https://test.supabase.co/native-api/health'));assert.equal(edgeResponse.status,200);
 let r=await request('/health');assert.equal(r.status,200);assert.doesNotMatch(await r.text(),/private-/);assert.equal(calls.length,0);
 mode='invalid';r=await request('/api/catalog/rawg/games');assert.equal(r.status,401);assert.equal(calls.length,1);
-mode='ok';r=await request('/api/catalog/rawg/games?search=safe');let body=await r.json();assert.equal(body.results.length,1);assert.equal(body.results[0].name,'Safe Game');assert.equal(body.next,undefined);assert.doesNotMatch(JSON.stringify(body),/private-/);
+mode='ok';r=await request('/api/catalog/rawg/games?search=safe');let body=await r.json();assert.equal(body.results.length,1);assert.equal(body.results[0].name,'Safe Game');assert.equal(body.results[0].id,1000000001);assert.equal(body.results[0].igdb_id,1);assert.equal(body.next,undefined);assert.doesNotMatch(JSON.stringify(body),/private-/);
+r=await request('/api/catalog/rawg/games/123');assert.equal(r.status,409);assert.equal(calls.length,1);
+r=await request('/api/catalog/rawg/games/1000000001');assert.equal(r.status,200);assert.equal((await r.json()).igdb_id,1);
 r=await request('/api/catalog/tmdb/movie/1');assert.equal(r.status,403);
 r=await request('/api/catalog/rawg/https://evil.test');assert.equal(r.status,404);assert.equal(calls.length,0);
 mode='limited';r=await request('/api/catalog/rawg/games');assert.equal(r.status,429);assert.equal(calls.length,1);

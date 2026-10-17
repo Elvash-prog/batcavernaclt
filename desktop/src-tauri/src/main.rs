@@ -589,19 +589,19 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     let id=input["id"].as_u64();
     let recommend=input["recommend"].as_bool()==Some(true);
     let path=match provider {
-        "rawg"=>if let Some(id)=id{format!("rawg/games/{id}")}else{"rawg/games".into()},
+        "igdb"|"rawg"=>if let Some(id)=id{format!("igdb/games/{id}")}else{"igdb/games".into()},
         "tmdb"=>{if !matches!(kind,"movie"|"tv"){return Err("Tipo inválido.".into());}if let Some(id)=id {format!("tmdb/{kind}/{id}{}",if input["providers"].as_bool()==Some(true){"/watch/providers"}else{""})}else{if recommend{format!("tmdb/discover/{kind}")}else{format!("tmdb/search/{kind}")}}},
         _=>return Err("Catálogo inválido.".into())
     };
     if id.is_none()&&!recommend&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
-    let request=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if provider=="rawg"{"search"}else{"query"},query),("language","pt-BR"),("page_size","40"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,100).to_string()),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]);
+    let request=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if matches!(provider,"igdb"|"rawg"){"search"}else{"query"},query),("language","pt-BR"),("page_size","40"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,100).to_string()),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]);
     let request=if recommend{request.query(&[("ordering","-added"),("sort_by","popularity.desc")])}else{request};
     let retry=request.try_clone();
     let response=match request.send().await{Ok(r) if r.status().as_u16()!=429&&!r.status().is_server_error()=>r,Ok(_)|Err(_)=>{tokio::time::sleep(Duration::from_millis(400)).await;retry.ok_or_else(||"Não foi possível consultar o catálogo.".to_string())?.send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?}};
     value(response).await
 }
 fn image_host(host: &str)->bool {
-    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || ["rawg.io","steamgriddb.com","steamstatic.com","tmdb.org","anilist.co","retroachievements.org"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
+    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || ["igdb.com","rawg.io","steamgriddb.com","steamstatic.com","tmdb.org","anilist.co","retroachievements.org"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
 }
 #[tauri::command]
 async fn cover_image(url: String) -> Result<String,String> {

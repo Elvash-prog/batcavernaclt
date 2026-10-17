@@ -100,7 +100,7 @@ test('Comunidade Neon Underground preserva publicação, reações e comentário
   assert.match(css,/@media \(max-width: 900px\)/);
 });
 
-test('desktop 0.17.38 integra RetroAchievements, RAWG e perfis de amigos', () => {
+test('desktop 0.17.38 integra RetroAchievements, IGDB e perfis de amigos', () => {
   const shell=read('src/main.tsx'),retro=read('src/retro.js'),rust=read('src-tauri/src/main.rs'),edge=read('../supabase/functions/bright-api/index.ts'),sql=read('../supabase/patch-1.47-retro-social.sql');
   assert.match(shell,/Integração RetroAchievements/);
   assert.match(retro,/dataset\.discoverKind='retro'/);
@@ -109,7 +109,7 @@ test('desktop 0.17.38 integra RetroAchievements, RAWG e perfis de amigos', () =>
   assert.match(retro,/dataset\.discoverKind='retro'/);
   assert.match(retro,/nav\?\.querySelector\('\[data-view="discover"\]'\)/);
   assert.match(retro,/retroachievements_user\|\|profile\?\.retroachievements_ulid/);
-  assert.match(retro,/provider:'rawg'/);
+  assert.match(retro,/provider:'igdb'/);
   assert.match(retro,/data-retro-detail/);
   assert.match(retro,/aria-modal/);
   assert.match(retro,/retro-achievements-overlay/);

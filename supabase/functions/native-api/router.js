@@ -6,7 +6,7 @@ export function createHandler(env){
   try{
    const incoming=new URL(request.url),prefix='/functions/v1/native-api';
    const path=incoming.pathname.startsWith(prefix+'/')?incoming.pathname.slice(prefix.length):incoming.pathname.startsWith('/native-api/')?incoming.pathname.slice('/native-api'.length):incoming.pathname;
-   if(request.method==='GET'&&path==='/health')return json({service:'native-api',version:1,configured:{rawg:!!env.RAWG_KEY,tmdb:!!env.TMDB_KEY,moderation:!!(env.SIGHTENGINE_API_USER&&env.SIGHTENGINE_API_SECRET),supabase:!!(env.SUPABASE_URL&&env.SUPABASE_ANON_KEY&&env.SUPABASE_SERVICE_ROLE_KEY)}});
+   if(request.method==='GET'&&path==='/health')return json({service:'native-api',version:2,catalogProvider:'igdb',configured:{igdb:!!(env.IGDB_CLIENT_ID&&env.IGDB_CLIENT_SECRET),igdbConnected:env.IGDB_READY?await env.IGDB_READY:null,tmdb:!!env.TMDB_KEY,moderation:!!(env.SIGHTENGINE_API_USER&&env.SIGHTENGINE_API_SECRET),supabase:!!(env.SUPABASE_URL&&env.SUPABASE_ANON_KEY&&env.SUPABASE_SERVICE_ROLE_KEY)}});
    if(!['GET','POST'].includes(request.method))return json({error:'Método não permitido.'},405);
    if(incoming.href.length>4096)return json({error:'Consulta muito longa.'},414);
    // Rebase only for local dispatch. No redirect and no request to the former host.
