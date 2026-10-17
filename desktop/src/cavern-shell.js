@@ -61,8 +61,8 @@
   if(activity&&!activity.closest('.cavern-recent')){
    activity.querySelector(':scope>.section-head')?.remove();
    const section=document.createElement('section');section.className='cavern-recent';
-   section.innerHTML='<div class="section-head"><h2>Atividade recente</h2><button type="button" class="link-button" data-shell-go="social">Ver todos →</button></div>';
-   section.append(activity);content.append(section);
+   section.innerHTML='<div class="section-head"><h2>Atividade recente</h2><button type="button" class="link-button" data-clear-activity>Limpar</button><button type="button" class="link-button" data-shell-go="social">Ver todos →</button></div>';
+   section.append(activity);content.append(section);section.querySelector('[data-clear-activity]').onclick=()=>{localStorage.setItem('bc-activity-cleared:'+state.userId,String(Date.now()));activity.querySelectorAll('[data-update],.friend-activity').forEach(node=>node.remove());activity.querySelector('.friend-activities')?.replaceChildren();toast('Atividades recentes limpas. Novas atividades aparecerão aqui.');};
   }
   const recent=$('.shelf-section .section-head');
   if(recent&&!recent.querySelector('[data-shell-go]')){
@@ -198,9 +198,9 @@
  };
  let lastCheck=0;
  const autoCheck=async()=>{
-  if(checking||$('#appShell').hidden||!state.userId||Date.now()-lastCheck<6*60*60*1000)return;
-  checking=true;lastCheck=Date.now();
-  try{const update=await api.checkForUpdates();if(update?.available&&update.version)announce(update)}
+  if(checking||$('#appShell').hidden||!state.userId||Date.now()-lastCheck<30*60*1000)return;
+  checking=true;
+  try{const update=await api.checkForUpdates();lastCheck=Date.now();if(update?.available&&update.version)announce(update)}
   catch{}
   finally{checking=false}
  };
@@ -209,3 +209,7 @@
 })();
 
 (()=>{const previous=renderFriends;renderFriends=async function(){await previous();if(['friends','chat'].includes(state.current))try{await window.batcavernaGroupHub?.()}catch(error){toast(failure(error))}}})();
+
+(()=>{const open=image=>{if(!image.currentSrc&&!image.src)return;const overlay=window.batcavernaPopup('<header><h2>Imagem da publicação</h2><button type="button" data-close aria-label="Fechar">×</button></header><img class="community-image-full" alt="Imagem ampliada da publicação">','community-image-viewer');overlay.querySelector('img').src=image.currentSrc||image.src;overlay.querySelector('[data-close]').onclick=()=>overlay.remove();overlay.addEventListener('keydown',e=>{if(e.key==='Escape')overlay.remove()});overlay.querySelector('[data-close]').focus();};document.addEventListener('click',e=>{const image=e.target.closest('.feed-media img');if(image)open(image)});document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('.feed-media img')){e.preventDefault();open(e.target)}})})();
+
+(()=>{const previous=renderSettings;renderSettings=async function(){await previous();const panel=$('#settingsPanel');if(state.current!=='settings'||!panel)return;const nav=$('.settings-nav');if(!nav||nav.querySelector('[data-credits]'))return;const button=document.createElement('button');button.dataset.credits='1';button.textContent='Créditos e serviços';nav.append(button);button.onclick=()=>{nav.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===button));panel.innerHTML='<h2>Créditos e serviços</h2><p>BatCaverna é um aplicativo independente. Imagens, jogos, marcas e obras pertencem aos seus respectivos titulares.</p><div class="settings-row"><div><strong>IGDB</strong><small>Dados e imagens de jogos fornecidos por IGDB.com. Não há vínculo ou endosso à BatCaverna.</small></div><button class="secondary" data-provider-url="https://www.igdb.com">Site oficial</button></div><img src="tmdb-logo.svg" alt="TMDB" style="width:110px;height:auto"><div class="settings-row"><div><strong>TMDB</strong><small>This product uses the TMDB API but is not endorsed or certified by TMDB.</small></div><button class="secondary" data-provider-url="https://www.themoviedb.org">Site oficial</button></div><div class="settings-row"><div><strong>AniList</strong><small>Dados e imagens de animes fornecidos pela AniList. Aplicativo independente.</small></div><button class="secondary" data-provider-url="https://anilist.co">Site oficial</button></div><div class="settings-row"><div><strong>RetroAchievements</strong><small>Dados de progresso e conquistas fornecidos pelo RetroAchievements. Remover um jogo aqui não altera sua conta no serviço.</small></div><button class="secondary" data-provider-url="https://retroachievements.org">Site oficial</button></div><div class="settings-row"><div><strong>Steam / Valve</strong><small>Steam e o logotipo Steam são marcas da Valve Corporation. Dados fornecidos como disponíveis, sem garantia de exatidão ou disponibilidade. Sem vínculo ou endosso da Valve.</small></div><button class="secondary" data-provider-url="https://store.steampowered.com">Site oficial</button></div><div class="settings-row"><div><strong>SteamGridDB</strong><small>Artes de capas fornecidas pelo SteamGridDB e seus colaboradores. Direitos das imagens pertencem aos respectivos titulares.</small></div><button class="secondary" data-provider-url="https://www.steamgriddb.com">Site oficial</button></div><div class="settings-row"><div><strong>Supabase</strong><small>Autenticação, banco de dados, armazenamento e funções do aplicativo.</small></div><button class="secondary" data-provider-url="https://supabase.com">Site oficial</button></div><div class="settings-row"><div><strong>Firebase</strong><small>Serviço de notificações do Android.</small></div><button class="secondary" data-provider-url="https://firebase.google.com">Site oficial</button></div><div class="settings-row"><div><strong>Sightengine</strong><small>Moderação de imagens e vídeos enviados à comunidade.</small></div><button class="secondary" data-provider-url="https://sightengine.com">Site oficial</button></div>';panel.querySelectorAll('[data-provider-url]').forEach(b=>b.onclick=()=>api.open(b.dataset.providerUrl));};};})();
