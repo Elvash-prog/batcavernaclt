@@ -625,7 +625,7 @@ try {
           if (c === "realtime_start") return {};
           if (c === "catalog") {
             const i = p.input;
-            if (i.provider === "rawg" && i.recommend)
+            if (i.provider === "igdb" && i.recommend)
               return {
                 results: Array.from({ length: 6 }, (_, n) => ({
                   id: 100 + n,
@@ -641,11 +641,11 @@ try {
                   genres: [{ name: "Action" }],
                 })),
               };
-            if (i.provider === "rawg")
+            if (i.provider === "igdb")
               return i.id
                 ? {
                     id: 10,
-                    name: "Resultado RAWG",
+                    name: "Resultado IGDB",
                     released: "2025-01-01",
                     background_image: "https://media.rawg.io/cover.jpg",
                     genres: [{ name: "Action" }],
@@ -656,7 +656,7 @@ try {
                     results: [
                       {
                         id: 10,
-                        name: "Resultado RAWG",
+                        name: "Resultado IGDB",
                         background_image: "https://media.rawg.io/cover.jpg",
                       },
                     ],

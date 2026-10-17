@@ -1,30 +1,9 @@
-# Backend dos aplicativos no Supabase
+# Native API
 
-Windows 0.17.40 e Android 1.7.8 usam `/functions/v1/native-api` para catálogo RAWG/TMDB, ofertas Steam e upload/preparação/revisão de mídia. O APK usa `login-username` e inclui o fundo padrão de login no pacote. As demais funções existentes (bright-api, media-upload, android-push e send-push), Auth, REST/RPC, Realtime e Storage permanecem no mesmo projeto.
+The game catalog is IGDB. `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` are Supabase Edge Function secrets; Twitch tokens are obtained and refreshed only on the server. TMDB and existing moderation secrets remain unchanged.
 
-## Implantação
+`/api/catalog/igdb/games` supports bounded search, recommendation pagination and `/games/{id}` details. Responses use the existing client field names with explicit `source: igdb`, `igdb_id`, portrait `cover_image` and landscape `background_image`. The legacy `/rawg/games` route is an IGDB alias for installed clients; there are no RAWG API calls or RAWG_KEY reads. Existing saved RAWG image URLs remain readable so library covers are not erased. Library IDs, ratings, hours and progress are unchanged. No destructive database migration is needed.
 
-Função `native-api` publicada no projeto existente, isolada das funções atuais. A validação de JWT do gateway é desativada porque todas as rotas de negócio consultam Auth diretamente e aplicam o limite SQL compartilhado `clt_bright_api_limit`. Apenas `/health` é público e retorna indicadores de configuração, nunca os valores das chaves.
+Every catalog query validates the Supabase user and shared user rate limit. Twitch credentials never enter client bundles. Queries use fixed endpoints/fields and escaped search literals; caches and single-flight token renewal reduce upstream calls. Requests are paced inside each isolate; upstream 429s are handled with bounded backoff across isolates. Mature sexual content is filtered on the server from themes, ratings, content descriptions and titles.
 
-As regras de mídia preservam ownership, permissões de administradores de grupo, bloqueios, ACL de leitura, moderação, quarentena e bloqueio do arquivo antes da revisão do vídeo. URLs assinadas são entregues apenas após verificar autorização. Novos arquivos não são liberados sem moderação aprovada.
-
-Não foram alteradas tabelas ou permissões. As funções SQL de limite, bloqueio de quarentena e ACL já existem e foram verificadas no projeto.
-
-## Segredos pendentes
-
-A consulta de health em 16/10/2026 confirmou Supabase e moderação configurados. RAWG_KEY e TMDB_KEY não estavam presentes. Cadastrar ambos em Edge Functions → Secrets no painel Supabase. Copiar os valores do administrador das integrações atuais; não inserir segredos no repositório, APK ou conversa. O código falha explicitamente com integração não configurada enquanto faltarem as chaves. Não existe fallback para o antigo host.
-
-## Dependências externas
-
-As APIs de jogos, filmes, Steam, RetroAchievements, AniList, moderação e Firebase continuam sendo serviços externos usados pelo produto. GitHub continua sendo repositório e canal de distribuição dos instaladores. A migração retira a hospedagem própria do Cloudflare, não esses fornecedores nem os CDNs de imagens de parceiros.
-
-## Antes de desligar o Worker
-
-1. Cadastrar RAWG_KEY e TMDB_KEY e confirmar os indicadores em `/health`.
-2. Instalar as duas novas versões e testar login, renovação de sessão, busca, biblioteca, imagens de perfil/grupos/chat, publicação de fotos/vídeos, notificações, Steam e Retro.
-3. Testar recuperação de senha por código ou cópia do link original. O Site URL do Auth ainda precisa ser revisto se o administrador quiser que links antigos abertos no navegador deixem de apontar ao site. Os apps novos verificam diretamente com Auth.
-4. Configurar e-mails com código quando os clientes compatíveis estiverem distribuídos (ver `supabase/email-templates`).
-5. Confirmar que não restam usuários em versões antigas. Elas dependem do Worker anterior.
-6. Só então desativar o Worker pelo painel Cloudflare. Este patch não o exclui e mantém possibilidade de reversão durante a migração.
-
-Testes: `node tests/native-api.mjs` usa o handler real com Auth/provedores simulados; `node tests/native-dependencies.mjs` impede endpoints Workers/Pages no código nativo. CI valida Android e Windows. Ausência de endpoints no código não comprova todas as integrações com uma conta real.
+`/health` reports configuration booleans and the result of a one-time per-isolate IGDB connection probe. A true `igdbConnected` confirms a real IGDB query succeeded without disclosing credentials.
