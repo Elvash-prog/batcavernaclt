@@ -76,18 +76,23 @@ export async function igdbProbe(env){
  if(!env.IGDB_CLIENT_ID||!env.IGDB_CLIENT_SECRET)return false;
  try{await client(env).query(`fields ${FIELDS}; where (themes = null | themes != (42)); limit 1;`);return true;}catch{return false}
 }
-export async function igdbCatalog(env,url,path){
+export async function igdbCatalog(env,url,path,legacy=false){
  if(!env.IGDB_CLIENT_ID||!env.IGDB_CLIENT_SECRET)return response({error:'IGDB ainda não configurado.'},503);
- const id=path.split('/')[1],search=(url.searchParams.get('search')||url.searchParams.get('query')||'').trim();
+ const externalId=path.split('/')[1];
+ // Legacy clients may retain RAWG search results in memory. Never interpret those IDs as IGDB IDs.
+ const legacyOffset=1000000000;
+ if(externalId&&legacy&&Number(externalId)<legacyOffset)return response({error:'O catálogo mudou para IGDB. Faça a busca novamente.',code:'CATALOG_SEARCH_AGAIN'},409);
+ const id=externalId?(legacy?String(Number(externalId)-legacyOffset):externalId):'',search=(url.searchParams.get('search')||url.searchParams.get('query')||'').trim();
  if(search.length>180)return response({error:'Pesquisa muito longa.'},400);
  const page=Math.min(100,Math.max(1,Number(url.searchParams.get('page'))||1)),size=Math.min(40,Math.max(1,Number(url.searchParams.get('page_size'))||40));
  if(!Number.isInteger(page)||!Number.isInteger(size))return response({error:'Página inválida.'},400);
+ const normalize=g=>{const item=normalizeGame(g);if(legacy)item.id+=legacyOffset;return item};
  const fields=`fields ${FIELDS}; `;
  const body=id?fields+`where id = ${Number(id)}; limit 1;`:fields+(search?`search ${JSON.stringify(search.replace(/[\u0000-\u001f]/g,' '))}; `:'sort total_rating_count desc; ')+`where (themes = null | themes != (42))${search?'':' & cover != null & total_rating_count >= 5'}; limit ${size+1}; offset ${(page-1)*size};`;
  try{
   const raw=await client(env).query(body),visible=raw.filter(g=>!blockedGame(g));
-  if(id){if(!visible[0])return response({error:'Jogo não encontrado ou conteúdo não permitido.'},404);return response(normalizeGame(visible[0]));}
-  const hasMore=raw.length>size,results=raw.slice(0,size).filter(g=>!blockedGame(g)).map(normalizeGame);
+  if(id){if(!visible[0])return response({error:'Jogo não encontrado ou conteúdo não permitido.'},404);return response(normalize(visible[0]));}
+  const hasMore=raw.length>size,results=raw.slice(0,size).filter(g=>!blockedGame(g)).map(normalize);
   return response({source:'igdb',results,count:(page-1)*size+raw.slice(0,size).length+(hasMore?1:0),total_pages:page+(hasMore?1:0),has_more:hasMore});
  }catch(e){return response({error:e.status===429?'O IGDB atingiu o limite de consultas. Aguarde um instante.':'Não foi possível consultar o IGDB. Tente novamente.',code:e.status===429?'CATALOG_RATE_LIMIT':'CATALOG_UNAVAILABLE'},e.status||502);}
 }

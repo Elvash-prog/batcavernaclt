@@ -9,7 +9,7 @@ async function catalog(request,env,url){
   const allowed=provider!=='tmdb'?/^games(?:\/[0-9]+)?$/:/^(?:(?:search\/(?:movie|tv|multi)|discover\/(?:movie|tv))|(?:movie|tv)\/[0-9]+(?:\/watch\/providers)?)$/;
   if(!allowed.test(path))return json({error:'Rota inválida'},404);
   // Legacy /rawg routes remain aliases for installed clients; no RAWG API is called.
-  if(provider!=='tmdb'){try{await authenticate(request,env);return await igdbCatalog(env,url,path)}catch(e){return json({error:e.message==='RATE_LIMIT'?'Aguarde um instante.':'Sessão inválida.'},e.message==='RATE_LIMIT'?429:401)}}
+  if(provider!=='tmdb'){try{await authenticate(request,env);return await igdbCatalog(env,url,path,provider==='rawg')}catch(e){return json({error:e.message==='RATE_LIMIT'?'Aguarde um instante.':'Sessão inválida.'},e.message==='RATE_LIMIT'?429:401)}}
   const key=String(env.TMDB_KEY||'').trim().replace(/^Bearer\s+/i,'');
   if(!env.SUPABASE_URL||!env.SUPABASE_ANON_KEY||!key)return json({error:'Integração não configurada'},503);
   const auth=request.headers.get('Authorization')||'';

@@ -24,7 +24,9 @@ async function request(path,method='GET',body=null){calls=[];return handler(new 
 let edgeResponse=await handler(new Request('https://test.supabase.co/native-api/health'));assert.equal(edgeResponse.status,200);
 let r=await request('/health');assert.equal(r.status,200);assert.doesNotMatch(await r.text(),/private-/);assert.equal(calls.length,0);
 mode='invalid';r=await request('/api/catalog/rawg/games');assert.equal(r.status,401);assert.equal(calls.length,1);
-mode='ok';r=await request('/api/catalog/rawg/games?search=safe');let body=await r.json();assert.equal(body.results.length,1);assert.equal(body.results[0].name,'Safe Game');assert.equal(body.next,undefined);assert.doesNotMatch(JSON.stringify(body),/private-/);
+mode='ok';r=await request('/api/catalog/rawg/games?search=safe');let body=await r.json();assert.equal(body.results.length,1);assert.equal(body.results[0].name,'Safe Game');assert.equal(body.results[0].id,1000000001);assert.equal(body.results[0].igdb_id,1);assert.equal(body.next,undefined);assert.doesNotMatch(JSON.stringify(body),/private-/);
+r=await request('/api/catalog/rawg/games/123');assert.equal(r.status,409);assert.equal(calls.length,1);
+r=await request('/api/catalog/rawg/games/1000000001');assert.equal(r.status,200);assert.equal((await r.json()).igdb_id,1);
 r=await request('/api/catalog/tmdb/movie/1');assert.equal(r.status,403);
 r=await request('/api/catalog/rawg/https://evil.test');assert.equal(r.status,404);assert.equal(calls.length,0);
 mode='limited';r=await request('/api/catalog/rawg/games');assert.equal(r.status,429);assert.equal(calls.length,1);
