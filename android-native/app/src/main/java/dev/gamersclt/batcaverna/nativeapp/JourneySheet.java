@@ -5,10 +5,10 @@ import org.json.*;
 /** Shared account progress and full-library statistics from the authenticated RPC. */
 final class JourneySheet {
  private final Context c;private final NativeSheet sheet;private final AccountRepository repo;private final String owner;private int generation;private boolean busy;private TextView state;
- private JourneySheet(Context context,String title){c=context;sheet=new NativeSheet(c,title);repo=new AccountRepository(c);owner=c.getSharedPreferences("batcaverna",0).getString("user_id","");sheet.show();}
+ private JourneySheet(Context context,String title){c=context;sheet=new NativeSheet(c,title);repo=new AccountRepository(c);owner=SessionPreferences.get(c).getString("user_id","");sheet.show();}
  static void progress(Context c,String id){new JourneySheet(c,"Progresso de episódios").load(id);}
  static void statistics(Context c){new JourneySheet(c,"Minhas estatísticas").stats();}
- private boolean active(){return sheet.dialog.isShowing()&&owner.equals(c.getSharedPreferences("batcaverna",0).getString("user_id",""));}
+ private boolean active(){return sheet.dialog.isShowing()&&owner.equals(SessionPreferences.get(c).getString("user_id",""));}
  private int reset(String value){generation++;sheet.body.removeAllViews();state=text(value,13);return generation;}
  private TextView text(String value,int size){TextView t=NativeSheet.text(c,value,size,0xffd6c9e6);sheet.body.addView(t);return t;}
  private Button button(String label,Runnable click){Button b=new Button(c);b.setText(label);AppStyle.button(b,false);sheet.body.addView(b,new LinearLayout.LayoutParams(-1,-2));b.setOnClickListener(v->{if(active()&&!busy)click.run();});return b;}

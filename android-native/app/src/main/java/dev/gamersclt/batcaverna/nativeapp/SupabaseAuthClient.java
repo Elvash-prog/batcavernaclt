@@ -42,7 +42,7 @@ public final class SupabaseAuthClient {
         }
         String userId=user==null?"":user.optString("id","");if(token.isEmpty()||!userId.matches("[0-9a-fA-F-]{36}"))throw new IOException("Sessão inválida");
         android.content.Context app=AppContextHolder.context;if(app==null)throw new IOException("Sessão indisponível");
-        app.getSharedPreferences("batcaverna",0).edit().putString("access_token",token).putString("refresh_token",auth.optString("refresh_token","")).putString("user_email",user.optString("email","")).putString("user_id",userId).putLong("expires_at",System.currentTimeMillis()+auth.optLong("expires_in",3600)*1000).putBoolean("demo_session",false).putBoolean("authenticated",true).putBoolean("remember_session",remember).apply();sessionInProcess=true;
+        SessionPreferences.get(app).edit().putString("access_token",token).putString("refresh_token",auth.optString("refresh_token","")).putString("user_email",user.optString("email","")).putString("user_id",userId).putLong("expires_at",System.currentTimeMillis()+auth.optLong("expires_in",3600)*1000).putBoolean("demo_session",false).putBoolean("authenticated",true).putBoolean("remember_session",remember).apply();sessionInProcess=true;
     }
     public void signUp(String name,String username,String email,String password,Callback callback){
         java.util.concurrent.ExecutorService executor=Executors.newSingleThreadExecutor();executor.execute(()->{

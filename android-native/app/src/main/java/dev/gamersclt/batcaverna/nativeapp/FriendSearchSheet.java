@@ -22,7 +22,7 @@ final class FriendSearchSheet {
   query.setOnEditorActionListener((v,action,event)->{if(action==EditorInfo.IME_ACTION_SEARCH){search();return true;}return false;});
   sheet.dialog.setOnDismissListener(d->revision++);sheet.show();
  }
- private String account(){return c.getSharedPreferences("batcaverna",0).getString("user_id","");}
+ private String account(){return SessionPreferences.get(c).getString("user_id","");}
  private boolean active(int ticket){return FriendSearchInput.current(ticket,revision,owner,account(),sheet.dialog.isShowing());}
  private void search(){
   final String term;try{term=FriendSearchInput.term(query.getText().toString());}catch(IllegalArgumentException e){state.setText(e.getMessage());return;}

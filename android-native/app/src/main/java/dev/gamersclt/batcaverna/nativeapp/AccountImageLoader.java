@@ -16,7 +16,7 @@ final class AccountImageLoader {
  static void load(ImageView view,String source){load(view,source,"");}
  static void load(ImageView view,String source,String appid){
   Object oldTicket=view.getTag();Object ticket=new Object();view.setTag(ticket);if(oldTicket!=null)view.setImageResource(R.drawable.app_logo);String[] candidates=CoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid);if(candidates.length==0)return;
-  android.content.Context context=view.getContext().getApplicationContext();android.content.SharedPreferences prefs=context.getSharedPreferences("batcaverna",0);
+  android.content.Context context=view.getContext().getApplicationContext();android.content.SharedPreferences prefs=SessionPreferences.get(context);
   String owner=prefs.getString("user_id","");String key=owner+":"+java.util.Arrays.toString(candidates);WeakReference<ImageView> target=new WeakReference<>(view);
   Bitmap hit=CACHE.get(key);if(hit!=null){view.setImageBitmap(hit);return;}
   IO.execute(()->{Bitmap bitmap=null;boolean privateResult=false;String usedToken="";

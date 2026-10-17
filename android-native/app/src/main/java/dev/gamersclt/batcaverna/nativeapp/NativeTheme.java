@@ -16,8 +16,8 @@ final class NativeTheme {
   {0xffd66cf1,0xff715de5,0xff170d20,0xff0d0c18,0xff30203d}
  };
  private NativeTheme(){}
- static int index(Context c){String key=c.getSharedPreferences("batcaverna",0).getString("native_theme","caverna");for(int i=0;i<KEYS.length;i++)if(KEYS[i].equals(key))return i;return 0;}
- static void select(Context c,int index){int safe=Math.max(0,Math.min(KEYS.length-1,index));c.getSharedPreferences("batcaverna",0).edit().putString("native_theme",KEYS[safe]).apply();}
+ static int index(Context c){String key=SessionPreferences.get(c).getString("native_theme","caverna");for(int i=0;i<KEYS.length;i++)if(KEYS[i].equals(key))return i;return 0;}
+ static void select(Context c,int index){int safe=Math.max(0,Math.min(KEYS.length-1,index));SessionPreferences.get(c).edit().putString("native_theme",KEYS[safe]).apply();}
  static int accent(Context c){return COLORS[index(c)][0];}
  static int accentDark(Context c){return COLORS[index(c)][1];}
  static int backgroundStart(Context c){return COLORS[index(c)][2];}
