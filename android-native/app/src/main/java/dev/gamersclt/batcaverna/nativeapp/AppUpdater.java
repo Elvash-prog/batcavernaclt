@@ -27,8 +27,8 @@ final class AppUpdater {
  private static volatile boolean checking;
  static void automatic(Activity a){
   android.content.SharedPreferences p=SessionPreferences.get(a);
-  if(!p.getBoolean("check_app_updates",true)||System.currentTimeMillis()-p.getLong("update_checked",0)<86400000L)return;
-  p.edit().putLong("update_checked",System.currentTimeMillis()).apply();check(a,true);
+  if(!p.getBoolean("check_app_updates",true)||System.currentTimeMillis()-p.getLong("update_checked",0)<1800000L)return;
+  check(a,true);
  }
  static void show(Activity a){
   NativeSheet s=new NativeSheet(a,"Atualizações");
@@ -57,7 +57,7 @@ final class AppUpdater {
      }
     }
    }
-   JSONObject available=best;checking=false;post(a,()->{if(available!=null)offer(a,available);else if(!quiet)Toast.makeText(a,"Seu aplicativo está atualizado.",Toast.LENGTH_LONG).show();});
+   SessionPreferences.get(a).edit().putLong("update_checked",System.currentTimeMillis()).apply();JSONObject available=best;checking=false;post(a,()->{if(available!=null)offer(a,available);else if(!quiet)Toast.makeText(a,"Seu aplicativo está atualizado.",Toast.LENGTH_LONG).show();});
   }catch(Exception e){checking=false;post(a,()->{if(!quiet)Toast.makeText(a,"Não foi possível verificar atualizações. Confira a conexão e tente novamente.",Toast.LENGTH_LONG).show();});}},"app-update-check").start();
  }
  private static void offer(Activity a,JSONObject m){NativeSheet s=new NativeSheet(a,"Nova versão disponível");s.body.addView(NativeSheet.text(a,"BatCaverna "+m.optString("versionName"),22,0xfff3eafa));s.body.addView(NativeSheet.text(a,m.optString("notes","Melhorias e correções do aplicativo."),14,0xffb4a7c4));Button b=button(a,"Baixar e atualizar");s.body.addView(b);b.setOnClickListener(v->{s.dialog.dismiss();download(a,m);});s.show();}

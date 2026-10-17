@@ -1,6 +1,6 @@
 {
   "name": "batcaverna-clt-desktop",
-  "version": "0.17.43",
+  "version": "0.17.44",
   "private": true,
   "type": "module",
   "scripts": {

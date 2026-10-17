@@ -846,6 +846,14 @@ try {
   );
   await page.locator('[data-view="recommendations"]').click();
   await page.locator(".recommendation-card").waitFor();
+  await page.locator('#recommendCategory').selectOption('Filme');
+  assert.equal(await page.locator('.recommendation-card').count(),0);
+  await page.locator('#recommendCategory').selectOption('');
+  await page.locator('#newRecommendation').click();
+  await page.locator('.journey-dialog-form [name="item"]').waitFor();
+  await page.locator('.journey-dialog-form button.primary').click();
+  await page.waitForFunction(()=>window.saved.some(s=>s.c==='recommend'&&s.p.item_id));
+  await page.locator(".recommendation-card").waitFor();
   assert.match(
     await page.locator(".recommendation-card").innerText(),
     /Você vai gostar/,

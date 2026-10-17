@@ -31,6 +31,7 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('freeGamesPromotions')) return json({data:{Catalog:{searchStore:{elements:[]}}}});
   if(u.pathname.includes('featuredcategories')) return json({});
   if(u.pathname.includes('/search/results')) return new Response('');
+  if(u.pathname==='/rest/v1/rpc/clt_retro_mutate'){const b=JSON.parse(options.body);assert.equal(b.p_user,uid);assert.equal(options.headers.Authorization,'Bearer test-service');return json({cover_url:b.p_cover||'',game_ids:b.p_remove?[]:[7],hidden_game_ids:b.p_remove?[b.p_remove]:[]});}
   if(u.pathname==='/rest/v1/clt_retro_collection'){if(options.method==='POST'){const body=JSON.parse(options.body);assert.equal(body.user_id,uid);return json({})}return json([{cover_url:'',game_ids:[7]}])}
   if(u.pathname.includes('API_GetGameList.php'))return json([{ID:7,Title:'Retro Game',ConsoleName:'SNES',NumAchievements:10}]);
   if(u.pathname.includes('API_GetUserProfile.php')) return json({User:'RetroPlayer',ULID:'00003EMFWR7XB8SDPEHB3K56ZQ',UserPic:'/UserPic/RetroPlayer.png',TotalPoints:123,TotalTruePoints:456});
@@ -89,3 +90,7 @@ await check('Retro catalog searches cached console list',async()=>{for(let i=0;i
 
 await check('published client PlayStation selector uses official RA system 12',async()=>{const r=await handler(req({op:'raSearch',consoleId:11,query:'Retro'}));assert.equal(r.status,200);assert.ok(calls.some(x=>x.u.pathname.includes('API_GetGameList.php')&&x.u.searchParams.get('i')==='12'))});
 await check('published client GameCube selector uses official RA system 16',async()=>{const r=await handler(req({op:'raSearch',consoleId:78,query:'Retro'}));assert.equal(r.status,200);assert.ok(calls.some(x=>x.u.pathname.includes('API_GetGameList.php')&&x.u.searchParams.get('i')==='16'))});
+
+await check('Retro removal uses authenticated UID and excludes forged owner',async()=>{const r=await handler(req({op:'raSaveCollection',removeGameId:7,user_id:'someone-else'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).hidden_game_ids,[7]);const b=JSON.parse(calls.find(x=>x.u.pathname==='/rest/v1/rpc/clt_retro_mutate').options.body);assert.equal(b.p_user,uid);assert.equal(b.p_remove,7);});
+await check('Retro removal rejects invalid ID before mutation',async()=>{assert.equal((await handler(req({op:'raSaveCollection',removeGameId:-1}))).status,400);assert.ok(!calls.some(x=>x.u.pathname.includes('clt_retro_mutate')));});
+await check('Retro conflicting actions rejected',async()=>{assert.equal((await handler(req({op:'raSaveCollection',removeGameId:7,gameId:8}))).status,400);});

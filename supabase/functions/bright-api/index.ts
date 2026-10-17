@@ -109,7 +109,7 @@ function validate(b: any): {body: any, cost:number} {
     case "raCollection": break;
     case "raSaveCollection":
       if(b.cover_url!==undefined){const url=String(b.cover_url);if(url.length>2000||url&&!url.startsWith(SB_URL+"/storage/v1/object/public/"))throw new ApiError(400,"Capa inválida.");out.cover_url=url;}
-      if(b.gameId!==undefined)out.gameId=appid(b.gameId);break;
+      if(b.gameId!==undefined)out.gameId=appid(b.gameId);if(b.removeGameId!==undefined)out.removeGameId=appid(b.removeGameId);if(b.gameId&&b.removeGameId)throw new ApiError(400,"Escolha uma ação por vez.");break;
     case "raSearch": {
       // Compatibility keys used by desktop 0.17.36 and Android 1.7.3 dropdowns.
       // These UI keys differ from the official RA system IDs for these systems.
@@ -416,13 +416,14 @@ async function steamGratis(requestSignal: AbortSignal) {
       case "raCollection": case "raSaveCollection": {
         const endpoint=SB_URL+"/rest/v1/clt_retro_collection";
         const headers={apikey:SB_SERVICE,Authorization:"Bearer "+SB_SERVICE,"Content-Type":"application/json"};
-        const existing=await getJson(endpoint+"?user_id=eq."+uid+"&select=cover_url,game_ids",headers);
-        const row=existing[0]||{cover_url:"",game_ids:[]};
+        let row;
         if(b.op==="raSaveCollection"){
-          if(b.cover_url!==undefined)row.cover_url=b.cover_url;
-          if(b.gameId&&!row.game_ids.includes(b.gameId)){if(row.game_ids.length>=100)throw new ApiError(400,"Limite de 100 jogos adicionados manualmente.");row.game_ids.push(b.gameId)}
-          const r=await fetch(endpoint+"?on_conflict=user_id",{method:"POST",headers:{...headers,Prefer:"resolution=merge-duplicates"},body:JSON.stringify({user_id:uid,...row}),signal});
-          if(!r.ok)throw new ApiError(502,"Não foi possível salvar o Meu Retrô.");
+          const r=await fetch(SB_URL+"/rest/v1/rpc/clt_retro_mutate",{method:"POST",headers,body:JSON.stringify({p_user:uid,p_add:b.gameId||null,p_remove:b.removeGameId||null,p_cover:b.cover_url??null}),signal});
+          if(!r.ok)throw new ApiError(400,"Não foi possível salvar o Meu Retrô. Confira o limite da coleção.");
+          row=await r.json();
+        }else{
+          const existing=await getJson(endpoint+"?user_id=eq."+uid+"&select=cover_url,game_ids,hidden_game_ids",headers);
+          row=existing[0]||{cover_url:"",game_ids:[],hidden_game_ids:[]};
         }
         out=row;break;
       }
