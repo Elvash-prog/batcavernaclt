@@ -374,7 +374,8 @@ try {
               ],
               progressKnown: false,
             };
-          if(c==='bright_api'&&p.input.op==='raCollection')return {cover_url:'https://luoqlhgfmixvfqbfcdoc.supabase.co/storage/v1/object/public/avatars/test/retro-private.webp',game_ids:[]};
+          if(c==='bright_api'&&p.input.op==='raCollection')return {cover_url:'https://luoqlhgfmixvfqbfcdoc.supabase.co/storage/v1/object/public/avatars/test/retro-private.webp',game_ids:[],hidden_game_ids:window.hiddenRetro||[]};
+          if(c==='bright_api'&&p.input.op==='raSaveCollection'){window.saved.push({c,p});window.hiddenRetro=p.input.removeGameId?[p.input.removeGameId]:[];return {game_ids:[],hidden_game_ids:window.hiddenRetro};}
           if(c==='bright_api'&&p.input.op==='gratis')return {epic:[{nome:'Oferta teste',capa:'https://cdn2.epicgames.com/offer.jpg',url:'https://store.epicgames.com/p/test'}],steam:[{nome:'DLC teste',appid:10,tipo:'DLC',capa:'https://shared.cloudflare.steamstatic.com/header.jpg',url:'https://store.steampowered.com/app/10/'}]};
           if (c === "bright_api" && p.input.op === "raPerfil")
             return {
@@ -708,6 +709,7 @@ try {
             return [
               {
                 id: "post1",
+                user_id:friend.id,midias:["community/post.png"],
                 texto: "Publicação",
                 author: {
                   ...friend,
@@ -1432,6 +1434,27 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "install_update"),
   );
+  await page.locator('[data-credits]').click();
+  await page.getByText('Créditos e serviços',{exact:true}).last().waitFor();
+  assert.equal(await page.locator('#settingsPanel img[alt="TMDB"]').count(),1);
+  assert.match(await page.locator('#settingsPanel').innerText(),/not endorsed or certified by TMDB/);
+  await page.evaluate(async()=>await navigate('home'));
+  await page.locator('[data-clear-activity]').click();
+  assert.equal(await page.locator('.cavern-recent [data-update]').count(),0);
+  await page.evaluate(async()=>await navigate('home'));
+  assert.equal(await page.locator('.cavern-recent [data-update]').count(),0);
+  await page.evaluate(async()=>{localStorage.removeItem('bc-activity-cleared:'+state.userId);await navigate('social')});
+  await page.locator('.feed-media img').waitFor();
+  await page.locator('.feed-media img').click();
+  await page.locator('.community-image-full').waitFor();
+  assert.ok(await page.locator('.community-image-full').getAttribute('src'));
+  await page.locator('.community-image-viewer [data-close]').click();
+  assert.equal(await page.locator('.community-image-full').count(),0);
+  await page.evaluate(async()=>{state.discoverTab='retro';await navigate('discover')});
+  await page.locator('[data-retro-remove]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.retro-game-card').length===0);
+  assert.ok(await page.evaluate(()=>window.saved.some(s=>s.c==='bright_api'&&s.p.input.removeGameId)));
+  await page.evaluate(async()=>await navigate('settings'));
   await page.locator(".diagnostic-settings").waitFor();
   assert.match(
     await page.locator(".diagnostic-summary").innerText(),
