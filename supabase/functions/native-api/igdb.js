@@ -1,7 +1,7 @@
 // All Twitch credentials and application tokens remain inside the Edge Function.
 import {adultContent} from './handlers.js';
 const clients=new WeakMap();
-const FIELDS='id,name,slug,summary,storyline,first_release_date,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,platforms.name,involved_companies.developer,involved_companies.publisher,involved_companies.company.name,total_rating,total_rating_count,themes.name,age_ratings.rating_category.rating,age_ratings.rating_content_descriptions.description,alternative_names.name,videos.name,videos.video_id,websites.url';
+const FIELDS='id,name,slug,summary,storyline,first_release_date,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,platforms.name,involved_companies.developer,involved_companies.publisher,involved_companies.company.name,total_rating,total_rating_count,themes.name,age_ratings.rating_category.rating,age_ratings.rating_content_descriptions.description,alternative_names.name,websites.url';
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 export function igdbImage(id,size='cover_big'){
  return /^[A-Za-z0-9_-]{1,150}$/.test(id||'')?`https://images.igdb.com/igdb/image/upload/t_${size}/${id}.jpg`:'';
@@ -9,7 +9,7 @@ export function igdbImage(id,size='cover_big'){
 export function blockedGame(g){
  const ratings=g.age_ratings||[];
  if((g.themes||[]).some(t=>t.id===42||/erotic/i.test(t.name||'')))return true;
- if(ratings.some(r=>/^(?:AO|Adults Only(?: 18\+)?)$/i.test(r.rating_category?.rating||'')))return true;
+ if(ratings.some(r=>/\bAO\b|adults?\s*only/i.test(r.rating_category?.rating||'')))return true;
  const descriptions=ratings.flatMap(r=>r.rating_content_descriptions||[]).map(d=>d.description||'').join(' ');
  if(/sexual (?:content|themes)|strong sexual|nudity|nude|sex simulation|pornograph|hentai|erotic/i.test(descriptions))return true;
  return adultContent({...g,tags:[...(g.themes||[]),...(g.alternative_names||[])]});
@@ -30,7 +30,8 @@ export function normalizeGame(g){
   publishers:companies.filter(x=>x.publisher).map(x=>({name:x.company?.name||''})),
   rating:count>0&&Number.isFinite(rating)?Math.max(0,Math.min(5,rating/20)):null,rating_top:5,ratings_count:count,
   stores:(g.websites||[]).filter(x=>/^https?:\/\/store\.steampowered\.com\/app\/\d+/i.test(x.url||'')).map(()=>({store:{name:'Steam'}})),
-  videos:(g.videos||[]).filter(x=>/^[\w-]{11}$/.test(x.video_id||'')).map(x=>({name:x.name||'Trailer',url:'https://www.youtube.com/watch?v='+x.video_id})),
+  // Native clients currently open store links only; do not offer unsupported video links.
+  videos:[],
   alternative_names:(g.alternative_names||[]).map(x=>x.name)};
 }
 class IgdbError extends Error {constructor(status){super('IGDB');this.status=status;}}

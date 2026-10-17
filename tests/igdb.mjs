@@ -21,6 +21,7 @@ await igdbCatalog(env,url,'games');assert.equal(queries,2,'successful results ca
 assert.equal(await igdbProbe(env),true);assert.equal(tokens,2,'warm tokens reused');
 assert.equal(blockedGame({name:'Safe',themes:[{id:42,name:'Erotic'}]}),true);
 assert.equal(blockedGame({name:'Safe',age_ratings:[{rating_category:{rating:'AO'}}]}),true);
+assert.equal(blockedGame({name:'Safe',age_ratings:[{rating_category:{rating:'AO (Adults Only 18+)'}}]}),true);
 assert.equal(blockedGame({name:'Safe',age_ratings:[{rating_content_descriptions:[{description:'Strong Sexual Content'}]}]}),true);
 assert.equal(blockedGame({name:'Safe',age_ratings:[{rating_category:{rating:'M'}}]}),false,'Mature violence alone is not pornographic');
 assert.equal(igdbImage('../bad'), '');assert.equal(normalizeGame({id:1,name:'Without artwork'}).cover_image,'');
