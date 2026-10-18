@@ -1,6 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod email_change;
 mod game_detection;
+mod account_preferences;
+mod session_persistence;
+mod catalog_disk_cache;
 
 mod native_auth;
 mod v06;
@@ -70,7 +73,7 @@ struct InviteInput { user_id: String }
 #[serde(rename_all = "camelCase")]
 struct InviteReplyInput { invite_id: String, accept: bool }
 
-struct AppState { client: reqwest::Client, session: Mutex<Option<Session>> }
+struct AppState { client: reqwest::Client, session: Mutex<Option<Session>>, auth_gate: tokio::sync::Mutex<()> }
 
 fn default_expiry() -> u64 { 3600 }
 fn now() -> u64 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() }
@@ -135,15 +138,16 @@ async fn refresh_session(client: &reqwest::Client, refresh_token: &str) -> Resul
     let response = auth(client, "/auth/v1/token?grant_type=refresh_token").json(&json!({"refresh_token": refresh_token})).send().await.map_err(|_| "Não foi possível renovar a sessão.".to_string())?;
     let status = response.status();
     let body = response.text().await.map_err(|_| "A renovação da sessão foi interrompida.".to_string())?;
-    if !status.is_success() { return Err(message(&body, status)); }
+    if !status.is_success() { return Err(if session_persistence::revoked(status.as_u16(),&body){"SESSION_REVOKED".into()}else{message(&body,status)}); }
     session(serde_json::from_str(&body).map_err(|_| "Sessão inválida.".to_string())?)
 }
 
 async fn current(state: &AppState) -> Result<Session, String> {
+    let _auth_guard=state.auth_gate.lock().await;
     let existing = state.session.lock().map_err(|_| "Sessão indisponível.".to_string())?.clone().ok_or_else(|| "Entre novamente para continuar.".to_string())?;
     if existing.expires_at > now() + 60 { return Ok(existing); }
     let updated = refresh_session(&state.client, &existing.refresh_token).await?;
-    if let Ok(entry) = keyring() { if entry.get_password().is_ok() { let _ = entry.set_password(&updated.refresh_token); } }
+    session_persistence::rotate(&updated.refresh_token)?;
     *state.session.lock().map_err(|_| "Sessão indisponível.".to_string())? = Some(updated.clone());
     Ok(updated)
 }
@@ -178,11 +182,19 @@ async fn count(client: &reqwest::Client, path: &str, token: &str) -> Result<u64,
 
 #[tauri::command]
 async fn app_state(state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let _auth_guard=state.auth_gate.lock().await;
     if state.session.lock().map_err(|_| "Sessão indisponível.".to_string())?.is_none() {
-        if let Ok(token) = keyring().and_then(|entry| entry.get_password().map_err(|_| "".into())) {
-            match refresh_session(&state.client, &token).await {
-                Ok(restored) => *state.session.lock().map_err(|_| "Sessão indisponível.".to_string())? = Some(restored),
-                Err(_) => clear_keyring()
+        if let Some(saved)=session_persistence::saved()? {
+            match refresh_session(&state.client, &saved.token).await {
+                Ok(restored) => {
+                    session_persistence::restored(&saved,&restored.refresh_token)?;
+                    *state.session.lock().map_err(|_| "Sessão indisponível.".to_string())? = Some(restored);
+                },
+                Err(error) => {
+                    // Connectivity, rate limiting and server failures must never erase the credential.
+                    if error=="SESSION_REVOKED" {clear_keyring();session_persistence::clear_pending();}
+                    else {return Err("Não foi possível restaurar a sessão agora. Sua conexão foi preservada; tente abrir novamente quando houver internet.".into());}
+                }
             }
         }
     }
@@ -200,7 +212,7 @@ async fn check_for_updates(app: AppHandle) -> Result<Value, String> {
 }
 
 #[tauri::command]
-async fn install_update(version: String, app: AppHandle) -> Result<Value, String> {
+async fn install_update(version: String, app: AppHandle, state: tauri::State<'_,AppState>) -> Result<Value, String> {
     if version.trim().is_empty() || version.len() > 64 {
         return Err("Versão de atualização inválida.".into());
     }
@@ -208,13 +220,19 @@ async fn install_update(version: String, app: AppHandle) -> Result<Value, String
     let update = updater.check().await.map_err(|error| format!("Não foi possível confirmar a atualização: {error}"))?
         .filter(|update| update.version == version)
         .ok_or_else(|| "A atualização mudou ou não está mais disponível. Verifique novamente.".to_string())?;
-    update.download_and_install(|_, _| {}, || {}).await
-        .map_err(|error| format!("Não foi possível baixar ou instalar a atualização: {error}"))?;
+    let active=current(&state).await?;
+    {let _auth_guard=state.auth_gate.lock().await;let latest=state.session.lock().map_err(|_|"Sessão indisponível.")?.clone().ok_or("Entre novamente antes de atualizar.")?;
+     if latest.user.id!=active.user.id{return Err("Sua conta mudou. Tente atualizar novamente.".into());}
+     session_persistence::prepare_update(&latest.refresh_token)?;
+    }
+    if let Err(error)=update.download_and_install(|_, _| {}, || {}).await{session_persistence::clear_pending();return Err(format!("Não foi possível baixar ou instalar a atualização: {error}"));}
     Ok(json!({"installed":true}))
 }
 
 #[tauri::command]
 async fn login(credentials: Credentials, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let _auth_guard=state.auth_gate.lock().await;
+    session_persistence::clear_pending();
     if credentials.password.is_empty() || credentials.password.len() > 256 { return Err("Informe sua senha.".into()); }
     let identifier = credentials.identifier.trim().to_lowercase();
     if identifier.is_empty() { return Err("Informe seu usuário ou e-mail.".into()); }
@@ -317,9 +335,11 @@ async fn link_retroachievements(username:String,state:tauri::State<'_,AppState>)
 }
 
 #[tauri::command]
-fn logout(state: tauri::State<'_, AppState>) -> Result<Value, String> {
+async fn logout(state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    let _auth_guard=state.auth_gate.lock().await;
     v06::stop();
     clear_keyring();
+    session_persistence::clear_pending();
     *state.session.lock().map_err(|_| "Sessão indisponível.".to_string())? = None;
     Ok(json!({"authenticated": false}))
 }
@@ -605,7 +625,9 @@ fn image_host(host: &str)->bool {
     host=="luoqlhgfmixvfqbfcdoc.supabase.co" || ["igdb.com","rawg.io","steamgriddb.com","steamstatic.com","tmdb.org","anilist.co","retroachievements.org"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
 }
 #[tauri::command]
-async fn cover_image(url: String) -> Result<String,String> {
+async fn cover_image(app:tauri::AppHandle,url: String) -> Result<String,String> {
+    let cache_dir=catalog_disk_cache::directory(&app);
+    if let Some(ref root)=cache_dir{if let Some(hit)=catalog_disk_cache::read(root,&url){return Ok(hit)}}
     let mut parsed=reqwest::Url::parse(&url).map_err(|_|"Imagem inválida.".to_string())?;
     if parsed.scheme()!="https"||!parsed.username().is_empty()||parsed.password().is_some()||parsed.port().is_some()||!image_host(parsed.host_str().unwrap_or("")){return Err("Origem de capa não permitida.".into());}
     parsed.set_fragment(None);
@@ -614,10 +636,13 @@ async fn cover_image(url: String) -> Result<String,String> {
     })).build().map_err(|_|"Imagem indisponível.".to_string())?;
     let mut r=client.get(parsed).send().await.map_err(|_|"Imagem indisponível.".to_string())?;
     if !r.status().is_success(){return Err("Capa indisponível.".into());}
+    let final_url=r.url().as_str().to_string();
     let mime=r.headers().get("content-type").and_then(|h|h.to_str().ok()).unwrap_or("").split(';').next().unwrap_or("").to_string();
     if !matches!(mime.as_str(),"image/png"|"image/jpeg"|"image/webp"|"image/gif"|"image/avif"){return Err("Formato de capa inválido.".into());}
     let mut bytes=Vec::new();while let Some(chunk)=r.chunk().await.map_err(|_|"Imagem interrompida.".to_string())?{if bytes.len()+chunk.len()>8*1024*1024{return Err("Capa muito grande.".into());}bytes.extend_from_slice(&chunk);}
-    Ok(format!("data:{mime};base64,{}",base64::engine::general_purpose::STANDARD.encode(bytes)))
+    let data=format!("data:{mime};base64,{}",base64::engine::general_purpose::STANDARD.encode(bytes));
+    if final_url==url{if let Some(root)=cache_dir{catalog_disk_cache::write(&root,&url,&data);}}
+    Ok(data)
 }
 #[tauri::command]
 async fn upload_profile_image(input: UploadInput, state: tauri::State<'_,AppState>)->Result<Value,String>{
@@ -747,8 +772,8 @@ fn main() {
                 if desktop_runtime::background_enabled(window.app_handle()) { api.prevent_close(); let _ = window.hide(); }
             }
         })
-        .manage(AppState { client, session: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![game_detection::running_processes, game_detection::detect_pc_game, desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, native_auth::resend_confirmation, native_auth::verify_email_proof, email_change::verify_email_change, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, link_retroachievements, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+        .manage(AppState { client, session: Mutex::new(None), auth_gate: tokio::sync::Mutex::new(()) })
+        .invoke_handler(tauri::generate_handler![account_preferences::desktop_layout,game_detection::running_processes, game_detection::detect_pc_game, desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, native_auth::resend_confirmation, native_auth::verify_email_proof, email_change::verify_email_change, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, link_retroachievements, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             desktop_runtime::initialize(app.handle())?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).on_navigation(local_url).build()?;
