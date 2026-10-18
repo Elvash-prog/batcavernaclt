@@ -7,7 +7,7 @@ import java.net.*;
 import java.io.*;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.*;
-/** Bounded memory-only images. Every public redirect is revalidated. */
+/** Bounded memory and public IGDB disk images. Every public redirect is revalidated. */
 final class AccountImageLoader {
  private static final ExecutorService IO=Executors.newFixedThreadPool(3);
  private static final Handler MAIN=new Handler(Looper.getMainLooper());
@@ -28,6 +28,7 @@ final class AccountImageLoader {
   });
  }
  private static Bitmap download(String source,String token,long expiry,android.content.Context context)throws Exception{
+  String original=source;Bitmap cached=PublicCoverDiskCache.get(context,source);if(cached!=null)return cached;
   URI uri=new URI(source);if(!"https".equals(uri.getScheme())||uri.getUserInfo()!=null||(uri.getPort()!=-1&&uri.getPort()!=443))return null;
   boolean publicBackground=new URI(BuildConfig.SUPABASE_URL).getHost().equals(uri.getHost())&&uri.getRawPath().startsWith("/storage/v1/object/public/login-backgrounds/")&&!uri.getRawPath().contains("..")&&!uri.getRawPath().toLowerCase(java.util.Locale.ROOT).contains("%2e");
   boolean storage=!publicBackground&&new URI(BuildConfig.SUPABASE_URL).getHost().equals(uri.getHost());
@@ -38,7 +39,7 @@ final class AccountImageLoader {
     if(status!=200)return null;String mime=conn.getContentType();if(mime==null||!mime.toLowerCase(java.util.Locale.ROOT).startsWith("image/"))return null;
     File file=File.createTempFile("cover-",".tmp",context.getCacheDir());
     try{long size=0;try(InputStream in=conn.getInputStream();OutputStream out=new FileOutputStream(file)){byte[] chunk=new byte[8192];int n;while((n=in.read(chunk))!=-1){size+=n;if(size>12*1024*1024)return null;out.write(chunk,0,n);}}
-     BitmapFactory.Options options=new BitmapFactory.Options();options.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.getAbsolutePath(),options);if(options.outWidth<=0||options.outHeight<=0)return null;options.inJustDecodeBounds=false;options.inSampleSize=1;while(options.outWidth/options.inSampleSize>1024||options.outHeight/options.inSampleSize>1024)options.inSampleSize*=2;return BitmapFactory.decodeFile(file.getAbsolutePath(),options);
+     BitmapFactory.Options options=new BitmapFactory.Options();options.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.getAbsolutePath(),options);if(options.outWidth<=0||options.outHeight<=0)return null;options.inJustDecodeBounds=false;options.inSampleSize=1;while(options.outWidth/options.inSampleSize>1024||options.outHeight/options.inSampleSize>1024)options.inSampleSize*=2;Bitmap result=BitmapFactory.decodeFile(file.getAbsolutePath(),options);if(result!=null&&original.equals(source))PublicCoverDiskCache.put(context,original,file);return result;
     }finally{file.delete();}
 
    }finally{conn.disconnect();}

@@ -1,5 +1,6 @@
 // All Twitch credentials and application tokens remain inside the Edge Function.
 import {adultContent} from './handlers.js';
+import {persistentCatalogQuery} from './catalog-cache.js';
 const clients=new WeakMap();
 const FIELDS='id,name,slug,summary,storyline,first_release_date,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,platforms.name,involved_companies.developer,involved_companies.publisher,involved_companies.company.name,total_rating,total_rating_count,themes.name,age_ratings.rating_category.rating,age_ratings.rating_content_descriptions.description,alternative_names.name,websites.url';
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
@@ -70,7 +71,7 @@ function client(env){
  }
  async function query(body){
   const existing=cache.get(body);if(existing&&existing.until>Date.now())return existing.task;
-  const task=post(body).catch(error=>{if(cache.get(body)?.task===task)cache.delete(body);throw error});
+  const task=persistentCatalogQuery(env,body,()=>post(body)).catch(error=>{if(cache.get(body)?.task===task)cache.delete(body);throw error});
   cache.set(body,{task,until:Date.now()+15*60000});if(cache.size>200)cache.delete(cache.keys().next().value);return task;
  }
  const value={query};clients.set(env,value);return value;

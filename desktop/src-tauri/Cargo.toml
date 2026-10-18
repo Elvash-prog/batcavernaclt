@@ -1,6 +1,6 @@
 [package]
 name = "batcaverna-clt-desktop"
-version = "0.17.51"
+version = "0.17.52"
 edition = "2021"
 
 [build-dependencies]
@@ -14,14 +14,14 @@ tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
-keyring = "3"
+keyring = { version = "=3.6.3", features = ["windows-native"] }
 open = "5"
 urlencoding = "2"
 base64 = "0.22"
 
 
 futures-util = "0.3"
-tokio = { version = "1", features = ["time", "macros"] }
+tokio = { version = "1", features = ["time", "macros", "sync"] }
 tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
