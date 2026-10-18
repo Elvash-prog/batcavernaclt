@@ -4,6 +4,9 @@ select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111'
 set local role authenticated;
 do $$begin
  if(select count(*) from public.perfis_publicos_clt)<>2 then raise exception 'Public search broken';end if;
+ if(select count(*) from public.buscar_usuarios_clt('Fixture'))<>1 then raise exception 'People search broken';end if;
+ if exists(select 1 from public.buscar_usuarios_clt($q$' OR 1=1; --$q$)) then raise exception 'SQL payload matched';end if;
+ if exists(select 1 from public.buscar_usuarios_clt('%%')) then raise exception 'Wildcards expanded';end if;
  if(select count(*) from public.perfis)<>1 then raise exception 'Private profiles exposed';end if;
  begin update public.clt_profile_directory set nome='forged';raise exception 'Directory writable';exception when insufficient_privilege then null;end;
  update public.perfis set nome='Updated fixture' where id=auth.uid();
@@ -13,7 +16,10 @@ end$$;
 reset role;
 insert into public.bloqueios_clt values('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222');
 set local role authenticated;
-do $$begin if(select count(*) from public.perfis_publicos_clt)<>1 then raise exception 'Block ignored';end if;end$$;
+do $$begin
+ if(select count(*) from public.perfis_publicos_clt)<>1 then raise exception 'Block ignored';end if;
+ if exists(select 1 from public.buscar_usuarios_clt('Fixture Two'))then raise exception 'Search bypassed block';end if;
+end$$;
 reset role;
 set local role service_role;
 select public.clt_record_operational_metric('native-api','igdb',200,250);
