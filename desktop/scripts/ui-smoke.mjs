@@ -215,6 +215,8 @@ try {
       },
       core: {
         invoke: async (c, p) => {
+        if (c === "running_processes") return ["Control_DX12","game_executable","explorer"];
+        if (c === "detect_pc_game") return {name:null};
         if (c === "check_for_updates") {
           window.updateChecks++;
           return {
@@ -852,6 +854,10 @@ try {
   await page.locator('#recommendCategory').selectOption('Filme');
   assert.equal(await page.locator('.recommendation-card').count(),0);
   await page.locator('#recommendCategory').selectOption('');
+  await page.locator('#recommendSearch').fill('inexistente-123');
+  assert.equal(await page.locator('.recommendation-card').count(),0);
+  await page.locator('#recommendSearch').fill('');
+  await page.screenshot({path:'preview/recommendations-check.png'});
   await page.locator('#newRecommendation').click();
   await page.locator('.journey-dialog-form [name="item"]').waitFor();
   await page.locator('.journey-dialog-form [name="category"]').selectOption('Jogo');
@@ -860,6 +866,7 @@ try {
   await page.locator('.journey-dialog-form [name="titleSearch"]').fill('inexistente-123');
   assert.equal(await page.locator('.journey-dialog-form button.primary').isEnabled(),false);
   await page.locator('.journey-dialog-form [name="titleSearch"]').fill('');
+  await page.screenshot({path:'preview/recommendation-composer-check.png'});
   await page.locator('.journey-dialog-form button.primary').click();
   await page.waitForFunction(()=>window.saved.some(s=>s.c==='recommend'&&s.p.item_id));
   await page.locator(".recommendation-card").waitFor();
@@ -1428,6 +1435,25 @@ try {
   await page.locator('.reference-detail .detail-close').click();
   await page.evaluate(async () => await navigate("settings"));
   await page.locator('[data-settings-tab="app"]').click();
+  await page.locator('[data-pc-map]').click();
+  await page.locator('.pc-game-dialog').waitFor();
+  await page.locator('[name="gameSearch"]').fill('zerado');
+  await page.locator('[data-game]').first().click();
+  await page.locator('[name="processSearch"]').fill('control');
+  assert.equal(await page.locator('[data-process]').count(),1);
+  await page.locator('[data-process]').click();
+  await page.screenshot({path:'preview/pc-association-check.png'});
+  await page.locator('.pc-game-dialog [type="submit"]').click();
+  assert.equal(await page.locator('.pc-game-dialog').count(),0);
+  await page.locator('[data-map-search]').fill('control');
+  assert.equal(await page.locator('.pc-mapping-row').count(),1);
+  await page.locator('[data-map-search]').fill('nao-encontrado');
+  assert.equal(await page.locator('.pc-mapping-row').count(),0);
+  await page.locator('[data-map-search]').fill('');
+  await page.screenshot({path:'preview/pc-settings-check.png'});
+  await page.locator('[data-pc-remove]').click();
+  assert.equal(await page.locator('.pc-mapping-row').count(),0);
+
   await page.locator("#checkUpdates").click();
   await page.getByRole("dialog", { name: "Atualização disponível" }).waitFor();
   assert.match(
