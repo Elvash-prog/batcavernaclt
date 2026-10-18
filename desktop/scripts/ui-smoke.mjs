@@ -854,6 +854,12 @@ try {
   await page.locator('#recommendCategory').selectOption('');
   await page.locator('#newRecommendation').click();
   await page.locator('.journey-dialog-form [name="item"]').waitFor();
+  await page.locator('.journey-dialog-form [name="category"]').selectOption('Jogo');
+  await page.locator('.journey-dialog-form [name="titleSearch"]').fill('zerado');
+  assert.ok((await page.locator('.journey-dialog-form [name="item"] option').allTextContents()).every(t=>/zerado/i.test(t)&&/Jogo/.test(t)));
+  await page.locator('.journey-dialog-form [name="titleSearch"]').fill('inexistente-123');
+  assert.equal(await page.locator('.journey-dialog-form button.primary').isEnabled(),false);
+  await page.locator('.journey-dialog-form [name="titleSearch"]').fill('');
   await page.locator('.journey-dialog-form button.primary').click();
   await page.waitForFunction(()=>window.saved.some(s=>s.c==='recommend'&&s.p.item_id));
   await page.locator(".recommendation-card").waitFor();

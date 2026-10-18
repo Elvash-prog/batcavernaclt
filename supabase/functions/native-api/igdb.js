@@ -11,7 +11,7 @@ export function blockedGame(g){
  if((g.themes||[]).some(t=>t.id===42||/erotic/i.test(t.name||'')))return true;
  if(ratings.some(r=>/\bAO\b|adults?\s*only/i.test(r.rating_category?.rating||'')))return true;
  const descriptions=ratings.flatMap(r=>r.rating_content_descriptions||[]).map(d=>d.description||'').join(' ');
- if(/sexual (?:content|themes)|strong sexual|nudity|nude|sex simulation|pornograph|hentai|erotic/i.test(descriptions))return true;
+ if(/sexual content|strong sexual|nudity|nude|sex simulation|pornograph|hentai|erotic/i.test(descriptions))return true;
  return adultContent({...g,tags:[...(g.themes||[]),...(g.alternative_names||[])]});
 }
 export function normalizeGame(g){
@@ -34,6 +34,8 @@ export function normalizeGame(g){
   videos:[],
   alternative_names:(g.alternative_names||[]).map(x=>x.name)};
 }
+export function titleKey(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[™®©]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim()}
+export function gameSearchScore(game,query){const q=titleKey(query),words=q.split(' ').filter(Boolean);if(!words.length)return 0;return Math.max(0,...[game.name,...(game.alternative_names||[]).map(x=>x.name)].map((name,index)=>{const key=titleKey(name),tokens=key.split(' ');if(key===q)return index?990:1000;if(!words.every(w=>tokens.some(t=>/^\d+$/.test(w)?t===w:t.startsWith(w))))return 0;return (key.startsWith(q)?800:500)-Math.abs(tokens.length-words.length)}))}
 class IgdbError extends Error {constructor(status){super('IGDB');this.status=status;}}
 function client(env){
  if(clients.has(env))return clients.get(env);
@@ -75,7 +77,7 @@ function client(env){
 }
 export async function igdbProbe(env){
  if(!env.IGDB_CLIENT_ID||!env.IGDB_CLIENT_SECRET)return false;
- try{await client(env).query(`fields ${FIELDS}; where (themes = null | themes != (42)); limit 1;`);return true;}catch{return false}
+ try{const games=await client(env).query(`fields ${FIELDS}; search "Horizon Zero Dawn"; where (themes = null | themes != (42)); limit 20;`);return games.some(g=>!blockedGame(g)&&gameSearchScore(g,"Horizon Zero Dawn")===1000);}catch{return false}
 }
 export async function igdbCatalog(env,url,path,legacy=false){
  if(!env.IGDB_CLIENT_ID||!env.IGDB_CLIENT_SECRET)return response({error:'IGDB ainda não configurado.'},503);
@@ -92,8 +94,8 @@ export async function igdbCatalog(env,url,path,legacy=false){
  const body=id?fields+`where id = ${Number(id)}; limit 1;`:fields+(search?`search ${JSON.stringify(search.replace(/[\u0000-\u001f]/g,' '))}; `:'sort total_rating_count desc; ')+`where (themes = null | themes != (42))${search?'':' & cover != null & total_rating_count >= 5'}; limit ${size+1}; offset ${(page-1)*size};`;
  try{
   const raw=await client(env).query(body),visible=raw.filter(g=>!blockedGame(g));
-  if(id){if(!visible[0])return response({error:'Jogo não encontrado ou conteúdo não permitido.'},404);return response(normalize(visible[0]));}
-  const hasMore=raw.length>size,results=raw.slice(0,size).filter(g=>!blockedGame(g)).map(normalize);
+  if(id){const selected=visible.find(g=>Number(g.id)===Number(id));if(!selected)return response({error:'Jogo não encontrado ou conteúdo não permitido.'},404);return response(normalize(selected));}
+  const hasMore=raw.length>size,results=raw.slice(0,size).filter(g=>!blockedGame(g)&&(!search||gameSearchScore(g,search)>0)).sort((a,b)=>search?gameSearchScore(b,search)-gameSearchScore(a,search):0).map(normalize);
   return response({source:'igdb',results,count:(page-1)*size+raw.slice(0,size).length+(hasMore?1:0),total_pages:page+(hasMore?1:0),has_more:hasMore});
  }catch(e){return response({error:e.status===429?'O IGDB atingiu o limite de consultas. Aguarde um instante.':'Não foi possível consultar o IGDB. Tente novamente.',code:e.status===429?'CATALOG_RATE_LIMIT':'CATALOG_UNAVAILABLE'},e.status||502);}
 }

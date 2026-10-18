@@ -432,7 +432,7 @@ test('desktop 0.16 restaura pela bandeja e usa gaveta de amigos',()=>{
 });
 
 test('desktop 0.17 mantém XP, diversifica missões e combina ofertas Steam',()=>{
- const fixes=read('src/desktop-fixes.js'),alignment=read('src/alignment.js'),rust=read('src-tauri/src/main.rs'),community=read('src-tauri/src/v06.rs'),worker=fs.readFileSync(new URL('../../worker.js',import.meta.url),'utf8'),sql=fs.readFileSync(new URL('../../supabase/patch-1.47-progressao-missoes.sql',import.meta.url),'utf8');
+ const fixes=read('src/desktop-fixes.js'),alignment=read('src/alignment.js'),rust=read('src-tauri/src/main.rs'),community=read('src-tauri/src/v06.rs'),worker=fs.readFileSync(new URL('../../supabase/functions/native-api/routes.js',import.meta.url),'utf8'),sql=fs.readFileSync(new URL('../../supabase/patch-1.47-progressao-missoes.sql',import.meta.url),'utf8');
  assert.match(fixes,/missions_v2/);assert.match(fixes,/\+\$\{Number\(m\.xp\)/);assert.match(fixes,/library-collection-hero/);
  assert.match(fixes,/collection-overview['"]\)\?\.remove\(\)/);assert.doesNotMatch(alignment,/sidebarCommunity['"]\)\?\.remove\(\)/);
  assert.match(community,/clt_progression_v2/);assert.match(community,/clt_claim_mission_v2/);assert.match(rust,/\/api\/steam-free/);
@@ -493,4 +493,11 @@ test('presença tolera saída transitória, expira offline e cancela por nova se
 
 test('jogos em destaque saem do bloco oculto e telas revelam o layout completo',()=>{
  const s=read('src/cavern-shell.js');assert.match(s,/querySelector\('#profile-featured'\)/);assert.match(s,/overview\.append\(favorites\)/);assert.match(s,/renderProfile=wrap\(renderProfile\);renderDiscover=wrap\(renderDiscover\)/);
+});
+
+
+test('notificações unem consultas em andamento e recuam após falha de conexão',async()=>{
+ const source=read('src/redesign.js'),start=source.indexOf('let notificationTask='),end=source.indexOf('\nasync function routeNotification',start);let now=1000,calls=0,resolve,reject;
+ const context={Date:{now:()=>now},state:{userId:'test'},ui:{notifications:[]},api:{notifications:()=>{calls++;return new Promise((yes,no)=>{resolve=yes;reject=no})}},$:()=>({})};vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+ const a=context.refreshNotifications().catch(()=>{}),b=context.refreshNotifications().catch(()=>{});assert.equal(calls,1);reject(Error('offline'));await Promise.all([a,b]);await context.refreshNotifications();assert.equal(calls,1);now+=6000;const next=context.refreshNotifications();assert.equal(calls,2);resolve([{id:'one',read:false}]);await next;assert.equal(context.ui.notifications.length,1);
 });

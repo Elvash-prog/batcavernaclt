@@ -5,7 +5,7 @@ class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) { super(message); this.status=status; }
 }
-const SITE = "https://batcavernaclt.gamersclt.workers.dev";
+
 const SB_URL = Deno.env.get("SUPABASE_URL") || "";
 const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -16,7 +16,7 @@ function response(req: Request, data: unknown, status = 200) {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-client-info",
   };
-  if (req.headers.get("Origin") === SITE) headers["Access-Control-Allow-Origin"] = SITE;
+
   if (status === 429) headers["Retry-After"] = "60";
   return new Response(status === 204 ? null : JSON.stringify(data), {status, headers});
 }
@@ -102,6 +102,7 @@ function validate(b: any): {body: any, cost:number} {
       out.format = b.format === "landscape" ? "landscape" : "poster";
       cost = Math.max(1, out.appids.length * 2 + out.nomes.length * 3); break;
     case "perfil": out.entrada = entry(b.entrada ?? b.steamid); cost=3; break;
+    case "steamSync": out.appids=array(b.appids,5,appid);cost=10;break;
     case "agora": out.steamid=steamid(b.steamid); break;
     case "jogos": out.steamid=steamid(b.steamid); cost=3; break;
     case "conquistas": if(b.steamid)out.steamid=steamid(b.steamid); out.appid=appid(b.appid); cost=b.steamid?2:1; break;
@@ -159,9 +160,8 @@ const RA = Deno.env.get("RETROACHIEVEMENTS_KEY") ?? "";
 const raSystemCache = new Map<number,{expires:number,rows:any[]}>();
 async function runOperation(b: any, signal: AbortSignal, uid: string): Promise<unknown> {
 const getJson = async (u: string, h: HeadersInit = {}) => {
-  const r = await fetch(u, { headers: h, signal: AbortSignal.any([signal,AbortSignal.timeout(8000)]), redirect: "error" });
-  if (!r.ok) throw new ApiError(502, "Serviço de jogos indisponível. Tente novamente.");
-  return await readJson(r, 8 * 1024 * 1024);
+  for(let attempt=0;attempt<2;attempt++){try{const r=await fetch(u,{headers:h,signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:"error"});if((r.status===429||r.status>=500)&&attempt===0){await new Promise(resolve=>setTimeout(resolve,400));continue}if(!r.ok)throw new ApiError(502,"Serviço de jogos indisponível. Tente novamente.");return await readJson(r,8*1024*1024)}catch(error){if(error instanceof ApiError||attempt>0||signal.aborted)throw error;await new Promise(resolve=>setTimeout(resolve,400))}}
+  throw new ApiError(502,"Serviço de jogos indisponível. Tente novamente.");
 };
 const sg = (p: string) => getJson("https://www.steamgriddb.com/api/v2" + p, { Authorization: "Bearer " + SGDB });
 const st = (p: string) => getJson("https://api.steampowered.com" + p + (p.includes("?") ? "&" : "?") + "key=" + STEAM + "&format=json");
@@ -383,7 +383,7 @@ async function steamGratis(requestSignal: AbortSignal) {
         const id = await resolver(b.steamid);
         const [owned, recent] = await Promise.all([
           st(`/IPlayerService/GetOwnedGames/v1/?steamid=${id}&include_appinfo=1&include_played_free_games=1`),
-          st(`/IPlayerService/GetRecentlyPlayedGames/v1/?steamid=${id}&format=json`),
+          st(`/IPlayerService/GetRecentlyPlayedGames/v1/?steamid=${id}&format=json`).catch(()=>({response:{}})),
         ]);
         const o = owned.response ?? {};
         const r = recent.response ?? {};
@@ -397,6 +397,22 @@ async function steamGratis(requestSignal: AbortSignal) {
           })).sort((a: any, b: any) => String(b.ultimaVez).localeCompare(String(a.ultimaVez))),
         };
         break;
+      }
+      case "steamSync": {
+        const headers={apikey:SB_SERVICE,Authorization:"Bearer "+SB_SERVICE,"Content-Type":"application/json"};
+        const profiles=await getJson(SB_URL+"/rest/v1/perfis?select=steam_id&id=eq."+uid+"&limit=1",headers);
+        const id=profiles[0]?.steam_id;if(!id){out={updated:0,connected:false};break;}
+        const filter=b.appids.length?"&steam_appid=in.("+b.appids.join(",")+")":"";
+        const rows=await getJson(SB_URL+"/rest/v1/itens?select=id,steam_appid,horas,conquistas&categoria=eq.jogos&user_id=eq."+uid+"&steam_appid=not.is.null&loja=ilike.*steam*"+filter+"&order=id.asc&limit=5",headers);
+        if(!rows.length){out={updated:0,connected:true};break;}
+        const owned=(await st(`/IPlayerService/GetOwnedGames/v1/?steamid=${steamid(id)}&include_played_free_games=1`)).response?.games;
+        if(!Array.isArray(owned)){out={updated:0,connected:true,private:true};break;}
+        let updated=0;const unavailable:number[]=[];
+        await Promise.all(rows.map(async(row:any)=>{const game=owned.find((g:any)=>Number(g.appid)===Number(row.steam_appid));if(!game)return;const patch:any={};if(Number.isFinite(game.playtime_forever)&&game.playtime_forever>=0)patch.horas=Math.max(Number(row.horas)||0,Math.round(game.playtime_forever/60*1000)/1000);
+          try{const player=(await st(`/ISteamUserStats/GetPlayerAchievements/v1/?steamid=${steamid(id)}&appid=${appid(row.steam_appid)}&l=brazilian`)).playerstats;if(player?.success!==false&&Array.isArray(player?.achievements)&&player.achievements.length){patch.conquistas=Math.round(player.achievements.filter((a:any)=>a.achieved===1).length/player.achievements.length*10000)/100;}}catch{unavailable.push(Number(row.steam_appid));}
+          if(patch.horas===Number(row.horas))delete patch.horas;if(patch.conquistas===Number(row.conquistas))delete patch.conquistas;if(!Object.keys(patch).length)return;
+          const saved=await fetch(SB_URL+"/rest/v1/itens?user_id=eq."+uid+"&id=eq."+row.id+"&steam_appid=eq."+row.steam_appid,{method:"PATCH",headers,body:JSON.stringify(patch),signal});if(!saved.ok)throw new ApiError(503,"Não foi possível atualizar o progresso.");updated++;
+        }));out={updated,connected:true,unavailable};break;
       }
       case "conquistas": {
         const app=Number(b.appid);
@@ -473,7 +489,7 @@ async function steamGratis(requestSignal: AbortSignal) {
 Deno.serve(async (req: Request) => {
   try {
     const origin = req.headers.get("Origin");
-    if (origin && origin !== SITE) throw new ApiError(403, "Origem não autorizada.");
+    if (origin) throw new ApiError(403, "Origem não autorizada.");
     if (req.method === "OPTIONS") return response(req,null,204);
     if (req.method !== "POST") throw new ApiError(405, "Método não permitido.");
     if (!/^application\/json(?:\s*;|$)/i.test(req.headers.get("Content-Type") || "")) throw new ApiError(415, "Envie JSON.");
@@ -481,7 +497,7 @@ Deno.serve(async (req: Request) => {
     const parsed = validate(await readJson(req,16384));
     const b = parsed.body;
     await rateLimit(uid,parsed.cost);
-    if (["perfil","agora","steamAmigos","jogos","conquistas"].includes(b.op) && !STEAM)
+    if (["perfil","agora","steamAmigos","jogos","conquistas","steamSync"].includes(b.op) && !STEAM)
       throw new ApiError(503, "Integração Steam indisponível.");
     if (["raPerfil","raJogos","raConquistas"].includes(b.op) && !RA)
       throw new ApiError(503, "Integração RetroAchievements indisponível.");

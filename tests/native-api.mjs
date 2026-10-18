@@ -23,6 +23,7 @@ const handler=createHandler(env);
 async function request(path,method='GET',body=null){calls=[];return handler(new Request('https://test.supabase.co/functions/v1/native-api'+path,{method,headers:{Authorization:'Bearer '+token},...(body?{body,duplex:'half'}:{})}));}
 let edgeResponse=await handler(new Request('https://test.supabase.co/native-api/health'));assert.equal(edgeResponse.status,200);
 let r=await request('/health');assert.equal(r.status,200);assert.doesNotMatch(await r.text(),/private-/);assert.equal(calls.length,0);
+const blockedWeb=await handler(new Request('https://test.supabase.co/functions/v1/native-api/api/catalog/igdb/games?search=Horizon',{headers:{Origin:'https://batcavernaclt.gamersclt.workers.dev',Authorization:'Bearer '+token}}));assert.equal(blockedWeb.status,403);
 mode='invalid';r=await request('/api/catalog/rawg/games');assert.equal(r.status,401);assert.equal(calls.length,1);
 mode='ok';r=await request('/api/catalog/rawg/games?search=safe');let body=await r.json();assert.equal(body.results.length,1);assert.equal(body.results[0].name,'Safe Game');assert.equal(body.results[0].id,1000000001);assert.equal(body.results[0].igdb_id,1);assert.equal(body.next,undefined);assert.doesNotMatch(JSON.stringify(body),/private-/);
 r=await request('/api/catalog/rawg/games/123');assert.equal(r.status,409);assert.equal(calls.length,1);
