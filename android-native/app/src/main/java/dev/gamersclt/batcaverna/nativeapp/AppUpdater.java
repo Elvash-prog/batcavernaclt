@@ -24,7 +24,9 @@ final class AppUpdater {
  private static final String API="https://api.github.com/repos/Elvash-prog/batcavernaclt/releases?per_page=100";
  private static final OkHttpClient HTTP=new OkHttpClient.Builder().connectTimeout(20,TimeUnit.SECONDS).readTimeout(60,TimeUnit.SECONDS).build();
  private static final Handler UI=new Handler(Looper.getMainLooper());
- private static volatile boolean checking;
+ private static volatile boolean checking;private static JSONObject availableUpdate;
+ static void attach(Activity a){if(a.isFinishing()||a.isDestroyed())return;android.view.ViewGroup root=a.findViewById(android.R.id.content);if(root==null)return;android.view.View old=root.findViewWithTag("appUpdateBanner");if(old!=null)root.removeView(old);JSONObject m=availableUpdate;if(m==null||m.optInt("versionCode")<=BuildConfig.VERSION_CODE)return;LinearLayout bar=new LinearLayout(a);bar.setTag("appUpdateBanner");bar.setGravity(android.view.Gravity.CENTER_VERTICAL);bar.setPadding(12,6,12,6);bar.setBackgroundColor(NativeTheme.panelDark(a));TextView title=NativeSheet.text(a,"Nova versão "+m.optString("versionName")+" disponível",14,NativeTheme.accent(a));bar.addView(title,new LinearLayout.LayoutParams(0,-2,1));Button update=button(a,"Atualizar");bar.addView(update);update.setOnClickListener(v->offer(a,m));android.widget.FrameLayout.LayoutParams lp=new android.widget.FrameLayout.LayoutParams(-1,-2,android.view.Gravity.BOTTOM);lp.setMargins(NativeSheet.dp(a,8),0,NativeSheet.dp(a,8),NativeSheet.dp(a,72));root.addView(bar,lp);}
+
  static void automatic(Activity a){
   android.content.SharedPreferences p=SessionPreferences.get(a);
   if(!p.getBoolean("check_app_updates",true)||System.currentTimeMillis()-p.getLong("update_checked",0)<1800000L)return;
@@ -38,6 +40,7 @@ final class AppUpdater {
   automatic.setOnCheckedChangeListener((b,on)->p.edit().putBoolean("check_app_updates",on).apply());s.body.addView(automatic);
   Button b=button(a,"Verificar atualização");s.body.addView(b);b.setOnClickListener(v->{s.dialog.dismiss();check(a,false);});s.show();
  }
+ private static long releaseVersion(JSONObject r){try{String tag=r.optString("tag_name");if(!tag.matches("android-v[0-9]+\\.[0-9]+\\.[0-9]+"))return -1;String[] parts=tag.substring(9).split("\\.");long n=0;for(String part:parts){int v=Integer.parseInt(part);if(v>1000000)return -1;n=(n<<20)+v;}return n;}catch(Exception e){return -1;}}
  private static Button button(Activity a,String text){Button b=new Button(a);b.setText(text);AppStyle.button(b,true);return b;}
  private static void post(Activity a,Runnable r){UI.post(()->{if(!a.isFinishing()&&!a.isDestroyed())r.run();});}
  private static JSONObject json(String url)throws Exception{try(Response r=HTTP.newCall(new Request.Builder().url(url).header("Accept","application/vnd.github+json").build()).execute()){if(!r.isSuccessful()||r.body()==null)throw new IOException("Não foi possível consultar as versões (HTTP "+r.code()+").");return new JSONObject(r.body().string());}}
@@ -49,15 +52,17 @@ final class AppUpdater {
    try(Response r=HTTP.newCall(new Request.Builder().url(API).build()).execute()){
     if(!r.isSuccessful()||r.body()==null)throw new IOException("Não foi possível consultar as atualizações. Tente novamente.");
     JSONArray releases=new JSONArray(r.body().string());
-    for(int i=0;i<releases.length();i++){JSONObject release=releases.getJSONObject(i);if(release.optBoolean("draft")||release.optBoolean("prerelease")||!release.optString("tag_name").startsWith("android-v"))continue;
+    java.util.List<JSONObject> ordered=new java.util.ArrayList<>();for(int i=0;i<releases.length();i++){JSONObject candidate=releases.getJSONObject(i);if(!candidate.optBoolean("draft")&&!candidate.optBoolean("prerelease")&&releaseVersion(candidate)>=0)ordered.add(candidate);}java.util.Collections.sort(ordered,(a1,b1)->Long.compare(releaseVersion(b1),releaseVersion(a1)));
+    releasesLoop: for(int i=0;i<Math.min(5,ordered.size());i++){JSONObject release=ordered.get(i);if(release.optBoolean("draft")||release.optBoolean("prerelease")||!release.optString("tag_name").startsWith("android-v"))continue;
      JSONArray assets=release.optJSONArray("assets");if(assets==null)continue;
      for(int j=0;j<assets.length();j++){JSONObject asset=assets.getJSONObject(j);if(!asset.optString("name").equals("android-update.json"))continue;
-      String manifestUrl=asset.getString("browser_download_url");UpdatePolicy.validateUrl(manifestUrl);JSONObject manifest=json(manifestUrl);
+      try{String manifestUrl=asset.getString("browser_download_url");UpdatePolicy.validateUrl(manifestUrl);JSONObject manifest=json(manifestUrl);if(!manifest.optString("versionName").equals(release.optString("tag_name").substring(9))||manifest.optInt("versionCode")<1)continue;
       if(manifest.getInt("versionCode")>BuildConfig.VERSION_CODE&&(best==null||manifest.getInt("versionCode")>best.getInt("versionCode"))){UpdatePolicy.validateUrl(manifest.getString("url"));if(!manifest.getString("sha256").matches("[a-fA-F0-9]{64}"))throw new IOException("Verificação da atualização ausente.");best=manifest;}
+      break releasesLoop;}catch(Exception invalidRelease){continue;}
      }
     }
    }
-   SessionPreferences.get(a).edit().putLong("update_checked",System.currentTimeMillis()).apply();JSONObject available=best;checking=false;post(a,()->{if(available!=null)offer(a,available);else if(!quiet)Toast.makeText(a,"Seu aplicativo está atualizado.",Toast.LENGTH_LONG).show();});
+   SessionPreferences.get(a).edit().putLong("update_checked",System.currentTimeMillis()).apply();JSONObject available=best;boolean changed=available!=null&&(availableUpdate==null||availableUpdate.optInt("versionCode")!=available.optInt("versionCode"));availableUpdate=available;checking=false;post(a,()->{attach(a);if(available!=null&&(!quiet||changed))offer(a,available);else if(!quiet)Toast.makeText(a,"Seu aplicativo está atualizado.",Toast.LENGTH_LONG).show();});
   }catch(Exception e){checking=false;post(a,()->{if(!quiet)Toast.makeText(a,"Não foi possível verificar atualizações. Confira a conexão e tente novamente.",Toast.LENGTH_LONG).show();});}},"app-update-check").start();
  }
  private static void offer(Activity a,JSONObject m){NativeSheet s=new NativeSheet(a,"Nova versão disponível");s.body.addView(NativeSheet.text(a,"BatCaverna "+m.optString("versionName"),22,0xfff3eafa));s.body.addView(NativeSheet.text(a,m.optString("notes","Melhorias e correções do aplicativo."),14,0xffb4a7c4));Button b=button(a,"Baixar e atualizar");s.body.addView(b);b.setOnClickListener(v->{s.dialog.dismiss();download(a,m);});s.show();}
