@@ -477,3 +477,20 @@ test('leituras de catálogo/Steam usam cache e navegação marca só a aba ativa
   assert.match(app,/b\.dataset\.discoverKind\?view==='discover'/);
   assert.match(read('src/reference.js'),/b\.dataset\.discoverKind\?state\.current==='discover'/);
 });
+
+test('presença tolera saída transitória, expira offline e cancela por nova sessão',()=>{
+ const source=read('src/redesign.js'),start=source.indexOf('const presenceDepartures=new Map();'),end=source.indexOf('\nfunction renderSidebarFriends()',start),timers=new Map();let seq=0;
+ const context={ui:{presence:{},presenceReady:false},state:{userId:'owner'},setTimeout:fn=>{timers.set(++seq,fn);return seq},clearTimeout:id=>timers.delete(id),renderSidebarFriends:()=>{}};
+ vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+ const send=(event,data)=>context.receivePresence({event,data}),meta=(ref,status='online')=>({phx_ref:ref,status,jogo:'Hades'});
+ send('presence_state',{friend:{metas:[meta('a')]}});
+ send('presence_diff',{leaves:{friend:{metas:[meta('a')]}}});assert.equal(context.ui.presence.friend.status,'online');assert.equal(timers.size,1);
+ send('presence_diff',{joins:{friend:{metas:[meta('b')]}}});assert.equal(timers.size,0);assert.equal(context.ui.presence.friend.phx_ref,'b');
+ send('presence_state',{});assert.equal(context.ui.presence.friend.status,'online');for(const fn of timers.values())fn();timers.clear();assert.equal(context.ui.presence.friend,undefined);
+ send('presence_state',{friend:{metas:[meta('c','invisivel')]}});assert.equal(context.ui.presence.friend.status,'invisivel');
+ send('presence_state',{});context.state.userId='another';context.ui.presence={friend:{status:'online'}};for(const fn of timers.values())fn();assert.equal(context.ui.presence.friend.status,'online');
+});
+
+test('jogos em destaque saem do bloco oculto e telas revelam o layout completo',()=>{
+ const s=read('src/cavern-shell.js');assert.match(s,/querySelector\('#profile-featured'\)/);assert.match(s,/overview\.append\(favorites\)/);assert.match(s,/renderProfile=wrap\(renderProfile\);renderDiscover=wrap\(renderDiscover\)/);
+});
