@@ -32,6 +32,9 @@ jobs:
           for migration in supabase/migrations/*beta_security_and_operational_readiness.sql; do
             docker exec -i "$PG_CONTAINER" psql -U postgres -d beta_source -v ON_ERROR_STOP=1 < "$migration"
           done
+          for migration in supabase/migrations/*harden_people_search.sql; do
+            docker exec -i "$PG_CONTAINER" psql -U postgres -d beta_source -v ON_ERROR_STOP=1 < "$migration"
+          done
           docker exec -i "$PG_CONTAINER" psql -U postgres -d beta_source -v ON_ERROR_STOP=1 < tests/operations/assertions.sql
       - name: Exportar e restaurar somente o banco sintético
         env:
