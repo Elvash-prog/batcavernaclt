@@ -849,5 +849,5 @@ body.reference-ui.light-theme :is(.reference-detail,.details-section,.profile-ta
 body.reference-ui.light-theme .reference-detail :is(h2,h3,h4,p,small,label){color:inherit}
 .pc-game-settings{display:grid;gap:15px;padding:20px 0;border-top:1px solid var(--line)}.pc-game-settings label{display:flex;align-items:center;gap:10px}.pc-game-settings input[type=checkbox]{width:18px;height:18px}.pc-game-dialog form{display:grid;gap:18px}
 
-#content.view-preparing { visibility: hidden; pointer-events: none; }
+.reference-ui #content.view-preparing { visibility: hidden !important; pointer-events: none; }
 #viewPreparation { display:flex; align-items:center; justify-content:center; gap:12px; padding:48px; color:var(--muted); }
