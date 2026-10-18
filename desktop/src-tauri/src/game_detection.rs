@@ -14,17 +14,29 @@ fn match_game(names: &[String], mappings: &[Mapping], running: &[String]) -> Opt
 }
 #[cfg(windows)]
 fn processes() -> Result<Vec<String>, String> {
-    use std::{process::{Command,Stdio},os::windows::process::CommandExt,time::{Duration,Instant}};
-    // Fixed command. Only executable names of visible applications are read; no window titles or paths.
-    let mut child=Command::new("powershell.exe").args(["-NoProfile","-NonInteractive","-Command","Get-Process | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 200 -ExpandProperty ProcessName | ConvertTo-Json -Compress"]).creation_flags(0x08000000).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|_|"Não foi possível consultar programas abertos.")?;
-    let deadline=Instant::now()+Duration::from_secs(5);
-    loop {match child.try_wait(){Ok(Some(_))=>break,Ok(None) if Instant::now()<deadline=>std::thread::sleep(Duration::from_millis(50)),_=>{let _=child.kill();let _=child.wait();return Err("A consulta de programas excedeu o tempo limite.".into())}}}
-    let output=child.wait_with_output().map_err(|_|"Consulta indisponível.")?;
-    if !output.status.success(){return Err("Consulta de programas indisponível.".into())}
-    let raw=String::from_utf8_lossy(&output.stdout);let raw=raw.trim_start_matches('\u{feff}');
-    let data:Value=serde_json::from_str(raw.trim()).unwrap_or(Value::Null);
-    let rows=match data {Value::Array(v)=>v,Value::String(v)=>vec![Value::String(v)],_=>vec![]};
-    Ok(rows.into_iter().filter_map(|v|v.as_str().map(str::to_owned)).filter(|s|s.len()<=160&&!s.chars().any(char::is_control)).collect())
+    use std::collections::HashSet;
+    use windows_sys::Win32::{Foundation::{CloseHandle,HANDLE,HWND,LPARAM,INVALID_HANDLE_VALUE},System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot,Process32FirstW,Process32NextW,PROCESSENTRY32W,TH32CS_SNAPPROCESS},UI::WindowsAndMessaging::{EnumWindows,IsWindowVisible,GetWindowThreadProcessId}};
+    // EnumWindows is synchronous: this pointer remains valid for every callback.
+    unsafe extern "system" fn collect(window: HWND, data: LPARAM) -> i32 {
+        if IsWindowVisible(window)!=0 {let mut pid=0;GetWindowThreadProcessId(window,&mut pid);if pid!=0 {(*(data as *mut HashSet<u32>)).insert(pid);}}
+        1
+    }
+    struct Snapshot(HANDLE);
+    impl Drop for Snapshot {fn drop(&mut self){unsafe{CloseHandle(self.0);}}}
+    unsafe {
+        let mut visible=HashSet::<u32>::new();
+        if EnumWindows(Some(collect),(&mut visible as *mut HashSet<u32>) as LPARAM)==0{return Err("Não foi possível consultar as janelas abertas.".into())}
+        let handle=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
+        if handle==INVALID_HANDLE_VALUE{return Err("Não foi possível consultar os programas abertos.".into())}
+        let snapshot=Snapshot(handle);let mut entry:PROCESSENTRY32W=std::mem::zeroed();entry.dwSize=std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        if Process32FirstW(snapshot.0,&mut entry)==0{return Err("Consulta de programas indisponível.".into())}
+        let mut names=Vec::new();
+        loop {
+            if visible.contains(&entry.th32ProcessID){let length=entry.szExeFile.iter().position(|c|*c==0).unwrap_or(entry.szExeFile.len());let name=String::from_utf16_lossy(&entry.szExeFile[..length]);let name=name.strip_suffix(".exe").unwrap_or(&name).to_string();if !name.is_empty()&&name.len()<=160&&!name.chars().any(char::is_control){names.push(name)}}
+            if Process32NextW(snapshot.0,&mut entry)==0{break}
+        }
+        names.sort();names.dedup();Ok(names)
+    }
 }
 #[cfg(not(windows))]
 fn processes()->Result<Vec<String>,String>{Ok(vec![])}
