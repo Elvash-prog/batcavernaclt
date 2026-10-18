@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: '24'
       - run: node tests/native-dependencies.mjs
+      - run: node --test tests/catalog-cache.mjs
       - run: node tests/igdb.mjs
       - run: node tests/native-api.mjs
       - run: node tests/bright-api-security.mjs

@@ -225,8 +225,7 @@ async fn install_update(version: String, app: AppHandle, state: tauri::State<'_,
      if latest.user.id!=active.user.id{return Err("Sua conta mudou. Tente atualizar novamente.".into());}
      session_persistence::prepare_update(&latest.refresh_token)?;
     }
-    update.download_and_install(|_, _| {}, || {}).await
-        .map_err(|error| format!("Não foi possível baixar ou instalar a atualização: {error}"))?;
+    if let Err(error)=update.download_and_install(|_, _| {}, || {}).await{session_persistence::clear_pending();return Err(format!("Não foi possível baixar ou instalar a atualização: {error}"));}
     Ok(json!({"installed":true}))
 }
 
