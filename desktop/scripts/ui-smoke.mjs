@@ -1446,6 +1446,8 @@ try {
   const light=await page.locator('#settingsPanel').evaluate(n=>({background:getComputedStyle(n).backgroundColor,color:getComputedStyle(n).color}));
   assert.match(light.background,/255, 255, 255/);
   assert.notEqual(light.color,'rgb(255, 255, 255)');
+  await page.evaluate(async()=>await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{}))));
+  assert.equal(await page.locator('#mainNav [data-view="home"]').evaluate(n=>getComputedStyle(n).color),await page.locator('body').evaluate(n=>getComputedStyle(n).color),'Navegação do tema claro precisa de contraste');
   await page.screenshot({path:'preview/light-settings-check.png'});
   await page.locator('[data-theme-preset="Caverna"]').click();
   await page.evaluate(async()=>{state.settingsTab='app';await renderSettings()});
