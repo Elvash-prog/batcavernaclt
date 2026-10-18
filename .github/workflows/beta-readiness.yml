@@ -15,8 +15,6 @@ jobs:
           POSTGRES_PASSWORD: synthetic-ci-password
           POSTGRES_DB: beta_source
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 15
-    env:
-      PG_CONTAINER: ${{ job.services.postgres.id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +24,8 @@ jobs:
       - name: Verificar criptografia e integridade com dados sintéticos
         run: python3 -m unittest discover -s tools/operations -p 'test_*.py' -v
       - name: Aplicar esquema isolado e validar permissões
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           docker exec -i "$PG_CONTAINER" psql -U postgres -d beta_source -v ON_ERROR_STOP=1 < tests/operations/fixture.sql
           docker exec -i "$PG_CONTAINER" psql -U postgres -d beta_source -v ON_ERROR_STOP=1 < supabase/migrations/20261018182205_persistent_catalog_and_account_layout.sql
@@ -34,6 +34,8 @@ jobs:
           done
           docker exec -i "$PG_CONTAINER" psql -U postgres -d beta_source -v ON_ERROR_STOP=1 < tests/operations/assertions.sql
       - name: Exportar e restaurar somente o banco sintético
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
         run: |
           docker exec "$PG_CONTAINER" pg_dump -U postgres -Fc --no-owner beta_source > "$RUNNER_TEMP/beta-fixture.dump"
           docker exec "$PG_CONTAINER" createdb -U postgres beta_restored
