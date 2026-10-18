@@ -832,3 +832,19 @@ body.reference-ui {
 .reference-ui .free-store-section .offer-card h3{font-family:inherit;font-size:15px;line-height:1.35}
 
 .app-confirm-dialog{max-width:480px}.app-confirm-dialog footer{display:flex;justify-content:flex-end;gap:12px;margin-top:24px}.app-confirm-dialog header{display:flex;align-items:center;justify-content:space-between;gap:18px}.app-confirm-dialog h2{font-size:20px}.retro-search-result{display:flex;align-items:center;gap:16px}.retro-search-result img{width:96px;aspect-ratio:2/3;object-fit:cover;border-radius:8px}.retro-search-result span{display:grid;gap:10px}.retro-search-result small{color:var(--muted)}body[data-card-format="landscape"] .retro-search-result img{width:160px;aspect-ratio:16/9}.chat-people h3{font-size:12px;color:var(--muted);margin:22px 10px 10px}.group-settings-dialog{max-width:620px}.group-settings-dialog label{display:grid;gap:8px;margin:16px 0}.group-member-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.group-member-row span{flex:1}.group-settings-dialog footer{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+/* Complete light surfaces, including panels previously fixed to dark colors. */
+body.reference-ui.light-theme{color-scheme:light;--muted:#536176;--soft:#edf0f7;--line:#d9deea;--line-strong:#c7d0e0;--surface-raised:#fff;--surface-hover:#e9e3fa;--focus-ring:#6d28d9;color:var(--text)}
+body.reference-ui.light-theme:before{background-image:linear-gradient(#eef2f8ee,#eef2f8f5),var(--wallpaper)}
+body.reference-ui.light-theme :is(.sidebar,.cavern-rail,.topbar,.sidebar-foot,.settings,.settings-nav,.editor,.post,.composer,.community-reference-left,.community-reference-right,.community-trends,.friends-dock,.chat-layout,.chat-friends,.chat-conversation,.chat-messages,.chat-composer,.journey-list-card,.recommendation-card,.activity-panel,.complete-profile,.profile-feature,.level-card,.offer-card,.retro-toolbar,.retro-library-item,.notification-popover,.update-toast){background-color:var(--panel);color:var(--text);border-color:var(--line-strong)}
+body.reference-ui.light-theme :is(.sidebar,.cavern-rail,.settings,.editor,.community-reference-left,.community-reference-right,.chat-layout,.chat-friends,.chat-conversation,.chat-messages,.chat-composer,.activity-panel){background-image:none}
+body.reference-ui.light-theme :is(h1,h2,h3,h4,strong,b,label,.sidebar nav button,.sidebar-account,.settings-nav button,.link-button,.rail-search input){color:var(--text)}
+body.reference-ui.light-theme :is(p,small,.muted,.journey-heading p,.friend-status,.sidebar-system){color:var(--muted)}
+body.reference-ui.light-theme :is(input,select,textarea){background:#fff;color:#172033;border-color:#b9c5d7}
+body.reference-ui.light-theme :is(input,textarea)::placeholder{color:#65748b}
+body.reference-ui.light-theme :is(.secondary,.recommend-tabs button,.tabs button,.toggle){background:#edf0f7;color:#28344b;border-color:#c7d0e0}
+body.reference-ui.light-theme :is(.primary,.tabs button.active,.recommend-tabs button.active){color:#fff}
+body.reference-ui.light-theme :is(.home-hero,.retro-profile,.profile-banner,.detail-hero,.detail-progress,.profile-hero) :is(h1,h2,h3,strong,b,p,small,span){color:#fff}
+body.reference-ui.light-theme .sidebar nav button.active{color:#5b21b6;background:#e9e0fc}
+body.reference-ui.light-theme :is(.reference-detail,.details-section,.profile-tabs,.journey-title-card,.statistics-summary article,.category-breakdown,.monthly-chart){background:#fff;color:#172033;border-color:#d9deea}
+body.reference-ui.light-theme .reference-detail :is(h2,h3,h4,p,small,label){color:inherit}
+.pc-game-settings{display:grid;gap:15px;padding:20px 0;border-top:1px solid var(--line)}.pc-game-settings label{display:flex;align-items:center;gap:10px}.pc-game-settings input[type=checkbox]{width:18px;height:18px}.pc-game-dialog form{display:grid;gap:18px}
