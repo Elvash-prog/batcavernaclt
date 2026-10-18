@@ -61,6 +61,7 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
    rpc(&state.client,"clt_journey",json!({"p_action":action,"p_data":data}),token).await
  },
  "notification_message"=>{let id=safe_id(ident)?;get(&state.client,&format!("/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id&id=eq.{id}&limit=1"),token).await},
+ "record_pc_play"=>{let id=input["item_id"].as_i64().filter(|v|*v>0).ok_or("Jogo inválido.")?;let seconds=input["seconds"].as_i64().filter(|v|*v>=0&&*v<=604800).ok_or("Tempo inválido.")?;let session_id=input["session"].as_str().ok_or("Sessão inválida.")?;if session_id.len()!=36{return Err("Sessão inválida.".into())}rpc(&state.client,"clt_record_pc_play",json!({"p_item":id,"p_session":session_id,"p_seconds":seconds}),token).await},
  "clear_notifications"=>rpc(&state.client,"clt_desktop_clear_notifications",json!({}),token).await,
  "read_notification"=>{let id=safe_id(ident)?;write(&state,&session,reqwest::Method::PATCH,&format!("/rest/v1/notificacoes?id=eq.{id}&destinatario_id=eq.{me}"),json!({"read":true})).await},
  "ranking"=>match rpc(&state.client,"clt_progression_v2",json!({}),token).await{Ok(rows)=>Ok(rows),Err(_)=>rpc(&state.client,"ranking_clt",json!({}),token).await},

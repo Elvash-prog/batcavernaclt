@@ -4,6 +4,7 @@ const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:
 export function createHandler(env){
  return async request=>{
   try{
+   if(request.headers.get('Origin'))return json({error:'Acesso web descontinuado. Use o desktop ou o APK.'},403);
    const incoming=new URL(request.url),prefix='/functions/v1/native-api';
    const path=incoming.pathname.startsWith(prefix+'/')?incoming.pathname.slice(prefix.length):incoming.pathname.startsWith('/native-api/')?incoming.pathname.slice('/native-api'.length):incoming.pathname;
    if(request.method==='GET'&&path==='/health')return json({service:'native-api',version:2,catalogProvider:'igdb',configured:{igdb:!!(env.IGDB_CLIENT_ID&&env.IGDB_CLIENT_SECRET),igdbConnected:env.IGDB_READY?await env.IGDB_READY:null,tmdb:!!env.TMDB_KEY,moderation:!!(env.SIGHTENGINE_API_USER&&env.SIGHTENGINE_API_SECRET),supabase:!!(env.SUPABASE_URL&&env.SUPABASE_ANON_KEY&&env.SUPABASE_SERVICE_ROLE_KEY)}});

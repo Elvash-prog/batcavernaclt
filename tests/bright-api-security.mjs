@@ -17,6 +17,8 @@ globalThis.fetch=async (url, options={})=>{
     return mode==='dbfail'?json({},500):json(mode!=='limited');
   }
   if(mode==='upstreamfail') throw new Error('secret='+env.STEAM_KEY);
+  if(u.pathname==='/rest/v1/perfis')return json([{steam_id:'76561198000000000'}]);
+  if(u.pathname==='/rest/v1/itens'){assert.equal(u.searchParams.get('user_id'),'eq.'+uid);if(options.method==='PATCH'){assert.equal(u.searchParams.get('id'),'eq.41');const b=JSON.parse(options.body);assert.equal(b.horas,2);assert.equal(b.status,undefined);assert.equal(b.nota,undefined);return json({})}return json([{id:41,steam_appid:42,horas:1,conquistas:0}])}
   if(u.hostname==='www.steamgriddb.com') {
     if(u.pathname.includes('/search/')) return json({data:mode==='covermatch'?[{id:1,name:'Resident Evil'},{id:9,name:'Resident Evil Requiem'}]:[{id:42,name:'Safe Game'}]});
     return json({data:[{nsfw:true,url:'https://images.test/bad.jpg'},{nsfw:false,url:'https://images.test/safe.jpg'}]});
@@ -24,6 +26,7 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('ResolveVanityURL')) return json({response:{success:1,steamid:'76561198000000000'}});
   if(u.pathname.includes('GetPlayerSummaries')) return json({response:{players:[{steamid:'76561198000000000',personaname:'Player',communityvisibilitystate:3,gameid:'42'}]}});
   if(u.pathname.includes('GetOwnedGames')||u.pathname.includes('GetRecentlyPlayedGames')) return json({response:{game_count:1,games:[{appid:42,name:'Safe Game',playtime_forever:120,playtime_2weeks:60}]}});
+  if(u.pathname.includes('GetPlayerAchievements')&&mode==='privateach')return json({playerstats:{success:false}});
   if(u.pathname.includes('GetPlayerAchievements')) return json({playerstats:{achievements:[{apiname:'WIN',achieved:1}]}});
   if(u.pathname.includes('GetSchemaForGame')) return json({game:{availableGameStats:{achievements:[{name:'WIN',displayName:'Win',icon:'https://images.test/win.png'}]}}});
   if(u.pathname.includes('appdetails')) return json({[u.searchParams.get('appids')]:{success:true,data:{name:mode==='adult'?'Hentai Game':'Safe Game',header_image:'https://images.test/game.jpg',is_free:false,price_overview:{initial:1000,final:0,discount_percent:100}}}});
@@ -44,13 +47,13 @@ const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/br
 await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 function req(body,opts={}) {
   return new Request('https://test.supabase.co/functions/v1/bright-api',{
-    method:opts.method||'POST',headers:{Origin:site,'Content-Type':'application/json',Authorization:'Bearer a.b.c',...opts.headers},
+    method:opts.method||'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer a.b.c',...opts.headers},
     ...(opts.method==='GET'||opts.method==='OPTIONS'?{}:{body:typeof body==='string'?body:JSON.stringify(body)}),
   });
 }
 let passed=0;
 async function check(label,run){mode='ok';calls=[];await run();passed++;console.log('PASS',label)}
-await check('preflight has explicit origin',async()=>{const r=await handler(req(null,{method:'OPTIONS'}));assert.equal(r.status,204);assert.equal(r.headers.get('Access-Control-Allow-Origin'),site);assert.equal(calls.length,0)});
+await check('retired web origin rejected',async()=>{const r=await handler(req(null,{method:'OPTIONS',headers:{Origin:site}}));assert.equal(r.status,403);assert.equal(r.headers.get('Access-Control-Allow-Origin'),null);assert.equal(calls.length,0)});
 await check('foreign origin rejected',async()=>{assert.equal((await handler(req({op:'gratis'},{headers:{Origin:'https://evil.test'}}))).status,403);assert.equal(calls.length,0)});
 await check('GET rejected',async()=>{assert.equal((await handler(req(null,{method:'GET'}))).status,405)});
 await check('missing login rejected before providers',async()=>{assert.equal((await handler(req({op:'gratis'},{headers:{Authorization:''}}))).status,401);assert.equal(calls.length,0)});
@@ -94,3 +97,7 @@ await check('published client GameCube selector uses official RA system 16',asyn
 await check('Retro removal uses authenticated UID and excludes forged owner',async()=>{const r=await handler(req({op:'raSaveCollection',removeGameId:7,user_id:'someone-else'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).hidden_game_ids,[7]);const b=JSON.parse(calls.find(x=>x.u.pathname==='/rest/v1/rpc/clt_retro_mutate').options.body);assert.equal(b.p_user,uid);assert.equal(b.p_remove,7);});
 await check('Retro removal rejects invalid ID before mutation',async()=>{assert.equal((await handler(req({op:'raSaveCollection',removeGameId:-1}))).status,400);assert.ok(!calls.some(x=>x.u.pathname.includes('clt_retro_mutate')));});
 await check('Retro conflicting actions rejected',async()=>{assert.equal((await handler(req({op:'raSaveCollection',removeGameId:7,gameId:8}))).status,400);});
+
+await check('Steam progress uses authenticated owner and exact saved App ID',async()=>{const r=await handler(req({op:'steamSync',appids:[42],user_id:'someone-else',steamid:'76561198999999999'}));assert.equal(r.status,200);assert.equal((await r.json()).updated,1);const patch=JSON.parse(calls.find(x=>x.options.method==='PATCH').options.body);assert.equal(patch.conquistas,100);assert.ok(calls.some(x=>x.u.pathname.includes('GetPlayerAchievements')&&x.u.searchParams.get('steamid')==='76561198000000000'));});
+await check('private achievement progress leaves the stored percentage unchanged',async()=>{mode='privateach';const r=await handler(req({op:'steamSync',appids:[42]}));assert.equal(r.status,200);const patch=JSON.parse(calls.find(x=>x.options.method==='PATCH').options.body);assert.equal(patch.conquistas,undefined);});
+await check('Steam progress rejects excessive batches',async()=>{assert.equal((await handler(req({op:'steamSync',appids:[1,2,3,4,5,6]}))).status,400);});

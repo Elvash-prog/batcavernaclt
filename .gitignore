@@ -6,3 +6,5 @@ desktop/src-tauri/gen/schemas/
 .wrangler/
 .env*
 .dev.vars*
+
+supabase/.temp/
