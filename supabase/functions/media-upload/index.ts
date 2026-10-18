@@ -1,4 +1,5 @@
 // Upload moderado para os aplicativos nativos. Deploy como media-upload.
+import {readLimitedJson,BodyLimitError} from '../_shared/request-security.js';
 // Secrets adicionais: SIGHTENGINE_API_USER e SIGHTENGINE_API_SECRET.
 const SB=Deno.env.get('SUPABASE_URL')||'',ANON=Deno.env.get('SUPABASE_ANON_KEY')||'',SERVICE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
 const SUSER=Deno.env.get('SIGHTENGINE_API_USER')||'',SSECRET=Deno.env.get('SIGHTENGINE_API_SECRET')||'';
@@ -15,7 +16,9 @@ async function review(path:string,owner:string){const r=await fetch(SB+'/rest/v1
 Deno.serve(async req=>{try{
  if(req.method!=='POST')return json({error:'Método não permitido.'},405);if(!SB||!ANON||!SERVICE||!SUSER||!SSECRET)return json({error:'A moderação de mídia ainda não foi ativada.'},503);
  if(Number(req.headers.get('content-length')||0)>18_000_000)return json({error:'Arquivo maior que 12 MB.'},413);
- const u=await user(req),body=await req.json(),mime=String(body.mime||''),ext=allowed[mime],raw=String(body.base64||'');if(!ext||raw.length>17_000_000||!/^[A-Za-z0-9+/=]+$/.test(raw))return json({error:'Arquivo inválido.'},422);
+ const u=await user(req);if(u.is_anonymous===true)return json({error:'Sua sessão não permite esta operação.'},401);
+ const body=await readLimitedJson(req,18_000_000);if(!body||typeof body!=='object'||Array.isArray(body))return json({error:'Arquivo inválido.'},422);
+ const mime=String(body.mime||''),ext=allowed[mime],raw=String(body.base64||'');if(!ext||raw.length>17_000_000||!/^[A-Za-z0-9+/=]+$/.test(raw))return json({error:'Arquivo inválido.'},422);
  const bytes=Uint8Array.from(atob(raw),c=>c.charCodeAt(0));if(!bytes.length||bytes.length>12*1024*1024)return json({error:'Arquivo maior que 12 MB.'},413);
  const png=bytes[0]===137&&bytes[1]===80, jpg=bytes[0]===255&&bytes[1]===216, webp=new TextDecoder().decode(bytes.slice(0,4))==='RIFF',mp4=new TextDecoder().decode(bytes.slice(4,8))==='ftyp',webm=bytes[0]===26&&bytes[1]===69;
  if((mime==='image/png'&&!png)||(mime==='image/jpeg'&&!jpg)||(mime==='image/webp'&&!webp)||(mime==='video/mp4'&&!mp4)||(mime==='video/webm'&&!webm))return json({error:'O conteúdo não corresponde ao formato informado.'},422);
@@ -23,5 +26,5 @@ Deno.serve(async req=>{try{
  if(mime.startsWith('video/')){let signed='';try{signed=await quarantine(path,blob,mime);await moderateVideo(signed)}finally{await removeQuarantine(path)}}else await moderateImage(blob);
  await storage(path,blob,mime);await review(path,u.id);
  return json({url:SB+'/storage/v1/object/public/feed-media/'+path});
- }catch(e){const m=String((e as Error).message);return json({error:m==='AUTH'?'Sua sessão expirou.':m==='ADULT'?'A imagem foi bloqueada pela moderação.':'Não foi possível analisar ou enviar a mídia.'},m==='AUTH'?401:m==='ADULT'?422:503)}});
+ }catch(e){if(e instanceof BodyLimitError)return json({error:'Arquivo maior que o permitido.'},413);const m=String((e as Error).message);return json({error:m==='AUTH'?'Sua sessão expirou.':m==='ADULT'?'A imagem foi bloqueada pela moderação.':'Não foi possível analisar ou enviar a mídia.'},m==='AUTH'?401:m==='ADULT'?422:503)}});
 
