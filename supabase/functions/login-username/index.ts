@@ -1,4 +1,5 @@
 // Login seguro por nome de usuário para clientes nativos.
+import {readLimitedJson,BodyLimitError} from '../_shared/request-security.js';
 // A chave service_role permanece somente nos segredos da Edge Function.
 const SB_URL = Deno.env.get('SUPABASE_URL') || '';
 const SB_ANON = Deno.env.get('SUPABASE_ANON_KEY') || '';
@@ -15,7 +16,8 @@ Deno.serve(async request => {
   if (request.method !== 'POST') return reply({message:'Método não permitido.'},405);
   if (!SB_URL || !SB_ANON || !SB_SERVICE) return reply({message:'Login por usuário indisponível.'},503);
   let body: {username?: unknown,password?: unknown};
-  try { body = await request.json(); } catch { return reply({message:'Dados inválidos.'},400); }
+  try { body = await readLimitedJson(request,8192); } catch(e) { return reply({message:'Dados inválidos.'},e instanceof BodyLimitError?413:400); }
+  if(!body||typeof body!=='object'||Array.isArray(body))return reply({message:'Dados inválidos.'},400);
   const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
   const password = typeof body.password === 'string' ? body.password : '';
   if (!/^[\p{L}\p{N}_.-]{2,60}$/u.test(username) || password.length < 1 || password.length > 256)

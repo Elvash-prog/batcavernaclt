@@ -16,6 +16,7 @@ export async function authenticate(request,env){
  const auth=request.headers.get('Authorization')||'';if(!/^Bearer [A-Za-z0-9._-]{20,4096}$/.test(auth))throw new Error('UNAUTHORIZED');
  const key=safePublicKey(env.SUPABASE_ANON_KEY);if(!key)throw new Error('CONFIG');
  const r=await fetch(new URL('/auth/v1/user',env.SUPABASE_URL),{headers:{Authorization:auth,apikey:key},redirect:'manual',signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error(r.status===401||r.status===403?'UNAUTHORIZED':'CONFIG');const data=await r.json();if(!UUID.test(data.id||''))throw new Error('UNAUTHORIZED');
+ if(data.is_anonymous===true)throw new Error('UNAUTHORIZED');
  if(env.USER_RATE_LIMITER){const limit=await env.USER_RATE_LIMITER.limit({key:'bc139:user:'+data.id});if(!limit.success)throw new Error('RATE_LIMIT')}
  return {id:data.id,auth};
 }

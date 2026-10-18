@@ -3,7 +3,7 @@ on:
   push:
     branches: [codex/retro-steam-0.17.36, codex/desktop-0.17.37-fixes, codex/desktop-0.17.38-fixes]
   pull_request:
-    paths: ['desktop/**', 'supabase/functions/bright-api/**', 'tests/bright-api-security.mjs', 'supabase/functions/native-api/**', 'tests/native-api.mjs', 'tests/native-dependencies.mjs', 'public/privacidade.html', 'public/marketing/privacy.css', 'worker.js', 'tests/privacy-ui.mjs']
+    paths: ['desktop/**', 'supabase/functions/**', 'tests/**', 'public/privacidade.html', 'public/marketing/privacy.css', 'worker.js']
 permissions:
   contents: read
 jobs:
@@ -18,6 +18,7 @@ jobs:
       - run: node --test tests/catalog-cache.mjs tests/operational-metrics.mjs
       - run: node tests/igdb.mjs
       - run: node tests/native-api.mjs
+      - run: node tests/request-security.mjs && node tests/edge-pentest.mjs
       - run: node tests/bright-api-security.mjs
       - run: npm ci
         working-directory: desktop
@@ -25,6 +26,7 @@ jobs:
         working-directory: desktop
       - run: npx playwright install --with-deps chromium
         working-directory: desktop
+      - run: node tests/pentest-rendering.mjs
       - run: npm run test:ui
         working-directory: desktop
       - run: node tests/privacy-ui.mjs

@@ -5,7 +5,7 @@ const token='eyJtest.payload.signature';
 const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'private-service',IGDB_CLIENT_ID:'private-client',IGDB_CLIENT_SECRET:'private-secret',TMDB_KEY:'private-tmdb',SIGHTENGINE_API_USER:'private-user',SIGHTENGINE_API_SECRET:'private-moderation',USER_RATE_LIMITER:{limit:async()=>({success:mode!=='limited'})}};
 let mode='ok',calls=[];const json=(d,status=200)=>new Response(JSON.stringify(d),{status});
 globalThis.fetch=async(url,options={})=>{const u=new URL(url);calls.push({u,options});
- if(u.pathname==='/auth/v1/user')return mode==='invalid'?json({},401):json({id:uid});
+ if(u.pathname==='/auth/v1/user')return mode==='invalid'?json({},401):json({id:uid,is_anonymous:mode==='anonymous'});
  if(u.hostname==='id.twitch.tv')return json({access_token:'private-application-token',expires_in:3600});
  if(u.hostname==='api.igdb.com'){if(mode==='upstreamfail')throw Error('private-secret');return json([{id:1,name:'Safe Game',cover:{image_id:'safe_cover'}},{id:2,name:'Hentai Game'}]);}
  if(u.hostname==='api.themoviedb.org')return json({adult:true,title:'Explicit'});
@@ -21,6 +21,7 @@ globalThis.fetch=async(url,options={})=>{const u=new URL(url);calls.push({u,opti
 };
 const handler=createHandler(env);
 async function request(path,method='GET',body=null){calls=[];return handler(new Request('https://test.supabase.co/functions/v1/native-api'+path,{method,headers:{Authorization:'Bearer '+token},...(body?{body,duplex:'half'}:{})}));}
+mode='anonymous';assert.equal((await request('/api/catalog/igdb/games')).status,401);assert.equal(calls.length,1);mode='ok';
 let edgeResponse=await handler(new Request('https://test.supabase.co/native-api/health'));assert.equal(edgeResponse.status,200);
 let r=await request('/health');assert.equal(r.status,200);assert.doesNotMatch(await r.text(),/private-/);assert.equal(calls.length,0);
 const blockedWeb=await handler(new Request('https://test.supabase.co/functions/v1/native-api/api/catalog/igdb/games?search=Horizon',{headers:{Origin:'https://batcavernaclt.gamersclt.workers.dev',Authorization:'Bearer '+token}}));assert.equal(blockedWeb.status,403);
