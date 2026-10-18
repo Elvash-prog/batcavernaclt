@@ -52,7 +52,7 @@ final class AppUpdater {
    try(Response r=HTTP.newCall(new Request.Builder().url(API).build()).execute()){
     if(!r.isSuccessful()||r.body()==null)throw new IOException("Não foi possível consultar as atualizações. Tente novamente.");
     JSONArray releases=new JSONArray(r.body().string());
-    java.util.List<JSONObject> ordered=new java.util.ArrayList<>();for(int i=0;i<releases.length();i++){JSONObject candidate=releases.getJSONObject(i);if(!candidate.optBoolean("draft")&&!candidate.optBoolean("prerelease")&&releaseVersion(candidate)>=0)ordered.add(candidate);}ordered.sort((a1,b1)->Long.compare(releaseVersion(b1),releaseVersion(a1)));
+    java.util.List<JSONObject> ordered=new java.util.ArrayList<>();for(int i=0;i<releases.length();i++){JSONObject candidate=releases.getJSONObject(i);if(!candidate.optBoolean("draft")&&!candidate.optBoolean("prerelease")&&releaseVersion(candidate)>=0)ordered.add(candidate);}java.util.Collections.sort(ordered,(a1,b1)->Long.compare(releaseVersion(b1),releaseVersion(a1)));
     releasesLoop: for(int i=0;i<Math.min(5,ordered.size());i++){JSONObject release=ordered.get(i);if(release.optBoolean("draft")||release.optBoolean("prerelease")||!release.optString("tag_name").startsWith("android-v"))continue;
      JSONArray assets=release.optJSONArray("assets");if(assets==null)continue;
      for(int j=0;j<assets.length();j++){JSONObject asset=assets.getJSONObject(j);if(!asset.optString("name").equals("android-update.json"))continue;
