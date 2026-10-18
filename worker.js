@@ -1,5 +1,5 @@
 // Public presentation/downloads only. The Windows and Android apps use Supabase.
-const presentation = new Set(['/', '/index.html', '/marketing/site.css', '/marketing/site.js', '/marketing/cave.jpg', '/marketing/brand.jpg']);
+const presentation = new Set(['/', '/index.html', '/privacidade', '/privacidade.html', '/marketing/privacy.css', '/marketing/site.css', '/marketing/site.js', '/marketing/cave.jpg', '/marketing/brand.jpg']);
 const security = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -16,6 +16,7 @@ export default {
     }
     const assetUrl = new URL(request.url);
     if (assetUrl.pathname === '/') assetUrl.pathname = '/index.html';
+    if (assetUrl.pathname === '/privacidade') assetUrl.pathname = '/privacidade.html';
     const asset = await env.ASSETS.fetch(new Request(assetUrl, request));
     const headers = new Headers(asset.headers);
     for (const [name, value] of Object.entries(security)) headers.set(name, value);

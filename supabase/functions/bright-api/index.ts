@@ -1,3 +1,4 @@
+import {instrument,metricRecorder} from '../_shared/operational-metrics.js';
 // BatCaverna — Patch 1.39.3. Deploy as bright-api; authentication is verified below.
 // Run patch-1.39.3-bright-api.sql before deploying this file.
 // Secrets: SGDB_KEY, STEAM_KEY, RETROACHIEVEMENTS_KEY; SUPABASE_* variables are supplied by Supabase.
@@ -486,7 +487,7 @@ async function steamGratis(requestSignal: AbortSignal) {
     return out;
 }
 
-Deno.serve(async (req: Request) => {
+const handleRequest=async (req: Request) => {
   try {
     const origin = req.headers.get("Origin");
     if (origin) throw new ApiError(403, "Origem não autorizada.");
@@ -508,5 +509,5 @@ Deno.serve(async (req: Request) => {
     // Never return/log tokens, provider URLs containing keys, or raw upstream exceptions.
     return response(req,{erro:known ? e.message : "Não foi possível concluir a busca. Tente novamente."},known ? e.status : 502);
   }
-});
-
+ };
+Deno.serve(instrument(handleRequest,{service:'bright-api',record:metricRecorder({SUPABASE_URL:SB_URL,SUPABASE_SERVICE_ROLE_KEY:SB_SERVICE}),background:(task:Promise<unknown>)=>{const runtime=(globalThis as any).EdgeRuntime;if(runtime?.waitUntil)runtime.waitUntil(task);else void task.catch(()=>{});}}));

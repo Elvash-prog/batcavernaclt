@@ -1,0 +1,126 @@
+"""Read-only Supabase export. Encrypts before any file leaves this computer.
+Requires an authenticated, linked Supabase CLI, Docker, Python 3 and GnuPG.
+Never uploads a backup. Never prints keys, SQL data or remote error bodies.
+"""
+import argparse,datetime,getpass,hashlib,json,os,pathlib,shutil,subprocess,tarfile,tempfile,urllib.request,urllib.parse,sys
+PROJECT='luoqlhgfmixvfqbfcdoc'
+ROOT=pathlib.Path(__file__).resolve().parents[2]
+
+def digest(path):
+ h=hashlib.sha256()
+ with path.open('rb') as source:
+  for part in iter(lambda:source.read(1048576),b''):h.update(part)
+ return h.hexdigest()
+
+def call(args):
+ result=subprocess.run(args,cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+ if result.returncode:raise RuntimeError('Falha em '+pathlib.Path(args[0]).name+'. Verifique autenticação, dependências e permissões; a saída remota não foi exposta.')
+ return result.stdout
+
+def storage_export(folder,key,max_bytes):
+ base='https://'+PROJECT+'.supabase.co/storage/v1';headers={'apikey':key,'Authorization':'Bearer '+key};used=0;index=[]
+ def request(path,body=None):
+  request_headers=dict(headers)
+  if body is not None:request_headers['Content-Type']='application/json'
+  return urllib.request.urlopen(urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers=request_headers),timeout=60)
+ def read_json(path,body=None):
+  with request(path,body)as response:return json.load(response)
+ buckets=read_json('/bucket');(folder/'objects').mkdir(parents=True)
+ for bucket in buckets:
+  name=bucket['id'];prefixes=['']
+  while prefixes:
+   prefix=prefixes.pop();offset=0
+   while True:
+    entries=read_json('/object/list/'+urllib.parse.quote(name,safe=''),{'prefix':prefix,'limit':100,'offset':offset,'sortBy':{'column':'name','order':'asc'}})
+    if not isinstance(entries,list):raise RuntimeError('Listagem Storage inválida')
+    for entry in entries:
+     object_name=(prefix+'/' if prefix else '')+entry['name']
+     if entry.get('id') is None:prefixes.append(object_name);continue
+     filename=hashlib.sha256((name+'/'+object_name).encode()).hexdigest()+'.bin';target=folder/'objects'/filename
+     with request('/object/authenticated/'+urllib.parse.quote(name,safe='')+'/'+urllib.parse.quote(object_name,safe='/'))as response,target.open('wb')as output:
+      while True:
+       chunk=response.read(65536)
+       if not chunk:break
+       used+=len(chunk)
+       if used>max_bytes:raise RuntimeError('Storage excedeu o limite escolhido. Nenhuma cópia parcial será marcada como concluída.')
+       output.write(chunk)
+     index.append({'bucket':name,'name':object_name,'file':'objects/'+filename,'sha256':digest(target),'bytes':target.stat().st_size})
+    if len(entries)<100:break
+    offset+=len(entries)
+ (folder/'storage-index.json').write_text(json.dumps({'buckets':buckets,'objects':index},ensure_ascii=False,indent=2),encoding='utf-8')
+ return len(index)
+
+def manifest(folder,objects):
+ files=[{'path':p.relative_to(folder).as_posix(),'bytes':p.stat().st_size,'sha256':digest(p)}for p in sorted(folder.rglob('*'))if p.is_file() and p.name!='snapshot.json']
+ result={'format':1,'project':PROJECT,'completed':True,'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'storage_objects':objects,'files':files,'scope':'Supabase CLI roles/schema/data/history + Storage objects; custom auth/storage configuration and external secrets require the recovery runbook.'}
+ (folder/'snapshot.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+ return result
+
+def verify(archive):
+ with tarfile.open(archive,'r:gz')as tar:
+  members={}
+  for member in tar.getmembers():
+   path=pathlib.PurePosixPath(member.name)
+   if path.is_absolute() or '..' in path.parts or member.issym() or member.islnk():raise ValueError('Caminho inseguro no backup')
+   if not member.isfile():continue
+   name=path.as_posix().removeprefix('./')
+   if name in members:raise ValueError('Arquivo duplicado')
+   members[name]=member
+  with tar.extractfile(members['snapshot.json'])as source:meta=json.load(source)
+  if meta.get('format')!=1 or meta.get('completed') is not True or meta.get('project')!=PROJECT:raise ValueError('Manifesto inválido')
+  expected={'snapshot.json'}
+  for item in meta['files']:
+   name=item['path'];expected.add(name);member=members[name]
+   if member.size!=item['bytes']:raise ValueError('Tamanho inválido')
+   h=hashlib.sha256()
+   with tar.extractfile(member)as source:
+    for chunk in iter(lambda:source.read(1048576),b''):h.update(chunk)
+   if h.hexdigest()!=item['sha256']:raise ValueError('Backup corrompido')
+  if set(members)!=expected:raise ValueError('Arquivo não inventariado')
+  required={'roles.sql','schema.sql','data.sql','history_schema.sql','history_data.sql','managed_schema.sql','storage-index.json'}
+  if not required.issubset(members):raise ValueError('Backup incompleto')
+  with tar.extractfile(members['storage-index.json'])as source:index=json.load(source)
+  if len(index['objects'])!=meta['storage_objects']:raise ValueError('Contagem Storage inválida')
+  recorded={item['path']:item for item in meta['files']}
+  for item in index['objects']:
+   saved=recorded[item['file']]
+   if saved['sha256']!=item['sha256'] or saved['bytes']!=item['bytes']:raise ValueError('Objeto Storage inconsistente')
+ return {'verified_files':len(meta['files']),'storage_objects':meta['storage_objects']}
+
+def main():
+ parser=argparse.ArgumentParser();parser.add_argument('--output',type=pathlib.Path);parser.add_argument('--verify',type=pathlib.Path);parser.add_argument('--max-storage-mib',type=int,default=256);args=parser.parse_args()
+ if args.verify:print(json.dumps(verify(args.verify)));return
+ if not args.output:parser.error('--output deve apontar para um arquivo .tar.gz.gpg fora do repositório')
+ destination=args.output.expanduser().resolve()
+ if destination==ROOT or ROOT in destination.parents:raise RuntimeError('Guarde o backup fora do repositório.')
+ if destination.exists():raise RuntimeError('O destino já existe; escolha outro nome.')
+ for command in ['supabase','docker','gpg']:
+  if not shutil.which(command):raise RuntimeError('Instale '+command+' antes de continuar.')
+ linked=ROOT/'supabase/.temp/project-ref'
+ if not linked.exists() or linked.read_text().strip()!=PROJECT:raise RuntimeError('Autentique o CLI e vincule o projeto correto conforme docs/RECOVERY.md.')
+ key=os.environ.get('BATCAVERNA_BACKUP_SERVICE_KEY') or getpass.getpass('Chave service_role do Storage (entrada oculta; nunca envie no chat): ')
+ if not key or key.startswith('sb_publishable_'):raise RuntimeError('É necessária uma chave administrativa, usada somente neste processo local.')
+ destination.parent.mkdir(parents=True,exist_ok=True)
+ with tempfile.TemporaryDirectory(prefix='batcaverna-backup-')as temp:
+  private=pathlib.Path(temp);os.chmod(private,0o700);folder=private/'snapshot';folder.mkdir();os.chmod(folder,0o700)
+  # No passwords are placed in argv: credentials come from the authenticated CLI session.
+  jobs=[('roles.sql',['--role-only']),('schema.sql',[]),('managed_schema.sql',['--schema','auth,storage']),('data.sql',['--data-only','--use-copy','-x','storage.buckets_vectors,storage.vector_indexes']),('history_schema.sql',['--schema','supabase_migrations']),('history_data.sql',['--schema','supabase_migrations','--data-only','--use-copy'])]
+  for filename,flags in jobs:call(['supabase','db','dump','--linked','--file',str(folder/filename),*flags])
+  count=storage_export(folder,key,args.max_storage_mib*1024*1024);key='';manifest(folder,count)
+  archive=private/'snapshot.tar.gz'
+  with tarfile.open(archive,'w:gz')as tar:
+   for path in sorted(folder.iterdir()):tar.add(path,arcname=path.name)
+  verify(archive)
+  encrypted=private/'snapshot.gpg'
+  subprocess.run(['gpg','--no-symkey-cache','--symmetric','--cipher-algo','AES256','--output',str(encrypted),str(archive)],check=True)
+  # The operator confirms decryption locally before calling the export usable.
+  restored=private/'verification.tar.gz'
+  subprocess.run(['gpg','--no-symkey-cache','--output',str(restored),'--decrypt',str(encrypted)],check=True)
+  verified=verify(restored)
+  with destination.open('xb') as target,encrypted.open('rb') as source:shutil.copyfileobj(source,target)
+ print(json.dumps({'encrypted_backup':str(destination),'sha256':digest(destination),**verified},ensure_ascii=False))
+
+if __name__=='__main__':
+ try:main()
+ except KeyboardInterrupt:sys.exit('Cancelado; nenhum segredo foi exibido.')
+ except Exception as error:sys.exit(str(error) if isinstance(error,(RuntimeError,ValueError)) else 'Falha no backup. A cópia não foi validada; verifique as dependências e consulte o procedimento de recuperação.')
