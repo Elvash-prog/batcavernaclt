@@ -1,7 +1,10 @@
 import unittest
-from audit_dependencies import audit
+from audit_dependencies import audit,cargo_inventory
 
 class AuditTests(unittest.TestCase):
+ def test_only_reachable_windows_dependencies_are_selected(self):
+  metadata={'resolve':{'root':'app','nodes':[{'id':'app','deps':[{'pkg':'win'}]},{'id':'win','deps':[]},{'id':'linux','deps':[]}]},'packages':[{'id':n,'name':n,'version':'1','source':'registry+fixture'}for n in ['app','win','linux']]}
+  self.assertEqual({p[1]for p in cargo_inventory({'package':[]},metadata)},{'app','win'})
  def test_pagination_and_withdrawn_records(self):
   calls=[]
   def transport(path,body=None):

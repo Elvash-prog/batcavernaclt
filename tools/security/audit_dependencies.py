@@ -2,10 +2,21 @@
 import argparse,collections,datetime,json,pathlib,sys,tomllib,urllib.request,urllib.parse
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 
-def inventory(maven=None):
+def cargo_inventory(lock,metadata=None):
+ rows=lock['package']
+ if metadata is not None:
+  graph={p['id']:p for p in metadata['resolve']['nodes']}
+  pending=[metadata['resolve']['root']];reachable=set()
+  while pending:
+   ident=pending.pop()
+   if ident in reachable:continue
+   reachable.add(ident);pending.extend(dep['pkg']for dep in graph[ident]['deps'])
+  rows=[p for p in metadata['packages']if p['id']in reachable]
+ return {('crates.io',p['name'],p['version'])for p in rows if (p.get('source')or'').startswith('registry+')}
+
+def inventory(maven=None,cargo_metadata=None):
  packages=set()
- for p in tomllib.loads((ROOT/'desktop/src-tauri/Cargo.lock').read_text())['package']:
-  if p.get('source','').startswith('registry+'):packages.add(('crates.io',p['name'],p['version']))
+ packages.update(cargo_inventory(tomllib.loads((ROOT/'desktop/src-tauri/Cargo.lock').read_text()),json.loads(pathlib.Path(cargo_metadata).read_text())if cargo_metadata else None))
  lock=json.loads((ROOT/'desktop/package-lock.json').read_text())
  for path,p in lock['packages'].items():
   if path and 'version' in p:packages.add(('npm',p.get('name') or path.rsplit('node_modules/',1)[-1],p['version']))
@@ -44,10 +55,10 @@ def audit(packages,transport=request):
  return findings
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--maven');parser.add_argument('--output',default='dependency-audit.json');args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('--maven');parser.add_argument('--cargo-metadata');parser.add_argument('--output',default='dependency-audit.json');args=parser.parse_args()
  result={'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'status':'incomplete'}
  try:
-  packages=inventory(args.maven);result.update(packages=len(packages),ecosystems=dict(collections.Counter(p[0]for p in packages)),android_resolved=bool(args.maven),findings=audit(packages),status='complete')
+  packages=inventory(args.maven,args.cargo_metadata);result.update(packages=len(packages),ecosystems=dict(collections.Counter(p[0]for p in packages)),android_resolved=bool(args.maven),cargo_target='windows-resolved'if args.cargo_metadata else 'all-lock-targets',findings=audit(packages),status='complete')
  except Exception as error:
   result['error']=type(error).__name__;pathlib.Path(args.output).write_text(json.dumps(result,indent=2));print('Dependency audit incomplete; network or resolution failure',file=sys.stderr);return 2
  pathlib.Path(args.output).write_text(json.dumps(result,indent=2))

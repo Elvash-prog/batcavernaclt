@@ -22,12 +22,16 @@ jobs:
         with:
           deno-version: v2.9.6
       - name: Resolve exact Edge dependency graph
-        run: deno cache --config supabase/functions/deno.json supabase/functions/send-push/index.ts
+        run: deno cache --frozen --config supabase/functions/deno.json supabase/functions/send-push/index.ts
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Resolve Windows dependency graph
+        working-directory: desktop/src-tauri
+        run: cargo metadata --filter-platform x86_64-pc-windows-msvc --format-version 1 > windows-dependencies.json
       - name: Resolve Android runtime and build dependencies
         working-directory: android-native
         run: bash gradlew :app:securityDependencyReport --no-daemon
       - name: Audit resolved Cargo, npm, Edge and Maven packages
-        run: python tools/security/audit_dependencies.py --maven android-native/app/build/reports/security/resolved-maven.json --output dependency-audit.json
+        run: python tools/security/audit_dependencies.py --cargo-metadata desktop/src-tauri/windows-dependencies.json --maven android-native/app/build/reports/security/resolved-maven.json --output dependency-audit.json
       - name: Preserve dependency evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -35,6 +39,8 @@ jobs:
           name: resolved-dependency-security
           path: |
             dependency-audit.json
+            desktop/src-tauri/Cargo.lock
+            desktop/src-tauri/windows-dependencies.json
             supabase/functions/deno.lock
             android-native/app/build/reports/security/resolved-maven.json
           if-no-files-found: error
