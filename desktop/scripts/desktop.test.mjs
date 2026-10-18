@@ -501,3 +501,16 @@ test('notificações unem consultas em andamento e recuam após falha de conexã
  const context={Date:{now:()=>now},state:{userId:'test'},ui:{notifications:[]},api:{notifications:()=>{calls++;return new Promise((yes,no)=>{resolve=yes;reject=no})}},$:()=>({})};vm.createContext(context);vm.runInContext(source.slice(start,end),context);
  const a=context.refreshNotifications().catch(()=>{}),b=context.refreshNotifications().catch(()=>{});assert.equal(calls,1);reject(Error('offline'));await Promise.all([a,b]);await context.refreshNotifications();assert.equal(calls,1);now+=6000;const next=context.refreshNotifications();assert.equal(calls,2);resolve([{id:'one',read:false}]);await next;assert.equal(context.ui.notifications.length,1);
 });
+
+
+test('horas mantêm o valor numérico e exibem uma casa decimal em português',()=>{
+ const source=read('src/app.js'),start=source.indexOf('function playtimeHours'),end=source.indexOf('function statsFromRows',start),context=vm.createContext({});vm.runInContext(source.slice(start,end),context);
+ assert.equal(context.playtimeHours('3184.233'),3184.233);
+ assert.equal(context.formatPlaytime('3184.233'),'3.184,2');
+ assert.equal(context.formatPlaytime(0.00833333333333),'0');
+ for(const value of [NaN,Infinity,-4,'inválido'])assert.equal(context.formatPlaytime(value),'0');
+ const stats=source.slice(end,source.indexOf('\nfunction ',end+10));
+ vm.runInContext(stats,context);vm.runInContext("function normalizedStatus(s){return s||'backlog'}",context);
+ const total=context.statsFromRows([{categoria:'jogos',horas:'10.233'},{categoria:'jogos',horas:5.1},{categoria:'filmes',horas:100},{categoria:'jogos',horas:Infinity}]);
+ assert.ok(Math.abs(total.horas-15.333)<1e-8);assert.equal(context.formatPlaytime(total.horas),'15,3');
+});
