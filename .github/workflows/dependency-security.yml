@@ -26,10 +26,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Resolve Windows dependency graph
         working-directory: desktop/src-tauri
-        run: cargo metadata --filter-platform x86_64-pc-windows-msvc --format-version 1 > windows-dependencies.json
+        run: cargo metadata --locked --filter-platform x86_64-pc-windows-msvc --format-version 1 > windows-dependencies.json
       - name: Resolve Android runtime and build dependencies
         working-directory: android-native
         run: bash gradlew :app:securityDependencyReport --no-daemon
+      - name: Test dependency scanner
+        run: python -m unittest discover -s tools/security
       - name: Audit resolved Cargo, npm, Edge and Maven packages
         run: python tools/security/audit_dependencies.py --cargo-metadata desktop/src-tauri/windows-dependencies.json --maven android-native/app/build/reports/security/resolved-maven.json --output dependency-audit.json
       - name: Preserve dependency evidence
