@@ -11,4 +11,22 @@ assert.match(fs.readFileSync('desktop/src-tauri/src/main.rs','utf8'),/supabase\.
 assert.match(fs.readFileSync('android-native/app/src/main/java/dev/gamersclt/batcaverna/nativeapp/NativeBackend.java','utf8'),/BuildConfig.SUPABASE_URL\+"\/functions\/v1\/native-api"/);
 console.log('Native source dependency check: no application Workers/Pages endpoints remain in Windows or Android');
 
-const retired=await import('../worker.js');for(const route of ['/','/config.js','/app.js','/api/account/login']){const response=await retired.default.fetch(new Request('https://retired.test'+route));assert.equal(response.status,410);assert.equal(response.headers.get('Cache-Control'),'no-store');}console.log('Retired web entrypoints return 410');
+const site = (await import('../worker.js')).default;
+for (const route of ['/config.js', '/app.js', '/api/account/login', '/sw.js', '/journey.js', '/manifest.webmanifest']) {
+ const response = await site.fetch(new Request('https://presentation.test' + route));
+ assert.equal(response.status, 410);
+ assert.equal(response.headers.get('Cache-Control'), 'no-store');
+}
+let served;
+const assets = {ASSETS: {async fetch(request) {served = new URL(request.url).pathname; return new Response('presentation');}}};
+const landing = await site.fetch(new Request('https://presentation.test/'), assets);
+assert.equal(landing.status, 200);
+assert.equal(served, '/index.html');
+assert.match(landing.headers.get('Content-Security-Policy'), /connect-src 'none'/);
+assert.equal((await site.fetch(new Request('https://presentation.test/', {method:'POST'}), assets)).status, 410);
+const html = fs.readFileSync('public/index.html', 'utf8');
+assert.doesNotMatch(html, /supabase|config\.js|app\.js|manifest\.webmanifest/i);
+for (const match of html.matchAll(/(?:src|href)="(\/marketing\/[^"#]+)"/g)) assert.ok(fs.existsSync('public' + match[1]), match[1]);
+assert.match(html, /releases\/latest\/download\/BatCaverna-CLT-Windows-setup\.exe/);
+assert.match(html, /releases\/download\/android-v1\.7\.15\/BatCaverna-1\.7\.15\.apk/);
+console.log('Public presentation serves approved assets; legacy web application and APIs remain unavailable');
