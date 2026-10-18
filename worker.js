@@ -1,2 +1,25 @@
-// The web application is permanently retired. Native clients use Supabase directly.
-export default {async fetch(request){return new Response(request.method==='HEAD'?null:'BatCaverna CLT agora está disponível apenas no aplicativo Windows e no APK Android.',{status:410,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','Clear-Site-Data':'"cache", "storage"','X-Content-Type-Options':'nosniff'}})}};
+// Public presentation/downloads only. The Windows and Android apps use Supabase.
+const presentation = new Set(['/', '/index.html', '/marketing/site.css', '/marketing/site.js', '/marketing/cave.jpg', '/marketing/brand.jpg']);
+const security = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+};
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (!['GET', 'HEAD'].includes(request.method) || !presentation.has(url.pathname)) {
+      return new Response(request.method === 'HEAD' ? null : 'O acesso à conta está disponível nos aplicativos Windows e Android. Conheça o programa na página inicial.', {
+        status: 410, headers: {...security, 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store'},
+      });
+    }
+    const assetUrl = new URL(request.url);
+    if (assetUrl.pathname === '/') assetUrl.pathname = '/index.html';
+    const asset = await env.ASSETS.fetch(new Request(assetUrl, request));
+    const headers = new Headers(asset.headers);
+    for (const [name, value] of Object.entries(security)) headers.set(name, value);
+    headers.set('Cache-Control', url.pathname.endsWith('.jpg') ? 'public, max-age=86400' : 'no-cache');
+    return new Response(request.method === 'HEAD' ? null : asset.body, {status: asset.status, headers});
+  },
+};

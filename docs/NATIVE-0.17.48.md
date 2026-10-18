@@ -14,11 +14,13 @@ Os clientes percorrem lotes de até cinco títulos Steam por minuto. O backend o
 
 No Windows, jogos de outras lojas detectados pelo executável registram horas enquanto o BatCaverna está aberto. É possível desativar esse registro em Configurações. Uma tabela com RLS e função SECURITY INVOKER registra intervalos cumulativos de forma idempotente e evita contar duas instâncias simultaneamente. Não registra caminhos, títulos de janelas nem histórico de processos. Conquistas de executáveis sem API não são inferidas: dependem de Steam/RetroAchievements ou integração específica.
 
-## Encerramento web
+## Site de apresentação
 
-O entrypoint do Worker foi substituído por HTTP 410 para todas as rotas, sem servir configuração, APIs ou assets. Precisa estar implantado no projeto Cloudflare para retirar a hospedagem antiga. As funções native-api e bright-api já rejeitam requisições com Origin de navegador e continuam exigindo usuário autenticado para negócios. Essa restrição de origem retira o cliente web oficial; não é atestação criptográfica de cliente. O banco mantém suas regras de acesso.
+O site público apresenta o projeto e oferece os instaladores Windows e Android. O Worker serve apenas a página de apresentação e seus assets explicitamente permitidos. Configuração, APIs, service worker e scripts do antigo aplicativo web retornam HTTP 410. A página não faz chamadas ao Supabase e não oferece login. Sua implantação na hospedagem deve ser feita separadamente da publicação dos aplicativos.
 
-Desktop e APK usam Supabase; confirmação e recuperação continuam no fluxo de códigos dos aplicativos. A retirada da hospedagem não apaga contas nem coleções.
+As funções native-api e bright-api rejeitam requisições com Origin de navegador e continuam exigindo usuário autenticado para negócios. Essa restrição de origem retira o cliente web oficial; não é atestação criptográfica de cliente. O banco mantém suas regras de acesso.
+
+Desktop e APK usam Supabase; confirmação e recuperação continuam no fluxo de códigos dos aplicativos. A alteração do site não apaga contas nem coleções.
 
 ## Validação
 
