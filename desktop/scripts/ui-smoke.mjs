@@ -1434,12 +1434,28 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "install_update"),
   );
+  await page.evaluate(async()=>await navigate('lists'));
+  await page.locator('[data-list="list1"]').click();
+  await page.locator('[data-list-library]').first().click();
+  await page.locator('.editor-overlay form [name="nome"]').waitFor();
+  assert.equal(await page.locator('.editor-overlay form [name="nome"]').inputValue(),'Jogo zerado');
+  await page.locator('.editor-overlay [data-close]').first().click();
+  await page.evaluate(async()=>{await navigate('settings');state.settingsTab='appearance';await renderSettings()});
+  await page.locator('[data-theme-preset="Claro"]').click();
+  assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('light-theme')),true);
+  const light=await page.locator('#settingsPanel').evaluate(n=>({background:getComputedStyle(n).backgroundColor,color:getComputedStyle(n).color}));
+  assert.match(light.background,/255, 255, 255/);
+  assert.notEqual(light.color,'rgb(255, 255, 255)');
+  await page.screenshot({path:'preview/light-settings-check.png'});
+  await page.locator('[data-theme-preset="Caverna"]').click();
+  await page.evaluate(async()=>{state.settingsTab='app';await renderSettings()});
   await page.locator('[data-credits]').click();
   await page.getByText('Créditos e serviços',{exact:true}).last().waitFor();
   assert.equal(await page.locator('#settingsPanel img[alt="TMDB"]').count(),1);
   assert.match(await page.locator('#settingsPanel').innerText(),/not endorsed or certified by TMDB/);
   await page.evaluate(async()=>await navigate('home'));
   await page.locator('[data-clear-activity]').click();
+  assert.equal(await page.locator('#updateToast:empty').count(),0,'Limpar não deve criar aviso de atualização vazio');
   assert.equal(await page.locator('.cavern-recent [data-update]').count(),0);
   await page.evaluate(async()=>await navigate('home'));
   assert.equal(await page.locator('.cavern-recent [data-update]').count(),0);
@@ -1451,7 +1467,10 @@ try {
   await page.locator('.community-image-viewer [data-close]').click();
   assert.equal(await page.locator('.community-image-full').count(),0);
   await page.evaluate(async()=>{state.discoverTab='retro';await navigate('discover')});
-  await page.locator('[data-retro-remove]').click();
+  assert.equal(await page.locator('[data-retro-remove]').count(),0);
+  await page.locator('.retro-game-card').click();
+  await page.locator('.reference-detail [data-retro-remove]').click();
+  await page.locator('.app-confirm-dialog [data-confirm]').click();
   await page.waitForFunction(()=>document.querySelectorAll('.retro-game-card').length===0);
   assert.ok(await page.evaluate(()=>window.saved.some(s=>s.c==='bright_api'&&s.p.input.removeGameId)));
   await page.evaluate(async()=>await navigate('settings'));
