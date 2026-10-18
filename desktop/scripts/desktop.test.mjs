@@ -486,7 +486,7 @@ test('presença tolera saída transitória, expira offline e cancela por nova se
  send('presence_state',{friend:{metas:[meta('a')]}});
  send('presence_diff',{leaves:{friend:{metas:[meta('a')]}}});assert.equal(context.ui.presence.friend.status,'online');assert.equal(timers.size,1);
  send('presence_diff',{joins:{friend:{metas:[meta('b')]}}});assert.equal(timers.size,0);assert.equal(context.ui.presence.friend.phx_ref,'b');
- send('presence_state',{});assert.equal(context.ui.presence.friend.status,'online');for(const fn of timers.values())fn();timers.clear();assert.equal(context.ui.presence.friend,undefined);
+ send('presence_state',{});assert.equal(context.ui.presence.friend.status,'online');send('presence_diff',{joins:{friend:{metas:[meta('reconnected')]}}});send('presence_diff',{leaves:{friend:{metas:[meta('reconnected')]}}});assert.equal(timers.size,1);for(const fn of timers.values())fn();timers.clear();assert.equal(context.ui.presence.friend,undefined);
  send('presence_state',{friend:{metas:[meta('c','invisivel')]}});assert.equal(context.ui.presence.friend.status,'invisivel');
  send('presence_state',{});context.state.userId='another';context.ui.presence={friend:{status:'online'}};for(const fn of timers.values())fn();assert.equal(context.ui.presence.friend.status,'online');
 });
