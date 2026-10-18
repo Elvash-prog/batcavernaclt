@@ -866,7 +866,10 @@ try {
   await page.locator('.journey-dialog-form [name="titleSearch"]').fill('inexistente-123');
   assert.equal(await page.locator('.journey-dialog-form button.primary').isEnabled(),false);
   await page.locator('.journey-dialog-form [name="titleSearch"]').fill('');
-  await page.screenshot({path:'preview/recommendation-composer-check.png'});
+  await page.locator('.recommend-composer').evaluate(n=>Promise.all(n.getAnimations({subtree:true}).map(a=>a.finished)));
+  const composerBounds=await page.locator('.recommend-composer').boundingBox(),dialogBounds=await page.locator('.journey-dialog').boundingBox();
+  assert.ok(composerBounds.x>=dialogBounds.x-1&&composerBounds.x+composerBounds.width<=dialogBounds.x+dialogBounds.width+1,'Compositor deve caber na janela externa');
+  await page.screenshot({path:'preview/recommendation-composer-check.png',animations:'disabled'});
   await page.locator('.journey-dialog-form button.primary').click();
   await page.waitForFunction(()=>window.saved.some(s=>s.c==='recommend'&&s.p.item_id));
   await page.locator(".recommendation-card").waitFor();
