@@ -1612,9 +1612,10 @@ try {
   await page.locator("#content.profile-user-background").waitFor();
   await page.locator("#profile-featured").waitFor();
   assert.equal(await page.locator("#profile-featured").isVisible(),true);
-  await page.evaluate(()=>{const original=api.profile;api.profile=async(...args)=>{await new Promise(resolve=>setTimeout(resolve,300));return original(...args)};window.profilePreparation=renderProfile().finally(()=>{api.profile=original})});
+  await page.evaluate(()=>{const original=api.profile;api.profile=async(...args)=>{await new Promise(resolve=>{window.releaseProfilePreparation=resolve});return original(...args)};window.profilePreparation=renderProfile().finally(()=>{api.profile=original})});
   assert.equal(await page.locator('#content').evaluate(n=>getComputedStyle(n).visibility),'hidden');
   await page.locator('#viewPreparation').waitFor();
+  await page.evaluate(()=>window.releaseProfilePreparation());
   await page.evaluate(()=>window.profilePreparation);
   assert.equal(await page.locator('#content').evaluate(n=>getComputedStyle(n).visibility),'visible');
   assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), true);
