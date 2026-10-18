@@ -1,3 +1,4 @@
+import {instrument,metricRecorder} from '../_shared/operational-metrics.js';
 import {igdbProbe} from './igdb.js';
 import {createHandler} from './router.js';
 const env: Record<string,any>={};
@@ -13,4 +14,4 @@ env.USER_RATE_LIMITER={async limit({key}:{key:string}){
 }};
 // One connectivity probe per isolate, shared with the token/query cache; no secrets in health.
 env.IGDB_READY=igdbProbe(env);
-Deno.serve(createHandler(env));
+Deno.serve(instrument(createHandler(env),{record:metricRecorder(env),background:(task:Promise<unknown>)=>{const runtime=(globalThis as any).EdgeRuntime;if(runtime?.waitUntil)runtime.waitUntil(task);else void task.catch(()=>{});}}));

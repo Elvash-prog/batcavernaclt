@@ -1,0 +1,22 @@
+begin;
+do $$begin if has_function_privilege('anon','public.fixture_trigger()','EXECUTE') or has_function_privilege('authenticated','public.fixture_trigger()','EXECUTE')then raise exception 'Trigger exposed';end if;end$$;
+select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',true);
+set local role authenticated;
+do $$begin
+ if(select count(*) from public.perfis_publicos_clt)<>2 then raise exception 'Public search broken';end if;
+ if(select count(*) from public.perfis)<>1 then raise exception 'Private profiles exposed';end if;
+ begin update public.clt_profile_directory set nome='forged';raise exception 'Directory writable';exception when insufficient_privilege then null;end;
+ update public.perfis set nome='Updated fixture' where id=auth.uid();
+ if(select nome from public.perfis_publicos_clt where id=auth.uid())<>'Updated fixture' then raise exception 'Projection trigger broken';end if;
+ begin perform public.clt_record_operational_metric('native-api','igdb',200,100);raise exception 'Metrics exposed';exception when insufficient_privilege then null;end;
+end$$;
+reset role;
+insert into public.bloqueios_clt values('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222');
+set local role authenticated;
+do $$begin if(select count(*) from public.perfis_publicos_clt)<>1 then raise exception 'Block ignored';end if;end$$;
+reset role;
+set local role service_role;
+select public.clt_record_operational_metric('native-api','igdb',200,250);
+select public.clt_record_operational_metric('native-api','igdb',200,1500);
+do $$begin if not exists(select 1 from public.clt_operational_metrics where requests=2 and total_ms=1750 and slow_requests=1)then raise exception 'Aggregation broken';end if;end$$;
+rollback;

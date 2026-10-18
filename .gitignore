@@ -8,3 +8,9 @@ desktop/src-tauri/gen/schemas/
 .dev.vars*
 
 supabase/.temp/
+
+# Private operational exports must never enter git.
+*.sql.gpg
+*.tar.gz.gpg
+backups/
+**/__pycache__/

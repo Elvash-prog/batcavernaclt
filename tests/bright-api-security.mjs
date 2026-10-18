@@ -9,7 +9,7 @@ const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'test-anon'
 globalThis.Deno={env:{get:k=>env[k]},serve:fn=>{handler=fn}};
 const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
 globalThis.fetch=async (url, options={})=>{
-  const u=new URL(url); calls.push({u,options});
+  const u=new URL(url);if(u.pathname==='/rest/v1/rpc/clt_record_operational_metric')return json(null); calls.push({u,options});
   if(u.pathname==='/auth/v1/user') return mode==='forged'?json({},401):json({id:uid,is_anonymous:mode==='anonymous'});
   if(u.pathname==='/rest/v1/rpc/clt_bright_api_limit') {
     assert.equal(options.headers.apikey,'test-service');
@@ -43,7 +43,7 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('API_GetGameInfoAndUserProgress.php')) return json({Title:'Retro Game',ConsoleName:'SNES',Achievements:{1:{ID:1,Title:'Start',Description:'Begin',Points:5,BadgeName:'00001',DateEarnedHardcore:'2026-10-15'}}});
   throw new Error('Unexpected simulated URL '+u);
 };
-const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8'));
+const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8')).replace("'../_shared/operational-metrics.js'",JSON.stringify(new URL('../supabase/functions/_shared/operational-metrics.js',import.meta.url).href));
 await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 function req(body,opts={}) {
   return new Request('https://test.supabase.co/functions/v1/bright-api',{

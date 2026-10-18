@@ -3,6 +3,8 @@ import android.content.Context;import android.widget.*;
 final class ProviderCredits {
  static void show(Context c,LinearLayout panel){
   panel.addView(NativeSheet.text(c,"Créditos e serviços",22,0xfff3eafa));
+  {Button privacy=new Button(c);privacy.setText("Privacidade e seus dados");AppStyle.button(privacy,false);panel.addView(privacy);privacy.setOnClickListener(v->{try{c.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://batcavernaclt.gamersclt.workers.dev/privacidade")));}catch(android.content.ActivityNotFoundException e){Toast.makeText(c,"Contato: odoutorblou@gmail.com",Toast.LENGTH_LONG).show();}});}
+
   panel.addView(NativeSheet.text(c,"Aplicativo independente. Imagens, jogos e marcas pertencem aos respectivos titulares.",14,0xffb4a7c4));
   panel.addView(NativeSheet.text(c,"IGDB\nDados e imagens de jogos fornecidos por IGDB.com. Não há vínculo ou endosso à BatCaverna.",14,0xffd7cbe7));
   {Button b=new Button(c);b.setText("IGDB \u00b7 Site oficial");AppStyle.button(b,false);panel.addView(b);b.setOnClickListener(v->{try{c.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://www.igdb.com")));}catch(android.content.ActivityNotFoundException e){Toast.makeText(c,"Nenhum navegador disponível",Toast.LENGTH_SHORT).show();}});}
