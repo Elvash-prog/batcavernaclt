@@ -54,3 +54,24 @@ tasks.register('restoreLogo') {
     }
 }
 tasks.named('preBuild').configure { dependsOn('restoreLogo') }
+
+tasks.register('securityDependencyReport') {
+    doLast {
+        def rows = []
+        def graphs = [configurations.getByName('releaseRuntimeClasspath'), rootProject.buildscript.configurations.getByName('classpath')]
+        graphs.each { configuration ->
+            def result = configuration.incoming.resolutionResult
+            if (result.allDependencies.any { it instanceof org.gradle.api.artifacts.result.UnresolvedDependencyResult }) {
+                throw new GradleException('Security audit cannot ignore unresolved dependencies')
+            }
+            result.allComponents.each { component ->
+                if (component.id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier) {
+                    rows.add([name: component.id.group + ':' + component.id.module, version: component.id.version])
+                }
+            }
+        }
+        def output = file('build/reports/security/resolved-maven.json')
+        output.parentFile.mkdirs()
+        output.setText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(rows.unique { it.name + '@' + it.version }.sort { it.name + '@' + it.version })), 'UTF-8')
+    }
+}

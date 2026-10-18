@@ -1,6 +1,6 @@
 {
   "name": "batcaverna-clt-desktop",
-  "version": "0.17.54",
+  "version": "0.17.55",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,17 +13,17 @@
     "test:ui": "npm run build:web && node scripts/ui-smoke.mjs"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "react": "latest",
-    "react-dom": "latest"
+    "@vitejs/plugin-react": "6.1.2",
+    "vite": "8.3.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "@types/node": "latest",
+    "@tauri-apps/cli": "2.12.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/node": "26.6.5",
     "playwright": "1.58.2",
-    "typescript": "latest"
+    "typescript": "7.0.2"
   }
 }

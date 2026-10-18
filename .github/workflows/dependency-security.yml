@@ -1,0 +1,48 @@
+name: Resolved dependency security
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['desktop/package*.json','desktop/src-tauri/Cargo.*','android-native/**','supabase/functions/**','tools/security/**','.github/workflows/dependency-security.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Resolve exact Edge dependency graph
+        run: deno cache --frozen --config supabase/functions/deno.json supabase/functions/send-push/index.ts
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Resolve Windows dependency graph
+        working-directory: desktop/src-tauri
+        run: cargo metadata --locked --filter-platform x86_64-pc-windows-msvc --format-version 1 > windows-dependencies.json
+      - name: Resolve Android runtime and build dependencies
+        working-directory: android-native
+        run: bash gradlew :app:securityDependencyReport --no-daemon
+      - name: Test dependency scanner
+        run: python -m unittest discover -s tools/security
+      - name: Audit resolved Cargo, npm, Edge and Maven packages
+        run: python tools/security/audit_dependencies.py --cargo-metadata desktop/src-tauri/windows-dependencies.json --maven android-native/app/build/reports/security/resolved-maven.json --output dependency-audit.json
+      - name: Preserve dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resolved-dependency-security
+          path: |
+            dependency-audit.json
+            desktop/src-tauri/Cargo.lock
+            desktop/src-tauri/windows-dependencies.json
+            supabase/functions/deno.lock
+            android-native/app/build/reports/security/resolved-maven.json
+          if-no-files-found: error

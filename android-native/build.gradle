@@ -1,5 +1,18 @@
 buildscript {
     repositories { google(); mavenCentral() }
+    // Security fixes apply only to the build tooling graph, never APK runtime libraries.
+    configurations.classpath.resolutionStrategy.eachDependency { details ->
+        def patches = [
+            'org.jdom:jdom2': '2.0.6.1',
+            'org.bitbucket.b_c:jose4j': '0.9.6',
+            'org.apache.commons:commons-compress': '1.28.0',
+            'com.google.protobuf:protobuf-java': '3.25.8'
+        ]
+        def coordinate = details.requested.group + ':' + details.requested.name
+        if (patches.containsKey(coordinate)) details.useVersion(patches[coordinate])
+        if (details.requested.group == 'io.netty') details.useVersion('4.1.139.Final')
+        if (details.requested.group == 'org.bouncycastle' && details.requested.name.endsWith('-jdk18on')) details.useVersion('1.85')
+    }
     dependencies { classpath 'com.android.tools.build:gradle:8.9.1' }
     dependencies { classpath 'com.google.gms:google-services:4.4.2' }
 }

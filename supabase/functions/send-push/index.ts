@@ -1,5 +1,5 @@
 import webpush from 'npm:web-push@3.6.7';
-import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
+import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {readLimitedJson,BodyLimitError,secretMatches,allowedPushEndpoint} from '../_shared/request-security.js';
 
 const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});

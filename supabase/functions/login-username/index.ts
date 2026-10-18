@@ -1,14 +1,15 @@
 // Login seguro por nome de usuário para clientes nativos.
 import {readLimitedJson,BodyLimitError} from '../_shared/request-security.js';
+import {checkLoginRate} from '../_shared/login-rate.js';
 // A chave service_role permanece somente nos segredos da Edge Function.
 const SB_URL = Deno.env.get('SUPABASE_URL') || '';
 const SB_ANON = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SB_SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-function reply(data: unknown, status = 200) {
+function reply(data: unknown, status = 200, extra:Record<string,string>={}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}
+    headers: {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...extra}
   });
 }
 
@@ -23,6 +24,7 @@ Deno.serve(async request => {
   if (!/^[\p{L}\p{N}_.-]{2,60}$/u.test(username) || password.length < 1 || password.length > 256)
     return reply({message:'Usuário ou senha inválidos.'},401);
   try {
+    if(!await checkLoginRate(request,username,SB_URL,SB_SERVICE,fetch))return reply({message:'Muitas tentativas. Aguarde um minuto e tente novamente.'},429,{'Retry-After':'60'});
     const lookup = await fetch(`${SB_URL}/rest/v1/rpc/email_login_por_usuario`, {
       method:'POST', redirect:'error', signal:AbortSignal.timeout(6000),
       headers:{apikey:SB_SERVICE,authorization:`Bearer ${SB_SERVICE}`,'content-type':'application/json'},
