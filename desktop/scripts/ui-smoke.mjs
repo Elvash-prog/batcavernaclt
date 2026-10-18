@@ -330,6 +330,7 @@ try {
                       },
                     ]
                   : [];
+          if(c === "profile" && window.holdProfilePreparation)await new Promise(resolve=>{window.releaseProfilePreparation=resolve});
           if (c === "profile")
             return p.userId
               ? { ...friend, stats: { total: 5, finished: 2, hours: 30 } }
@@ -1575,6 +1576,8 @@ try {
       payload: { userId: "test", status: "connected" },
     }),
   );
+  const stablePresence=await page.evaluate(()=>{const emit=(event,data)=>window.listeners['desktop-presence']({payload:{userId:'test',event,data}});emit('presence_state',{friend:{metas:[{phx_ref:'first',status:'online',jogo:'Hades'}]}});const row=document.querySelector('#sidebarCommunity [data-sidebar-chat="friend"]'),image=row?.querySelector('img');emit('presence_diff',{joins:{friend:{metas:[{phx_ref:'second',phx_ref_prev:'first',status:'online',jogo:'Hades'}]}},leaves:{friend:{metas:[{phx_ref:'first'}]}}});const unchanged=row===document.querySelector('#sidebarCommunity [data-sidebar-chat="friend"]')&&image===row?.querySelector('img');emit('presence_diff',{leaves:{friend:{metas:[{phx_ref:'second'}]}}});const retained=window.batcavernaFriendPresence({id:'friend'}).online;emit('presence_diff',{joins:{friend:{metas:[{phx_ref:'third',status:'online',jogo:'Hades'}]}}});emit('presence_state',{});const reconnect=window.batcavernaFriendPresence({id:'friend'}).online;emit('presence_state',{friend:{metas:[{phx_ref:'hidden',status:'invisivel'}]}});const invisible=!window.batcavernaFriendPresence({id:'friend'}).online;return {unchanged,retained,reconnect,invisible}});
+  assert.deepEqual(stablePresence,{unchanged:true,retained:true,reconnect:true,invisible:true});
   assert.equal(await page.locator(".community-tabs").count(), 0);
   await page.evaluate(() => window.emitIncoming());
   await page.locator('[data-message="incoming"]').waitFor();
@@ -1608,6 +1611,14 @@ try {
   await page.locator("#sidebarAccount").click();
   await page.locator(".complete-profile").waitFor();
   await page.locator("#content.profile-user-background").waitFor();
+  await page.locator("#profile-featured").waitFor();
+  assert.equal(await page.locator("#profile-featured").isVisible(),true);
+  await page.evaluate(()=>{window.holdProfilePreparation=true;window.profilePreparation=renderProfile()});
+  assert.equal(await page.locator('#content').evaluate(n=>getComputedStyle(n).visibility),'hidden');
+  await page.locator('#viewPreparation').waitFor();
+  await page.evaluate(()=>{window.holdProfilePreparation=false;window.releaseProfilePreparation()});
+  await page.evaluate(()=>window.profilePreparation);
+  assert.equal(await page.locator('#content').evaluate(n=>getComputedStyle(n).visibility),'visible');
   assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), true);
   assert.notEqual(
     await page.locator(".complete-profile").evaluate(
