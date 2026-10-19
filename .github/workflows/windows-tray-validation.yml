@@ -25,7 +25,7 @@ jobs:
         run: |
           $entry = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' | Get-ItemProperty | Where-Object { $_.DisplayName -eq 'BatCaverna CLT' } | Select-Object -First 1
           if (!$entry.InstallLocation) { throw 'Pasta do aplicativo instalado não encontrada.' }
-          $exe = Join-Path $entry.InstallLocation 'batcaverna-clt-desktop.exe'
+          $exe = Join-Path $entry.InstallLocation.Trim('"') 'batcaverna-clt-desktop.exe'
           ./scripts/test-tray-startup.ps1 -ExecutablePath $exe
       - uses: actions/upload-artifact@v4
         if: always()
