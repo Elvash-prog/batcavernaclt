@@ -514,3 +514,25 @@ test('horas mantêm o valor numérico e exibem uma casa decimal em português',(
  const total=context.statsFromRows([{categoria:'jogos',horas:'10.233'},{categoria:'jogos',horas:5.1},{categoria:'filmes',horas:100},{categoria:'jogos',horas:Infinity}]);
  assert.ok(Math.abs(total.horas-15.333)<1e-8);assert.equal(context.formatPlaytime(total.horas),'15,3');
 });
+
+test('Meu Retrô agrupa estados por conta e exibe a atribuição exigida pela IGDB',()=>{
+ const retro=read('src/retro.js'),css=read('src/cavern-library.css'),credits=read('src/cavern-shell.js');
+ const edge=fs.readFileSync(new URL('../../supabase/functions/bright-api/index.ts',import.meta.url),'utf8');
+ const migration=fs.readFileSync(new URL('../../supabase/migrations/20261019171000_retro_collection_statuses.sql',import.meta.url),'utf8');
+ for(const status of ['backlog','progress','finished','platinum','paused','abandoned']){
+  assert.match(retro,new RegExp("['\"]"+status+"['\"]"));
+  assert.match(edge,new RegExp("['\"]"+status+"['\"]"));
+ }
+ assert.match(retro,/data-retro-status-choice/);
+ assert.match(retro,/statusGameId/);
+ assert.match(retro,/data-retro-remove/);
+ assert.match(retro,/Game data and media provided by IGDB\.com|Dados e mídia do jogo por/);
+ assert.match(css,/\.retro-status-section/);
+ assert.match(css,/\.retro-detail-controls/);
+ assert.match(credits,/Game data and media provided by IGDB\.com/);
+ assert.match(edge,/p_status_game:b\.statusGameId/);
+ assert.match(edge,/select=cover_url,game_ids,hidden_game_ids,statuses/);
+ assert.match(migration,/add column if not exists statuses jsonb/);
+ assert.match(migration,/drop function if exists public\.clt_retro_mutate\(uuid,integer,integer,text\)/);
+ assert.match(migration,/revoke execute on function public\.clt_retro_mutate[\s\S]*from public, anon, authenticated/);
+});

@@ -111,7 +111,9 @@ function validate(b: any): {body: any, cost:number} {
     case "raCollection": break;
     case "raSaveCollection":
       if(b.cover_url!==undefined){const url=String(b.cover_url);if(url.length>2000||url&&!url.startsWith(SB_URL+"/storage/v1/object/public/"))throw new ApiError(400,"Capa inválida.");out.cover_url=url;}
-      if(b.gameId!==undefined)out.gameId=appid(b.gameId);if(b.removeGameId!==undefined)out.removeGameId=appid(b.removeGameId);if(b.gameId&&b.removeGameId)throw new ApiError(400,"Escolha uma ação por vez.");break;
+      if(b.gameId!==undefined)out.gameId=appid(b.gameId);if(b.removeGameId!==undefined)out.removeGameId=appid(b.removeGameId);if(b.gameId&&b.removeGameId)throw new ApiError(400,"Escolha uma ação por vez.");
+      if(b.statusGameId!==undefined){out.statusGameId=appid(b.statusGameId);if(!["backlog","progress","finished","platinum","paused","abandoned"].includes(b.status))throw new ApiError(400,"Status retrô inválido.");out.status=b.status;}
+      break;
     case "raSearch": {
       // Compatibility keys used by desktop 0.17.36 and Android 1.7.3 dropdowns.
       // These UI keys differ from the official RA system IDs for these systems.
@@ -435,12 +437,12 @@ async function steamGratis(requestSignal: AbortSignal) {
         const headers={apikey:SB_SERVICE,Authorization:"Bearer "+SB_SERVICE,"Content-Type":"application/json"};
         let row;
         if(b.op==="raSaveCollection"){
-          const r=await fetch(SB_URL+"/rest/v1/rpc/clt_retro_mutate",{method:"POST",headers,body:JSON.stringify({p_user:uid,p_add:b.gameId||null,p_remove:b.removeGameId||null,p_cover:b.cover_url??null}),signal});
+          const r=await fetch(SB_URL+"/rest/v1/rpc/clt_retro_mutate",{method:"POST",headers,body:JSON.stringify({p_user:uid,p_add:b.gameId||null,p_remove:b.removeGameId||null,p_cover:b.cover_url??null,p_status_game:b.statusGameId||null,p_status:b.status??null}),signal});
           if(!r.ok)throw new ApiError(400,"Não foi possível salvar o Meu Retrô. Confira o limite da coleção.");
           row=await r.json();
         }else{
-          const existing=await getJson(endpoint+"?user_id=eq."+uid+"&select=cover_url,game_ids,hidden_game_ids",headers);
-          row=existing[0]||{cover_url:"",game_ids:[],hidden_game_ids:[]};
+          const existing=await getJson(endpoint+"?user_id=eq."+uid+"&select=cover_url,game_ids,hidden_game_ids,statuses",headers);
+          row=existing[0]||{cover_url:"",game_ids:[],hidden_game_ids:[],statuses:{}};
         }
         out=row;break;
       }
