@@ -71,12 +71,18 @@ jobs:
           } finally {
             if (!$process.HasExited) { Stop-Process -Id $process.Id -Force }
           }
+      - name: Validar início minimizado e restauração manual
+        shell: pwsh
+        working-directory: desktop
+        run: ./scripts/test-tray-startup.ps1
       - name: Publicar log do smoke Tauri
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: BatCaverna-Tauri-Smoke
-          path: desktop/tauri-smoke.log
+          path: |
+            desktop/tauri-smoke.log
+            desktop/tauri-tray-smoke.log
           if-no-files-found: warn
       - name: Disponibilizar instalador
         uses: actions/upload-artifact@v4

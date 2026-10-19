@@ -1,6 +1,6 @@
 [package]
 name = "batcaverna-clt-desktop"
-version = "0.17.55"
+version = "0.17.57"
 edition = "2021"
 
 [build-dependencies]
@@ -27,4 +27,4 @@ tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_System_Registry", "Win32_Security", "Win32_System_Diagnostics_ToolHelp", "Win32_UI_WindowsAndMessaging"] }
