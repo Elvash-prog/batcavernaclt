@@ -1,5 +1,5 @@
-mod windows_startup;
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod windows_startup;
 mod email_change;
 mod game_detection;
 mod account_preferences;

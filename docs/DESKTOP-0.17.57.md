@@ -1,4 +1,4 @@
-# Desktop 0.17.56
+# Desktop 0.17.57
 
 Em Configurações → Aplicativo → Windows e segundo plano:
 
