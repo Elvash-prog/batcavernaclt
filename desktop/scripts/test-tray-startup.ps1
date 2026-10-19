@@ -1,5 +1,31 @@
+param([string]$ExecutablePath = '')
 $ErrorActionPreference = 'Stop'
-$exe = Join-Path $PWD 'src-tauri/target/release/batcaverna-clt-desktop.exe'
+$exe = if ($ExecutablePath) { $ExecutablePath } else { Join-Path $PWD 'src-tauri/target/release/batcaverna-clt-desktop.exe' }
+Add-Type @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public static class BatCavernaWindowProbe {
+  private delegate bool WindowCallback(IntPtr handle, IntPtr data);
+  [DllImport("user32.dll")] private static extern bool EnumWindows(WindowCallback callback, IntPtr data);
+  [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr handle);
+  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr handle, out uint processId);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetWindowText(IntPtr handle, StringBuilder title, int capacity);
+  public static bool Visible(uint processId) {
+    bool found=false;
+    EnumWindows((handle, data) => {
+      uint owner; GetWindowThreadProcessId(handle, out owner);
+      if(owner==processId && IsWindowVisible(handle)) {
+        var title=new StringBuilder(512); GetWindowText(handle,title,title.Capacity);
+        Console.WriteLine("VISIBLE_WINDOW: " + title.ToString());
+        if(title.ToString()=="BatCaverna CLT") found=true;
+      }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
+}
+'@
 $config = Join-Path $env:APPDATA 'dev.gamersclt.batcaverna.desktop'
 $prefs = Join-Path $config 'desktop-preferences.json'
 $original = if (Test-Path $prefs) { [IO.File]::ReadAllBytes($prefs) } else { $null }
@@ -24,15 +50,16 @@ try {
   } while ((Get-Date) -lt $deadline)
   if (!$ready) { throw 'O início minimizado não confirmou BOOT_READY.' }
   $process.Refresh()
-  if ($process.MainWindowHandle -ne 0) { throw 'A janela apareceu apesar da preferência de início minimizado.' }
+  Write-Host "DOTNET_MAIN_WINDOW: $($process.MainWindowTitle)"
+  if ([BatCavernaWindowProbe]::Visible($process.Id)) { throw 'A janela apareceu apesar da preferência de início minimizado.' }
   Start-Process $exe | Out-Null
   $deadline = (Get-Date).AddSeconds(15)
   do {
     Start-Sleep -Milliseconds 250
     $process.Refresh()
-    if ($process.MainWindowHandle -ne 0) { break }
+    if ([BatCavernaWindowProbe]::Visible($process.Id)) { break }
   } while ((Get-Date) -lt $deadline)
-  if ($process.MainWindowHandle -eq 0) { throw 'A abertura manual não restaurou a janela da bandeja.' }
+  if (![BatCavernaWindowProbe]::Visible($process.Id)) { throw 'A abertura manual não restaurou a janela da bandeja.' }
   Write-Host 'TRAY_STARTUP_OK: início oculto e abertura manual restaurando a mesma instância.'
 } finally {
   if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id -Force }
