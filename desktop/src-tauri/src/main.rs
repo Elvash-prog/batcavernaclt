@@ -1,3 +1,4 @@
+mod windows_startup;
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod email_change;
 mod game_detection;
@@ -761,7 +762,7 @@ fn main() {
         .build()
         .expect("Cliente HTTPS");
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| desktop_runtime::show_main(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| { if !args.iter().any(|arg| arg == "--autostart") { desktop_runtime::show_main(app); } }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(desktop_runtime::DesktopState::default())
@@ -774,7 +775,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![account_preferences::desktop_layout,game_detection::running_processes, game_detection::detect_pc_game, desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, native_auth::resend_confirmation, native_auth::verify_email_proof, email_change::verify_email_change, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, link_retroachievements, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             desktop_runtime::initialize(app.handle())?;
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").inner_size(1360.,860.).min_inner_size(980.,640.).devtools(cfg!(debug_assertions)).initialization_script(include_str!("../../src/webview-policy.js")).on_navigation(local_url).build()?;
+            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").visible(!desktop_runtime::start_minimized(app.handle())).focused(!desktop_runtime::start_minimized(app.handle())).inner_size(1360.,860.).min_inner_size(980.,640.).devtools(cfg!(debug_assertions)).initialization_script(include_str!("../../src/webview-policy.js")).on_navigation(local_url).build()?;
             use tauri::{menu::{Menu,MenuItem}, tray::{MouseButton,MouseButtonState,TrayIconBuilder,TrayIconEvent}};
             let show=MenuItem::with_id(app,"show","Abrir BatCaverna",true,None::<&str>)?; let hide=MenuItem::with_id(app,"hide","Ocultar na bandeja",true,None::<&str>)?; let quit=MenuItem::with_id(app,"quit","Sair",true,None::<&str>)?;
             let menu=Menu::with_items(app,&[&show,&hide,&quit])?; let mut tray=TrayIconBuilder::new().tooltip("BatCaverna CLT").menu(&menu).on_menu_event(|app,event| match event.id.as_ref(){"show"=>desktop_runtime::show_main(app),"hide"=>if let Some(w)=app.get_webview_window("main"){let _=w.hide();},"quit"=>app.exit(0),_=>{}}).on_tray_icon_event(|tray,event|{if let TrayIconEvent::Click{button:MouseButton::Left,button_state:MouseButtonState::Up,..}=event{desktop_runtime::show_main(tray.app_handle());}});

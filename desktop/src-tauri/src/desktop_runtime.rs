@@ -66,9 +66,9 @@ pub fn diagnostic_export(app: tauri::AppHandle) -> Result<Value, String> {
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct DesktopPreferences { pub background: bool, pub notifications: bool }
+pub struct DesktopPreferences { pub background: bool, pub notifications: bool, pub sound: bool, pub autostart: bool, pub start_minimized: bool }
 impl Default for DesktopPreferences {
-    fn default() -> Self { Self { background: true, notifications: true } }
+    fn default() -> Self { Self { background: true, notifications: true, sound: true, autostart: false, start_minimized: false } }
 }
 #[derive(Default)]
 pub struct DesktopState(pub Mutex<DesktopPreferences>);
@@ -77,6 +77,17 @@ pub fn show_main(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show(); let _ = window.unminimize(); let _ = window.set_focus();
     }
+}
+pub fn start_minimized(app: &tauri::AppHandle) -> bool {
+    app.state::<DesktopState>().inner().0.lock().map(|p| p.start_minimized).unwrap_or(false)
+}
+fn show_notification(app: &tauri::AppHandle, body: &str) -> Result<(), String> {
+    let sound=app.state::<DesktopState>().inner().0.lock().map(|p| p.sound).unwrap_or(false);
+    let mut notice=app.notification().builder().title("BatCaverna CLT").body(body);
+    // notify-rust maps the Windows sound enum name "Default" to the OS toast sound.
+    // Omitting sound produces a silent Windows toast. No extra player avoids double audio.
+    if sound { notice=notice.sound("Default"); }
+    notice.show().map_err(|_|"O Windows não exibiu a notificação. Confira as permissões do aplicativo.".into())
 }
 pub fn background_enabled(app: &tauri::AppHandle) -> bool {
     app.state::<DesktopState>().inner().0.lock().map(|p| p.background).unwrap_or(true)
@@ -99,15 +110,19 @@ pub fn desktop_preferences(input: Option<DesktopPreferences>, app: tauri::AppHan
         let dir = app.path().app_config_dir().map_err(|_| "Configurações do Windows indisponíveis.")?;
         std::fs::create_dir_all(&dir).map_err(|_| "Não foi possível salvar as configurações.")?;
         let bytes = serde_json::to_vec(&prefs).map_err(|_| "Configurações inválidas.")?;
-        std::fs::write(dir.join("desktop-preferences.json"), bytes).map_err(|_| "Não foi possível salvar as configurações.")?;
+        let previous=crate::windows_startup::snapshot()?;
+        crate::windows_startup::set(prefs.autostart)?;
+        if std::fs::write(dir.join("desktop-preferences.json"), bytes).is_err() {
+            crate::windows_startup::restore(previous.as_deref())?;
+            return Err("Não foi possível salvar as configurações.".into());
+        }
         *state.inner().0.lock().map_err(|_| "Configurações indisponíveis.")? = prefs;
     }
-    let prefs = state.inner().0.lock().map_err(|_| "Configurações indisponíveis.")?.clone(); Ok(prefs)
+    let mut prefs = state.inner().0.lock().map_err(|_| "Configurações indisponíveis.")?.clone(); prefs.autostart=crate::windows_startup::enabled()?; Ok(prefs)
 }
 #[tauri::command]
 pub fn test_windows_notification(app: tauri::AppHandle) -> Result<(), String> {
-    app.notification().builder().title("BatCaverna CLT").body("As notificações do Windows estão funcionando. Ao fechar a janela, o programa pode continuar na bandeja.").show()
-        .map_err(|_| "O Windows não exibiu a notificação. Confira as permissões de notificações do aplicativo.".to_string())
+    show_notification(&app,"Teste de notificação da BatCaverna CLT.")
 }
 fn notice_id(n: &Value) -> Option<String> { match &n["id"] { Value::String(id) => Some(id.clone()), Value::Number(id) => Some(id.to_string()), _ => None } }
 fn notice_key(owner: &str, n: &Value) -> Option<String> { notice_id(n).map(|id| format!("{owner}:{id}")) }
@@ -138,7 +153,7 @@ pub fn realtime_notification(app: &tauri::AppHandle, owner: &str, notice: &Value
     let focused = app.get_webview_window("main").is_some_and(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false));
     if !enabled || focused { return; }
     let body: String = notice["mensagem"].as_str().unwrap_or("Você recebeu uma nova atividade.").chars().take(240).collect();
-    let _ = app.notification().builder().title("BatCaverna CLT").body(body).show();
+    let _ = show_notification(&app, &body);
 }
 fn start_notifications(app: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -167,15 +182,24 @@ fn start_notifications(app: tauri::AppHandle) {
             for notice in fresh.iter().take(4).rev() {
                 if !register_notification(&owner, notice) { continue; }
                 let body: String = notice["mensagem"].as_str().unwrap_or("Você recebeu uma nova atividade.").chars().take(240).collect();
-                let _ = app.notification().builder().title("BatCaverna CLT").body(body).show();
+                let _ = show_notification(&app, &body);
             }
-            if fresh.len() > 4 { let _ = app.notification().builder().title("BatCaverna CLT").body(format!("Você tem {} novas atividades. Abra a central de notificações.", fresh.len())).show(); }
+            if fresh.len() > 4 { let _ = show_notification(&app, &format!("Você tem {} novas atividades. Abra a central de notificações.", fresh.len())); }
         }
     });
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test] fn old_preferences_keep_notifications_audible_without_enabling_startup() {
+        let p:DesktopPreferences=serde_json::from_str(r#"{"background":false,"notifications":true}"#).unwrap();
+        assert!(p.sound);assert!(!p.autostart);assert!(!p.start_minimized);assert!(!p.background);
+    }
+    #[test] fn startup_and_sound_choices_survive_serialization() {
+        let p=DesktopPreferences{sound:false,autostart:true,start_minimized:true,..Default::default()};
+        let next:DesktopPreferences=serde_json::from_slice(&serde_json::to_vec(&p).unwrap()).unwrap();
+        assert!(!next.sound);assert!(next.autostart&&next.start_minimized);
+    }
     #[test] fn notification_ids_accept_database_bigints() {
         let rows = vec![json!({"id":12,"read":false}), json!({"id":13,"read":false}), json!({"id":14,"read":true})];
         let seen = HashSet::from(["12".to_string()]);

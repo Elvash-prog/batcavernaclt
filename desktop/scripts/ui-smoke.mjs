@@ -248,7 +248,7 @@ try {
           }
           if (c === "desktop_preferences") {
             window.saved.push({ c, p });
-            return p.input || { background: true, notifications: true };
+            return p.input || { background: true, notifications: true, sound:true, autostart:false, start_minimized:false };
           }
           if (c === "test_windows_notification") {
             window.saved.push({ c, p });
@@ -1523,17 +1523,22 @@ try {
   );
   await page.locator('[data-settings-tab="account"]').click();
   assert.equal(await page.locator(".launcher-admin").count(), 0);
+  await page.locator('[data-settings-tab="app"]').click();
   await page.locator("#desktopBackground").uncheck();
+  await page.locator("#desktopSound").uncheck();
+  await page.locator("#desktopAutostart").check();
+  await page.locator("#desktopStartMinimized").check();
   await page.locator("#saveDesktopPreferences").click();
   await page.waitForFunction(() =>
     window.saved.some(
-      (s) => s.c === "desktop_preferences" && s.p.input?.background === false,
+      (s) => s.c === "desktop_preferences" && s.p.input?.background === false && s.p.input.sound===false && s.p.input.autostart===true && s.p.input.start_minimized===true,
     ),
   );
   await page.locator("#testWindowsNotification").click();
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "test_windows_notification"),
   );
+  await page.locator('[data-settings-tab="account"]').click();
   await page.locator("#changeEmail").click();
   await page.locator('#emailForm [name="email"]').fill("novo@exemplo.com");
   await page.locator('#emailForm [name="current"]').fill("mock");
