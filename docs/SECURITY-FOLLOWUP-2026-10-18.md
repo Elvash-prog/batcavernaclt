@@ -33,7 +33,7 @@ Resultado do CI `39177825314`, fonte `bf1d2cec1a493bdde10969304813b9c718d1b026`:
 - Primeira cópia real criptografada do banco e Storage, destino privado, retenção e ensaio real de recuperação. A sessão não tem conexão administrativa autenticada do CLI nem chave administrativa do Storage. Os testes sintéticos já existentes não substituem esse ensaio. Seguir `RECOVERY.md`, fornecendo credenciais somente no terminal oficial local.
 - Testes de segurança com duas contas dedicadas e testes físicos de APK/instalação/atualização. O teste funcional anterior em dois PCs foi informado como aprovado, mas não substitui esses cenários.
 - Leaked password protection continua desativada; não foi declarado resolvido nem feito upgrade pago. Permissões/licenças comerciais de APIs dependem das respostas dos fornecedores.
-- A compilação e publicação do novo instalador precisam ser confirmadas antes de orientar usuários a instalar 0.17.55. Nenhum APK novo é exigido pelas alterações de backend e das ferramentas de build.
+- O Windows 0.17.55 foi publicado e verificado. Nenhum APK novo é exigido pelas alterações de backend e das ferramentas de build; o APK publicado continua 1.7.17.
 
 ## Evidências e operação
 
@@ -42,3 +42,23 @@ PR: https://github.com/Elvash-prog/batcavernaclt/pull/57
 Auditoria: https://github.com/Elvash-prog/batcavernaclt/actions/runs/39177825314
 
 Executar localmente: `python -m unittest discover -s tools/security`, `node tests/login-rate.mjs`, `node tests/edge-pentest.mjs`. Os 18 testes isolados Edge não enviam notificações reais. O workflow de segurança/recuperação executa o teste SQL com dados sintéticos e rollback.
+
+## Fechamento da publicação — 19/10/2026 UTC
+
+Fonte imutável da versão Windows 0.17.55: `170f8256be8733e2e28692ec4bde87913fe10971`. PR 57 incorporada como `7925bb06a017dbd55e704fe7a439071dccac995e`.
+
+Todas as verificações do código final passaram: Windows com 25 testes Rust e abertura real do Tauri (`39178012559`), Android (`39178012521`), interface/APIs (`39178012548`), segurança/recuperação sintética (`39178012590`) e auditoria de dependências congeladas (`39178012480`). A consulta local independente usando os mesmos grafos também retornou 623 versões e nenhum aviso ativo.
+
+Publicação assinada concluída: https://github.com/Elvash-prog/batcavernaclt/actions/runs/39178119794
+
+Release: https://github.com/Elvash-prog/batcavernaclt/releases/tag/desktop-v0.17.55
+
+O instalador, a assinatura e `latest.json` foram baixados da release publicada. Foram conferidos o destino/versão do manifesto, a igualdade da assinatura no manifesto e arquivo `.sig`, o identificador da chave, a assinatura Ed25519/BLAKE2b-512 do EXE e a assinatura do comentário que vincula a versão 0.17.55. Uma alteração sintética dos bytes foi rejeitada. O endpoint GitHub `releases/latest` aponta para essa versão.
+
+- Instalador: 5.605.912 bytes.
+- SHA-256: `a02731fbca73e644eb80afe865b5f4abd7cf66970205d3592803f56ff77dc80f`.
+- Nenhuma chave privada foi usada nessa verificação; somente a chave pública já distribuída no cliente.
+
+O deploy Cloudflare do merge 7925bb06 foi confirmado pelo check `Workers Builds: batcavernaclt`, aprovado. A leitura HTTP automatizada da página neste ambiente recebeu 403; portanto, não se declara inspeção visual da página publicada nesta etapa. A alteração do rótulo de download para 0.17.55 é feita somente depois de confirmar a release.
+
+A assinatura confirma integridade/proveniência relativa à chave configurada; não é uma garantia geral de segurança do programa nem assinatura Authenticode de editor Windows.

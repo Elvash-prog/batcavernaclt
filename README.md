@@ -6,7 +6,7 @@ Aplicativo para organizar jogos, filmes, séries e animes, acompanhar progresso 
 
 | Plataforma | Versão publicada | Download |
 | --- | --- | --- |
-| Windows | 0.17.54 | [Instalador Windows](https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/BatCaverna-CLT-Windows-setup.exe) |
+| Windows | 0.17.55 | [Instalador Windows](https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/BatCaverna-CLT-Windows-setup.exe) |
 | Android | 1.7.17 | [APK Android](https://github.com/Elvash-prog/batcavernaclt/releases/download/android-v1.7.17/BatCaverna-1.7.17.apk) |
 
 Android 6.0 ou superior. No Android, pode ser necessário autorizar a instalação do APK pelo navegador. Os aplicativos têm avisos de atualização; o Windows verifica pacotes assinados.
@@ -69,6 +69,10 @@ node tests/bright-api-security.mjs
 ```
 
 A interface Windows tem verificações adicionais em `desktop/` e os builds Windows e Android são executados pelos workflows de `.github/workflows/`.
+
+## Segurança
+
+Consulte a [avaliação de segurança](docs/PENTEST-2026-10-18.md), as [correções complementares verificadas](docs/SECURITY-FOLLOWUP-2026-10-18.md) e o [procedimento de recuperação](docs/RECOVERY.md). Há pendências explícitas de backup real e ensaios com contas/dispositivos dedicados.
 
 ## Integrações e uso comercial
 
