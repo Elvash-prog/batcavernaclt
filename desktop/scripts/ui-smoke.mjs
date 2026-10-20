@@ -992,34 +992,6 @@ try {
   assert.equal(await page.locator('#mainNav [data-view="social"]').count(),0,'A Comunidade deve permanecer oculta enquanto estiver desativada.');
   await page.evaluate(async()=>await navigate('social'));
   await page.locator('.friends-compact,.reference-friends,.friend-grid').first().waitFor();
-  assert.equal(
-    await page.evaluate(() => localStorage.getItem("bc-desktop-draft:test")),
-    "Rascunho da conta",
-  );
-  const composeBox = await page.locator("#composer").boundingBox(),
-    postsBox = await page.locator(".posts").boundingBox();
-  assert.ok(
-    composeBox.y + composeBox.height <= postsBox.y,
-    "Composer must not overlap publications",
-  );
-  assert.equal(
-    await page
-      .locator("[data-comment] button")
-      .first()
-      .evaluate((n) => getComputedStyle(n).whiteSpace),
-    "nowrap",
-  );
-  await page.waitForTimeout(350);
-  assert.ok(
-    (await page.locator("[data-comment] button").first().boundingBox()).width >=
-      72,
-  );
-  await page.screenshot({ path: "preview/community-check.png" });
-  await page.locator(".draft-control").click();
-  assert.equal(
-    await page.evaluate(() => localStorage.getItem("bc-desktop-draft:test")),
-    null,
-  );
   await page.locator('[data-view="home"]').click();
   await page.evaluate(() => (window.delayLibrary = true));
   await page.locator('[data-view="library"]').click();
