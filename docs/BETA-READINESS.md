@@ -24,4 +24,4 @@ A proteção de senhas vazadas do Supabase depende da disponibilidade no plano/c
 
 ## Autorizações externas
 
-IGDB e SteamGridDB: solicitações enviadas pelo responsável, conforme os blocos de e-mail mais recentes. Não reenviar automaticamente. Outras autorizações e respostas devem ser registradas com evidência antes de ampliar o uso ou mudar a monetização. Atribuição e cache não substituem a autorização dos fornecedores ou titulares das imagens.
+IGDB: solicitações enviadas pelo responsável, conforme os blocos de e-mail mais recentes. Não reenviar automaticamente. Outras autorizações e respostas devem ser registradas com evidência antes de ampliar o uso ou mudar a monetização. Atribuição e cache não substituem a autorização dos fornecedores ou titulares das imagens.

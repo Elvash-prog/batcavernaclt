@@ -1,0 +1,6 @@
+BatCaverna CLT 1.7.19
+
+- Meu Retrô ordena Em progresso antes do Backlog e preserva a capa correta do RetroAchievements quando não há correspondência exata no IGDB.
+- Progresso de séries e animes consulta temporadas e quantidade real de episódios no TMDB.
+- A aba Comunidade fica temporariamente oculta; Amigos, Chat, grupos e indicações continuam disponíveis.
+- O provedor antigo de capas foi removido; as capas agora usam IGDB, Steam ou RetroAchievements.

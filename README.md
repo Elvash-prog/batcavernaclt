@@ -6,8 +6,8 @@ Aplicativo para organizar jogos, filmes, séries e animes, acompanhar progresso 
 
 | Plataforma | Versão publicada | Download |
 | --- | --- | --- |
-| Windows | 0.17.58 | [Instalador Windows](https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/BatCaverna-CLT-Windows-setup.exe) |
-| Android | 1.7.18 | [APK Android](https://github.com/Elvash-prog/batcavernaclt/releases/download/android-v1.7.18/BatCaverna-1.7.18.apk) |
+| Windows | 0.17.59 | [Instalador Windows](https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/BatCaverna-CLT-Windows-setup.exe) |
+| Android | 1.7.19 | [APK Android](https://github.com/Elvash-prog/batcavernaclt/releases/download/android-v1.7.19/BatCaverna-1.7.19.apk) |
 
 Android 6.0 ou superior. No Android, pode ser necessário autorizar a instalação do APK pelo navegador. Os aplicativos têm avisos de atualização; o Windows verifica pacotes assinados.
 

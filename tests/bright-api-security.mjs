@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 const uid='2d3268d1-4993-46d6-abba-340a2ffdd0fa';
 const site='https://batcavernaclt.gamersclt.workers.dev';
 let handler, calls=[], mode='ok';
-const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'test-anon',SUPABASE_SERVICE_ROLE_KEY:'test-service',SGDB_KEY:'test-grid',STEAM_KEY:'test-steam',RETROACHIEVEMENTS_KEY:'test-retro'};
+const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'test-anon',SUPABASE_SERVICE_ROLE_KEY:'test-service',STEAM_KEY:'test-steam',RETROACHIEVEMENTS_KEY:'test-retro'};
 globalThis.Deno={env:{get:k=>env[k]},serve:fn=>{handler=fn}};
 const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
 globalThis.fetch=async (url, options={})=>{
@@ -19,10 +19,7 @@ globalThis.fetch=async (url, options={})=>{
   if(mode==='upstreamfail') throw new Error('secret='+env.STEAM_KEY);
   if(u.pathname==='/rest/v1/perfis')return json([{steam_id:'76561198000000000'}]);
   if(u.pathname==='/rest/v1/itens'){assert.equal(u.searchParams.get('user_id'),'eq.'+uid);if(options.method==='PATCH'){assert.equal(u.searchParams.get('id'),'eq.41');const b=JSON.parse(options.body);assert.equal(b.horas,2);assert.equal(b.status,undefined);assert.equal(b.nota,undefined);return json({})}return json([{id:41,steam_appid:42,horas:1,conquistas:0}])}
-  if(u.hostname==='www.steamgriddb.com') {
-    if(u.pathname.includes('/search/')) return json({data:mode==='covermatch'?[{id:1,name:'Resident Evil'},{id:9,name:'Resident Evil Requiem'}]:[{id:42,name:'Safe Game'}]});
-    return json({data:[{nsfw:true,url:'https://images.test/bad.jpg'},{nsfw:false,url:'https://images.test/safe.jpg'}]});
-  }
+
   if(u.pathname.includes('ResolveVanityURL')) return json({response:{success:1,steamid:'76561198000000000'}});
   if(u.pathname.includes('GetPlayerSummaries')) return json({response:{players:[{steamid:'76561198000000000',personaname:'Player',communityvisibilitystate:3,gameid:'42'}]}});
   if(u.pathname.includes('GetOwnedGames')||u.pathname.includes('GetRecentlyPlayedGames')) return json({response:{game_count:1,games:[{appid:42,name:'Safe Game',playtime_forever:120,playtime_2weeks:60}]}});
@@ -69,8 +66,6 @@ await check('invalid RetroAchievements user rejected',async()=>{assert.equal((aw
 await check('distributed rate denial stops providers',async()=>{mode='limited';const r=await handler(req({op:'gratis'}));assert.equal(r.status,429);assert.equal(calls.length,2);assert.equal(r.headers.get('Retry-After'),'60')});
 await check('SQL limit failure fails closed',async()=>{mode='dbfail';assert.equal((await handler(req({op:'gratis'}))).status,503);assert.equal(calls.length,2)});
 await check('provider exceptions do not leak keys',async()=>{mode='upstreamfail';const r=await handler(req({op:'perfil',steamid:'76561198000000000'}));assert.equal(r.status,502);assert.ok(!(await r.text()).includes('test-steam'))});
-await check('explicitly marked adult cover skipped',async()=>{const r=await handler(req({op:'capas',nomes:['Safe Game']}));assert.equal(r.status,200);assert.deepEqual((await r.json()).capas,['https://images.test/safe.jpg'])});
-await check('cover search favors the complete title over another franchise entry',async()=>{mode='covermatch';const r=await handler(req({op:'capas',nomes:['Resident Evil 9 Requiem']}));assert.equal(r.status,200);await r.json();assert.ok(calls.some(x=>x.u.pathname==='/api/v2/grids/game/9'));assert.ok(!calls.some(x=>x.u.pathname==='/api/v2/grids/game/1'))});
 await check('adult Steam metadata excluded',async()=>{mode='adult';const r=await handler(req({op:'steamInfo',appids:[42]}));assert.deepEqual((await r.json()).lista,[])});
 for(const [op,body,key] of [
  ['perfil',{entrada:'https://steamcommunity.com/id/player'},'steamid'],

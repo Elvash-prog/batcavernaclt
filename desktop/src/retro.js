@@ -22,14 +22,14 @@
   }
  }
  const retroCoverCache=new Map();
- const retroStatuses=[['backlog','📌 Backlog'],['progress','🎮 Em progresso'],['finished','✅ Zerado'],['platinum','🏆 Platinado'],['paused','⏸️ Pausado'],['abandoned','❌ Abandonado']];
+ const retroStatuses=[['progress','🎮 Em progresso'],['backlog','📌 Backlog'],['finished','✅ Zerado'],['platinum','🏆 Platinado'],['paused','⏸️ Pausado'],['abandoned','❌ Abandonado']];
  const retroStatusLabel=key=>retroStatuses.find(([value])=>value===key)?.[1]||'📌 Backlog';
  const automaticRetroStatus=game=>game.premio||Number(game.total)>0&&Number(game.desbloqueadas)>=Number(game.total)?'platinum':Number(game.desbloqueadas)>0?'progress':'backlog';
  const titleTokens=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[™®©]/g,'').replace(/\b(?:the|game|edition|deluxe|ultimate|remake)\b/g,' ').replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean);
  const titleScore=(query,candidate)=>{const q=titleTokens(query),c=titleTokens(candidate);if(!q.length||!c.length)return 0;const a=q.join(' '),b=c.join(' ');if(a===b)return 1;const cs=new Set(c),common=q.filter(x=>cs.has(x)).length;return common/q.length*.7+common/c.length*.3};
- async function igdbCover(name,fallback){
-  const format=document.body.dataset.cardFormat||'poster';const key=format+':'+titleTokens(name).join(' ');if(!key)return fallback;
-  if(!retroCoverCache.has(key))retroCoverCache.set(key,(async()=>{try{const data=await api.catalog({provider:'igdb',query:name,page:1}),candidate=(data.results||[]).filter(g=>g?.background_image).map(g=>({...g,score:titleScore(name,g.name)})).sort((a,b)=>b.score-a.score)[0];if(candidate?.score>=.78)return format==='poster'?candidate.cover_image||candidate.background_image:candidate.background_image}catch{}return fallback})());
+ async function igdbCover(name,fallback,platform=''){
+  const format=document.body.dataset.cardFormat||'poster';const key=[format,titleTokens(name).join(' '),titleTokens(platform).join(' ')].join(':');if(!key)return fallback;
+  if(!retroCoverCache.has(key))retroCoverCache.set(key,(async()=>{try{const data=await api.catalog({provider:'igdb',query:name,page:1}),candidate=(data.results||[]).filter(g=>g?.background_image).map(g=>{const score=titleScore(name,g.name),platforms=String((g.platforms||[]).map?.(p=>p.name||p.abbreviation)||g.platforms||'');const platformBonus=platform&&platforms&&titleTokens(platform).some(t=>titleTokens(platforms).includes(t)) ? .08 : 0;return {...g,score:score+platformBonus}}).sort((a,b)=>b.score-a.score)[0];if(candidate?.score>=.96)return format==='poster'?candidate.cover_image||candidate.background_image:candidate.background_image}catch{}return fallback})());
   return retroCoverCache.get(key);
  }
  window.batcavernaRetroCover=igdbCover;
@@ -37,7 +37,7 @@
   root.querySelectorAll('[data-retro-image]').forEach(image=>{const url=image.dataset.retroImage;image.removeAttribute('data-retro-image');if(!url){image.src='brand.jpg';return}queueCover(()=>api.coverImage(url)).then(src=>{if(image.isConnected)image.src=src}).catch(()=>{if(image.isConnected)image.src='brand.jpg'})});
  }
  function hydrateRetroCovers(root,rows){
-  const load=image=>{if(image.dataset.retroLoading)return;image.dataset.retroLoading='1';const matches=rows.filter(item=>String(item.gameId)===image.dataset.retroCoverId),fallback='';queueCover(()=>igdbCover(image.dataset.retroCoverName,fallback)).then(async url=>{if(!url)throw Error('Capa indisponível');matches.forEach(row=>row.capa=url);return api.coverImage(url)}).then(src=>{if(image.isConnected)image.src=src}).catch(()=>{if(image.isConnected)image.src='brand.jpg'})};
+  const load=image=>{if(image.dataset.retroLoading)return;image.dataset.retroLoading='1';const matches=rows.filter(item=>String(item.gameId)===image.dataset.retroCoverId),fallback=image.dataset.retroFallback||matches[0]?.capa||'',platform=matches[0]?.console||'';queueCover(()=>igdbCover(image.dataset.retroCoverName,fallback,platform)).then(async url=>{if(!url)throw Error('Capa indisponível');matches.forEach(row=>row.capa=url);return api.coverImage(url)}).then(src=>{if(image.isConnected)image.src=src}).catch(()=>{if(image.isConnected)image.src='brand.jpg'})};
   const images=[...root.querySelectorAll('[data-retro-cover-name]')];
   if(!('IntersectionObserver' in window)){images.slice(0,24).forEach(load);return}
   const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){observer.unobserve(entry.target);load(entry.target)}}),{rootMargin:'280px'});

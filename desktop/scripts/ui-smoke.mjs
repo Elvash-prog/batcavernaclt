@@ -421,7 +421,7 @@ try {
             };
           if (c === "bright_api")
             return {
-              capas: ["https://cdn2.steamgriddb.com/cover.jpg"],
+              capas: ["https://images.igdb.com/igdb/image/upload/t_cover_big/test.jpg"],
               amigos: [],
             };
           if (c === "chat_messages") return messages;

@@ -1,7 +1,7 @@
 import {instrument,metricRecorder} from '../_shared/operational-metrics.js';
 // BatCaverna — Patch 1.39.3. Deploy as bright-api; authentication is verified below.
 // Run patch-1.39.3-bright-api.sql before deploying this file.
-// Secrets: SGDB_KEY, STEAM_KEY, RETROACHIEVEMENTS_KEY; SUPABASE_* variables are supplied by Supabase.
+// Secrets: STEAM_KEY, RETROACHIEVEMENTS_KEY; SUPABASE_* variables are supplied by Supabase.
 class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) { super(message); this.status=status; }
@@ -155,8 +155,6 @@ function raMedia(v: unknown, prefix = "", suffix = ""): string {
   if (suffix && !/\.[a-z0-9]{2,5}$/i.test(path)) path += suffix;
   return safeImage("https://media.retroachievements.org/" + path) || "";
 }
-const SGDB = Deno.env.get("SGDB_KEY") ?? "";
-
 const STEAM = Deno.env.get("STEAM_KEY") ?? "";
 const RA = Deno.env.get("RETROACHIEVEMENTS_KEY") ?? "";
 
@@ -166,42 +164,14 @@ const getJson = async (u: string, h: HeadersInit = {}) => {
   for(let attempt=0;attempt<2;attempt++){try{const r=await fetch(u,{headers:h,signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:"error"});if((r.status===429||r.status>=500)&&attempt===0){await new Promise(resolve=>setTimeout(resolve,400));continue}if(!r.ok)throw new ApiError(502,"Serviço de jogos indisponível. Tente novamente.");return await readJson(r,8*1024*1024)}catch(error){if(error instanceof ApiError||attempt>0||signal.aborted)throw error;await new Promise(resolve=>setTimeout(resolve,400))}}
   throw new ApiError(502,"Serviço de jogos indisponível. Tente novamente.");
 };
-const sg = (p: string) => getJson("https://www.steamgriddb.com/api/v2" + p, { Authorization: "Bearer " + SGDB });
 const st = (p: string) => getJson("https://api.steampowered.com" + p + (p.includes("?") ? "&" : "?") + "key=" + STEAM + "&format=json");
 const ra = (endpoint: string, params: Record<string,string|number>) => {
   if (!RA) throw new ApiError(503, "Integração RetroAchievements indisponível.");
   const q = new URLSearchParams({y:RA}); for (const [key,value] of Object.entries(params)) q.set(key,String(value));
   return getJson(`https://retroachievements.org/API/${endpoint}?${q}`);
 };
-// styles=alternate -> arte "padrão" do SteamGridDB, a que traz o nome/logo do jogo; 600x900 -> formato de capa
-const gridQuery = (format: string) => `dimensions=${format === "landscape" ? "920x430,460x215" : "600x900,660x930,342x482"}&types=static&nsfw=false`;
-const coverTitleTokens = (value: unknown) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[™®©]/g, "").replace(/\b(?:the|game|edition|deluxe|ultimate|remake)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
-function coverTitleScore(query: unknown, candidate: unknown): number {
-  const q = coverTitleTokens(query), c = coverTitleTokens(candidate);
-  if (!q.length || !c.length) return 0;
-  const a = q.join(" "), b = c.join(" ");
-  if (a === b) return 1;
-  const qs = new Set(q), cs = new Set(c), common = q.filter(x => cs.has(x)).length;
-  const recall = common / qs.size, precision = common / cs.size;
-  return recall * .65 + precision * .35;
-}
 async function capa(nome?: string, appid?: number, format = "poster"): Promise<string | null> {
   if (adultTitle(nome)) return null;
-  try {
-    const Q = gridQuery(format);
-    let path: string;
-    if (appid) path = `/grids/steam/${appid}?${Q}`;
-    else {
-      const r = await sg("/search/autocomplete/" + encodeURIComponent(String(nome)));
-      const candidate = (r.data ?? []).filter((g: any) => !adultTitle(g.name)).map((g: any) => ({...g,score:coverTitleScore(nome,g.name)})).sort((a: any,b: any) => b.score-a.score)[0];
-      const id = candidate?.score >= .78 ? candidate.id : null;
-      if (!Number.isSafeInteger(id) || id < 1) return null;
-      path = `/grids/game/${id}?${Q}`;
-    }
-    const g = await sg(path);
-    const grid = g.data?.find((x: any) => x.nsfw !== true && x.nsfw !== 1);
-    if (grid?.url) return safeImage(grid.url);
-  } catch {}
   if (appid) {
     try {
       const z = await steamAppInfo(Number(appid));

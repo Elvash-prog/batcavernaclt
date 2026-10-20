@@ -12,8 +12,8 @@ android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
         applicationId 'dev.gamersclt.batcaverna.nativeapp.preview'
         minSdk 23
         targetSdk 36
-        versionCode 65
-        versionName '1.7.18'
+        versionCode 66
+        versionName '1.7.19'
         buildConfigField 'String', 'SUPABASE_URL', '"https://luoqlhgfmixvfqbfcdoc.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', groovy.json.JsonOutput.toJson(publicSupabaseKey)
     }
