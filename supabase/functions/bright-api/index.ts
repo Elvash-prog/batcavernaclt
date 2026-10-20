@@ -118,8 +118,8 @@ function validate(b: any): {body: any, cost:number} {
       // Compatibility keys used by desktop 0.17.36 and Android 1.7.3 dropdowns.
       // These UI keys differ from the official RA system IDs for these systems.
       const legacySystems: Record<number,number>={10:11,11:12,12:13,13:14,14:15,57:53,78:16};
-      const id=appid(b.consoleId);out.consoleId=b.canonicalId===true?id:(legacySystems[id]??id);
-      out.query=name(b.query);cost=3;break;
+      if(b.consoleId!==undefined){const id=appid(b.consoleId);out.consoleId=b.canonicalId===true?id:(legacySystems[id]??id);}
+      out.query=name(b.query);cost=out.consoleId?3:12;break;
     }
     case "raPerfil": out.usuario=rauser(b.usuario); cost=2; break;
     case "raJogos": out.usuario=rauser(b.usuario); out.offset=Math.max(0,Math.min(5000,Number(b.offset)||0)); cost=4; break;
@@ -159,6 +159,7 @@ const STEAM = Deno.env.get("STEAM_KEY") ?? "";
 const RA = Deno.env.get("RETROACHIEVEMENTS_KEY") ?? "";
 
 const raSystemCache = new Map<number,{expires:number,rows:any[]}>();
+const raSearchSystems = [1,2,3,4,5,6,7,8,10,12,13,14,16,17,18,21,23,25,27,28,39,40,41,53];
 async function runOperation(b: any, signal: AbortSignal, uid: string): Promise<unknown> {
 const getJson = async (u: string, h: HeadersInit = {}) => {
   for(let attempt=0;attempt<2;attempt++){try{const r=await fetch(u,{headers:h,signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:"error"});if((r.status===429||r.status>=500)&&attempt===0){await new Promise(resolve=>setTimeout(resolve,400));continue}if(!r.ok)throw new ApiError(502,"Serviço de jogos indisponível. Tente novamente.");return await readJson(r,8*1024*1024)}catch(error){if(error instanceof ApiError||attempt>0||signal.aborted)throw error;await new Promise(resolve=>setTimeout(resolve,400))}}
@@ -417,14 +418,12 @@ async function steamGratis(requestSignal: AbortSignal) {
         out=row;break;
       }
       case "raSearch": {
-        let cached=raSystemCache.get(b.consoleId);
-        if(!cached||cached.expires<Date.now()){
-          const rows=await ra("API_GetGameList.php",{i:b.consoleId,f:1,h:0});
-          if(!Array.isArray(rows))throw new ApiError(502,"Catálogo RetroAchievements indisponível.");
-          cached={expires:Date.now()+86400000,rows};if(raSystemCache.size>=80)raSystemCache.delete(raSystemCache.keys().next().value!);raSystemCache.set(b.consoleId,cached);
-        }
-        const norm=(v:string)=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-        out={jogos:cached.rows.filter(g=>!adultTitle(g.Title)&&norm(g.Title||'').includes(norm(b.query))).slice(0,80).map(g=>({gameId:Number(g.ID),nome:g.Title,console:g.ConsoleName,capa:raMedia(g.ImageIcon,"Images/"),total:Number(g.NumAchievements)||0}))};break;
+        const norm=(v:string)=>v.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+        const load=async(system:number)=>{let cached=raSystemCache.get(system);if(!cached||cached.expires<Date.now()){const rows=await ra("API_GetGameList.php",{i:system,f:1,h:0});if(!Array.isArray(rows))throw new ApiError(502,"Catálogo RetroAchievements indisponível.");cached={expires:Date.now()+86400000,rows};if(raSystemCache.size>=80)raSystemCache.delete(raSystemCache.keys().next().value!);raSystemCache.set(system,cached);}return cached.rows;};
+        const systems=b.consoleId?[b.consoleId]:raSearchSystems,settled=await Promise.allSettled(systems.map(load)),catalog=settled.flatMap(result=>result.status==='fulfilled'?result.value:[]);
+        if(!catalog.length)throw new ApiError(502,"Catálogo RetroAchievements indisponível.");
+        const query=norm(b.query),score=(title:string)=>{const value=norm(title||'');return value===query?0:value.startsWith(query)?1:value.includes(' '+query)?2:3;},seen=new Set<number>();
+        out={jogos:catalog.filter(g=>{const id=Number(g.ID);return !seen.has(id)&&seen.add(id)&&!adultTitle(g.Title)&&norm(g.Title||'').includes(query)}).sort((a,b)=>score(a.Title)-score(b.Title)||String(a.Title).localeCompare(String(b.Title),'pt-BR')).slice(0,80).map(g=>({gameId:Number(g.ID),nome:g.Title,console:g.ConsoleName,capa:raMedia(g.ImageIcon,"Images/"),total:Number(g.NumAchievements)||0}))};break;
       }
       case "raPerfil": {
         const p=await ra("API_GetUserProfile.php",{u:b.usuario});

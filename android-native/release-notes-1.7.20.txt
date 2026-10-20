@@ -1,0 +1,7 @@
+BatCaverna CLT 1.7.20
+
+- A busca para adicionar jogos ao Meu Retrô não exige mais escolher uma plataforma.
+- A pesquisa consulta as plataformas compatíveis do RetroAchievements, incluindo PlayStation 2.
+- Resultados com nomes exatos ou mais próximos aparecem primeiro.
+- Créditos e informações dos serviços integrados foram atualizados.
+- Correções gerais de estabilidade e apresentação.

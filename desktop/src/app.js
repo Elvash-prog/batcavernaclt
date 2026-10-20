@@ -35,8 +35,8 @@ function loading(){ $('#content').innerHTML='<div class="loading"><span class="s
 function errorCard(e){$('#content').innerHTML=`<div class="error-card">${esc(failure(e))}</div>`}
 function setPage(title,eyebrow){$('#pageTitle').textContent=title;$('#pageEyebrow').textContent=eyebrow}
 function setAuth(which){['login','register','recover'].forEach(x=>$(`#${x}Form`).hidden=x!==which)}
-function showLogin(){ $('#appShell').hidden=true;$('#loginScreen').hidden=false;setAuth('login') }
-function showApp(){ $('#loginScreen').hidden=true;$('#appShell').hidden=false;$('#appVersion').textContent=`v${state.version}`;navigate('home') }
+function showLogin(){ $('#appShell').hidden=true;$('#loginScreen').hidden=false;setAuth('login');document.documentElement.classList.remove('booting') }
+async function showApp(){ $('#appVersion').textContent=`v${state.version}`;await navigate('home');$('#loginScreen').hidden=true;$('#appShell').hidden=false;document.documentElement.classList.remove('booting') }
 function applyPrefs(){const p=JSON.parse(localStorage.getItem('bc-desktop-prefs')||'{}');document.body.classList.toggle('compact',!!p.compact);document.body.classList.toggle('no-animations',!!p.noAnimations)}
 function savePref(key,value){if(['compact','noAnimations'].includes(key)&&state.userId&&window.batcavernaLayoutSync){const sync=window.batcavernaLayoutSync;sync.save({...sync.get(),[key]:value});return;}const p=JSON.parse(localStorage.getItem('bc-desktop-prefs')||'{}');p[key]=value;localStorage.setItem('bc-desktop-prefs',JSON.stringify(p));applyPrefs()}
 
