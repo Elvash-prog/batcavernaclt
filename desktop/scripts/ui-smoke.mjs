@@ -676,16 +676,33 @@ try {
                   ? {
                       id: 20,
                       title: "Filme TMDB",
-                      name: "Série TMDB",
+                      name: i.kind === "tv" ? "Série de teste" : "Série TMDB",
                       release_date: "2024-01-01",
                       poster_path: "/cover.jpg",
                       genres: [{ name: "Aventura" }],
                       overview: "Descrição",
+                      seasons:
+                        i.kind === "tv"
+                          ? [
+                              {
+                                season_number: 1,
+                                episode_count: 10,
+                                name: "Temporada 1",
+                              },
+                            ]
+                          : undefined,
                     }
                   : {
-                      results: [
-                        { id: 20, title: "Filme TMDB", name: "Série TMDB" },
-                      ],
+                      results:
+                        i.kind === "tv"
+                          ? [{ id: 20, name: "Série de teste" }]
+                          : [
+                              {
+                                id: 20,
+                                title: "Filme TMDB",
+                                name: "Série TMDB",
+                              },
+                            ],
                     };
             if (i.provider === "anilist")
               return {
