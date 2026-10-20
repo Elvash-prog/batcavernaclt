@@ -29,7 +29,7 @@ jobs:
         working-directory: desktop
         run: npx playwright install chromium
       - name: Validar fluxos da interface
-        id: ui-smoke
+        id: ui_smoke
         continue-on-error: true
         working-directory: desktop
         shell: bash
@@ -41,7 +41,7 @@ jobs:
           name: desktop-ui-smoke-log
           path: desktop/ui-smoke.log
       - name: Exigir validaÃ§Ã£o da interface
-        if: steps.ui-smoke.outcome != 'success'
+        if: steps.ui_smoke.outcome != 'success'
         run: exit 1
       - name: Disponibilizar prÃ©vias da interface
         if: always()
@@ -79,27 +79,4 @@ jobs:
               }
             } while ((Get-Date) -lt $deadline)
             if (!$ready) { $content = if (Test-Path $log) { Get-Content $log -Raw } else { "log ausente" }; throw "A interface Tauri nÃ£o confirmou o boot em 50 segundos.`n$content" }
-            Write-Host "Tauri real iniciou e confirmou BOOT_READY."
-          } finally {
-            if (!$process.HasExited) { Stop-Process -Id $process.Id -Force }
-          }
-      - name: Validar inÃ­cio minimizado e restauraÃ§Ã£o manual
-        shell: pwsh
-        working-directory: desktop
-        run: ./scripts/test-tray-startup.ps1
-      - name: Publicar log do smoke Tauri
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: BatCaverna-Tauri-Smoke
-          path: |
-            desktop/tauri-smoke.log
-            desktop/tauri-tray-smoke.log
-          if-no-files-found: warn
-      - name: Disponibilizar instalador
-        uses: actions/upload-artifact@v4
-        with:
-          name: BatCaverna-CLT-Windows-EXE
-          path: desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
-          if-no-files-found: error
-
+            Write-Host "Tauri real iniciou E,½¹™¥Éµ½Ô	==Q}Id¸ˆ(€€€€€€€€€ô™¥¹…±±äì(€€€€€€€€€€€¥˜€ „‘ÁÉ½•ÍÌ¹!…Íá¥Ñ•¤ìMÑ½ÀµAÉ½•ÍÌ€µ%€‘ÁÉ½•ÍÌ¹%€µ½É”ô(€€€€€€€€€ô(€€€€€€´¹…µ”èY…±¥‘…È¥»µ¥¼µ¥¹¥µ¥é…‘¼”É•ÍÑ…ÕÉ‡Ÿ¼µ…¹Õ…°(€€€€€€€Í¡•±°èÁİÍ (€€€€€€€İ½É­¥¹œµ‘¥É•Ñ½Éäè‘•Í­Ñ½À(€€€€€€€ÉÕ¸è€¸½ÍÉ¥ÁÑÌ½Ñ•ÍĞµÑÉ…äµÍÑ…ÉÑÕÀ¹ÁÌÄ(€€€€€€´¹…µ”èAÕ‰±¥…È±½œ‘¼Íµ½­”Q…ÕÉ¤(€€€€€€€¥˜è…±İ…åÌ ¤(€€€€€€€ÕÍ•Ìè…Ñ¥½¹Ì½ÕÁ±½…µ…ÉÑ¥™…ÑØĞ(€€€€€€€İ¥Ñ è(€€€€€€€€€¹…µ”è	…Ñ…Ù•É¹„µQ…ÕÉ¤µMµ½­”(€€€€€€€€€Á…Ñ èğ(€€€€€€€€€€€‘•Í­Ñ½À½Ñ…ÕÉ¤µÍµ½­”¹±½œ(€€€€€€€€€€€‘•Í­Ñ½À½Ñ…ÕÉ¤µÑÉ…äµÍµ½­”¹±½œ(€€€€€€€€€¥˜µ¹¼µ™¥±•Ìµ™½Õ¹èİ…É¸(€€€€€€´¹…µ”è¥ÍÁ½¹¥‰¥±¥é…È¥¹ÍÑ…±…‘½È(€€€€€€€ÕÍ•Ìè…Ñ¥½¹Ì½ÕÁ±½…µ…ÉÑ¥™…ÑØĞ(€€€€€€€İ¥Ñ è(€€€€€€€€€¹…µ”è	…Ñ…Ù•É¹„µ1Pµ]¥¹‘½İÌµa(€€€€€€€€€Á…Ñ è‘•Í­Ñ½À½ÍÉŒµÑ…ÕÉ¤½Ñ…É•Ğ½É•±•…Í”½‰Õ¹‘±”½¹Í¥Ì¼¨µÍ•ÑÕÀ¹•á”(€€€€€€€€€¥˜µ¹¼µ™¥±•Ìµ™½Õ¹è•ÉÉ½È((
