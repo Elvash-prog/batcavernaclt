@@ -989,35 +989,9 @@ try {
     await page.locator('#preferenceForm [name="social"]').isChecked(),
     false,
   );
-  await page.evaluate(() => {
-    window.mediaDelay = 900;
-    window.mediaCalls = 0;
-    window.mediaResolved = 0;
-    window.slowSocialMedia = true;
-  });
-  await page.locator('[data-view="social"]').click();
-  await page.locator(".community-reference-layout").waitFor();
-  const mediaStatus = await page.evaluate(() => ({
-    calls: window.mediaCalls,
-    resolved: window.mediaResolved,
-    posts: document.querySelectorAll(".post").length,
-  }));
-  assert.ok(
-    mediaStatus.calls > 0 && mediaStatus.resolved === 0,
-    `A tela social deve aparecer sem aguardar a assinatura das imagens: ${JSON.stringify(mediaStatus)}`,
-  );
-  await page.waitForFunction(
-    () => window.mediaResolved === window.mediaCalls,
-  );
-  await page.evaluate(() => {
-    window.mediaDelay = 0;
-    window.slowSocialMedia = false;
-  });
-  assert.equal(
-    await page.locator(".community-reference-layout > aside").count(),
-    2,
-  );
-  await page.locator("#composer textarea").fill("Rascunho da conta");
+  assert.equal(await page.locator('#mainNav [data-view="social"]').count(),0,'A Comunidade deve permanecer oculta enquanto estiver desativada.');
+  await page.evaluate(async()=>await navigate('social'));
+  await page.locator('.friends-layout,.reference-friends-page').first().waitFor();
   assert.equal(
     await page.evaluate(() => localStorage.getItem("bc-desktop-draft:test")),
     "Rascunho da conta",
@@ -1497,13 +1471,7 @@ try {
   assert.equal(await page.locator('.cavern-recent [data-update]').count(),0);
   await page.evaluate(async()=>await navigate('home'));
   assert.equal(await page.locator('.cavern-recent [data-update]').count(),0);
-  await page.evaluate(async()=>{localStorage.removeItem('bc-activity-cleared:'+state.userId);await navigate('social')});
-  await page.locator('.feed-media img').waitFor();
-  await page.locator('.feed-media img').click();
-  await page.locator('.community-image-full').waitFor();
-  assert.ok(await page.locator('.community-image-full').getAttribute('src'));
-  await page.locator('.community-image-viewer [data-close]').click();
-  assert.equal(await page.locator('.community-image-full').count(),0);
+  await page.evaluate(()=>localStorage.removeItem('bc-activity-cleared:'+state.userId));
   await page.evaluate(async()=>{state.discoverTab='retro';await navigate('discover')});
   assert.equal(await page.locator('[data-retro-remove]').count(),0);
   await page.locator('.retro-game-card').click();
