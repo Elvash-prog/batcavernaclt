@@ -418,9 +418,11 @@ async function steamGratis(requestSignal: AbortSignal) {
         out=row;break;
       }
       case "raSearch": {
-        const norm=(v:string)=>v.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+        const norm=(v:string)=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
         const load=async(system:number)=>{let cached=raSystemCache.get(system);if(!cached||cached.expires<Date.now()){const rows=await ra("API_GetGameList.php",{i:system,f:1,h:0});if(!Array.isArray(rows))throw new ApiError(502,"Catálogo RetroAchievements indisponível.");cached={expires:Date.now()+86400000,rows};if(raSystemCache.size>=80)raSystemCache.delete(raSystemCache.keys().next().value!);raSystemCache.set(system,cached);}return cached.rows;};
-        const systems=b.consoleId?[b.consoleId]:raSearchSystems,settled=await Promise.allSettled(systems.map(load)),catalog=settled.flatMap(result=>result.status==='fulfilled'?result.value:[]);
+        const systems=b.consoleId?[b.consoleId]:raSearchSystems,catalog:any[]=[];
+        // Limit concurrency so RetroAchievements does not drop entire platforms under burst load.
+        let cursor=0;const workers=Array.from({length:Math.min(4,systems.length)},async()=>{while(cursor<systems.length){const system=systems[cursor++];try{catalog.push(...await load(system));}catch{}}});await Promise.all(workers);
         if(!catalog.length)throw new ApiError(502,"Catálogo RetroAchievements indisponível.");
         const query=norm(b.query),score=(title:string)=>{const value=norm(title||'');return value===query?0:value.startsWith(query)?1:value.includes(' '+query)?2:3;},seen=new Set<number>();
         out={jogos:catalog.filter(g=>{const id=Number(g.ID);return !seen.has(id)&&seen.add(id)&&!adultTitle(g.Title)&&norm(g.Title||'').includes(query)}).sort((a,b)=>score(a.Title)-score(b.Title)||String(a.Title).localeCompare(String(b.Title),'pt-BR')).slice(0,80).map(g=>({gameId:Number(g.ID),nome:g.Title,console:g.ConsoleName,capa:raMedia(g.ImageIcon,"Images/"),total:Number(g.NumAchievements)||0}))};break;
