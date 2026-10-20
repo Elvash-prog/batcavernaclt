@@ -991,7 +991,7 @@ try {
   );
   assert.equal(await page.locator('#mainNav [data-view="social"]').count(),0,'A Comunidade deve permanecer oculta enquanto estiver desativada.');
   await page.evaluate(async()=>await navigate('social'));
-  await page.locator('.friends-layout,.reference-friends-page').first().waitFor();
+  await page.locator('.friends-compact,.reference-friends,.friend-grid').first().waitFor();
   assert.equal(
     await page.evaluate(() => localStorage.getItem("bc-desktop-draft:test")),
     "Rascunho da conta",
