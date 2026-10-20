@@ -107,6 +107,38 @@ jobs:
           files: |
             android-native/build/update-release/BatCaverna-${{ steps.version.outputs.version }}.apk
             android-native/build/update-release/android-update.json
+      - name: Autenticar no Google Drive
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.GDRIVE_UPLOAD_ENABLED == 'true'
+        id: google-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive
+      - name: Atualizar APK no Google Drive
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.GDRIVE_UPLOAD_ENABLED == 'true'
+        shell: bash
+        env:
+          GDRIVE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          GDRIVE_APK_FILE_ID: ${{ vars.GDRIVE_APK_FILE_ID }}
+          APK_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          test -n "$GDRIVE_ACCESS_TOKEN"
+          test -n "$GDRIVE_APK_FILE_ID"
+          APK="build/update-release/BatCaverna-${APK_VERSION}.apk"
+          test -s "$APK"
+          curl --fail-with-body --silent --show-error --retry 3 \
+            -X PATCH \
+            -H "Authorization: Bearer ${GDRIVE_ACCESS_TOKEN}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary "@${APK}" \
+            "https://www.googleapis.com/upload/drive/v3/files/${GDRIVE_APK_FILE_ID}?uploadType=media"
+          curl --fail-with-body --silent --show-error --retry 3 \
+            -X PATCH \
+            -H "Authorization: Bearer ${GDRIVE_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"name\":\"BatCaverna-${APK_VERSION}.apk\"}" \
+            "https://www.googleapis.com/drive/v3/files/${GDRIVE_APK_FILE_ID}?fields=id,name,size,modifiedTime"
       - name: Relatórios de validação
         if: always()
         uses: actions/upload-artifact@v4
