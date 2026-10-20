@@ -1,0 +1,5 @@
+Meu Retrô agora é organizado em Backlog, Em progresso, Zerados, Platinados, Pausados e Abandonados, com status sincronizado por conta.
+
+Os detalhes dos jogos retrô receberam descrição, gêneros, lançamento, plataforma, progresso e conquistas. Esta versão também inclui a atribuição visível à IGDB.com.
+
+Esta versão inicia uma nova chave de assinatura de produção. Instalações Android anteriores precisam ser removidas antes da instalação desta versão. A biblioteca e os dados sincronizados permanecem na conta.

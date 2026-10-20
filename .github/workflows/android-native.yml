@@ -7,7 +7,7 @@ on:
     paths: ['android-native/**', '.github/workflows/android-native.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -39,18 +39,74 @@ jobs:
           PY
       - name: Testes, compilação e Android Lint
         run: bash gradlew :app:testReleaseUnitTest :app:assembleRelease :app:lintRelease --no-daemon
-      - name: Preparar artefatos
+      - name: Identificar versão
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" app/build.gradle)
+          test -n "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Validar segredos de assinatura
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+      - name: Assinar e verificar APK de produção
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p build/signing build/signed
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > build/signing/batcaverna.keystore
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+            --ks build/signing/batcaverna.keystore \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "build/signed/BatCaverna-${{ steps.version.outputs.version }}.apk" \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs \
+            "build/signed/BatCaverna-${{ steps.version.outputs.version }}.apk"
+      - name: Gerar feed de atualização Android
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          python3 scripts/prepare-update.py \
+            "build/signed/BatCaverna-${{ steps.version.outputs.version }}.apk" \
+            --aapt "$ANDROID_HOME/build-tools/35.0.0/aapt" \
+            --apksigner "$ANDROID_HOME/build-tools/35.0.0/apksigner" \
+            --notes "release-notes-${{ steps.version.outputs.version }}.txt"
+      - name: Preparar artefatos de diagnóstico
         run: |
           mkdir -p build/delivery
           cp app/build/outputs/apk/release/app-release-unsigned.apk build/delivery/BatCaverna-1.7.18-ci.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/delivery/
           cp "$ANDROID_HOME/build-tools/35.0.0/aapt" build/delivery/
-      - name: Publicar APK para assinatura local
+      - name: Publicar build de diagnóstico
         uses: actions/upload-artifact@v4
         with:
           name: BatCaverna-Android-1.7.18-build
           path: android-native/build/delivery/
           retention-days: 30
+      - name: Publicar release Android assinada
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v${{ steps.version.outputs.version }}
+          name: BatCaverna CLT Android ${{ steps.version.outputs.version }}
+          body_path: android-native/release-notes-${{ steps.version.outputs.version }}.txt
+          files: |
+            android-native/build/update-release/BatCaverna-${{ steps.version.outputs.version }}.apk
+            android-native/build/update-release/android-update.json
       - name: Relatórios de validação
         if: always()
         uses: actions/upload-artifact@v4
