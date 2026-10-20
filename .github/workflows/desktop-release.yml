@@ -141,3 +141,46 @@ jobs:
             desktop/release-assets/BatCaverna-CLT-Windows-setup.exe
             desktop/release-assets/BatCaverna-CLT-Windows-setup.exe.sig
             desktop/release-assets/latest.json
+      - name: Authenticate with Google Drive
+        if: vars.GDRIVE_UPLOAD_ENABLED == 'true'
+        id: google-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive
+      - name: Update Windows downloads on Google Drive
+        if: vars.GDRIVE_UPLOAD_ENABLED == 'true'
+        shell: pwsh
+        env:
+          GDRIVE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          GDRIVE_WINDOWS_FILE_ID: ${{ vars.GDRIVE_WINDOWS_FILE_ID }}
+          GDRIVE_WINDOWS_SIG_FILE_ID: ${{ vars.GDRIVE_WINDOWS_SIG_FILE_ID }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GDRIVE_ACCESS_TOKEN)) { throw "Google Drive access token is missing." }
+          if ([string]::IsNullOrWhiteSpace($env:GDRIVE_WINDOWS_FILE_ID)) { throw "GDRIVE_WINDOWS_FILE_ID is missing." }
+          if ([string]::IsNullOrWhiteSpace($env:GDRIVE_WINDOWS_SIG_FILE_ID)) { throw "GDRIVE_WINDOWS_SIG_FILE_ID is missing." }
+
+          $headers = @{ Authorization = "Bearer $env:GDRIVE_ACCESS_TOKEN" }
+          $installer = "desktop/release-assets/BatCaverna-CLT-Windows-setup.exe"
+          $signature = "desktop/release-assets/BatCaverna-CLT-Windows-setup.exe.sig"
+          if (!(Test-Path $installer) -or (Get-Item $installer).Length -eq 0) { throw "Windows installer is missing." }
+          if (!(Test-Path $signature) -or (Get-Item $signature).Length -eq 0) { throw "Windows signature is missing." }
+
+          $installerUpload = @{
+            Method = "Patch"
+            Headers = $headers
+            ContentType = "application/vnd.microsoft.portable-executable"
+            InFile = $installer
+            Uri = "https://www.googleapis.com/upload/drive/v3/files/$env:GDRIVE_WINDOWS_FILE_ID`?uploadType=media"
+          }
+          Invoke-RestMethod @installerUpload
+
+          $signatureUpload = @{
+            Method = "Patch"
+            Headers = $headers
+            ContentType = "application/octet-stream"
+            InFile = $signature
+            Uri = "https://www.googleapis.com/upload/drive/v3/files/$env:GDRIVE_WINDOWS_SIG_FILE_ID`?uploadType=media"
+          }
+          Invoke-RestMethod @signatureUpload
