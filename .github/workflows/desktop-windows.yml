@@ -29,8 +29,20 @@ jobs:
         working-directory: desktop
         run: npx playwright install chromium
       - name: Validar fluxos da interface
+        id: ui-smoke
+        continue-on-error: true
         working-directory: desktop
-        run: npm run test:ui
+        shell: bash
+        run: set -o pipefail; npm run test:ui 2>&1 | tee ui-smoke.log
+      - name: Publicar log da interface
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-ui-smoke-log
+          path: desktop/ui-smoke.log
+      - name: Exigir validação da interface
+        if: steps.ui-smoke.outcome != 'success'
+        run: exit 1
       - name: Disponibilizar prévias da interface
         if: always()
         uses: actions/upload-artifact@v4
