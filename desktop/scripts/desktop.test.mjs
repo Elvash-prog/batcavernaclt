@@ -448,7 +448,7 @@ test('perfil desktop centraliza conteúdo e inicia dados independentes em parale
  assert.match(styles,/@media\s*\(max-width:\s*1000px\)[\s\S]*\.reference-ui \.profile-overview-columns\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
  assert.match(styles,/@media\s*\(max-width:\s*820px\)[\s\S]*\.reference-ui\s*\{\s*--sidebar:\s*68px/);
  assert.match(styles,/@media\s*\(max-width:\s*1100px\)[\s\S]*\.complete-profile \.profile-body\s*\{[^}]*grid-template-columns:\s*80px minmax\(0,\s*1fr\)/);
- assert.match(refinement,/\.reference-ui #content\.screen-pending\{visibility:visible!important;opacity:\.72;pointer-events:none\}/);
+ assert.match(refinement,/\.reference-ui #content\.screen-pending\{visibility:hidden!important;opacity:0;pointer-events:none\}/);
  assert.ok(profile.indexOf('Promise.all([loadStats(),api.library')<profile.indexOf('await api.profile'));
  assert.match(profile,/error=>\(\{error\}\)/);assert.match(profile,/Estatísticas indisponíveis/);
  assert.match(redesign,/Promise\.all\(\[api\.profile\(own\?null:id\),xapi\(\{op:'profile_bundle',id\}\)\]\)/);
