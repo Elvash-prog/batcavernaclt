@@ -8,6 +8,7 @@ mod catalog_disk_cache;
 
 mod native_auth;
 mod auth_revocation;
+mod api_errors;
 mod v06;
 mod desktop_runtime;
 use serde::{Deserialize, Serialize};
@@ -83,10 +84,7 @@ fn keyring() -> Result<keyring::Entry, String> { keyring::Entry::new(KEYRING_SER
 fn clear_keyring() { if let Ok(entry) = keyring() { let _ = entry.delete_credential(); } }
 
 fn message(body: &str, status: reqwest::StatusCode) -> String {
-    if body.contains("itens_steam_unico") { return "Este jogo já está na sua biblioteca Steam. Abra o título existente para editar seu progresso. Se ele não aparece, a regra de unicidade do banco precisa ser revisada.".into(); }
-    serde_json::from_str::<Value>(body).ok().and_then(|v| {
-        ["message", "msg", "error_description", "error"].into_iter().find_map(|key| v.get(key).and_then(Value::as_str).map(str::to_owned))
-    }).unwrap_or_else(|| if status == reqwest::StatusCode::UNAUTHORIZED { "Sua sessão expirou. Entre novamente.".into() } else { format!("O servidor não confirmou a operação (HTTP {}).", status.as_u16()) })
+    api_errors::message(body,status.as_u16())
 }
 
 async fn value(response: reqwest::Response) -> Result<Value, String> {
