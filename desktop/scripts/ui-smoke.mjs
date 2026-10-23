@@ -1439,6 +1439,11 @@ try {
   await page.locator('.editor-overlay form [name="nome"]').waitFor();
   assert.equal(await page.locator('.editor-overlay form [name="nome"]').inputValue(),'Jogo zerado');
   await page.locator('.editor-overlay [data-close]').first().click();
+  // Finish the list/editor scenario through the UI before checking Appearance.
+  for(let remaining=0;remaining<3&&await page.locator('.editor-overlay').count();remaining++){
+    await page.locator('.editor-overlay').last().locator('[data-close]').first().click();
+  }
+  await page.waitForFunction(()=>document.querySelectorAll('.editor-overlay').length===0);
   await page.evaluate(async()=>{await navigate('settings');state.settingsTab='appearance';await renderSettings()});
   await page.locator('[data-theme-preset="Claro"]').click();
   assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('light-theme')),true);
