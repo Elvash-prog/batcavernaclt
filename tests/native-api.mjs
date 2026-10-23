@@ -20,6 +20,16 @@ globalThis.fetch=async(url,options={})=>{const u=new URL(url);calls.push({u,opti
  throw Error('Unexpected request '+u.href);
 };
 const handler=createHandler(env);
+// The limiter is mandatory: missing, malformed and failed results stop before providers.
+const originalLimiter=env.USER_RATE_LIMITER;
+for(const limiter of [undefined,{}, {limit:async()=>null},{limit:async()=>({success:'true'})},{limit:async()=>{throw Error('private-database-error')}}]){
+ for(const path of ['/api/catalog/igdb/games','/api/catalog/tmdb/movie/1','/api/steam-free','/api/media/prepare']){
+  calls=[];const method=path.includes('/media/')?'POST':'GET';
+  const result=await createHandler({...env,USER_RATE_LIMITER:limiter})(new Request('https://test.supabase.co/functions/v1/native-api'+path,{method,headers:{Authorization:'Bearer '+token},...(method==='POST'?{body:'{}'}:{})}));
+  assert.equal(result.status,503,path);assert.doesNotMatch(await result.text(),/private-/);assert.equal(calls.length,1,path+' must stop after Auth');
+ }
+}
+env.USER_RATE_LIMITER=originalLimiter;
 async function request(path,method='GET',body=null){calls=[];return handler(new Request('https://test.supabase.co/functions/v1/native-api'+path,{method,headers:{Authorization:'Bearer '+token},...(body?{body,duplex:'half'}:{})}));}
 mode='anonymous';assert.equal((await request('/api/catalog/igdb/games')).status,401);assert.equal(calls.length,1);mode='ok';
 let edgeResponse=await handler(new Request('https://test.supabase.co/native-api/health'));assert.equal(edgeResponse.status,200);
@@ -31,7 +41,10 @@ r=await request('/api/catalog/rawg/games/123');assert.equal(r.status,409);assert
 r=await request('/api/catalog/rawg/games/1000000001');assert.equal(r.status,200);assert.equal((await r.json()).igdb_id,1);
 r=await request('/api/catalog/tmdb/movie/1');assert.equal(r.status,403);
 r=await request('/api/catalog/rawg/https://evil.test');assert.equal(r.status,404);assert.equal(calls.length,0);
-mode='limited';r=await request('/api/catalog/rawg/games');assert.equal(r.status,429);assert.equal(calls.length,1);
+mode='limited';
+for(const path of ['/api/catalog/rawg/games','/api/catalog/tmdb/movie/1','/api/steam-free','/api/media/prepare']){
+ r=await request(path,path.includes('/media/')?'POST':'GET',path.includes('/media/')?'{}':null);assert.equal(r.status,429);assert.equal(r.headers.get('retry-after'),'60');assert.equal(calls.length,1);
+}
 mode='upstreamfail';r=await request('/api/catalog/rawg/games');assert.equal(r.status,502);assert.doesNotMatch(await r.text(),/private-/);
 mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+other+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.hostname==='api.sightengine.com'),false);
 r=await request('/api/media/upload?bucket=group-avatars&path='+other+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.hostname==='api.sightengine.com'),false);

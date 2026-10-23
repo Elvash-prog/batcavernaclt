@@ -1,6 +1,6 @@
 import {igdbCatalog} from './igdb.js';
 import {filterCatalog,authenticate} from './handlers.js';
-const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store',...(status===429?{'Retry-After':'60'}:{})}});
 async function catalog(request,env,url){
   if(request.method!=='GET')return json({error:'Método não permitido'},405);
   const match=url.pathname.match(/^\/api\/catalog\/(igdb|rawg|tmdb)\/(.+)$/);
@@ -9,7 +9,7 @@ async function catalog(request,env,url){
   const allowed=provider!=='tmdb'?/^games(?:\/[0-9]+)?$/:/^(?:(?:search\/(?:movie|tv|multi)|discover\/(?:movie|tv))|(?:movie|tv)\/[0-9]+(?:\/watch\/providers)?)$/;
   if(!allowed.test(path))return json({error:'Rota inválida'},404);
   // Legacy /rawg routes remain aliases for installed clients; no RAWG API is called.
-  if(provider!=='tmdb'){try{await authenticate(request,env);return await igdbCatalog(env,url,path,provider==='rawg')}catch(e){return json({error:e.message==='RATE_LIMIT'?'Aguarde um instante.':'Sessão inválida.'},e.message==='RATE_LIMIT'?429:401)}}
+  if(provider!=='tmdb'){try{await authenticate(request,env);return await igdbCatalog(env,url,path,provider==='rawg')}catch(e){return json({error:e.message==='RATE_LIMIT'?'Aguarde um instante.':e.message==='UNAUTHORIZED'?'Sessão inválida.':'Serviço temporariamente indisponível.'},e.message==='RATE_LIMIT'?429:e.message==='UNAUTHORIZED'?401:503)}}
   const key=String(env.TMDB_KEY||'').trim().replace(/^Bearer\s+/i,'');
   if(!env.SUPABASE_URL||!env.SUPABASE_ANON_KEY||!key)return json({error:'Integração não configurada'},503);
   const auth=request.headers.get('Authorization')||'';
@@ -34,6 +34,7 @@ async function catalog(request,env,url){
     const data=await response.json();
     const filtered=filterCatalog(data);return filtered instanceof Response?filtered:json(filtered);
   }catch(e){
+    if(e.message==='CONFIG')return json({error:'Serviço temporariamente indisponível.'},503);
     if(e.message==='UNAUTHORIZED')return json({error:'Sessão inválida. Entre novamente.'},401);if(e.message==='RATE_LIMIT')return json({error:'Aguarde um minuto antes de pesquisar novamente.'},429);const timeout=e&&['TimeoutError','AbortError'].includes(e.name);
     return json({error:timeout?'A consulta demorou demais. Tente novamente.':etapa==='auth'?'Não foi possível validar a conexão da conta.':etapa==='response'?'O catálogo retornou uma resposta inválida.':'Não foi possível conectar ao catálogo. Tente novamente.',code:timeout?'CATALOG_TIMEOUT':etapa==='auth'?'AUTH_CONNECTION_FAILED':etapa==='response'?'CATALOG_INVALID_RESPONSE':'CATALOG_CONNECTION_FAILED'},502);
   }
