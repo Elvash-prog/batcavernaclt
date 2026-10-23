@@ -62,7 +62,8 @@ def verify(archive):
   for member in tar.getmembers():
    path=pathlib.PurePosixPath(member.name)
    if path.is_absolute() or '..' in path.parts or member.issym() or member.islnk():raise ValueError('Caminho inseguro no backup')
-   if not member.isfile():continue
+   if member.isdir():continue
+   if not member.isfile():raise ValueError('Tipo de arquivo inseguro no backup')
    name=path.as_posix().removeprefix('./')
    if name in members:raise ValueError('Arquivo duplicado')
    members[name]=member
@@ -70,7 +71,9 @@ def verify(archive):
   if meta.get('format')!=1 or meta.get('completed') is not True or meta.get('project')!=PROJECT:raise ValueError('Manifesto inválido')
   expected={'snapshot.json'}
   for item in meta['files']:
-   name=item['path'];expected.add(name);member=members[name]
+   name=item['path']
+   if name in expected:raise ValueError('Entrada duplicada no manifesto')
+   expected.add(name);member=members[name]
    if member.size!=item['bytes']:raise ValueError('Tamanho inválido')
    h=hashlib.sha256()
    with tar.extractfile(member)as source:
@@ -82,9 +85,15 @@ def verify(archive):
   with tar.extractfile(members['storage-index.json'])as source:index=json.load(source)
   if len(index['objects'])!=meta['storage_objects']:raise ValueError('Contagem Storage inválida')
   recorded={item['path']:item for item in meta['files']}
+  identities=set();object_files=set()
   for item in index['objects']:
+   identity=(item['bucket'],item['name']);filename=item['file']
+   if identity in identities or filename in object_files:raise ValueError('Objeto Storage duplicado')
+   if not isinstance(filename,str) or not filename.startswith('objects/') or pathlib.PurePosixPath(filename).parent.as_posix()!='objects':raise ValueError('Caminho Storage inválido')
+   identities.add(identity);object_files.add(filename)
    saved=recorded[item['file']]
    if saved['sha256']!=item['sha256'] or saved['bytes']!=item['bytes']:raise ValueError('Objeto Storage inconsistente')
+  if object_files!={name for name in recorded if name.startswith('objects/')}:raise ValueError('Objeto Storage não inventariado')
  return {'verified_files':len(meta['files']),'storage_objects':meta['storage_objects']}
 
 def main():

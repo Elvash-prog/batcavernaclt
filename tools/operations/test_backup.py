@@ -18,6 +18,33 @@ class RecoveryTests(unittest.TestCase):
   with tempfile.TemporaryDirectory()as t:
    root=pathlib.Path(t);folder=self.fixture(root);(folder/'data.sql').unlink();archive=root/'snapshot.tar.gz';self.pack(folder,archive)
    with self.assertRaises((KeyError,ValueError)):backup.verify(archive)
+ def test_duplicate_manifest_entry_rejected(self):
+  with tempfile.TemporaryDirectory()as t:
+   root=pathlib.Path(t);folder=self.fixture(root);meta=json.loads((folder/'snapshot.json').read_text());meta['files'].append(meta['files'][0]);(folder/'snapshot.json').write_text(json.dumps(meta));archive=root/'snapshot.tar.gz';self.pack(folder,archive)
+   with self.assertRaisesRegex(ValueError,'duplicada'):backup.verify(archive)
+ def storage_fixture(self,folder):
+  (folder/'objects').mkdir();target=folder/'objects'/'test.bin';target.write_bytes(b'synthetic media')
+  item={'bucket':'private','name':'image.png','file':'objects/test.bin','sha256':backup.digest(target),'bytes':target.stat().st_size}
+  return item
+ def test_storage_inventory_must_match_saved_objects(self):
+  for case in ['valid','duplicate_identity','shared_file','unlisted','sql_as_media']:
+   with self.subTest(case=case),tempfile.TemporaryDirectory()as t:
+    root=pathlib.Path(t);folder=self.fixture(root);item=self.storage_fixture(folder);items=[item]
+    if case=='duplicate_identity':items.append(dict(item))
+    if case=='shared_file':items.append({**item,'name':'other.png'})
+    if case=='unlisted':items=[]
+    if case=='sql_as_media':items=[{**item,'file':'data.sql','sha256':backup.digest(folder/'data.sql'),'bytes':(folder/'data.sql').stat().st_size}]
+    (folder/'storage-index.json').write_text(json.dumps({'buckets':[],'objects':items}));backup.manifest(folder,len(items));archive=root/'snapshot.tar.gz';self.pack(folder,archive)
+    if case=='valid':self.assertEqual(backup.verify(archive)['storage_objects'],1)
+    else:
+     with self.assertRaises(ValueError):backup.verify(archive)
+ def test_special_archive_member_rejected(self):
+  with tempfile.TemporaryDirectory()as t:
+   root=pathlib.Path(t);folder=self.fixture(root);archive=root/'snapshot.tar.gz';self.pack(folder,archive)
+   with tarfile.open(root/'unsafe.tar.gz','w:gz')as target,tarfile.open(archive,'r:gz')as source:
+    for member in source:target.addfile(member,source.extractfile(member))
+    special=tarfile.TarInfo('pipe');special.type=tarfile.FIFOTYPE;target.addfile(special)
+   with self.assertRaisesRegex(ValueError,'Tipo de arquivo'):backup.verify(root/'unsafe.tar.gz')
  @unittest.skipUnless(shutil.which('gpg'),'GnuPG required')
  def test_encrypted_fixture_can_be_recovered(self):
   with tempfile.TemporaryDirectory()as t:

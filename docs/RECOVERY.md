@@ -32,6 +32,8 @@ Manter a cópia criptografada fora do computador de trabalho em um destino priva
 
 O workflow `Segurança e recuperação beta` usa PostgreSQL 17 em um contêiner isolado, dados sintéticos, exportação `pg_dump`, restauração em um segundo banco e repetição das verificações de permissões e bloqueios. O teste Python verifica criptografia/descriptografia e rejeição de arquivos corrompidos ou incompletos. Nenhum dado de usuário é exportado pelos testes.
 
+A verificação do pacote também rejeita entradas duplicadas no manifesto, arquivos especiais no TAR, objetos repetidos no índice, dois objetos apontando para o mesmo arquivo, referências a SQL como mídia e arquivos de mídia ausentes do índice. Isso evita aceitar como completo um inventário internamente inconsistente. Hashes conferem integridade interna; não comprovam a origem de um pacote obtido de terceiros. Use o arquivo criptografado guardado no destino privado e confira seu hash registrado na exportação.
+
 Isso valida o mecanismo e as migrações cobertas pelas fixtures. **Ainda é necessário fazer um backup real e ensaiar sua restauração em um ambiente Supabase de teste autorizado.** Não fazer esse ensaio em produção. Não criar um projeto ou uma branch com cobrança sem decisão do responsável.
 
 Para uma recuperação real:
