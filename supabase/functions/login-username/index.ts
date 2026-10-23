@@ -1,13 +1,17 @@
 // Login seguro por nome de usuário para clientes nativos.
 import {readLimitedJson,BodyLimitError} from '../_shared/request-security.js';
 import {checkLoginRate} from '../_shared/login-rate.js';
+import {securityReporter} from '../_shared/security-events.js';
 // A chave service_role permanece somente nos segredos da Edge Function.
 const SB_URL = Deno.env.get('SUPABASE_URL') || '';
 const SB_ANON = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SB_SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const reportSecurity=securityReporter();
 
 function reply(data: unknown, status = 200, extra:Record<string,string>={}) {
-  return new Response(JSON.stringify(data), {
+  try{reportSecurity({p_service:'login-username',p_route:'auth_login',p_status:status,p_elapsed:0});}catch{}
+  const payload=status===401?{code:'invalid_credentials',message:'Usuário ou senha inválidos.'}:data;
+  return new Response(JSON.stringify(payload), {
     status,
     headers: {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...extra}
   });

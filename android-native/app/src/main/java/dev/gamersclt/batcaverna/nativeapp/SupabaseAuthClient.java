@@ -42,7 +42,7 @@ public final class SupabaseAuthClient {
                 byte[] body=new JSONObject().put("username",username).put("password",password).toString().getBytes(StandardCharsets.UTF_8); try(OutputStream out=c.getOutputStream()){out.write(body);}
                 int code=c.getResponseCode(); InputStream in=code<400?c.getInputStream():c.getErrorStream(); String response=read(in);
                 if(code>=200&&code<300){ JSONObject auth=new JSONObject(response); saveSession(auth,remember); ok=true; message="Sessão iniciada."; }
-                else { try{ JSONObject json=new JSONObject(response); message=json.optString("error",json.optString("error_description",json.optString("msg",message))); }catch(Exception ignored){} }
+                else { try{ JSONObject json=new JSONObject(response); message=ApiErrorPolicy.message(json.optString("code",json.optString("error_code",json.optString("error",""))),code); }catch(Exception ignored){message=ApiErrorPolicy.message("",code);} }
                 }finally{c.disconnect();}
             }catch(Exception e){ message="Sem conexão. Tente novamente."; }
             boolean result=ok; String finalMessage=message; new Handler(Looper.getMainLooper()).post(() -> callback.done(result,finalMessage));
@@ -69,7 +69,7 @@ public final class SupabaseAuthClient {
                     JSONObject body=new JSONObject().put("email",email).put("password",password).put("data",new JSONObject().put("username",username).put("nome",name));
                     try(OutputStream out=c.getOutputStream()){out.write(body.toString().getBytes(StandardCharsets.UTF_8));}int code=c.getResponseCode();String response=read(code<400?c.getInputStream():c.getErrorStream());JSONObject auth=new JSONObject(response);
                     if(code>=200&&code<300){if(!auth.optString("access_token","").isEmpty()){saveSession(auth,true);success=true;message="Perfil criado.";}else message="Confira seu e-mail para confirmar o cadastro e depois entre.";}
-                    else message=auth.optString("msg",auth.optString("error_description",message));
+                    else message=ApiErrorPolicy.message(auth.optString("code",auth.optString("error_code",auth.optString("error",""))),code);
                 }finally{c.disconnect();}
             }catch(Exception ignored){message="Não foi possível criar o perfil. Verifique a conexão e tente novamente.";}
             boolean ok=success;String result=message;new Handler(Looper.getMainLooper()).post(()->callback.done(ok,result));executor.shutdown();
