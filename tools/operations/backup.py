@@ -6,6 +6,11 @@ import argparse,datetime,getpass,hashlib,json,os,pathlib,shutil,subprocess,tarfi
 PROJECT='luoqlhgfmixvfqbfcdoc'
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 
+class RejectStorageRedirects(urllib.request.HTTPRedirectHandler):
+ def redirect_request(self,request,response,code,message,headers,new_url):
+  # Administrative headers must never be forwarded to a redirect target.
+  raise RuntimeError('Redirecionamento inesperado do Storage. Exportação interrompida sem reenviar credenciais.')
+
 def digest(path):
  h=hashlib.sha256()
  with path.open('rb') as source:
@@ -19,10 +24,11 @@ def call(args):
 
 def storage_export(folder,key,max_bytes):
  base='https://'+PROJECT+'.supabase.co/storage/v1';headers={'apikey':key,'Authorization':'Bearer '+key};used=0;index=[]
+ opener=urllib.request.build_opener(RejectStorageRedirects())
  def request(path,body=None):
   request_headers=dict(headers)
   if body is not None:request_headers['Content-Type']='application/json'
-  return urllib.request.urlopen(urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers=request_headers),timeout=60)
+  return opener.open(urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers=request_headers),timeout=60)
  def read_json(path,body=None):
   with request(path,body)as response:return json.load(response)
  buckets=read_json('/bucket');(folder/'objects').mkdir(parents=True)

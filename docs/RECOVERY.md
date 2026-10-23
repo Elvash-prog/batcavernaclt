@@ -26,6 +26,8 @@ O login do CLI ocorre pelo mecanismo oficial. Se ele pedir a senha do banco, inf
 
 O GnuPG pede uma senha de criptografia: guarde-a em um gerenciador de senhas separado do arquivo. Sem ela, a cópia não poderá ser recuperada. O script pede também a descriptografia para conferir o pacote. Só considerar a execução concluída se a saída final informar `encrypted_backup`, `sha256`, `verified_files` e `storage_objects` sem erro. Falha de download, autenticação ou integridade impede essa confirmação.
 
+As requisições administrativas ao Storage recusam redirecionamentos HTTP, inclusive para o mesmo host. Uma resposta de redirecionamento interrompe a exportação antes de reenviar os cabeçalhos administrativos. Não desative essa proteção para concluir um backup: confira a configuração do endpoint e a disponibilidade do serviço.
+
 Manter a cópia criptografada fora do computador de trabalho em um destino privado escolhido pelo responsável. O script não transmite arquivos a nenhum destino de backup. Não programar execuções desassistidas antes de verificar credenciais, armazenamento, retenção e recuperação. Apagar cópias antigas de modo consistente com pedidos de exclusão; o prazo de retenção dessas cópias ainda precisa ser decidido pelo responsável e refletido no aviso público.
 
 ## Ensaio de recuperação

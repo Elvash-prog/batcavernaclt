@@ -1,6 +1,22 @@
-import unittest,tempfile,pathlib,json,tarfile,subprocess,os,shutil
+import unittest,tempfile,pathlib,json,tarfile,subprocess,os,shutil,urllib.request,urllib.response,email.message,io
 import backup
 class RecoveryTests(unittest.TestCase):
+ def test_storage_redirects_never_forward_administrative_headers(self):
+  class Transport(urllib.request.HTTPSHandler):
+   def __init__(self,code,target):super().__init__();self.code=code;self.target=target;self.requests=[]
+   def https_open(self,request):
+    self.requests.append(request)
+    headers=email.message.Message();headers['Location']=self.target
+    response=urllib.response.addinfourl(io.BytesIO(b''),headers,request.full_url,self.code);response.msg='redirect';return response
+  source='https://'+backup.PROJECT+'.supabase.co/storage/v1/bucket'
+  for code in [301,302,303,307,308]:
+   for target in ['https://other.example.invalid/collect','http://'+backup.PROJECT+'.supabase.co/collect',source+'/moved']:
+    with self.subTest(code=code,target=target):
+     transport=Transport(code,target);opener=urllib.request.build_opener(backup.RejectStorageRedirects(),transport)
+     request=urllib.request.Request(source,headers={'Authorization':'Bearer synthetic-administrative-key','apikey':'synthetic-administrative-key'})
+     with self.assertRaisesRegex(RuntimeError,'Redirecionamento inesperado')as error:opener.open(request)
+     self.assertEqual(len(transport.requests),1)
+     self.assertNotIn('synthetic-administrative-key',str(error.exception));self.assertNotIn(target,str(error.exception))
  def fixture(self,root):
   folder=root/'fixture';folder.mkdir()
   for name in ['roles.sql','schema.sql','data.sql','history_schema.sql','history_data.sql','managed_schema.sql']:(folder/name).write_text('-- synthetic fixture only\n')
