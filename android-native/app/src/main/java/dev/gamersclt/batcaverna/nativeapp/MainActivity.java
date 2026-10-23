@@ -59,7 +59,16 @@ public final class MainActivity extends Activity {
     @Override protected void onResume(){super.onResume();foreground=true;AppUpdater.automatic(this);AppUpdater.attach(this);updateHandler.removeCallbacks(updateTick);updateHandler.postDelayed(updateTick,60000);PushSetup.register(this);if(alerts!=null)alerts.foreground(true);if(home!=null)home.setForeground(true);}
     @Override protected void onPause(){foreground=false;updateHandler.removeCallbacks(updateTick);if(alerts!=null)alerts.foreground(false);if(home!=null)home.setForeground(false);super.onPause();}
     public void showLogin(){home=null;login=new LoginView(this);display(login);}
-    public void logout(){notificationRequest++;getIntent().removeExtra("notification_id");getIntent().removeExtra("notification_user");getIntent().removeExtra("notifications");PushSetup.revoke(this);AccountImageLoader.clear();SessionPreferences.get(this).edit().clear().apply();showLogin();}
+    private boolean signingOut;
+    public void logout(){
+        if(signingOut)return;
+        signingOut=true;
+        new SupabaseAuthClient().signOut(getApplicationContext(),(ok,message)->{
+            signingOut=false;
+            if(!ok){android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_LONG).show();return;}
+            notificationRequest++;getIntent().removeExtra("notification_id");getIntent().removeExtra("notification_user");getIntent().removeExtra("notifications");PushSetup.revoke(this);AccountImageLoader.clear();showLogin();
+        });
+    }
 
     @Override public void onBackPressed(){
         if(home!=null&&home.back())return;

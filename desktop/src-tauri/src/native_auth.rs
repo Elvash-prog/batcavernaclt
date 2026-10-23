@@ -43,7 +43,10 @@ pub async fn verify_email_proof(input:EmailProof,state:tauri::State<'_,AppState>
  let token=session["access_token"].as_str().filter(|t|!t.is_empty()).ok_or("O serviço não confirmou a verificação. Solicite outro e-mail.")?;
  let result=async{
   if !session["user"]["email"].as_str().unwrap_or("").eq_ignore_ascii_case(&email){return Err("Este código ou link não pertence ao e-mail informado. Solicite outro se necessário.".to_string());}
-  if input.recovery{request(&state.client,"user",reqwest::Method::PUT,json!({"password":input.password}),Some(token)).await?;}
+  if input.recovery{
+   request(&state.client,"user",reqwest::Method::PUT,json!({"password":input.password}),Some(token)).await?;
+   request(&state.client,"logout?scope=global",reqwest::Method::POST,json!({}),Some(token)).await.map_err(|_|"A senha foi alterada, mas a saída dos outros dispositivos não foi confirmada. Entre com a nova senha e altere-a novamente para tentar encerrar as outras sessões.".to_string())?;
+  }
   Ok(json!({"message":if input.recovery{"Senha atualizada. Entre com sua nova senha."}else{"E-mail confirmado. Você já pode entrar."}}))
  }.await;
  // A proof never replaces the normal session or enters the OS keyring.
