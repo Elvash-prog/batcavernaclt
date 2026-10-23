@@ -24,13 +24,13 @@ try{
  await actor(A);
  await db.query('update perfis set bio=$1,avatar_url=$2,banner_url=$3,steam_id=$4,jogos_destaque=$5::jsonb,conquistas_destaque=$6::jsonb where id=$7',[
   '🎮'.repeat(140),'https://example.test/avatar.jpg','https://example.test/banner.jpg#bc-cover=50,50,100','12345678901234567',JSON.stringify(Array.from({length:8},(_,i)=>'Jogo '+i)),'[0,1,30,31]',A]);checks++;
- for(const [field,bad] of [['nome',''],['nome',' '.repeat(5)],['nome','x'.repeat(41)],['bio','x'.repeat(281)],['steam_id','1'],['steam_id','1234567890123456x'],['status_personalizado','admin'],['titulo_destaque_nivel',-1],['titulo_destaque_nivel',10001]]){
+ for(const [field,bad] of [['nome',''],['nome',' '.repeat(5)],['nome','x'.repeat(41)],['nome','Ana'+' '.repeat(1000)],['bio','x'.repeat(281)],['steam_id','1'],['steam_id','1234567890123456x'],['status_personalizado','admin'],['titulo_destaque_nivel',-1],['titulo_destaque_nivel',10001]]){
   await reject('update perfis set '+field+'=$1 where id=$2',[bad,A]);
  }
  for(const field of ['avatar_url','banner_url'])for(const value of ['http://example.test/img','javascript:alert(1)','data:image/png,evil','https://user:password@example.test/img','https://','https://example.test/\nimage','https://example.test/'+ 'x'.repeat(2048)]){
   await reject('update perfis set '+field+'=$1 where id=$2',[value,A]);
  }
- for(const value of [{},null,Array(9).fill('Jogo'),[{}],[1],[''],['x'.repeat(241)]])await reject('update perfis set jogos_destaque=$1::jsonb where id=$2',[JSON.stringify(value),A]);
+ for(const value of [{},null,Array(9).fill('Jogo'),[{}],[1],[''],['x'.repeat(241)],['Jogo'+' '.repeat(1000)]])await reject('update perfis set jogos_destaque=$1::jsonb where id=$2',[JSON.stringify(value),A]);
  for(const value of [{},null,[0,1,2,3,4],['1'],[null],[-1],[32],[0.5],[999999999999]])await reject('update perfis set conquistas_destaque=$1::jsonb where id=$2',[JSON.stringify(value),A]);
  for(const withTitle of [false,true]){
   const sql=withTitle?'select * from salvar_personalizacao_perfil_clt($1,$2,$3,$4,$5::integer,$6::jsonb,$7::jsonb)':'select * from salvar_personalizacao_perfil_clt($1,$2,$3,$4,$5::jsonb,$6::jsonb)';

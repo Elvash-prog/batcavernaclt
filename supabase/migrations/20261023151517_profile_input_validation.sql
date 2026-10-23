@@ -9,7 +9,7 @@ declare item jsonb; field text; value text; fresh jsonb:=to_jsonb(new); previous
 begin
  if tg_op='UPDATE' then previous:=to_jsonb(old);end if;
  if tg_op='INSERT' or new.nome is distinct from old.nome then
-  if char_length(btrim(coalesce(new.nome,''))) not between 1 and 40 then
+  if btrim(coalesce(new.nome,''))='' or char_length(new.nome)>40 then
    raise exception using errcode='23514',message='Informe um nome de até 40 caracteres.';
   end if;
  end if;
@@ -45,7 +45,7 @@ begin
     raise exception using errcode='23514',message='Selecione até oito jogos.';
    end if;
    for item in select jsonb_array_elements(new.jogos_destaque) loop
-    if jsonb_typeof(item)<>'string' or char_length(btrim(item#>>'{}')) not between 1 and 240 then
+    if jsonb_typeof(item)<>'string' or btrim(item#>>'{}')='' or char_length(item#>>'{}')>240 then
      raise exception using errcode='23514',message='Destaques inválidos.';
     end if;
    end loop;
