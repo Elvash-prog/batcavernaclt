@@ -1,5 +1,5 @@
 // Native API: same ownership, blocking, moderation and quarantine rules as the former Worker.
-const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(status===429?{'Retry-After':'60'}:{})}});
 const SAFE_BUCKETS=new Set(['avatars','group-avatars','feed-media','chat-media','group-chat-media']);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function adultContent(item){
@@ -17,7 +17,10 @@ export async function authenticate(request,env){
  const key=safePublicKey(env.SUPABASE_ANON_KEY);if(!key)throw new Error('CONFIG');
  const r=await fetch(new URL('/auth/v1/user',env.SUPABASE_URL),{headers:{Authorization:auth,apikey:key},redirect:'manual',signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error(r.status===401||r.status===403?'UNAUTHORIZED':'CONFIG');const data=await r.json();if(!UUID.test(data.id||''))throw new Error('UNAUTHORIZED');
  if(data.is_anonymous===true)throw new Error('UNAUTHORIZED');
- if(env.USER_RATE_LIMITER){const limit=await env.USER_RATE_LIMITER.limit({key:'bc139:user:'+data.id});if(!limit.success)throw new Error('RATE_LIMIT')}
+ if(typeof env.USER_RATE_LIMITER?.limit!=='function')throw new Error('CONFIG');
+ let limit;try{limit=await env.USER_RATE_LIMITER.limit({key:'bc139:user:'+data.id})}catch{throw new Error('CONFIG')}
+ if(limit?.success===false)throw new Error('RATE_LIMIT');
+ if(limit?.success!==true)throw new Error('CONFIG');
  return {id:data.id,auth};
 }
 async function service(env,path,body,method='POST'){
