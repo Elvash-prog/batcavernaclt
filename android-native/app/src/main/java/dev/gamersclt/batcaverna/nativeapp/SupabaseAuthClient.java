@@ -11,6 +11,23 @@ import java.util.concurrent.Executors;
 /** Dependency-free Auth client. The public application key is supplied at build time. */
 public final class SupabaseAuthClient {
     public interface Callback { void done(boolean ok, String message); }
+    public void signOut(android.content.Context context,Callback callback){
+        new Thread(()->{
+            boolean ok=false;String message="Não foi possível encerrar a sessão no servidor. Verifique a conexão e tente novamente.";
+            try{
+                synchronized(AuthSession.class){
+                    String token=AuthSession.token(context);
+                    String[] config=loadConfig();
+                    AuthRevocation.revoke(config[0],config[1],token,"local");
+                    SessionPreferences.get(context).edit().clear().apply();
+                    sessionInProcess=false;
+                }
+                ok=true;message="Sessão encerrada.";
+            }catch(Exception ignored){}
+            boolean success=ok;String result=message;
+            new Handler(Looper.getMainLooper()).post(()->callback.done(success,result));
+        },"native-signout").start();
+    }
     public void recover(String email,Callback callback){java.util.concurrent.ExecutorService executor=Executors.newSingleThreadExecutor();executor.execute(()->{boolean success=false;String message="Não foi possível enviar. Tente novamente mais tarde.";try{String[] config=loadConfig();HttpURLConnection c=(HttpURLConnection)new URL(config[0]+"/auth/v1/recover").openConnection();try{c.setInstanceFollowRedirects(false);c.setRequestMethod("POST");c.setDoOutput(true);c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("apikey",config[1]);c.setRequestProperty("Content-Type","application/json");try(OutputStream out=c.getOutputStream()){out.write(new JSONObject().put("email",email).toString().getBytes(StandardCharsets.UTF_8));}success=c.getResponseCode()>=200&&c.getResponseCode()<300;if(success)message="Se o e-mail estiver cadastrado, você receberá um link para recuperar sua senha.";}finally{c.disconnect();}}catch(Exception ignored){}boolean ok=success;String result=message;new Handler(Looper.getMainLooper()).post(()->callback.done(ok,result));executor.shutdown();});}
     public void signIn(String username,String password,Callback callback){signIn(username,password,true,callback);}
     public void signIn(String username,String password,boolean remember,Callback callback){

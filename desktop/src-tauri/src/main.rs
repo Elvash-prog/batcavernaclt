@@ -7,6 +7,7 @@ mod session_persistence;
 mod catalog_disk_cache;
 
 mod native_auth;
+mod auth_revocation;
 mod v06;
 mod desktop_runtime;
 use serde::{Deserialize, Serialize};
@@ -143,6 +144,10 @@ async fn refresh_session(client: &reqwest::Client, refresh_token: &str) -> Resul
     session(serde_json::from_str(&body).map_err(|_| "Sessão inválida.".to_string())?)
 }
 
+async fn revoke_session(client: &reqwest::Client, token: &str, scope: &str) -> Result<(), String> {
+    auth_revocation::revoke(client,SUPABASE_URL,SUPABASE_KEY,token,scope).await
+}
+
 async fn current(state: &AppState) -> Result<Session, String> {
     let _auth_guard=state.auth_gate.lock().await;
     let existing = state.session.lock().map_err(|_| "Sessão indisponível.".to_string())?.clone().ok_or_else(|| "Entre novamente para continuar.".to_string())?;
@@ -275,8 +280,10 @@ async fn recover_password(email: String, state: tauri::State<'_, AppState>) -> R
 async fn change_password(input: PasswordInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     if input.password.len()<12 || input.password.len()>256{return Err("A nova senha precisa ter pelo menos 12 caracteres.".into());}
     let session=current(&state).await?;
-    password_session(&state.client,&session.user.email,&input.current).await.map_err(|_|"A senha atual está incorreta.".to_string())?;
-    value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&json!({"password":input.password})).send().await.map_err(|_|"Não foi possível alterar a senha.".to_string())?).await
+    let _auth_guard=state.auth_gate.lock().await;
+    let result=value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&json!({"password":input.password,"current_password":input.current})).send().await.map_err(|_|"Não foi possível alterar a senha.".to_string())?).await?;
+    revoke_session(&state.client,&session.access_token,"others").await.map_err(|_|"A senha foi alterada, mas não foi possível confirmar a saída dos outros dispositivos. Tente novamente usando a nova senha.".to_string())?;
+    Ok(result)
 }
 
 #[derive(Deserialize)]
@@ -337,7 +344,11 @@ async fn link_retroachievements(username:String,state:tauri::State<'_,AppState>)
 
 #[tauri::command]
 async fn logout(state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    // Refresh before revocation; current() takes auth_gate itself.
+    current(&state).await?;
     let _auth_guard=state.auth_gate.lock().await;
+    let session=state.session.lock().map_err(|_| "Sessão indisponível.".to_string())?.clone().ok_or_else(|| "Entre novamente para continuar.".to_string())?;
+    revoke_session(&state.client,&session.access_token,"local").await?;
     v06::stop();
     clear_keyring();
     session_persistence::clear_pending();
