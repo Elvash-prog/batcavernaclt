@@ -6,6 +6,11 @@ import argparse,datetime,getpass,hashlib,json,os,pathlib,shutil,subprocess,tarfi
 PROJECT='luoqlhgfmixvfqbfcdoc'
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 
+class RejectStorageRedirects(urllib.request.HTTPRedirectHandler):
+ def redirect_request(self,request,response,code,message,headers,new_url):
+  # Administrative headers must never be forwarded to a redirect target.
+  raise RuntimeError('Redirecionamento inesperado do Storage. Exportação interrompida sem reenviar credenciais.')
+
 def digest(path):
  h=hashlib.sha256()
  with path.open('rb') as source:
@@ -13,16 +18,28 @@ def digest(path):
  return h.hexdigest()
 
 def call(args):
- result=subprocess.run(args,cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+ executable=shutil.which(args[0])
+ if not executable:raise RuntimeError('Executável indisponível: '+pathlib.Path(args[0]).name)
+ result=subprocess.run([executable,*args[1:]],cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
  if result.returncode:raise RuntimeError('Falha em '+pathlib.Path(args[0]).name+'. Verifique autenticação, dependências e permissões; a saída remota não foi exposta.')
  return result.stdout
 
+def encrypt_public(archive,encrypted,public_key,home):
+ # CI receives only an armored public key. Never import a private key into it.
+ armored=public_key.read_text(encoding='utf-8-sig').strip()
+ if not armored.startswith('-----BEGIN PGP PUBLIC KEY BLOCK-----') or not armored.endswith('-----END PGP PUBLIC KEY BLOCK-----') or 'PRIVATE KEY BLOCK' in armored:
+  raise ValueError('Forneça somente a chave pública ASCII do backup.')
+ home.mkdir(mode=0o700)
+ call(['gpg','--homedir',str(home),'--batch','--trust-model','always','--recipient-file',str(public_key),'--output',str(encrypted),'--encrypt',str(archive)])
+ if not encrypted.is_file() or not encrypted.stat().st_size:raise RuntimeError('Criptografia não produziu um arquivo.')
+
 def storage_export(folder,key,max_bytes):
- base='https://'+PROJECT+'.supabase.co/storage/v1';headers={'apikey':key,'Authorization':'Bearer '+key};used=0;index=[]
+ base='https://'+PROJECT+'.supabase.co/storage/v1';headers={'apikey':key,**({} if key.startswith('sb_secret_') else {'Authorization':'Bearer '+key})};used=0;index=[]
+ opener=urllib.request.build_opener(RejectStorageRedirects())
  def request(path,body=None):
   request_headers=dict(headers)
   if body is not None:request_headers['Content-Type']='application/json'
-  return urllib.request.urlopen(urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers=request_headers),timeout=60)
+  return opener.open(urllib.request.Request(base+path,data=None if body is None else json.dumps(body).encode(),headers=request_headers),timeout=60)
  def read_json(path,body=None):
   with request(path,body)as response:return json.load(response)
  buckets=read_json('/bucket');(folder/'objects').mkdir(parents=True)
@@ -62,7 +79,8 @@ def verify(archive):
   for member in tar.getmembers():
    path=pathlib.PurePosixPath(member.name)
    if path.is_absolute() or '..' in path.parts or member.issym() or member.islnk():raise ValueError('Caminho inseguro no backup')
-   if not member.isfile():continue
+   if member.isdir():continue
+   if not member.isfile():raise ValueError('Tipo de arquivo inseguro no backup')
    name=path.as_posix().removeprefix('./')
    if name in members:raise ValueError('Arquivo duplicado')
    members[name]=member
@@ -70,7 +88,9 @@ def verify(archive):
   if meta.get('format')!=1 or meta.get('completed') is not True or meta.get('project')!=PROJECT:raise ValueError('Manifesto inválido')
   expected={'snapshot.json'}
   for item in meta['files']:
-   name=item['path'];expected.add(name);member=members[name]
+   name=item['path']
+   if name in expected:raise ValueError('Entrada duplicada no manifesto')
+   expected.add(name);member=members[name]
    if member.size!=item['bytes']:raise ValueError('Tamanho inválido')
    h=hashlib.sha256()
    with tar.extractfile(member)as source:
@@ -82,13 +102,19 @@ def verify(archive):
   with tar.extractfile(members['storage-index.json'])as source:index=json.load(source)
   if len(index['objects'])!=meta['storage_objects']:raise ValueError('Contagem Storage inválida')
   recorded={item['path']:item for item in meta['files']}
+  identities=set();object_files=set()
   for item in index['objects']:
+   identity=(item['bucket'],item['name']);filename=item['file']
+   if identity in identities or filename in object_files:raise ValueError('Objeto Storage duplicado')
+   if not isinstance(filename,str) or not filename.startswith('objects/') or pathlib.PurePosixPath(filename).parent.as_posix()!='objects':raise ValueError('Caminho Storage inválido')
+   identities.add(identity);object_files.add(filename)
    saved=recorded[item['file']]
    if saved['sha256']!=item['sha256'] or saved['bytes']!=item['bytes']:raise ValueError('Objeto Storage inconsistente')
+  if object_files!={name for name in recorded if name.startswith('objects/')}:raise ValueError('Objeto Storage não inventariado')
  return {'verified_files':len(meta['files']),'storage_objects':meta['storage_objects']}
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--output',type=pathlib.Path);parser.add_argument('--verify',type=pathlib.Path);parser.add_argument('--max-storage-mib',type=int,default=256);args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('--output',type=pathlib.Path);parser.add_argument('--verify',type=pathlib.Path);parser.add_argument('--max-storage-mib',type=int,default=256);parser.add_argument('--recipient-file',type=pathlib.Path,help='Chave pública ASCII para criptografia desassistida; a recuperação será verificada separadamente.');args=parser.parse_args()
  if args.verify:print(json.dumps(verify(args.verify)));return
  if not args.output:parser.error('--output deve apontar para um arquivo .tar.gz.gpg fora do repositório')
  destination=args.output.expanduser().resolve()
@@ -98,29 +124,36 @@ def main():
   if not shutil.which(command):raise RuntimeError('Instale '+command+' antes de continuar.')
  linked=ROOT/'supabase/.temp/project-ref'
  if not linked.exists() or linked.read_text().strip()!=PROJECT:raise RuntimeError('Autentique o CLI e vincule o projeto correto conforme docs/RECOVERY.md.')
- key=os.environ.get('BATCAVERNA_BACKUP_SERVICE_KEY') or getpass.getpass('Chave service_role do Storage (entrada oculta; nunca envie no chat): ')
- if not key or key.startswith('sb_publishable_'):raise RuntimeError('É necessária uma chave administrativa, usada somente neste processo local.')
+ key=(os.environ.get('BATCAVERNA_BACKUP_SERVICE_KEY') or getpass.getpass('Chave sb_secret_ do Storage (entrada oculta; nunca envie no chat): ')).strip()
+ if not key.startswith('sb_secret_') or any(c.isspace() for c in key):raise RuntimeError('É necessária uma chave administrativa, usada somente neste processo local.')
  destination.parent.mkdir(parents=True,exist_ok=True)
  with tempfile.TemporaryDirectory(prefix='batcaverna-backup-')as temp:
   private=pathlib.Path(temp);os.chmod(private,0o700);folder=private/'snapshot';folder.mkdir();os.chmod(folder,0o700)
   # No passwords are placed in argv: credentials come from the authenticated CLI session.
   jobs=[('roles.sql',['--role-only']),('schema.sql',[]),('managed_schema.sql',['--schema','auth,storage']),('data.sql',['--data-only','--use-copy','-x','storage.buckets_vectors,storage.vector_indexes']),('history_schema.sql',['--schema','supabase_migrations']),('history_data.sql',['--schema','supabase_migrations','--data-only','--use-copy'])]
-  for filename,flags in jobs:call(['supabase','db','dump','--linked','--file',str(folder/filename),*flags])
+  for filename,flags in jobs:
+   print('Exportando '+filename+'...',flush=True)
+   call(['supabase','db','dump','--linked','--file',str(folder/filename),*flags])
+  print('Exportando objetos do Storage...',flush=True)
   count=storage_export(folder,key,args.max_storage_mib*1024*1024);key='';manifest(folder,count)
   archive=private/'snapshot.tar.gz'
   with tarfile.open(archive,'w:gz')as tar:
    for path in sorted(folder.iterdir()):tar.add(path,arcname=path.name)
-  verify(archive)
+  verified=verify(archive)
+  print('Criptografando e verificando a cópia...',flush=True)
   encrypted=private/'snapshot.gpg'
-  subprocess.run(['gpg','--no-symkey-cache','--symmetric','--cipher-algo','AES256','--output',str(encrypted),str(archive)],check=True)
-  # The operator confirms decryption locally before calling the export usable.
-  restored=private/'verification.tar.gz'
-  subprocess.run(['gpg','--no-symkey-cache','--output',str(restored),'--decrypt',str(encrypted)],check=True)
-  verified=verify(restored)
+  if args.recipient_file:
+   encrypt_public(archive,encrypted,args.recipient_file.expanduser().resolve(),private/'gpg')
+  else:
+   subprocess.run(['gpg','--no-symkey-cache','--symmetric','--cipher-algo','AES256','--output',str(encrypted),str(archive)],check=True)
+   # The operator confirms decryption locally before calling the export usable.
+   restored=private/'verification.tar.gz'
+   subprocess.run(['gpg','--no-symkey-cache','--output',str(restored),'--decrypt',str(encrypted)],check=True)
+   verified=verify(restored)
   with destination.open('xb') as target,encrypted.open('rb') as source:shutil.copyfileobj(source,target)
- print(json.dumps({'encrypted_backup':str(destination),'sha256':digest(destination),**verified},ensure_ascii=False))
+ print(json.dumps({'encrypted_backup':str(destination),'sha256':digest(destination),'decryption_verified':not bool(args.recipient_file),**verified},ensure_ascii=False))
 
 if __name__=='__main__':
  try:main()
  except KeyboardInterrupt:sys.exit('Cancelado; nenhum segredo foi exibido.')
- except Exception as error:sys.exit(str(error) if isinstance(error,(RuntimeError,ValueError)) else 'Falha no backup. A cópia não foi validada; verifique as dependências e consulte o procedimento de recuperação.')
+ except Exception as error:sys.exit(str(error) if isinstance(error,(RuntimeError,ValueError)) else 'Falha no backup ('+type(error).__name__+'). A cópia não foi validada; nenhum detalhe remoto foi exibido.')
