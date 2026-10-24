@@ -17,11 +17,29 @@ def digest(path):
   for part in iter(lambda:source.read(1048576),b''):h.update(part)
  return h.hexdigest()
 
+def failure_category(stderr):
+ # Inspect locally, but emit only fixed labels; never interpolate remote text.
+ message=stderr.decode('utf-8',errors='replace').lower()
+ groups=[
+  ('DB_AUTH',('password authentication failed','sasl authentication failed','sqlstate 28p01','no password supplied','wrong password')),
+  ('DB_PERMISSION',('permission denied for','must be superuser','insufficient_privilege','sqlstate 42501')),
+  ('DB_VERSION',('server version mismatch','aborting because of server version')),
+  ('DOCKER_IMAGE',('failed to pull','pull access denied','manifest unknown','toomanyrequests','error response from daemon: denied')),
+  ('DOCKER_DAEMON',('cannot connect to the docker daemon','is the docker daemon running','permission denied while trying to connect to the docker')),
+  ('TLS',('certificate verify failed','certificate signed by unknown authority','ssl error','tls handshake')),
+  ('NETWORK',('network is unreachable','connection refused','connection timed out','i/o timeout','no such host','could not translate host name','temporary failure in name resolution','context deadline exceeded','dial tcp')),
+  ('API_PERMISSION',('unexpected login role','unauthorized','forbidden','status 401','status 403')),
+  ('LOCAL_SPACE',('no space left on device',)),
+ ]
+ for category,patterns in groups:
+  if any(pattern in message for pattern in patterns):return category
+ return 'UNCLASSIFIED'
+
 def call(args):
  executable=shutil.which(args[0])
  if not executable:raise RuntimeError('Executável indisponível: '+pathlib.Path(args[0]).name)
  result=subprocess.run([executable,*args[1:]],cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
- if result.returncode:raise RuntimeError('Falha em '+pathlib.Path(args[0]).name+'. Verifique autenticação, dependências e permissões; a saída remota não foi exposta.')
+ if result.returncode:raise RuntimeError('Falha em '+pathlib.Path(args[0]).name+' ['+failure_category(result.stderr)+']; codigo '+str(result.returncode)+'. A saída remota foi omitida para proteger credenciais.')
  return result.stdout
 
 def encrypt_public(archive,encrypted,public_key,home):

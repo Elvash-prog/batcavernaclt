@@ -1,6 +1,35 @@
 import unittest,tempfile,pathlib,json,tarfile,subprocess,os,shutil,urllib.request,urllib.response,email.message,io
 import backup
 class RecoveryTests(unittest.TestCase):
+ def test_failure_categories_never_echo_remote_secrets_or_sql(self):
+  samples={
+   'DB_AUTH':'SASL authentication failed: password authentication failed',
+   'DB_PERMISSION':'permission denied for table private_data',
+   'DB_VERSION':'aborting because of server version mismatch',
+   'DOCKER_IMAGE':'failed to pull image: manifest unknown',
+   'DOCKER_DAEMON':'Cannot connect to the Docker daemon',
+   'TLS':'certificate signed by unknown authority',
+   'NETWORK':'dial tcp: network is unreachable',
+   'API_PERMISSION':'API request status 403 Forbidden',
+   'LOCAL_SPACE':'no space left on device',
+   'UNCLASSIFIED':'unexpected diagnostic',
+  }
+  canary='postgresql://private_user:synthetic-canary-password@private.invalid/db SELECT private_data'
+  for expected,remote in samples.items():
+   with self.subTest(category=expected):
+    result=backup.failure_category((remote+' '+canary).encode())
+    self.assertEqual(result,expected)
+    self.assertNotIn('synthetic-canary-password',result)
+    self.assertNotIn('private.invalid',result)
+    self.assertNotIn('SELECT',result)
+  self.assertEqual(backup.failure_category(b'\xff'), 'UNCLASSIFIED')
+ def test_failed_command_does_not_expose_remote_output_or_arguments(self):
+  from unittest.mock import patch
+  canary='synthetic-sensitive-canary'
+  result=subprocess.CompletedProcess(['supabase'],1,stdout=canary.encode(),stderr=('password authentication failed '+canary).encode())
+  with patch.object(backup.shutil,'which',return_value='/usr/bin/supabase'),patch.object(backup.subprocess,'run',return_value=result):
+   with self.assertRaisesRegex(RuntimeError,'DB_AUTH')as error:backup.call(['supabase',canary])
+  self.assertNotIn(canary,str(error.exception))
  def test_storage_redirects_never_forward_administrative_headers(self):
   class Transport(urllib.request.HTTPSHandler):
    def __init__(self,code,target):super().__init__();self.code=code;self.target=target;self.requests=[]
