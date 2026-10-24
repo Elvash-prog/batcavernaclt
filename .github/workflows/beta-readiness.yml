@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --test tests/operational-metrics.mjs tests/security-events.mjs tests/catalog-cache.mjs tests/igdb.mjs tests/native-api.mjs tests/bright-api-security.mjs tests/native-dependencies.mjs
+      - run: node --test tests/api-keys.mjs tests/operational-metrics.mjs tests/security-events.mjs tests/catalog-cache.mjs tests/igdb.mjs tests/native-api.mjs tests/bright-api-security.mjs tests/native-dependencies.mjs
       - name: Instalar dependências do banco de teste isolado
         run: npm install --prefix tests --ignore-scripts --no-package-lock --no-audit --no-fund
       - name: Validar entradas de perfil em PostgreSQL isolado

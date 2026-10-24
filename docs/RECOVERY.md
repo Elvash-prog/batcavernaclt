@@ -101,3 +101,17 @@ O exportador só roda na branch principal. O workflow começa com testes sintét
 ## Pendente
 
 Integrar o workflow revisado, validar a primeira execução real, baixar e descriptografar o resultado, confirmar notificações e só então habilitar a agenda. Monitorar validade da chave pública (23/10/2028), permissões, espaço e disponibilidade das cópias. Não há backup automático ativo confirmado nesta etapa.
+
+## Diagnóstico seguro de exportação
+
+Uma falha de subprocesso informa somente código de saída e uma categoria fixa calculada localmente. Não imprimir stderr/stdout remoto, argumentos de conexão ou saída `--debug` no Actions: eles podem conter credenciais, dados ou detalhes internos. Categoria é indicação para investigar, não comprovação definitiva da causa.
+
+- `DB_AUTH`: conferir a senha do banco no secret `SUPABASE_DB_PASSWORD`, sem alterar a chave do Storage por esse motivo.
+- `DB_PERMISSION` / `API_PERMISSION`: conferir permissões do usuário/token usadas pelo CLI.
+- `DB_VERSION`: conferir compatibilidade entre pg_dump e a versão do servidor.
+- `DOCKER_IMAGE` / `DOCKER_DAEMON`: conferir acesso à imagem e disponibilidade do Docker no runner.
+- `TLS` / `NETWORK`: conferir certificados, resolução DNS, conectividade do runner e restrições de rede do banco.
+- `LOCAL_SPACE`: conferir espaço disponível no runner.
+- `UNCLASSIFIED`: mensagem não reconhecida; não habilitar logs brutos no CI. Investigar em ambiente privado, sem compartilhar credenciais.
+
+Se a execução falhar antes da etapa de upload, nenhum arquivo do Drive terá sido substituído por essa execução. Não habilitar a agenda enquanto não houver backup real verificado e recuperado.

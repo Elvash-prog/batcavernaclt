@@ -24,7 +24,7 @@ export async function authenticate(request,env){
  return {id:data.id,auth};
 }
 async function service(env,path,body,method='POST'){
- const r=await fetch(new URL(path,env.SUPABASE_URL),{method,headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json',Prefer:'return=representation,resolution=merge-duplicates'},body:body===undefined?undefined:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(15000)});
+ const r=await fetch(new URL(path,env.SUPABASE_URL),{method,headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json',Prefer:'return=representation,resolution=merge-duplicates'},body:body===undefined?undefined:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(15000)});
  if(!r.ok)throw new Error('DATABASE');return r.status===204?null:r.json();
 }
 async function limitedText(request,max){const reader=request.body?.getReader();if(!reader)return '';const chunks=[];let size=0;try{while(true){const r=await reader.read();if(r.done)break;size+=r.value.byteLength;if(size>max)throw new Error('SIZE');chunks.push(r.value)}const all=new Uint8Array(size);let pos=0;for(const c of chunks){all.set(c,pos);pos+=c.length}return new TextDecoder().decode(all)}finally{await reader.cancel().catch(()=>{})}}
@@ -48,7 +48,7 @@ async function moderate(env,fileOrUrl,video=false){
 function moderationReady(env){return !!(env.SUPABASE_SERVICE_ROLE_KEY&&env.SIGHTENGINE_API_USER&&env.SIGHTENGINE_API_SECRET);}
 async function record(env,bucket,path,owner,status){return service(env,'/rest/v1/clt_media_reviews?on_conflict=bucket,path',{bucket,path,owner_id:owner,status,checked_at:new Date().toISOString()},'POST');}
 async function uploadApproved(env,bucket,path,blob,type,owner){
- const r=await fetch(new URL('/storage/v1/object/'+bucket+'/'+path,env.SUPABASE_URL),{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':type,'x-upsert':'false','Cache-Control':'max-age=300'},body:blob,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('UPLOAD');await record(env,bucket,path,owner,'approved');
+ const r=await fetch(new URL('/storage/v1/object/'+bucket+'/'+path,env.SUPABASE_URL),{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':type,'x-upsert':'false','Cache-Control':'max-age=300'},body:blob,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('UPLOAD');await record(env,bucket,path,owner,'approved');
 }
 function mediaError(e){const code=e.message;return response({error:code==='UNAUTHORIZED'?'Sua sessão ou permissão não permite esta operação.':code==='ADULT_CONTENT'?'O arquivo foi bloqueado por conter nudez ou conteúdo sexual.':code==='RATE_LIMIT'?'Muitas solicitações. Aguarde um minuto.':code==='TARGET'?'Destino de upload inválido.':code==='SIZE'?'O arquivo ultrapassa o limite permitido.':code==='FORMAT'?'Formato de arquivo inválido.':'A análise ou o armazenamento não foi concluído. O arquivo não foi liberado.'},code==='UNAUTHORIZED'?401:code==='RATE_LIMIT'?429:code==='ADULT_CONTENT'||code==='TARGET'||code==='FORMAT'?422:code==='SIZE'?413:503);}
 export async function mediaUpload(request,env){

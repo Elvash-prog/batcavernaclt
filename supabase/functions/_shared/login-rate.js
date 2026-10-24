@@ -9,7 +9,7 @@ export async function loginRateKeys(request,username,secret){
 }
 export async function checkLoginRate(request,username,base,secret,transport=fetch){
  const p_keys=await loginRateKeys(request,username,secret);
- const response=await transport(base+'/rest/v1/rpc/clt_login_rate_limit',{method:'POST',headers:{apikey:secret,authorization:'Bearer '+secret,'content-type':'application/json'},body:JSON.stringify({p_keys}),redirect:'error',signal:AbortSignal.timeout(4000)});
+ const response=await transport(base+'/rest/v1/rpc/clt_login_rate_limit',{method:'POST',headers:{apikey:secret,'content-type':'application/json'},body:JSON.stringify({p_keys}),redirect:'error',signal:AbortSignal.timeout(4000)});
  if(!response.ok)throw new Error('LOGIN_RATE_UNAVAILABLE');
  const allowed=await response.json();if(typeof allowed!=='boolean')throw new Error('LOGIN_RATE_UNAVAILABLE');
  return allowed;

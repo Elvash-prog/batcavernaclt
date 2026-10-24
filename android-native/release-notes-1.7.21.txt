@@ -1,0 +1,8 @@
+BatCaverna CLT Android 1.7.21
+
+BatCaverna CLT — atualização de segurança
+
+- Encerramento de sessão confirmado pelo servidor e revogação das outras sessões após troca de senha.
+- Mensagens de erro sem detalhes internos do servidor.
+- Compatibilidade com as chaves atuais do backend e atualização das dependências TLS no Windows.
+- Validação adicional de dados de perfil no servidor e reforço dos limites de requisições.

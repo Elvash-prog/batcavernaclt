@@ -1,7 +1,8 @@
+import {backendKeys} from '../../../supabase/functions/_shared/api-keys.js';
 // Supabase Edge Function: android-push. Deploy with JWT verification disabled,
 // because the Database Webhook authenticates through a separate server secret.
 const env = (key: string) => { const value = Deno.env.get(key); if (!value) throw new Error(`Missing ${key}`); return value; };
-const base = env("SUPABASE_URL"), admin = env("SUPABASE_SERVICE_ROLE_KEY");
+const base = env("SUPABASE_URL"), admin = backendKeys(name=>Deno.env.get(name)).secretKey;
 const encode = (value: Uint8Array) => btoa(String.fromCharCode(...value)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 const json64 = (v: unknown) => encode(new TextEncoder().encode(JSON.stringify(v)));
 let oauth: {token: string, expires: number} | undefined;
@@ -16,10 +17,11 @@ async function firebaseToken(account: {private_key: string,client_email: string}
  if(!r.ok)throw new Error("OAuth unavailable");const data=await r.json();if(typeof data.access_token!=="string")throw new Error("Invalid OAuth response");oauth={token:data.access_token,expires:Date.now()+Math.min(3600,Number(data.expires_in)||3600)*1000};return oauth.token;
 }
 async function sameSecret(provided: string): Promise<boolean> {const hash=async(s:string)=>new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)));const a=await hash(provided),b=await hash(env("ANDROID_PUSH_WEBHOOK_SECRET"));let difference=0;for(let i=0;i<a.length;i++)difference|=a[i]^b[i];return difference===0;}
-async function rest(path:string,method="GET"){const r=await fetch(base+"/rest/v1/"+path,{method,headers:{apikey:admin,Authorization:`Bearer ${admin}`},signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error("Database unavailable");return method==="DELETE"?[]:await r.json();}
+async function rest(path:string,method="GET"){const r=await fetch(base+"/rest/v1/"+path,{method,headers:{apikey:admin},signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error("Database unavailable");return method==="DELETE"?[]:await r.json();}
 Deno.serve(async(request:Request)=>{
  try{
   if(request.method!=="POST"||!await sameSecret(request.headers.get("x-android-push-secret")||""))return new Response("Unauthorized",{status:401});
+  if(!admin)return new Response("Push unavailable",{status:503});
   const raw=await request.text();if(raw.length>65536)return new Response("Too large",{status:413});const event=JSON.parse(raw);
   if(event.type!=="INSERT"||event.table!=="notificacoes"||event.schema!=="public")return new Response("Ignored");
   const id=String(event.record?.id||"");if(!/^[a-zA-Z0-9_-]{1,100}$/.test(id))return new Response("Invalid event",{status:400});

@@ -96,7 +96,7 @@ async fn value(response: reqwest::Response) -> Result<Value, String> {
 }
 
 fn auth(client: &reqwest::Client, path: &str) -> reqwest::RequestBuilder {
-    client.post(format!("{SUPABASE_URL}{path}")).header("apikey", SUPABASE_KEY).bearer_auth(SUPABASE_KEY).header("content-type", "application/json")
+    client.post(format!("{SUPABASE_URL}{path}")).header("apikey", SUPABASE_KEY).header("content-type", "application/json")
 }
 
 async fn resolve_email(client: &reqwest::Client, identifier: &str) -> Result<String, String> {

@@ -88,13 +88,13 @@ jobs:
       - name: Preparar artefatos de diagnóstico
         run: |
           mkdir -p build/delivery
-          cp app/build/outputs/apk/release/app-release-unsigned.apk build/delivery/BatCaverna-1.7.20-ci.apk
+          cp app/build/outputs/apk/release/app-release-unsigned.apk build/delivery/BatCaverna-1.7.21-ci.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/delivery/
           cp "$ANDROID_HOME/build-tools/35.0.0/aapt" build/delivery/
       - name: Publicar build de diagnóstico
         uses: actions/upload-artifact@v4
         with:
-          name: BatCaverna-Android-1.7.20-build
+          name: BatCaverna-Android-1.7.21-build
           path: android-native/build/delivery/
           retention-days: 30
       - name: Publicar release Android assinada

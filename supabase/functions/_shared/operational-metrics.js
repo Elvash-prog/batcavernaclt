@@ -15,4 +15,4 @@ export function instrument(handler,{record,background=task=>{void task.catch(()=
   return response;
  };
 }
-export function metricRecorder(env){return async metric=>{if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY)return;await fetch(env.SUPABASE_URL+'/rest/v1/rpc/clt_record_operational_metric',{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'content-type':'application/json'},body:JSON.stringify(metric),signal:AbortSignal.timeout(3000),redirect:'error'});};}
+export function metricRecorder(env){return async metric=>{if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY)return;await fetch(env.SUPABASE_URL+'/rest/v1/rpc/clt_record_operational_metric',{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,'content-type':'application/json'},body:JSON.stringify(metric),signal:AbortSignal.timeout(3000),redirect:'error'});};}
