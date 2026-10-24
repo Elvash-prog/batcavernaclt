@@ -28,8 +28,17 @@ assert.equal((await site.fetch(new Request('https://presentation.test/', {method
 const html = fs.readFileSync('public/index.html', 'utf8');
 assert.doesNotMatch(html, /supabase|config\.js|app\.js|manifest\.webmanifest/i);
 for (const match of html.matchAll(/(?:src|href)="(\/marketing\/[^"#]+)"/g)) assert.ok(fs.existsSync('public' + match[1]), match[1]);
-assert.match(html, /releases\/latest\/download\/BatCaverna-CLT-Windows-setup\.exe/);
-assert.match(html,/releases\/download\/android-v[0-9.]+\/BatCaverna-[0-9.]+\.apk/);
+const downloads=[...html.matchAll(/<a class="download-option(?: android)?" href="([^"]+)"/g)].map(match=>new URL(match[1].replaceAll('&amp;','&')));
+assert.equal(downloads.length,2,'Windows and Android downloads must remain available');
+const officialFiles=['1tWVxsv3OJj_6HYZNcPPjcKT0MjEb_uT-','1_8zuBmrjxylWpMGSFDpDriu5axgvLvAe'];
+for(const [index,url] of downloads.entries()){
+ assert.equal(url.protocol,'https:');
+ assert.equal(url.hostname,'drive.usercontent.google.com');
+ assert.equal(url.pathname,'/download');
+ assert.equal(url.searchParams.get('id'),officialFiles[index],'download must use the configured official Drive file');
+ assert.equal(url.searchParams.get('export'),'download');
+ assert.equal(url.username,'');assert.equal(url.password,'');assert.equal(url.port,'');
+}
 console.log('Public presentation serves approved assets; legacy web application and APIs remain unavailable');
 
 const privacy=await site.fetch(new Request('https://presentation.test/privacidade'),assets);assert.equal(privacy.status,200);assert.equal(served,'/privacidade.html');assert.match(html,/href="\/privacidade"/);
