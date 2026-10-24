@@ -62,6 +62,29 @@ class RecoveryTests(unittest.TestCase):
     special=tarfile.TarInfo('pipe');special.type=tarfile.FIFOTYPE;target.addfile(special)
    with self.assertRaisesRegex(ValueError,'Tipo de arquivo'):backup.verify(root/'unsafe.tar.gz')
  @unittest.skipUnless(shutil.which('gpg'),'GnuPG required')
+ def test_public_key_backup_can_be_recovered_in_separate_keyring(self):
+  with tempfile.TemporaryDirectory()as t:
+   root=pathlib.Path(t);folder=self.fixture(root);archive=root/'snapshot.tar.gz';self.pack(folder,archive)
+   owner=root/'owner';owner.mkdir(mode=0o700)
+   common=['gpg','--homedir',str(owner),'--batch','--pinentry-mode','loopback','--passphrase','']
+   subprocess.run(common+['--quick-generate-key','Synthetic backup fixture <fixture@example.invalid>','default','default','1d'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+   public=root/'public.asc'
+   with public.open('wb')as output:
+    subprocess.run(common+['--armor','--export','fixture@example.invalid'],stdout=output,stderr=subprocess.PIPE,check=True)
+   encrypted=root/'snapshot.gpg';restored=root/'restored.tar.gz'
+   backup.encrypt_public(archive,encrypted,public,root/'ci-public-only')
+   subprocess.run(common+['--output',str(restored),'--decrypt',str(encrypted)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+   self.assertEqual(backup.verify(restored)['verified_files'],7)
+   self.assertEqual(archive.read_bytes(),restored.read_bytes())
+   listing=subprocess.run(['gpg','--homedir',str(root/'ci-public-only'),'--batch','--list-secret-keys','--with-colons'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+   self.assertNotIn(b'sec:',listing.stdout)
+ def test_public_key_mode_rejects_private_key_material(self):
+  with tempfile.TemporaryDirectory()as t:
+   root=pathlib.Path(t);key=root/'private.asc';key.write_text('-----BEGIN PGP PRIVATE KEY BLOCK-----\nsynthetic\n-----END PGP PRIVATE KEY BLOCK-----')
+   with self.assertRaisesRegex(ValueError,'somente a chave pública'):
+    backup.encrypt_public(root/'unused.tar.gz',root/'unused.gpg',key,root/'ci')
+   self.assertFalse((root/'ci').exists())
+ @unittest.skipUnless(shutil.which('gpg'),'GnuPG required')
  def test_encrypted_fixture_can_be_recovered(self):
   with tempfile.TemporaryDirectory()as t:
    root=pathlib.Path(t);folder=self.fixture(root);archive=root/'snapshot.tar.gz';self.pack(folder,archive);home=root/'gpg';home.mkdir(mode=0o700);env={**os.environ,'GNUPGHOME':str(home)}

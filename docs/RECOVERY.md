@@ -6,13 +6,13 @@ O teste em dois computadores foi concluído com sucesso pelo responsável em 18/
 
 No Free, não presumir disponibilidade dos backups diários dos planos pagos. O procedimento abaixo faz uma exportação própria, somente de leitura, sem pausar o projeto e sem restaurar nada em produção. Acesso autenticado ao CLI e ao Storage precisa ser configurado pelo responsável. Nenhuma senha ou chave deve ser enviada em chat, issue, commit ou log.
 
-`tools/operations/backup.py` exporta roles, esquema, dados, histórico de migrações, uma referência dos esquemas gerenciados auth/storage e os objetos do Storage. Faz inventário com hashes, criptografa com GnuPG/AES-256 e pede uma verificação de descriptografia. A cópia final é salva fora do repositório. O limite inicial de download de mídias é 256 MiB e uma exportação incompleta falha; ele pode ser ajustado explicitamente. O inventário conferido nesta revisão tinha 65 objetos, aproximadamente 63 MiB, mas o tamanho muda com o uso.
+`tools/operations/backup.py` exporta roles, esquema, dados, histórico de migrações, uma referência dos esquemas gerenciados auth/storage e os objetos do Storage. Faz inventário com hashes, criptografa com GnuPG (AES-256 no modo manual por senha) e pede uma verificação de descriptografia nesse modo. A cópia final é salva fora do repositório. O limite inicial de download de mídias é 256 MiB e uma exportação incompleta falha; ele pode ser ajustado explicitamente. O inventário conferido nesta revisão tinha 65 objetos, aproximadamente 63 MiB, mas o tamanho muda com o uso.
 
 Arquivos SQL do banco não contêm os bytes das imagens e vídeos. Por isso o script também copia o Storage. Segredos das Edge Functions, SMTP, Firebase, chaves de assinatura dos clientes e a chave raiz de criptografia do Supabase Vault precisam de guarda separada e segura. As exportações do banco e das mídias não formam um snapshot atômico entre serviços. Planejar uma janela com pouca escrita e conferir os vínculos entre registros e objetos no ensaio. Não confundir esse pacote com um clone integral e automaticamente restaurável de toda a infraestrutura Supabase.
 
 ## Preparar no computador do responsável
 
-Instalar Python 3, Docker Desktop, Supabase CLI e GnuPG/Gpg4win de fontes oficiais. A revisão verificou a interface do CLI 2.121.0. O CLI e o Docker precisam funcionar no terminal antes de iniciar.
+Instalar Python 3, Docker Desktop, Supabase CLI e GnuPG/Gpg4win de fontes oficiais. O ensaio real e o workflow usam o CLI 2.122.0. O CLI e o Docker precisam funcionar no terminal antes de iniciar.
 
 Dentro do repositório:
 
@@ -36,7 +36,7 @@ O workflow `Segurança e recuperação beta` usa PostgreSQL 17 em um contêiner 
 
 A verificação do pacote também rejeita entradas duplicadas no manifesto, arquivos especiais no TAR, objetos repetidos no índice, dois objetos apontando para o mesmo arquivo, referências a SQL como mídia e arquivos de mídia ausentes do índice. Isso evita aceitar como completo um inventário internamente inconsistente. Hashes conferem integridade interna; não comprovam a origem de um pacote obtido de terceiros. Use o arquivo criptografado guardado no destino privado e confira seu hash registrado na exportação.
 
-Isso valida o mecanismo e as migrações cobertas pelas fixtures. **Ainda é necessário fazer um backup real e ensaiar sua restauração em um ambiente Supabase de teste autorizado.** Não fazer esse ensaio em produção. Não criar um projeto ou uma branch com cobrança sem decisão do responsável.
+Isso valida o mecanismo e as migrações cobertas pelas fixtures. O ensaio real de 24/10/2026 está registrado abaixo e tem escopo limitado. Não fazer ensaios em produção. Não criar um projeto ou uma branch com cobrança sem decisão do responsável.
 
 Para uma recuperação real:
 
@@ -55,6 +55,49 @@ Para uma recuperação real:
 - https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore
 - https://www.gnupg.org/documentation/
 
-## Pendente para fechar a recuperação
+## Ensaio real — 24/10/2026
 
-Configurar o acesso seguro do responsável, executar a primeira exportação real, definir destino/retenção privados e registrar um ensaio real de restauração autorizado. Os acessos disponíveis nesta sessão não oferecem a conexão SQL autenticada exigida pelo CLI nem a chave administrativa para exportar os objetos pelo cliente. Nenhum backup real foi declarado como concluído.
+Executado pelo responsável no Windows, com resultados acompanhados por capturas do terminal:
+
+- Pacote criptografado descriptografado e verificado: 72 arquivos inventariados, incluindo 65 objetos do Storage.
+- Primeiro destino PostgreSQL isolado sem rede: 74 tabelas / 2.505 registros conferidos por contagem, 81 relacionamentos FK validados sem falhas e vínculos entre inventário e objetos conferidos.
+- Segundo destino com serviços Supabase locais: 344 colunas do backup presentes com os mesmos tipos; 18 colunas adicionais pertencentes a tabelas novas do Storage. Dados de public/auth/storage importados preservando as migrações internas do destino. Comparação de 72 tabelas / 2.378 registros sem divergência de quantidade ou conteúdo nesse escopo.
+- Login com senha original, consulta autenticada e logout local responderam 200/200/204.
+- 65 objetos reenviados e baixados pela API administrativa com tamanho e SHA-256 iguais ao inventário; identidade/proprietário dos objetos e configuração dos buckets preservados.
+- Conta comum: 18 arquivos próprios testados, seis baixados sem divergência e 12 ocultados pelas regras existentes. Conferência das funções de aprovação/acesso retornou condições iguais à cópia original: 11 objetos sem aprovação e um em quarentena explicam os bloqueios.
+
+Os serviços de dados foram limitados a uma rede Docker interna e os acessos locais publicados foram vinculados a 127.0.0.1. A produção não foi restaurada. O ensaio não cobre todos os clientes, fluxos de recuperação de senha, Realtime, provedores externos, Vault ou configurações/segredos externos. Tampouco é uma auditoria completa de autorização entre contas distintas.
+
+## Preparação da automação com chave pública
+
+O responsável gerou uma chave de backup com validade até 23/10/2028, exportou as partes pública/privada e testou a recuperação com a cópia privada importada em um chaveiro temporário separado. Somente a parte pública é destinada ao secret `BACKUP_GPG_PUBLIC_KEY` do GitHub; nunca cadastrar a chave privada ou sua senha no runner.
+
+`backup.py --recipient-file CAMINHO_PUBLICO.asc --output CAMINHO_EXTERNO.tar.gz.gpg` permite criptografia desassistida. O script verifica o pacote em claro antes da criptografia e retorna `decryption_verified: false` nesse modo: um runner que possui apenas a chave pública não pode comprovar a descriptografia do resultado. Baixar e descriptografar a primeira cópia produzida pela automação no computador do responsável, conferir os hashes e repetir ensaios periodicamente. O modo manual por senha mantém a verificação de descriptografia e retorna `decryption_verified: true`.
+
+O responsável escolheu sete cópias diárias em 24/10/2026. A pasta privada do Meu Drive e as sete reservas pertencem ao responsável; somente ele e a conta de serviço de backup podem acessá-las. O fluxo atualiza os arquivos existentes, sem criar arquivos pertencentes à conta de serviço e sem alterar compartilhamentos. Nunca usar a pasta pública de instaladores.
+
+## Workflow privado e primeira execução
+
+`.github/workflows/private-backup.yml` usa os seguintes **Actions secrets** em Settings → Secrets and variables → Actions → Secrets:
+
+- `SUPABASE_ACCESS_TOKEN`: token com acesso ao projeto e escopos necessários ao vínculo do CLI; não enviar o valor em mensagens.
+- `SUPABASE_DB_PASSWORD`: senha do banco do projeto de origem.
+- `BATCAVERNA_BACKUP_SERVICE_KEY`: chave moderna `sb_secret_`, destinada ao backup.
+- `BACKUP_GPG_PUBLIC_KEY`: conteúdo completo da chave pública exportada; nunca a chave privada ou sua senha.
+- `GDRIVE_SERVICE_ACCOUNT_JSON`: credencial da conta de serviço autorizada na pasta privada, já usada pelos fluxos existentes.
+
+Depois da revisão e integração na branch principal:
+
+1. Em Actions → Backup privado Supabase → Run workflow, manter a branch principal e escolher `check`. Essa opção verifica configuração, pasta e sete arquivos, sem exportar o banco nem substituir cópias. A checagem não comprova que a senha do banco ou a chave administrativa conseguem exportar os dados.
+2. Executar novamente com `backup`. Conferir todos os jobs e a saída `download_verified: true`. O fluxo exporta, verifica o pacote em claro, criptografa, atualiza uma reserva e baixa novamente o arquivo criptografado para comparar tamanho e SHA-256. A chave privada não é disponibilizada ao runner. Arquivos em claro não são enviados a artifacts do GitHub nem ao Drive.
+3. Baixar a reserva `.tar.gz.gpg` atualizada para um diretório privado fora do repositório. Comparar o SHA-256 com o resultado do job, descriptografar com a chave privada local e executar `python tools/operations/backup.py --verify ARQUIVO_DESCRIPTOGRAFADO.tar.gz`. Só avançar se essa conferência for concluída sem erros. Preservar a chave privada e sua senha separadas do backup.
+4. Conferir as notificações de falha do GitHub Actions na conta do responsável. Alertas de falha não detectam uma execução que nunca iniciou: estabelecer também uma conferência diária da data da última cópia válida.
+5. Somente após a recuperação inicial, criar a **Actions variable** `BACKUP_AUTOMATION_ENABLED` com valor `true`, em Settings → Secrets and variables → Actions → Variables. A agenda é 06:17 UTC (03:17 em São Paulo). Execuções agendadas podem atrasar; não são garantia de horário. Remover a variável ou alterar para `false` interrompe as exportações agendadas, mantendo execução manual disponível.
+
+O exportador só roda na branch principal. O workflow começa com testes sintéticos de integridade, criptografia e upload. A seleção preenche reservas vazias antes de substituir a cópia mais antiga e evita substituir outra reserva quando já há uma cópia verificada na mesma data UTC. Falhas de permissões, upload ou hash impedem marcar a nova cópia como válida. Uma falha durante a substituição pode reduzir temporariamente o número de cópias atuais válidas; manter também uma cópia independente.
+
+**Retenção:** são sete arquivos atuais em rotação, não uma garantia de exclusão após sete dias. O Drive pode conservar revisões anteriores dos arquivos atualizados; o fluxo não as fixa para retenção permanente nem as elimina. Conferir o gerenciamento de versões do Drive, a política de exclusão e o espaço disponível; refletir esse comportamento no aviso de privacidade.
+
+## Pendente
+
+Integrar o workflow revisado, validar a primeira execução real, baixar e descriptografar o resultado, confirmar notificações e só então habilitar a agenda. Monitorar validade da chave pública (23/10/2028), permissões, espaço e disponibilidade das cópias. Não há backup automático ativo confirmado nesta etapa.

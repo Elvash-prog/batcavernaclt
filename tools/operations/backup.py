@@ -24,6 +24,15 @@ def call(args):
  if result.returncode:raise RuntimeError('Falha em '+pathlib.Path(args[0]).name+'. Verifique autenticação, dependências e permissões; a saída remota não foi exposta.')
  return result.stdout
 
+def encrypt_public(archive,encrypted,public_key,home):
+ # CI receives only an armored public key. Never import a private key into it.
+ armored=public_key.read_text(encoding='utf-8-sig').strip()
+ if not armored.startswith('-----BEGIN PGP PUBLIC KEY BLOCK-----') or not armored.endswith('-----END PGP PUBLIC KEY BLOCK-----') or 'PRIVATE KEY BLOCK' in armored:
+  raise ValueError('Forneça somente a chave pública ASCII do backup.')
+ home.mkdir(mode=0o700)
+ call(['gpg','--homedir',str(home),'--batch','--trust-model','always','--recipient-file',str(public_key),'--output',str(encrypted),'--encrypt',str(archive)])
+ if not encrypted.is_file() or not encrypted.stat().st_size:raise RuntimeError('Criptografia não produziu um arquivo.')
+
 def storage_export(folder,key,max_bytes):
  base='https://'+PROJECT+'.supabase.co/storage/v1';headers={'apikey':key,**({} if key.startswith('sb_secret_') else {'Authorization':'Bearer '+key})};used=0;index=[]
  opener=urllib.request.build_opener(RejectStorageRedirects())
@@ -105,7 +114,7 @@ def verify(archive):
  return {'verified_files':len(meta['files']),'storage_objects':meta['storage_objects']}
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--output',type=pathlib.Path);parser.add_argument('--verify',type=pathlib.Path);parser.add_argument('--max-storage-mib',type=int,default=256);args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('--output',type=pathlib.Path);parser.add_argument('--verify',type=pathlib.Path);parser.add_argument('--max-storage-mib',type=int,default=256);parser.add_argument('--recipient-file',type=pathlib.Path,help='Chave pública ASCII para criptografia desassistida; a recuperação será verificada separadamente.');args=parser.parse_args()
  if args.verify:print(json.dumps(verify(args.verify)));return
  if not args.output:parser.error('--output deve apontar para um arquivo .tar.gz.gpg fora do repositório')
  destination=args.output.expanduser().resolve()
@@ -130,16 +139,19 @@ def main():
   archive=private/'snapshot.tar.gz'
   with tarfile.open(archive,'w:gz')as tar:
    for path in sorted(folder.iterdir()):tar.add(path,arcname=path.name)
-  verify(archive)
+  verified=verify(archive)
   print('Criptografando e verificando a cópia...',flush=True)
   encrypted=private/'snapshot.gpg'
-  subprocess.run(['gpg','--no-symkey-cache','--symmetric','--cipher-algo','AES256','--output',str(encrypted),str(archive)],check=True)
-  # The operator confirms decryption locally before calling the export usable.
-  restored=private/'verification.tar.gz'
-  subprocess.run(['gpg','--no-symkey-cache','--output',str(restored),'--decrypt',str(encrypted)],check=True)
-  verified=verify(restored)
+  if args.recipient_file:
+   encrypt_public(archive,encrypted,args.recipient_file.expanduser().resolve(),private/'gpg')
+  else:
+   subprocess.run(['gpg','--no-symkey-cache','--symmetric','--cipher-algo','AES256','--output',str(encrypted),str(archive)],check=True)
+   # The operator confirms decryption locally before calling the export usable.
+   restored=private/'verification.tar.gz'
+   subprocess.run(['gpg','--no-symkey-cache','--output',str(restored),'--decrypt',str(encrypted)],check=True)
+   verified=verify(restored)
   with destination.open('xb') as target,encrypted.open('rb') as source:shutil.copyfileobj(source,target)
- print(json.dumps({'encrypted_backup':str(destination),'sha256':digest(destination),**verified},ensure_ascii=False))
+ print(json.dumps({'encrypted_backup':str(destination),'sha256':digest(destination),'decryption_verified':not bool(args.recipient_file),**verified},ensure_ascii=False))
 
 if __name__=='__main__':
  try:main()
