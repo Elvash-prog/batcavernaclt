@@ -1,6 +1,6 @@
 import {authenticate,mediaUpload,mediaVideoReview,mediaPrepare} from './handlers.js';
 import {catalog,steamFree,steamCover} from './routes.js';
-const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
+const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff',...(status===429?{'retry-after':'60'}:{})}});
 export function createHandler(env){
  return async request=>{
   try{

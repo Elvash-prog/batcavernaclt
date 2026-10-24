@@ -1,5 +1,5 @@
 // Native API: same ownership, blocking, moderation and quarantine rules as the former Worker.
-const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(status===429?{'Retry-After':'60'}:{})}});
 const SAFE_BUCKETS=new Set(['avatars','group-avatars','feed-media','chat-media','group-chat-media']);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function adultContent(item){
@@ -17,11 +17,14 @@ export async function authenticate(request,env){
  const key=safePublicKey(env.SUPABASE_ANON_KEY);if(!key)throw new Error('CONFIG');
  const r=await fetch(new URL('/auth/v1/user',env.SUPABASE_URL),{headers:{Authorization:auth,apikey:key},redirect:'manual',signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error(r.status===401||r.status===403?'UNAUTHORIZED':'CONFIG');const data=await r.json();if(!UUID.test(data.id||''))throw new Error('UNAUTHORIZED');
  if(data.is_anonymous===true)throw new Error('UNAUTHORIZED');
- if(env.USER_RATE_LIMITER){const limit=await env.USER_RATE_LIMITER.limit({key:'bc139:user:'+data.id});if(!limit.success)throw new Error('RATE_LIMIT')}
+ if(typeof env.USER_RATE_LIMITER?.limit!=='function')throw new Error('CONFIG');
+ let limit;try{limit=await env.USER_RATE_LIMITER.limit({key:'bc139:user:'+data.id})}catch{throw new Error('CONFIG')}
+ if(limit?.success===false)throw new Error('RATE_LIMIT');
+ if(limit?.success!==true)throw new Error('CONFIG');
  return {id:data.id,auth};
 }
 async function service(env,path,body,method='POST'){
- const r=await fetch(new URL(path,env.SUPABASE_URL),{method,headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json',Prefer:'return=representation,resolution=merge-duplicates'},body:body===undefined?undefined:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(15000)});
+ const r=await fetch(new URL(path,env.SUPABASE_URL),{method,headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json',Prefer:'return=representation,resolution=merge-duplicates'},body:body===undefined?undefined:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(15000)});
  if(!r.ok)throw new Error('DATABASE');return r.status===204?null:r.json();
 }
 async function limitedText(request,max){const reader=request.body?.getReader();if(!reader)return '';const chunks=[];let size=0;try{while(true){const r=await reader.read();if(r.done)break;size+=r.value.byteLength;if(size>max)throw new Error('SIZE');chunks.push(r.value)}const all=new Uint8Array(size);let pos=0;for(const c of chunks){all.set(c,pos);pos+=c.length}return new TextDecoder().decode(all)}finally{await reader.cancel().catch(()=>{})}}
@@ -45,7 +48,7 @@ async function moderate(env,fileOrUrl,video=false){
 function moderationReady(env){return !!(env.SUPABASE_SERVICE_ROLE_KEY&&env.SIGHTENGINE_API_USER&&env.SIGHTENGINE_API_SECRET);}
 async function record(env,bucket,path,owner,status){return service(env,'/rest/v1/clt_media_reviews?on_conflict=bucket,path',{bucket,path,owner_id:owner,status,checked_at:new Date().toISOString()},'POST');}
 async function uploadApproved(env,bucket,path,blob,type,owner){
- const r=await fetch(new URL('/storage/v1/object/'+bucket+'/'+path,env.SUPABASE_URL),{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':type,'x-upsert':'false','Cache-Control':'max-age=300'},body:blob,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('UPLOAD');await record(env,bucket,path,owner,'approved');
+ const r=await fetch(new URL('/storage/v1/object/'+bucket+'/'+path,env.SUPABASE_URL),{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':type,'x-upsert':'false','Cache-Control':'max-age=300'},body:blob,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('UPLOAD');await record(env,bucket,path,owner,'approved');
 }
 function mediaError(e){const code=e.message;return response({error:code==='UNAUTHORIZED'?'Sua sessão ou permissão não permite esta operação.':code==='ADULT_CONTENT'?'O arquivo foi bloqueado por conter nudez ou conteúdo sexual.':code==='RATE_LIMIT'?'Muitas solicitações. Aguarde um minuto.':code==='TARGET'?'Destino de upload inválido.':code==='SIZE'?'O arquivo ultrapassa o limite permitido.':code==='FORMAT'?'Formato de arquivo inválido.':'A análise ou o armazenamento não foi concluído. O arquivo não foi liberado.'},code==='UNAUTHORIZED'?401:code==='RATE_LIMIT'?429:code==='ADULT_CONTENT'||code==='TARGET'||code==='FORMAT'?422:code==='SIZE'?413:503);}
 export async function mediaUpload(request,env){

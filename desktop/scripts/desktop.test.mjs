@@ -4,6 +4,34 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const read = path => fs.readFileSync(new URL('../'+path, import.meta.url), 'utf8');
 
+test('logout mostra falha de revogação e só abre login após sucesso', async () => {
+  const script=read('src/app.js');
+  const handler=script.match(/\$\('#logoutButton'\)\?\.addEventListener\('click',(async\(\)=>\{try\{await api\.logout\(\);showLogin\(\)\}catch\(err\)\{toast\(failure\(err\)\)\}\})\)/)?.[1];
+  assert.ok(handler,'logout precisa tratar falha de rede');
+  for(const rejected of [false,true]){
+    const events=[];
+    const run=vm.runInNewContext('('+handler+')',{
+      api:{logout:async()=>{events.push('revoke');if(rejected)throw Error('offline')}},
+      showLogin:()=>events.push('login'),failure:e=>e.message,toast:text=>events.push(text)
+    });
+    await run();
+    assert.deepEqual(events,rejected?['revoke','offline']:['revoke','login']);
+  }
+});
+
+test('desktop e APK só apagam credenciais após revogação confirmada', () => {
+  const rust=read('src-tauri/src/main.rs');
+  const logout=rust.slice(rust.indexOf('async fn logout('),rust.indexOf('async fn dashboard('));
+  assert.match(logout,/revoke_session\(&state.client,&session.access_token,"local"\)\.await\?;[\s\S]*clear_keyring\(\)/);
+  const password=rust.slice(rust.indexOf('async fn change_password('),rust.indexOf('struct EmailInput'));
+  assert.match(password,/current_password/);
+  assert.doesNotMatch(password,/password_session\(/);
+  assert.match(password,/revoke_session\(&state.client,&session.access_token,"others"\)/);
+  const android=fs.readFileSync(new URL('../../android-native/app/src/main/java/dev/gamersclt/batcaverna/nativeapp/SupabaseAuthClient.java',import.meta.url),'utf8');
+  assert.match(android,/synchronized\(AuthSession.class\)[\s\S]*AuthRevocation.revoke\(config\[0\],config\[1\],token,"local"\);\s*SessionPreferences.get\(context\).edit\(\).clear\(\).apply\(\)/);
+  assert.match(read('src-tauri/src/native_auth.rs'),/logout\?scope=global/);
+});
+
 test('interface desktop é própria e não carrega o site', () => {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url),'utf8'),shell=read('src/AppShell.tsx');
   assert.match(shell, /BATCAVERNA DOS CLTs/);
@@ -238,7 +266,9 @@ test('Rust usa Supabase também para o catálogo e mídia', () => {
 test('login por usuário usa função segura do Supabase', () => {
   const edge = fs.readFileSync(new URL('../../supabase/functions/login-username/index.ts', import.meta.url), 'utf8');
   const rust = read('src-tauri/src/main.rs');
-  assert.match(edge, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(edge, /backendKeys/);
+  assert.match(edge, /SB_SERVICE = apiKeys\.secretKey/);
+  assert.doesNotMatch(edge, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(edge, /email_login_por_usuario/);
   assert.match(rust, /\/functions\/v1\/login-username/);
   assert.doesNotMatch(rust, /service_role/);

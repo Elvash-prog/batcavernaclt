@@ -1370,11 +1370,18 @@ try {
   await page.locator('.free-store-section .offer-card img').first().waitFor();
   let offerBox=await page.locator('.free-store-section .offer-card img').first().boundingBox();
   assert.ok(offerBox.height>offerBox.width*1.4,'Ofertas devem respeitar o formato vertical');
-  await page.evaluate(()=>document.body.dataset.cardFormat='landscape');
+  // Change the actual preference: a DOM-only override can be reset by theme sync.
+  await page.locator('#mainNav [data-view="settings"]').click();
+  await page.locator('[data-settings-tab="appearance"]').click();
+  await page.locator('#referenceCardFormat').selectOption('landscape');
+  await page.locator('#mainNav [data-discover-kind="free"]').click();
+  await page.locator('.free-store-section .offer-card img').first().waitFor();
   offerBox=await page.locator('.free-store-section .offer-card img').first().boundingBox();
   assert.ok(offerBox.width>offerBox.height*1.6,'Ofertas devem respeitar o formato horizontal');
   await page.screenshot({path:'preview/free-landscape-check.png'});
-  await page.evaluate(()=>document.body.dataset.cardFormat='poster');
+  await page.locator('#mainNav [data-view="settings"]').click();
+  await page.locator('[data-settings-tab="appearance"]').click();
+  await page.locator('#referenceCardFormat').selectOption('poster');
   await page.locator('#mainNav [data-discover-kind="steam"]').click();
   await page.waitForFunction(() =>
     document.querySelector('#mainNav [data-discover-kind="steam"].active'),
@@ -1439,6 +1446,11 @@ try {
   await page.locator('.editor-overlay form [name="nome"]').waitFor();
   assert.equal(await page.locator('.editor-overlay form [name="nome"]').inputValue(),'Jogo zerado');
   await page.locator('.editor-overlay [data-close]').first().click();
+  // Finish the list/editor scenario through the UI before checking Appearance.
+  for(let remaining=0;remaining<3&&await page.locator('.editor-overlay').count();remaining++){
+    await page.locator('.editor-overlay').last().locator('[data-close]').first().click();
+  }
+  await page.waitForFunction(()=>document.querySelectorAll('.editor-overlay').length===0);
   await page.evaluate(async()=>{await navigate('settings');state.settingsTab='appearance';await renderSettings()});
   await page.locator('[data-theme-preset="Claro"]').click();
   assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('light-theme')),true);

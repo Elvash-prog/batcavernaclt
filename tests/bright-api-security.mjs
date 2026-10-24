@@ -5,14 +5,14 @@ import {stripTypeScriptTypes} from 'node:module';
 const uid='2d3268d1-4993-46d6-abba-340a2ffdd0fa';
 const site='https://batcavernaclt.gamersclt.workers.dev';
 let handler, calls=[], mode='ok';
-const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'test-anon',SUPABASE_SERVICE_ROLE_KEY:'test-service',STEAM_KEY:'test-steam',RETROACHIEVEMENTS_KEY:'test-retro'};
+const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_PUBLISHABLE_KEYS:JSON.stringify({default:'sb_publishable_test_public'}),SUPABASE_SECRET_KEYS:JSON.stringify({batcaverna_backend:'sb_secret_test_service'}),STEAM_KEY:'test-steam',RETROACHIEVEMENTS_KEY:'test-retro'};
 globalThis.Deno={env:{get:k=>env[k]},serve:fn=>{handler=fn}};
 const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
 globalThis.fetch=async (url, options={})=>{
   const u=new URL(url);if(u.pathname==='/rest/v1/rpc/clt_record_operational_metric')return json(null); calls.push({u,options});
   if(u.pathname==='/auth/v1/user') return mode==='forged'?json({},401):json({id:uid,is_anonymous:mode==='anonymous'});
   if(u.pathname==='/rest/v1/rpc/clt_bright_api_limit') {
-    assert.equal(options.headers.apikey,'test-service');
+    assert.equal(options.headers.apikey,'sb_secret_test_service');
     assert.equal(JSON.parse(options.body).p_user_id,uid);
     return mode==='dbfail'?json({},500):json(mode!=='limited');
   }
@@ -31,7 +31,7 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('freeGamesPromotions')) return json({data:{Catalog:{searchStore:{elements:[]}}}});
   if(u.pathname.includes('featuredcategories')) return json({});
   if(u.pathname.includes('/search/results')) return new Response('');
-  if(u.pathname==='/rest/v1/rpc/clt_retro_mutate'){const b=JSON.parse(options.body);assert.equal(b.p_user,uid);assert.equal(options.headers.Authorization,'Bearer test-service');return json({cover_url:b.p_cover||'',game_ids:b.p_remove?[]:[7],hidden_game_ids:b.p_remove?[b.p_remove]:[]});}
+  if(u.pathname==='/rest/v1/rpc/clt_retro_mutate'){const b=JSON.parse(options.body);assert.equal(b.p_user,uid);assert.equal(options.headers.Authorization,undefined);assert.equal(options.headers.apikey,'sb_secret_test_service');return json({cover_url:b.p_cover||'',game_ids:b.p_remove?[]:[7],hidden_game_ids:b.p_remove?[b.p_remove]:[]});}
   if(u.pathname==='/rest/v1/clt_retro_collection'){if(options.method==='POST'){const body=JSON.parse(options.body);assert.equal(body.user_id,uid);return json({})}return json([{cover_url:'',game_ids:[7]}])}
   if(u.pathname.includes('API_GetGameList.php'))return json([{ID:7,Title:'Retro Game',ConsoleName:'SNES',NumAchievements:10}]);
   if(u.pathname.includes('API_GetUserProfile.php')) return json({User:'RetroPlayer',ULID:'00003EMFWR7XB8SDPEHB3K56ZQ',UserPic:'/UserPic/RetroPlayer.png',TotalPoints:123,TotalTruePoints:456});
@@ -40,7 +40,7 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('API_GetGameInfoAndUserProgress.php')) return json({Title:'Retro Game',ConsoleName:'SNES',Achievements:{1:{ID:1,Title:'Start',Description:'Begin',Points:5,BadgeName:'00001',DateEarnedHardcore:'2026-10-15'}}});
   throw new Error('Unexpected simulated URL '+u);
 };
-const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8')).replace("'../_shared/operational-metrics.js'",JSON.stringify(new URL('../supabase/functions/_shared/operational-metrics.js',import.meta.url).href));
+const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8')).replace("'../_shared/api-keys.js'",JSON.stringify(new URL('../supabase/functions/_shared/api-keys.js',import.meta.url).href)).replace("'../_shared/operational-metrics.js'",JSON.stringify(new URL('../supabase/functions/_shared/operational-metrics.js',import.meta.url).href));
 await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 function req(body,opts={}) {
   return new Request('https://test.supabase.co/functions/v1/bright-api',{

@@ -1,13 +1,19 @@
+import {backendKeys} from '../_shared/api-keys.js';
+const apiKeys=backendKeys(name=>Deno.env.get(name));
 // Login seguro por nome de usuário para clientes nativos.
 import {readLimitedJson,BodyLimitError} from '../_shared/request-security.js';
 import {checkLoginRate} from '../_shared/login-rate.js';
-// A chave service_role permanece somente nos segredos da Edge Function.
+import {securityReporter} from '../_shared/security-events.js';
+// A chave administrativa moderna permanece somente nos segredos da Edge Function.
 const SB_URL = Deno.env.get('SUPABASE_URL') || '';
-const SB_ANON = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const SB_SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const SB_ANON = apiKeys.publicKey;
+const SB_SERVICE = apiKeys.secretKey;
+const reportSecurity=securityReporter();
 
 function reply(data: unknown, status = 200, extra:Record<string,string>={}) {
-  return new Response(JSON.stringify(data), {
+  try{reportSecurity({p_service:'login-username',p_route:'auth_login',p_status:status,p_elapsed:0});}catch{}
+  const payload=status===401?{code:'invalid_credentials',message:'Usuário ou senha inválidos.'}:data;
+  return new Response(JSON.stringify(payload), {
     status,
     headers: {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...extra}
   });
@@ -27,14 +33,14 @@ Deno.serve(async request => {
     if(!await checkLoginRate(request,username,SB_URL,SB_SERVICE,fetch))return reply({message:'Muitas tentativas. Aguarde um minuto e tente novamente.'},429,{'Retry-After':'60'});
     const lookup = await fetch(`${SB_URL}/rest/v1/rpc/email_login_por_usuario`, {
       method:'POST', redirect:'error', signal:AbortSignal.timeout(6000),
-      headers:{apikey:SB_SERVICE,authorization:`Bearer ${SB_SERVICE}`,'content-type':'application/json'},
+      headers:{apikey:SB_SERVICE,'content-type':'application/json'},
       body:JSON.stringify({p_usuario:username})
     });
     const email = lookup.ok ? await lookup.json() : null;
     if (typeof email !== 'string' || !email.includes('@')) return reply({message:'Usuário ou senha inválidos.'},401);
     const auth = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
       method:'POST', redirect:'error', signal:AbortSignal.timeout(10000),
-      headers:{apikey:SB_ANON,authorization:`Bearer ${SB_ANON}`,'content-type':'application/json'},
+      headers:{apikey:SB_ANON,'content-type':'application/json'},
       body:JSON.stringify({email,password})
     });
     if (!auth.ok) return reply({message:'Usuário ou senha inválidos.'},401);

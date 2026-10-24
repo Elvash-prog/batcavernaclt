@@ -1,3 +1,5 @@
+import {backendKeys} from '../_shared/api-keys.js';
+const apiKeys=backendKeys(name=>Deno.env.get(name));
 import {instrument,metricRecorder} from '../_shared/operational-metrics.js';
 // BatCaverna — Patch 1.39.3. Deploy as bright-api; authentication is verified below.
 // Run patch-1.39.3-bright-api.sql before deploying this file.
@@ -8,8 +10,8 @@ class ApiError extends Error {
 }
 
 const SB_URL = Deno.env.get("SUPABASE_URL") || "";
-const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY") || "";
-const SB_SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SB_ANON = apiKeys.publicKey;
+const SB_SERVICE = apiKeys.secretKey;
 function response(req: Request, data: unknown, status = 200) {
   const headers: Record<string,string> = {
     "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store",
@@ -131,7 +133,7 @@ function validate(b: any): {body: any, cost:number} {
 }
 async function rateLimit(uid: string, cost: number) {
   const r = await fetch(SB_URL + "/rest/v1/rpc/clt_bright_api_limit", {
-    method:"POST", headers:{"Content-Type":"application/json",apikey:SB_SERVICE,Authorization:"Bearer "+SB_SERVICE},
+    method:"POST", headers:{"Content-Type":"application/json",apikey:SB_SERVICE},
     body:JSON.stringify({p_user_id:uid,p_cost:cost}),signal:AbortSignal.timeout(6000),redirect:"error",
   });
   if (!r.ok) throw new ApiError(503, "Serviço temporariamente indisponível.");
@@ -373,7 +375,7 @@ async function steamGratis(requestSignal: AbortSignal) {
         break;
       }
       case "steamSync": {
-        const headers={apikey:SB_SERVICE,Authorization:"Bearer "+SB_SERVICE,"Content-Type":"application/json"};
+        const headers={apikey:SB_SERVICE,"Content-Type":"application/json"};
         const profiles=await getJson(SB_URL+"/rest/v1/perfis?select=steam_id&id=eq."+uid+"&limit=1",headers);
         const id=profiles[0]?.steam_id;if(!id){out={updated:0,connected:false};break;}
         const filter=b.appids.length?"&steam_appid=in.("+b.appids.join(",")+")":"";
@@ -405,7 +407,7 @@ async function steamGratis(requestSignal: AbortSignal) {
       }
       case "raCollection": case "raSaveCollection": {
         const endpoint=SB_URL+"/rest/v1/clt_retro_collection";
-        const headers={apikey:SB_SERVICE,Authorization:"Bearer "+SB_SERVICE,"Content-Type":"application/json"};
+        const headers={apikey:SB_SERVICE,"Content-Type":"application/json"};
         let row;
         if(b.op==="raSaveCollection"){
           const r=await fetch(SB_URL+"/rest/v1/rpc/clt_retro_mutate",{method:"POST",headers,body:JSON.stringify({p_user:uid,p_add:b.gameId||null,p_remove:b.removeGameId||null,p_cover:b.cover_url??null,p_status_game:b.statusGameId||null,p_status:b.status??null}),signal});

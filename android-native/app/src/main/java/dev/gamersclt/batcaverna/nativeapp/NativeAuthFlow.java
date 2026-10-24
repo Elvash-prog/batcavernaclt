@@ -26,7 +26,12 @@ final class NativeAuthFlow {
      AuthCodeInput input=AuthCodeInput.parse(proof,recovery);JSONObject payload=new JSONObject().put("type",input.type);if(input.hash)payload.put("token_hash",input.token);else payload.put("email",address).put("token",input.token);
      JSONObject session=request("verify","POST",payload,null);token=session.optString("access_token","");JSONObject user=session.optJSONObject("user");
      if(token.isEmpty()||user==null||!address.equalsIgnoreCase(user.optString("email")))throw new Exception("Este código ou link não pertence ao e-mail informado. Solicite outro se necessário.");
-     if(recovery)request("user","PUT",new JSONObject().put("password",password),token);
+     if(recovery){
+      request("user","PUT",new JSONObject().put("password",password),token);
+      String[] config=SupabaseAuthClient.loadConfig();
+      try{AuthRevocation.revoke(config[0],config[1],token,"global");}
+      catch(Exception e){throw new Exception("A senha foi alterada, mas a saída dos outros dispositivos não foi confirmada. Entre com a nova senha e altere-a novamente para tentar encerrar as outras sessões.");}
+     }
      message=recovery?"Senha atualizada. Entre com sua nova senha.":"E-mail confirmado. Você já pode entrar.";
     }ok=true;
    }catch(Exception e){message=e.getMessage();if(message==null||message.length()>250)message="Não foi possível concluir. Tente novamente ou solicite outro e-mail.";}

@@ -1,16 +1,20 @@
+import {backendKeys,keyOnlyFetch} from '../_shared/api-keys.js';
+const apiKeys=backendKeys(name=>Deno.env.get(name));
 import webpush from 'npm:web-push@3.6.7';
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import {readLimitedJson,BodyLimitError,secretMatches,allowedPushEndpoint} from '../_shared/request-security.js';
 
 const reply=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
-const supabase=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+let supabase: ReturnType<typeof createClient> | undefined;
 webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT')!,Deno.env.get('VAPID_PUBLIC_KEY')!,Deno.env.get('VAPID_PRIVATE_KEY')!);
 Deno.serve(async req=>{
  if(req.method!=='POST')return reply({ok:false},405);
  const secret=Deno.env.get('PUSH_WEBHOOK_SECRET');
  if(!secret)return reply({ok:false,error:'Push unavailable'},503);
  if(!await secretMatches(secret,req.headers.get('x-webhook-secret')||''))return reply({ok:false},401);
+ if(!apiKeys.secretKey||!Deno.env.get('SUPABASE_URL'))return reply({ok:false,error:'Push unavailable'},503);
  try{
+  supabase??=createClient(Deno.env.get('SUPABASE_URL')!,apiKeys.secretKey,{global:{fetch:keyOnlyFetch},auth:{persistSession:false,autoRefreshToken:false}});
   const payload=await readLimitedJson(req,65536),id=String(payload?.record?.id||payload?.new_record?.id||payload?.id||'');
   if(!/^[A-Za-z0-9_-]{1,100}$/.test(id))return reply({ok:false},400);
   // The request cannot choose notification text or recipient.
