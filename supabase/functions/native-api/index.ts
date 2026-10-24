@@ -3,7 +3,7 @@ import {igdbProbe} from './igdb.js';
 import {createHandler} from './router.js';
 import {backendKeys} from '../_shared/api-keys.js';
 const env: Record<string,any>={};
-for(const name of ['SUPABASE_URL','IGDB_CLIENT_ID','IGDB_CLIENT_SECRET','TMDB_KEY','SIGHTENGINE_API_USER','SIGHTENGINE_API_SECRET'])env[name]=Deno.env.get(name)||'';
+for(const name of ['SUPABASE_URL','IGDB_CLIENT_ID','IGDB_CLIENT_SECRET','TMDB_KEY','DEEPL_API_KEY','SIGHTENGINE_API_USER','SIGHTENGINE_API_SECRET'])env[name]=Deno.env.get(name)||'';
 const keys=backendKeys(name=>Deno.env.get(name));
 env.SUPABASE_ANON_KEY=keys.publicKey;env.SUPABASE_SERVICE_ROLE_KEY=keys.secretKey;
 // Shared Postgres limiter already used by bright-api; no per-instance-only protection.

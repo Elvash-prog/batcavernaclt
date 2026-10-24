@@ -120,7 +120,7 @@
   if(!hero||out.querySelector('.cavern-stats'))return;
   const cards=[...out.querySelectorAll('.retro-game-card')];
   let got=0,total=0,hard=0;
-  cards.forEach(c=>{const m=c.querySelector('.body p')?.textContent.match(/(\d+)\/(\d+) conquistas · (\d+) Hardcore/);if(m){got+=+m[1];total+=+m[2];hard+=+m[3]}});
+  cards.forEach(c=>{got+=Number(c.dataset.earned)||0;total+=Number(c.dataset.total)||0;hard+=Number(c.dataset.hardcore)||0});
   const points=(hero.querySelector('p')?.textContent.match(/^([\d.,]+) pontos · ([\d.,]+)/)||[]).slice(1);
   const cell=(icon,value,label)=>`<div class="cavern-stat">${svg(icons[icon])}<span><b>${esc(value)}</b><small>${label}</small></span></div>`;
   hero.insertAdjacentHTML('afterend',`<section class="cavern-stats cavern-retro-stats" aria-label="Resumo retrô">${cell('trophy',points[0]||'0','Pontos')}${cell('stats',points[1]||'0','True points')}${cell('library',cards.length,'Jogos')}${cell('trophy',`${got}/${total}`,'Conquistas')}${cell('trophy',hard,'Hardcore')}</section>`);

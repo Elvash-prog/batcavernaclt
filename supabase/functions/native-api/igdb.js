@@ -1,4 +1,5 @@
 // All Twitch credentials and application tokens remain inside the Edge Function.
+import {translateDescription} from './translation.js';
 import {adultContent} from './handlers.js';
 import {persistentCatalogQuery} from './catalog-cache.js';
 const clients=new WeakMap();
@@ -95,7 +96,7 @@ export async function igdbCatalog(env,url,path,legacy=false){
  const body=id?fields+`where id = ${Number(id)}; limit 1;`:fields+(search?`search ${JSON.stringify(search.replace(/[\u0000-\u001f]/g,' '))}; `:'sort total_rating_count desc; ')+`where (themes = null | themes != (42))${search?'':' & cover != null & total_rating_count >= 5'}; limit ${size+1}; offset ${(page-1)*size};`;
  try{
   const raw=await client(env).query(body),visible=raw.filter(g=>!blockedGame(g));
-  if(id){const selected=visible.find(g=>Number(g.id)===Number(id));if(!selected)return response({error:'Jogo não encontrado ou conteúdo não permitido.'},404);return response(normalize(selected));}
+  if(id){const selected=visible.find(g=>Number(g.id)===Number(id));if(!selected)return response({error:'Jogo não encontrado ou conteúdo não permitido.'},404);const item=normalize(selected),localized=await translateDescription(env,item.description_raw);item.description_raw=localized.text;item.overview=localized.text;item.description_language=localized.translated?'pt-BR':'original';return response(item);}
   const hasMore=raw.length>size,results=raw.slice(0,size).filter(g=>!blockedGame(g)&&(!search||gameSearchScore(g,search)>0)).sort((a,b)=>search?gameSearchScore(b,search)-gameSearchScore(a,search):0).map(normalize);
   return response({source:'igdb',results,count:(page-1)*size+raw.slice(0,size).length+(hasMore?1:0),total_pages:page+(hasMore?1:0),has_more:hasMore});
  }catch(e){return response({error:e.status===429?'O IGDB atingiu o limite de consultas. Aguarde um instante.':'Não foi possível consultar o IGDB. Tente novamente.',code:e.status===429?'CATALOG_RATE_LIMIT':'CATALOG_UNAVAILABLE'},e.status||502);}

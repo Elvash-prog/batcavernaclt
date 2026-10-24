@@ -180,6 +180,18 @@ public final class AccountRepository {
             return get("/rest/v1/itens?select=id,nome,status,nota,capa,tipo,onde,duracao,updated_at&user_id=eq."+encode(user)+"&categoria=eq.filmes"+suffix+"&order=created_at.desc,id.desc&limit=50&offset="+offset,token,config);
         },callback);
     }
+    public void catalogDescription(JSONObject item,boolean media,Callback cb){execute((user,token,config)->{
+        String name=item.optString("nome");if(name.length()<2||name.length()>180)throw new IOException("Nome indisponível no catálogo.");
+        String kind=LibraryCategory.classify(item.optString("tipo")).equals("filme")?"movie":"tv";
+        JSONObject search=catalogObject(media?"tmdb/search/"+kind+"?language=pt-BR&query="+encode(name):"igdb/games?search="+encode(name),token);
+        JSONArray hits=search.optJSONArray("results");String wanted=catalogTitleKey(name);JSONObject chosen=null;
+        for(int n=0;hits!=null&&n<hits.length();n++){JSONObject hit=hits.optJSONObject(n);if(hit==null)continue;if(wanted.equals(catalogTitleKey(hit.optString("name",hit.optString("title"))))||media&&wanted.equals(catalogTitleKey(hit.optString("original_name",hit.optString("original_title"))))){chosen=hit;break;}}
+        if(chosen==null||chosen.optLong("id")<=0)throw new IOException("Descrição indisponível para este título no catálogo.");
+        JSONObject detail=catalogObject(media?"tmdb/"+kind+"/"+chosen.optLong("id")+"?language=pt-BR":"igdb/games/"+chosen.optLong("id"),token);
+        return new JSONArray().put(detail);
+    },cb);}
+    private static String catalogTitleKey(String value){return java.text.Normalizer.normalize(value,java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]","");}
+    public void gameDescription(long id,Callback callback){if(id<=0){callback.done(null,"Jogo inválido.");return;}execute((user,token,config)->new JSONArray().put(catalogObject("igdb/games/"+id,token)),callback);}
     public void searchGames(String term,Callback callback){
         String q=term==null?"":term.trim();if(q.length()<2||q.length()>100){callback.done(null,"Digite entre 2 e 100 caracteres para buscar.");return;}
         execute((user,token,config)->{
