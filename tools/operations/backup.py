@@ -18,12 +18,14 @@ def digest(path):
  return h.hexdigest()
 
 def call(args):
- result=subprocess.run(args,cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+ executable=shutil.which(args[0])
+ if not executable:raise RuntimeError('Executável indisponível: '+pathlib.Path(args[0]).name)
+ result=subprocess.run([executable,*args[1:]],cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
  if result.returncode:raise RuntimeError('Falha em '+pathlib.Path(args[0]).name+'. Verifique autenticação, dependências e permissões; a saída remota não foi exposta.')
  return result.stdout
 
 def storage_export(folder,key,max_bytes):
- base='https://'+PROJECT+'.supabase.co/storage/v1';headers={'apikey':key,'Authorization':'Bearer '+key};used=0;index=[]
+ base='https://'+PROJECT+'.supabase.co/storage/v1';headers={'apikey':key,**({} if key.startswith('sb_secret_') else {'Authorization':'Bearer '+key})};used=0;index=[]
  opener=urllib.request.build_opener(RejectStorageRedirects())
  def request(path,body=None):
   request_headers=dict(headers)
@@ -113,19 +115,23 @@ def main():
   if not shutil.which(command):raise RuntimeError('Instale '+command+' antes de continuar.')
  linked=ROOT/'supabase/.temp/project-ref'
  if not linked.exists() or linked.read_text().strip()!=PROJECT:raise RuntimeError('Autentique o CLI e vincule o projeto correto conforme docs/RECOVERY.md.')
- key=os.environ.get('BATCAVERNA_BACKUP_SERVICE_KEY') or getpass.getpass('Chave service_role do Storage (entrada oculta; nunca envie no chat): ')
- if not key or key.startswith('sb_publishable_'):raise RuntimeError('É necessária uma chave administrativa, usada somente neste processo local.')
+ key=(os.environ.get('BATCAVERNA_BACKUP_SERVICE_KEY') or getpass.getpass('Chave sb_secret_ do Storage (entrada oculta; nunca envie no chat): ')).strip()
+ if not key.startswith('sb_secret_') or any(c.isspace() for c in key):raise RuntimeError('É necessária uma chave administrativa, usada somente neste processo local.')
  destination.parent.mkdir(parents=True,exist_ok=True)
  with tempfile.TemporaryDirectory(prefix='batcaverna-backup-')as temp:
   private=pathlib.Path(temp);os.chmod(private,0o700);folder=private/'snapshot';folder.mkdir();os.chmod(folder,0o700)
   # No passwords are placed in argv: credentials come from the authenticated CLI session.
   jobs=[('roles.sql',['--role-only']),('schema.sql',[]),('managed_schema.sql',['--schema','auth,storage']),('data.sql',['--data-only','--use-copy','-x','storage.buckets_vectors,storage.vector_indexes']),('history_schema.sql',['--schema','supabase_migrations']),('history_data.sql',['--schema','supabase_migrations','--data-only','--use-copy'])]
-  for filename,flags in jobs:call(['supabase','db','dump','--linked','--file',str(folder/filename),*flags])
+  for filename,flags in jobs:
+   print('Exportando '+filename+'...',flush=True)
+   call(['supabase','db','dump','--linked','--file',str(folder/filename),*flags])
+  print('Exportando objetos do Storage...',flush=True)
   count=storage_export(folder,key,args.max_storage_mib*1024*1024);key='';manifest(folder,count)
   archive=private/'snapshot.tar.gz'
   with tarfile.open(archive,'w:gz')as tar:
    for path in sorted(folder.iterdir()):tar.add(path,arcname=path.name)
   verify(archive)
+  print('Criptografando e verificando a cópia...',flush=True)
   encrypted=private/'snapshot.gpg'
   subprocess.run(['gpg','--no-symkey-cache','--symmetric','--cipher-algo','AES256','--output',str(encrypted),str(archive)],check=True)
   # The operator confirms decryption locally before calling the export usable.
@@ -138,4 +144,4 @@ def main():
 if __name__=='__main__':
  try:main()
  except KeyboardInterrupt:sys.exit('Cancelado; nenhum segredo foi exibido.')
- except Exception as error:sys.exit(str(error) if isinstance(error,(RuntimeError,ValueError)) else 'Falha no backup. A cópia não foi validada; verifique as dependências e consulte o procedimento de recuperação.')
+ except Exception as error:sys.exit(str(error) if isinstance(error,(RuntimeError,ValueError)) else 'Falha no backup ('+type(error).__name__+'). A cópia não foi validada; nenhum detalhe remoto foi exibido.')
