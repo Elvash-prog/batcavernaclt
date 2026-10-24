@@ -266,7 +266,9 @@ test('Rust usa Supabase também para o catálogo e mídia', () => {
 test('login por usuário usa função segura do Supabase', () => {
   const edge = fs.readFileSync(new URL('../../supabase/functions/login-username/index.ts', import.meta.url), 'utf8');
   const rust = read('src-tauri/src/main.rs');
-  assert.match(edge, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(edge, /backendKeys/);
+  assert.match(edge, /SB_SERVICE = apiKeys\.secretKey/);
+  assert.doesNotMatch(edge, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(edge, /email_login_por_usuario/);
   assert.match(rust, /\/functions\/v1\/login-username/);
   assert.doesNotMatch(rust, /service_role/);

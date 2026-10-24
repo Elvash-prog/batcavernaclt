@@ -4,7 +4,7 @@ const apiKeys=backendKeys(name=>Deno.env.get(name));
 import {readLimitedJson,BodyLimitError} from '../_shared/request-security.js';
 import {checkLoginRate} from '../_shared/login-rate.js';
 import {securityReporter} from '../_shared/security-events.js';
-// A chave service_role permanece somente nos segredos da Edge Function.
+// A chave administrativa moderna permanece somente nos segredos da Edge Function.
 const SB_URL = Deno.env.get('SUPABASE_URL') || '';
 const SB_ANON = apiKeys.publicKey;
 const SB_SERVICE = apiKeys.secretKey;
