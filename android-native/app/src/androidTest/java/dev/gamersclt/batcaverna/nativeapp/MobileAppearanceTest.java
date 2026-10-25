@@ -11,7 +11,7 @@ import java.io.FileOutputStream;
 
 /** Captures production components without authenticating or mutating account data. */
 public final class MobileAppearanceTest extends InstrumentationTestCase {
- public void testLoginAndSharedControls() throws {
+ public void testLoginAndSharedControls() throws Exception {
   Intent intent=new Intent(getInstrumentation().getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
   Activity activity=getInstrumentation().startActivitySync(intent);
   try {
