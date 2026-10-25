@@ -117,7 +117,7 @@ struct AccountAccessView:View {
     private func submit() {
         guard !busy else { return }; busy = true; error = nil; message = nil
         Task {
-            defer { busy = false; password = ""; confirmation = ""; proof = "" }
+            defer { busy = false }
             do {
                 if registering {
                     let result = try await backend.register(name:name,username:username,email:email,password:password,confirmation:confirmation)
@@ -126,6 +126,7 @@ struct AccountAccessView:View {
                     let result = try await backend.finishAccountEmail(email:email,proof:proof,recovery:recovering,password:password,confirmation:confirmation)
                     message = result.message; warning = result.warning; completed = true
                 }
+                password = ""; confirmation = ""; proof = ""
             } catch { self.error = error is BackendError ? error.localizedDescription:"Não foi possível concluir. Verifique a conexão e solicite outro e-mail se necessário." }
         }
     }
