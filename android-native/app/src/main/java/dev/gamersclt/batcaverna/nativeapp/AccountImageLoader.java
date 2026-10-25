@@ -15,7 +15,14 @@ final class AccountImageLoader {
  static void clear(){CACHE.evictAll();}
  static void load(ImageView view,String source){load(view,source,"");}
  static void load(ImageView view,String source,String appid){
-  Object oldTicket=view.getTag();Object ticket=new Object();view.setTag(ticket);if(oldTicket!=null)view.setImageResource(R.drawable.app_logo);String[] candidates=CoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid);if(candidates.length==0)return;
+  loadCandidates(view,CoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid));
+ }
+ static void loadMobile(ImageView view,String source,String appid,boolean vertical){loadCandidates(view,MobileCoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid,vertical));}
+ static void loadArtwork(ImageView view,String preferred,String fallback){java.util.LinkedHashSet<String> candidates=new java.util.LinkedHashSet<>();for(String source:new String[]{preferred,fallback})for(String candidate:CoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),""))candidates.add(candidate);loadCandidates(view,candidates.toArray(new String[0]));}
+ static void loadMobile(ImageView view,String source,String appid,boolean vertical,Runnable onFailure){loadCandidates(view,MobileCoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid,vertical),onFailure);}
+ private static void loadCandidates(ImageView view,String[] candidates){loadCandidates(view,candidates,null);}
+ private static void loadCandidates(ImageView view,String[] candidates,Runnable onFailure){
+  Object oldTicket=view.getTag();Object ticket=new Object();view.setTag(ticket);if(oldTicket!=null)view.setImageResource(R.drawable.app_logo);if(candidates.length==0){if(onFailure!=null)MAIN.post(()->{if(view.getTag()==ticket&&view.isAttachedToWindow())onFailure.run();});return;}
   android.content.Context context=view.getContext().getApplicationContext();android.content.SharedPreferences prefs=SessionPreferences.get(context);
   String owner=prefs.getString("user_id","");String key=owner+":"+java.util.Arrays.toString(candidates);WeakReference<ImageView> target=new WeakReference<>(view);
   Bitmap hit=CACHE.get(key);if(hit!=null){view.setImageBitmap(hit);return;}
@@ -24,6 +31,7 @@ final class AccountImageLoader {
     try{if(storage)token=AuthSession.token(context);if(!owner.equals(prefs.getString("user_id","")))return;for(int attempt=0;attempt<(storage?1:2);attempt++){try{bitmap=download(candidate,token,prefs.getLong("expires_at",0),context);break;}catch(IOException failure){bitmap=null;}}if(bitmap!=null){privateResult=storage;usedToken=token;break;}}catch(Exception ignored){}
 
    }
+   if(bitmap==null&&onFailure!=null)MAIN.post(()->{ImageView image=target.get();if(image!=null&&image.getTag()==ticket&&image.isAttachedToWindow()&&owner.equals(prefs.getString("user_id","")))onFailure.run();});
    Bitmap result=bitmap;boolean secure=privateResult;String requestToken=usedToken;if(result!=null)MAIN.post(()->{ImageView image=target.get();if(!ImageSessionPolicy.accepts(owner,prefs.getString("user_id",""),secure,requestToken,prefs.getString("access_token","")))return;CACHE.put(key,result);if(image!=null&&image.getTag()==ticket)image.setImageBitmap(result);});
   });
  }

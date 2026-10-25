@@ -1,3 +1,7 @@
+# Android 1.7.25
+
+Meu Retrô agora tem aba própria, filtros e resumo da coleção. Capas horizontais/verticais são configuradas localmente, com proporção corrigida e preenchimento dos cards. Horas usam uma casa decimal em português. Capa e descrição podem ser recuperadas pela Steam quando a consulta inicial falha, sempre confirmando o título. Busca, cache e exibição progressiva reduzem reconstruções e consultas repetidas.
+
 # BatCaverna Android 1.7.0 — 14/10/2026
 
 - O perfil e o ranking passam a usar XP permanente: remover um título não desconta pontos já conquistados.

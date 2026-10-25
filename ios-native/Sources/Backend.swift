@@ -109,7 +109,7 @@ private final class NoRedirect: NSObject, URLSessionTaskDelegate {
         guard let user = session?.user.id.uuidString else { throw BackendError.http(401) }
         var all: [LibraryItem] = []
         for offset in stride(from:0,to:20000,by:250) {
-            let rows = try await get([LibraryItem].self,"/rest/v1/itens",query:[.init(name:"select",value:"id,nome,categoria,status,capa,tipo,horas,nota,plataforma,onde,ano,updated_at"),.init(name:"user_id",value:"eq."+user),.init(name:"order",value:"id.asc"),.init(name:"limit",value:"250"),.init(name:"offset",value:String(offset))])
+            let rows = try await get([LibraryItem].self,"/rest/v1/itens",query:[.init(name:"select",value:"id,nome,categoria,status,capa,tipo,horas,nota,plataforma,onde,ano,steam_appid,updated_at"),.init(name:"user_id",value:"eq."+user),.init(name:"order",value:"id.asc"),.init(name:"limit",value:"250"),.init(name:"offset",value:String(offset))])
             all += rows; if rows.count < 250 { return all }
         }
         throw BackendError.tooLarge
@@ -135,6 +135,22 @@ private final class NoRedirect: NSObject, URLSessionTaskDelegate {
         let data = try await send("/rest/v1/itens",query:query,token:access,method:"DELETE",representation:true)
         guard session?.user.id == user else { throw BackendError.http(401) }
         guard let rows = try JSONSerialization.jsonObject(with:data) as? [[String:Any]],rows.count == 1 else { throw BackendError.conflict }
+    }
+    private var mobileArtCache: [String:String] = [:]
+    private var mobileArtRequests: [String:Task<String?,Never>] = [:]
+    func mobileArtwork(name:String,media:Bool,type:String,vertical:Bool,year:Int?) async -> String? {
+        let key = "\(media):\(type):\(vertical):\(name):\(year ?? 0)"
+        if let cached = mobileArtCache[key] { return cached.isEmpty ? nil : cached }
+        if let pending = mobileArtRequests[key] { return await pending.value }
+        let work = Task<String?,Never> {
+            guard let hits = try? await self.searchCatalogue(name,media:media,type:type) else { return nil }
+            return MobilePresentation.selectArtwork(hits,name:name,year:year,vertical:vertical) ?? ""
+        }
+        mobileArtRequests[key] = work
+        let result = await work.value
+        mobileArtRequests.removeValue(forKey:key)
+        if let result { if mobileArtCache.count >= 128,let oldest = mobileArtCache.keys.first { mobileArtCache.removeValue(forKey:oldest) };mobileArtCache[key] = result }
+        return result?.isEmpty == false ? result : nil
     }
     func searchCatalogue(_ query:String,media:Bool,type:String) async throws -> [CatalogueTitle] {
         let text = query.trimmingCharacters(in:.whitespacesAndNewlines)
