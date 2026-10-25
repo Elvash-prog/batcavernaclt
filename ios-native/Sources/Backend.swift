@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import Security
 
 private enum SessionVault {
@@ -75,7 +76,7 @@ private final class NoRedirect: NSObject, URLSessionTaskDelegate {
         guard let current = session else { throw BackendError.http(401) }
         if current.expiresAt > Date().timeIntervalSince1970 + 60 { return current.accessToken }
         if let refreshTask { return try await refreshTask.value.accessToken }
-        let task = Task { () throws -> AppSession in
+        let task = Task<AppSession, Error> {
             let data = try await self.send("/auth/v1/token", query:[.init(name:"grant_type",value:"refresh_token")],body:["refresh_token":current.refreshToken])
             let next = try JSONDecoder().decode(AppSession.self, from:data)
             try SessionVault.save(try JSONEncoder().encode(next)); self.session = next; return next

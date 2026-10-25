@@ -111,6 +111,9 @@ struct LibraryView: View {
                     summary(media ? "Assistindo":"Platinados",value:String(own.filter{$0.group == (media ? "Assistindo":"Platinados")}.count),color:.cyan,key:media ? .progress:.platinum)
                     summary(media ? "Para assistir":"Horas jogadas",value:media ? String(own.filter{$0.group == "Para assistir"}.count):String(format:"%.0fh",own.reduce(0){$0 + (($1.horas ?? 0).isFinite ? max(0,$1.horas ?? 0):0)}),color:.orange,key:media ? .backlog:.hours)
                 }
+                if !media {
+                    HStack { summary("Em progresso",value:String(own.filter{["Em progresso","Jogando agora"].contains($0.group)}.count),color:.blue,key:.progress); summary("Backlog",value:String(own.filter{$0.group == "Backlog"}.count),color:.purple,key:.backlog) }
+                }
                 if filter != .all { Button("← Mostrar todos os títulos") { filter = .all } }
                 if busy { ProgressView("Carregando biblioteca…") }
                 if let error { Text(error).foregroundStyle(.red); Button("Tentar novamente") { Task { await reload() } } }
