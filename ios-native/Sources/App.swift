@@ -85,6 +85,7 @@ struct LibraryView: View {
     @State private var query = ""
     @State private var filter: SummaryFilter = .all
     @State private var selection: LibraryItem?
+    @State private var adding = false
     @State private var kind = "Todos"
     private var own: [LibraryItem] { items.filter { ($0.categoria != "jogos") == media && (kind == "Todos" || StatusPolicyKey.type($0.tipo ?? "") == kind) } }
     private var filtered: [LibraryItem] {
@@ -130,7 +131,9 @@ struct LibraryView: View {
             }.padding(16)
         }.background(Caverna.gradient).navigationTitle(media ? "Filmes, séries e animes":"Meus jogos").navigationBarTitleDisplayMode(.inline)
             .searchable(text:$query,prompt:"Buscar na sua biblioteca").refreshable { await reload() }
-            .sheet(item:$selection) { item in NavigationStack { DescriptionView(name:item.nome,image:item.capa,status:item.status ?? "",media:media,tv:StatusPolicyKey.type(item.tipo ?? "") != "Filmes",retro:nil) } }
+            .toolbar { ToolbarItem(placement:.topBarTrailing) { Button { adding = true } label: { Image(systemName:"plus").accessibilityLabel(media ? "Adicionar filme, série ou anime":"Adicionar jogo") } } }
+            .sheet(isPresented:$adding) { NavigationStack { LibraryEditorView(media:media) { Task { await reload() } } } }
+            .sheet(item:$selection) { item in NavigationStack { DescriptionView(name:item.nome,image:item.capa,status:item.status ?? "",media:media,tv:StatusPolicyKey.type(item.tipo ?? "") != "Filmes",retro:nil,libraryItem:item,onChange:{Task { await reload() }}) } }
     }
     private func summary(_ title:String,value:String,color:Color,key:SummaryFilter) -> some View {
         Button { filter = key } label: { VStack(alignment:.leading,spacing:8) { Text(title).font(.caption).foregroundStyle(.secondary); Text(value).font(.title.bold()).foregroundStyle(color) }.frame(maxWidth:.infinity,alignment:.leading).padding(16).background(LinearGradient(colors:[color.opacity(0.22),Caverna.panel],startPoint:.topLeading,endPoint:.bottomTrailing),in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(color.opacity(filter == key ? 0.8:0.25))) }.buttonStyle(.plain).accessibilityLabel("\(title), \(value). Ver títulos")
@@ -193,7 +196,7 @@ struct RetroView: View {
             }.padding(16)
         }.background(Caverna.gradient).navigationTitle("Meu Retrô").navigationBarTitleDisplayMode(.inline).searchable(text:$query,prompt:"Buscar no Meu Retrô")
             .task { if profile == nil { await load() } }.refreshable { await load() }
-            .sheet(item:$selected) { game in NavigationStack { DescriptionView(name:game.nome,image:game.capa,status:game.group(statuses[String(game.id)]),media:false,tv:false,retro:(game.id,profile?.usuario ?? "")) } }
+            .sheet(item:$selected) { game in NavigationStack { DescriptionView(name:game.nome,image:game.capa,status:game.group(statuses[String(game.id)]),media:false,tv:false,retro:(game.id,profile?.usuario ?? ""),onChange:{Task { await load() }}) } }
     }
     private func retroStat(_ label:String,_ value:String) -> some View { VStack(alignment:.leading,spacing:8) { Text(value).font(.title3.bold()).foregroundStyle(Caverna.accent); Text(label).font(.caption).foregroundStyle(.secondary) }.frame(maxWidth:.infinity,alignment:.leading).padding(12).background(Caverna.panel,in:RoundedRectangle(cornerRadius:14)) }
     private func load() async {
@@ -205,6 +208,8 @@ struct RetroView: View {
 }
 struct DescriptionView: View {
     let name:String; let image:String?; let status:String; let media:Bool; let tv:Bool; let retro:(Int,String)?
+    var libraryItem: LibraryItem? = nil
+    var onChange: (() -> Void)? = nil
     @EnvironmentObject private var backend: Backend
     @Environment(\.dismiss) private var dismiss
     @State private var description: String?
@@ -212,11 +217,18 @@ struct DescriptionView: View {
     @State private var achievements: GameAchievements?
     @State private var achievementsError: String?
     @State private var loadingAchievements = false
+    @State private var editing = false
+    @State private var confirmingRemoval = false
+    @State private var mutating = false
+    @State private var mutationError: String?
+    @State private var changedStatus: String?
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
                 CoverImage(source:image).frame(height:230).clipShape(RoundedRectangle(cornerRadius:20))
-                Text(name).font(.title.bold()); Text(status).foregroundStyle(Caverna.accent)
+                Text(name).font(.title.bold()); Text(changedStatus ?? status).foregroundStyle(Caverna.accent)
+                if let mutationError { Text(mutationError).foregroundStyle(.red) }
+                if libraryItem != nil { HStack { Button("Editar informações") { editing = true }.buttonStyle(.borderedProminent); Button("Remover",role:.destructive) { confirmingRemoval = true }.buttonStyle(.bordered) }.disabled(mutating) }
                 if let description {
                     Text(DescriptionAttribution.body(description)).textSelection(.enabled)
                     if DescriptionAttribution.isTranslated(description) { Link("Tradução automática por DeepL.com",destination:URL(string:"https://www.deepl.com")!).font(.caption) }
@@ -224,6 +236,8 @@ struct DescriptionView: View {
                 else if let error { Text(error).foregroundStyle(.secondary); Button("Tentar novamente") { Task { await load() } } }
                 else { ProgressView("Buscando descrição…") }
                 if let retro {
+                    Menu("Alterar status") { ForEach(["progress","backlog","finished","platinum","paused","abandoned"],id:\.self) { key in Button(retroLabel(key)) { updateRetro(retro.0,key) } } }.disabled(mutating)
+                    Button("Remover do Meu Retrô",role:.destructive) { confirmingRemoval = true }.disabled(mutating)
                     Button("Ver conquistas") { Task { await loadAchievements(retro) } }.buttonStyle(.bordered).disabled(loadingAchievements)
                     if loadingAchievements { ProgressView() }
                     if let achievementsError { Text(achievementsError).foregroundStyle(.red) }
@@ -233,9 +247,23 @@ struct DescriptionView: View {
                 else { Link("Dados e mídia dos jogos: IGDB.com",destination:URL(string:"https://www.igdb.com")!) }
                 if retro != nil { Link("Conquistas: RetroAchievements",destination:URL(string:"https://retroachievements.org")!) }
             }.padding(20)
-        }.background(Caverna.gradient).navigationTitle("Detalhes").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement:.topBarTrailing) { Button("Fechar") { dismiss() } } }.task { await load() }
+        }.background(Caverna.gradient).navigationTitle("Detalhes").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement:.topBarTrailing) { Button("Fechar") { dismiss() }.disabled(mutating) } }.task { await load() }
+            .interactiveDismissDisabled(mutating)
+            .sheet(isPresented:$editing) { if let libraryItem { NavigationStack { LibraryEditorView(media:media,item:libraryItem) { onChange?(); dismiss() } } } }
+            .confirmationDialog(retro == nil ? "Remover da biblioteca?":"Remover do Meu Retrô?",isPresented:$confirmingRemoval,titleVisibility:.visible) {
+                Button("Confirmar remoção",role:.destructive) { remove() }; Button("Cancelar",role:.cancel) {}
+            } message: { Text(retro == nil ? "Este título será removido da sua biblioteca sincronizada.":"As conquistas na sua conta RetroAchievements serão preservadas.") }
     }
     private func load() async { error = nil; do { description = try await backend.description(name:name,media:media,tv:tv) } catch { self.error = error is BackendError ? error.localizedDescription : "Descrição indisponível no momento." } }
+    private func retroLabel(_ key:String) -> String { ["progress":"Em progresso","backlog":"Backlog","finished":"Zerado","platinum":"Platinado","paused":"Pausado","abandoned":"Abandonado"][key] ?? key }
+    private func updateRetro(_ id:Int,_ key:String) {
+        guard !mutating else { return }; mutating = true; mutationError = nil
+        Task { do { try await backend.setRetroStatus(game:id,status:key); changedStatus = retroLabel(key); onChange?() } catch { mutationError = error is BackendError ? error.localizedDescription : "Não foi possível salvar o status." }; mutating = false }
+    }
+    private func remove() {
+        guard !mutating else { return }; mutating = true; mutationError = nil
+        Task { do { if let libraryItem { try await backend.removeLibrary(libraryItem) } else if let retro { try await backend.removeRetro(game:retro.0) }; onChange?(); dismiss() } catch { mutationError = error is BackendError ? error.localizedDescription : "Não foi possível confirmar a remoção. Atualize antes de tentar novamente." }; mutating = false }
+    }
     private func loadAchievements(_ game:(Int,String)) async { guard !loadingAchievements else { return }; loadingAchievements = true; achievementsError = nil; do { achievements = try await backend.achievements(game:game.0,user:game.1) } catch { achievementsError = "Não foi possível carregar as conquistas." }; loadingAchievements = false }
 }
 
