@@ -2,8 +2,8 @@ import {useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {flushSync} from 'react-dom';
 import AppShell from './AppShell';
-import './styles.css';import './visibility.css';import './phase03.css';import './redesign.css';import './reference.css';import './refinement.css';import './polish.css';import './catalog-library.css';import './journey.css';import './alignment.css';import './desktop-fixes.css';import './react-motion.css';import './professional.css';import './cavern-home.css';import './cavern-library.css';import './cavern-profile.css';import './cavern-social.css';import './cavern-community.css';import './cavern-shell.css';
-import layoutSync from './layout-sync.js?url';import app from './app.js?url';import reference from './reference.js?url';import refinement from './refinement.js?url';import polish from './polish.js?url';import redesign from './redesign.js?url';import journey from './journey.js?url';import alignment from './alignment.js?url';import fixes from './desktop-fixes.js?url';import retro from './retro.js?url';import shell from './cavern-shell.js?url';
+import './styles.css';import './visibility.css';import './phase03.css';import './redesign.css';import './reference.css';import './refinement.css';import './polish.css';import './catalog-library.css';import './journey.css';import './alignment.css';import './desktop-fixes.css';import './react-motion.css';import './professional.css';import './cavern-home.css';import './cavern-library.css';import './cavern-profile.css';import './cavern-social.css';import './cavern-community.css';import './cavern-shell.css';import './continuity.css';
+import layoutSync from './layout-sync.js?url';import app from './app.js?url';import reference from './reference.js?url';import refinement from './refinement.js?url';import polish from './polish.js?url';import redesign from './redesign.js?url';import journey from './journey.js?url';import alignment from './alignment.js?url';import fixes from './desktop-fixes.js?url';import retro from './retro.js?url';import shell from './cavern-shell.js?url';import continuity from './continuity.js?url';
 
 function applyBootTheme(){document.documentElement.classList.add('booting');try{const t=JSON.parse(localStorage.getItem('bc-desktop-theme-v2')||'{}'),r=document.documentElement;for(const k of ['bg','panel','accent','text'])if(/^#[0-9a-f]{6}$/i.test(t[k]||''))r.style.setProperty('--'+k,t[k]);r.style.setProperty('--workspace-width',`${Math.max(1050,Math.min(2600,Number(t.width)||1480))}px`);r.style.setProperty('--reference-card-width',`${Math.max(180,Math.min(500,Number(t.cardWidth)||300))}px`);r.style.setProperty('--ui-scale',String(Math.max(.8,Math.min(1.4,(Number(t.scale)||100)/100))));}catch{}}
 type BootModule={name:string;src:string};
@@ -17,7 +17,7 @@ const modules:BootModule[]=[
  {name:'Ajustes de navegação',src:refinement},{name:'Acabamento visual',src:polish},
  {name:'Comunidade e conversas',src:redesign},{name:'Jornada e indicações',src:journey},
  {name:'Alinhamento da interface',src:alignment},{name:'Correções do desktop',src:fixes},
- {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell}
+ {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity}
 ];
 
 function load(module:BootModule){return new Promise<void>((resolve,reject)=>{const script=document.createElement('script');script.src=module.src;script.dataset.bootModule=module.name;script.onload=()=>resolve();script.onerror=()=>reject(new Error(`O arquivo de ${module.name.toLowerCase()} não pôde ser carregado.`));document.body.append(script)})}
