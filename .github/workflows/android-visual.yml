@@ -33,14 +33,19 @@ jobs:
           profile: pixel_7
           working-directory: android-native
           script: |
-            bash gradlew :app:connectedDebugAndroidTest --no-daemon
             mkdir -p build/mobile-previews
+            bash gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon
+            adb install -r -t app/build/outputs/apk/debug/app-debug.apk
+            adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am instrument -w dev.gamersclt.batcaverna.nativeapp.preview.debug.test/androidx.test.runner.AndroidJUnitRunner > build/mobile-test-results.txt
+            python3 -c "from pathlib import Path; s=Path('build/mobile-test-results.txt').read_text(); print(s); assert 'OK (1 test)' in s and 'FAILURES' not in s"
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/login-android.png > build/mobile-previews/login-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/controles-android.png > build/mobile-previews/controles-android.png
+            python3 -c "from pathlib import Path; files=list(Path('build/mobile-previews').glob('*.png')); assert len(files)==2 and all(p.read_bytes().startswith(bytes([137,80,78,71,13,10,26,10])) for p in files)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Android-mobile-previews
           path: |
             android-native/build/mobile-previews/
-            android-native/app/build/reports/androidTests/
+            android-native/build/mobile-test-results.txt
