@@ -1,5 +1,6 @@
 // Only public catalogue descriptions reach this module; never reviews or account data.
 import {persistentCatalogQuery} from './catalog-cache.js';
+export const translationNotice='\n\nTradução automática por DeepL.com — https://www.deepl.com';
 const pending=new Map();
 export async function translateDescription(env,text){
  const original=String(text||'').trim();
@@ -16,7 +17,7 @@ export async function translateDescription(env,text){
    return [{text:translated,translated:true}];
   });
   if(typeof rows?.[0]?.text!=='string'||rows[0].translated!==true)throw Error('TRANSLATION_UNAVAILABLE');
-  return rows[0];
+  return {...rows[0],text:rows[0].text.endsWith(translationNotice)?rows[0].text:rows[0].text+translationNotice};
  }catch{return {text:original,translated:false}}})();
  pending.set(key,task);try{return await task}finally{pending.delete(key)}
 }

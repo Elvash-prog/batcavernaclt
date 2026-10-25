@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {translateDescription} from '../supabase/functions/native-api/translation.js';
+import {translateDescription,translationNotice} from '../supabase/functions/native-api/translation.js';
 import {catalogTtl} from '../supabase/functions/native-api/catalog-cache.js';
 const originalFetch=globalThis.fetch;
 test('translation is server-side, deduplicated and reused across devices',async()=>{
@@ -15,7 +15,7 @@ test('translation is server-side, deduplicated and reused across devices',async(
  try{
   const env={DEEPL_API_KEY:'synthetic-free-key',SUPABASE_URL:'https://test.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'synthetic-service-key'};
   const [a,b]=await Promise.all([translateDescription(env,'A game about exploring space.'),translateDescription({...env},'A game about exploring space.')]);
-  assert.deepEqual(a,b);assert.equal(a.translated,true);assert.equal(calls,1);
+  assert.deepEqual(a,b);assert.equal(a.translated,true);assert.equal(a.text,'Um jogo sobre explorar o espaço.'+translationNotice);assert.equal(calls,1);
   await translateDescription({...env},'A game about exploring space.');assert.equal(calls,1);
  }finally{globalThis.fetch=originalFetch}
 });
@@ -48,6 +48,6 @@ test('TMDB forces pt-BR and translates a missing localized description after aut
  try{
   const handler=createHandler({SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'synthetic-public',TMDB_KEY:'synthetic-tmdb',DEEPL_API_KEY:'synthetic-deepl',USER_RATE_LIMITER:{limit:async()=>({success:true})}});
   const r=await handler(new Request('https://test.supabase.co/functions/v1/native-api/api/catalog/tmdb/movie/10?language=en-US',{headers:{Authorization:'Bearer eyJtest.payload.signature'}}));
-  assert.equal(r.status,200);const data=await r.json();assert.equal(data.overview,'Uma jornada pelas estrelas.');assert.equal(data.description_language,'pt-BR');assert.deepEqual(languages,['pt-BR','en-US']);
+  assert.equal(r.status,200);const data=await r.json();assert.equal(data.overview,'Uma jornada pelas estrelas.'+translationNotice);assert.equal(data.description_language,'pt-BR');assert.deepEqual(languages,['pt-BR','en-US']);
  }finally{globalThis.fetch=originalFetch}
 });

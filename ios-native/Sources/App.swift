@@ -58,13 +58,13 @@ struct LibraryTabs: View {
         TabView {
             library(media:false).tabItem { Label("Jogos",systemImage:"gamecontroller") }
             library(media:true).tabItem { Label("Filmes e séries",systemImage:"film") }
-            NavigationStack { RetroView().toolbar { ToolbarItem(placement:.topBarTrailing) { logoutButton } } }.tabItem { Label("Meu Retrô",systemImage:"trophy") }
+            NavigationStack { RetroView().toolbar { ToolbarItem(placement:.topBarLeading) { NavigationLink("Créditos") { ProviderCreditsView() } }; ToolbarItem(placement:.topBarTrailing) { logoutButton } } }.tabItem { Label("Meu Retrô",systemImage:"trophy") }
         }.task { await load() }
     }
     private func library(media:Bool) -> some View {
         NavigationStack {
             LibraryView(items:items,media:media,busy:busy,error:error,reload:{await load()})
-                .toolbar { ToolbarItem(placement:.topBarTrailing) { logoutButton } }
+                .toolbar { ToolbarItem(placement:.topBarLeading) { NavigationLink("Créditos") { ProviderCreditsView() } }; ToolbarItem(placement:.topBarTrailing) { logoutButton } }
         }
     }
     private var logoutButton: some View {
@@ -217,7 +217,10 @@ struct DescriptionView: View {
             VStack(alignment:.leading,spacing:20) {
                 CoverImage(source:image).frame(height:230).clipShape(RoundedRectangle(cornerRadius:20))
                 Text(name).font(.title.bold()); Text(status).foregroundStyle(Caverna.accent)
-                if let description { Text(description).textSelection(.enabled) }
+                if let description {
+                    Text(DescriptionAttribution.body(description)).textSelection(.enabled)
+                    if DescriptionAttribution.isTranslated(description) { Link("Tradução automática por DeepL.com",destination:URL(string:"https://www.deepl.com")!).font(.caption) }
+                }
                 else if let error { Text(error).foregroundStyle(.secondary); Button("Tentar novamente") { Task { await load() } } }
                 else { ProgressView("Buscando descrição…") }
                 if let retro {
@@ -234,4 +237,25 @@ struct DescriptionView: View {
     }
     private func load() async { error = nil; do { description = try await backend.description(name:name,media:media,tv:tv) } catch { self.error = error is BackendError ? error.localizedDescription : "Descrição indisponível no momento." } }
     private func loadAchievements(_ game:(Int,String)) async { guard !loadingAchievements else { return }; loadingAchievements = true; achievementsError = nil; do { achievements = try await backend.achievements(game:game.0,user:game.1) } catch { achievementsError = "Não foi possível carregar as conquistas." }; loadingAchievements = false }
+}
+
+struct ProviderCreditsView: View {
+    var body: some View {
+        List {
+            Section("Jogos e conquistas") {
+                Link("Dados e mídia: IGDB.com",destination:URL(string:"https://www.igdb.com")!)
+                Link("Conquistas: RetroAchievements",destination:URL(string:"https://retroachievements.org")!)
+            }
+            Section("Filmes e séries") {
+                Image("TMDBLogo").resizable().scaledToFit().frame(width:120,height:24)
+                Link("TMDB",destination:URL(string:"https://www.themoviedb.org")!)
+                Text("This product uses the TMDB API but is not endorsed or certified by TMDB.").font(.caption)
+            }
+            Section("Tradução") {
+                Link("DeepL.com",destination:URL(string:"https://www.deepl.com")!)
+                Text("Tradução automática de descrições públicas do catálogo, quando disponível. Aplicativo independente, sem endosso do DeepL.").font(.caption)
+            }
+            Section("Infraestrutura") { Link("Supabase",destination:URL(string:"https://supabase.com")!) }
+        }.scrollContentBackground(.hidden).background(Caverna.gradient).navigationTitle("Créditos e serviços").navigationBarTitleDisplayMode(.inline)
+    }
 }

@@ -14,6 +14,14 @@ final class ModelsTests: XCTestCase {
         try SessionVault.clear(account:account)
         XCTAssertNil(try SessionVault.read(account:account))
     }
+    func testTranslationAttributionIsOnlyShownForTranslatedDescriptions() {
+        let original = "Descrição original do catálogo."
+        XCTAssertFalse(DescriptionAttribution.isTranslated(original))
+        XCTAssertEqual(DescriptionAttribution.body(original),original)
+        let translated = "Texto traduzido." + DescriptionAttribution.notice
+        XCTAssertTrue(DescriptionAttribution.isTranslated(translated))
+        XCTAssertEqual(DescriptionAttribution.body(translated),"Texto traduzido.")
+    }
     func testStatusParity() {
         XCTAssertEqual(StatusPolicy.group("🏆 Platinado",media:false),"Platinados")
         XCTAssertEqual(StatusPolicy.group("Em progresso",media:false),"Em progresso")

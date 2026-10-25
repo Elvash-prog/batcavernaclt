@@ -1394,6 +1394,12 @@ try {
   await page.waitForTimeout(800);
   assert.match(await page.locator('.retro-profile').evaluate(n=>getComputedStyle(n).backgroundImage),/data:image/,'A capa privada do Retrô deve ser carregada autenticada');
   assert.deepEqual(await page.locator('.cavern-retro-stats .cavern-stat b').allTextContents(),['120','45','1','3/10','1'],'O resumo Retrô deve refletir os desbloqueios dos jogos, não o texto do status');
+  await page.evaluate(()=>{const p=document.createElement('p');p.id='translationAttributionProbe';document.body.append(p);window.batcavernaRenderDescription(p,'a'.repeat(2000)+'\n\nTradução automática por DeepL.com — https://www.deepl.com',1800)});
+  assert.equal(await page.locator('#translationAttributionProbe').textContent(),'a'.repeat(1800));
+  assert.equal(await page.locator('#translationAttributionProbe + [data-translation-credit] button').textContent(),'DeepL.com','Crédito permanece visível mesmo quando a prévia é truncada');
+  await page.evaluate(()=>window.batcavernaRenderDescription(document.querySelector('#translationAttributionProbe'),'Descrição original em português.'));
+  assert.equal(await page.locator('#translationAttributionProbe + [data-translation-credit]').count(),0,'Texto original não deve receber crédito de tradução');
+  await page.locator('#translationAttributionProbe').evaluate(n=>n.remove());
   await page.screenshot({ path: "preview/retro-check.png" });
   await page.evaluate(() => (window.failRetroAchievements = true));
   assert.equal(await page.locator('.retro-actions [data-retro-achievements]').count(),0);
