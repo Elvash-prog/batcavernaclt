@@ -41,16 +41,16 @@ struct LibraryEditorView: View {
             }
             Section("Informações") {
                 if !draft.cover.isEmpty { CoverImage(source:draft.cover).frame(height:180).clipShape(RoundedRectangle(cornerRadius:14)).listRowBackground(Color.clear) }
-                TextField("Nome do título",text:$draft.name).textInputAutocapitalization(.words)
+                field("Nome do título",text:$draft.name).textInputAutocapitalization(.words)
                 Picker("Status",selection:$draft.status) { ForEach(statuses,id:\.self) { Text($0) } }
                 Picker("Sua avaliação",selection:$draft.rating) { ForEach(preserving(LibraryDraft.ratings,draft.rating),id:\.self) { Text($0) } }
-                TextField("Ano de lançamento",text:$draft.year).keyboardType(.numberPad)
+                field("Ano de lançamento",text:$draft.year,keyboard:.numberPad)
                 if media {
                     if item != nil { Picker("Tipo",selection:$draft.mediaType) { ForEach(preserving(LibraryDraft.mediaTypes,draft.mediaType),id:\.self) { Text($0) } } }
-                    TextField("Onde assistir",text:$draft.service)
+                    field("Onde assistir",text:$draft.service)
                 } else {
-                    TextField("Plataforma",text:$draft.platform)
-                    TextField("Horas jogadas",text:$draft.hours).keyboardType(.decimalPad)
+                    field("Plataforma",text:$draft.platform)
+                    field("Horas jogadas",text:$draft.hours,keyboard:.decimalPad)
                 }
             }.listRowBackground(Caverna.panel)
             if let error { Section { Text(error).foregroundStyle(.red).accessibilityIdentifier("libraryEditorError") }.listRowBackground(Caverna.panel) }
@@ -61,6 +61,9 @@ struct LibraryEditorView: View {
             .navigationTitle(item == nil ? "Adicionar título":"Editar título").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement:.topBarLeading) { Button("Cancelar") { dismiss() }.disabled(saving) } }
             .interactiveDismissDisabled(saving)
+    }
+    private func field(_ title:String,text:Binding<String>,keyboard:UIKeyboardType = .default) -> some View {
+        VStack(alignment:.leading,spacing:6) { Text(title).font(.caption).foregroundStyle(.secondary); TextField(title,text:text).keyboardType(keyboard) }
     }
     private func search() {
         guard !searching else { return }; searching = true; error = nil; searched = false
