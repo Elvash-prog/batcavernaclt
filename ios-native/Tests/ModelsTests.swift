@@ -1,6 +1,19 @@
 import XCTest
 @testable import BatCaverna
 final class ModelsTests: XCTestCase {
+    func testProtectedSessionRoundTrip() throws {
+        let account = "unit-test-" + UUID().uuidString
+        defer { try? SessionVault.clear(account:account) }
+        XCTAssertNil(try SessionVault.read(account:account))
+        let first = Data("synthetic-session-one".utf8)
+        try SessionVault.save(first,account:account)
+        XCTAssertEqual(try SessionVault.read(account:account),first)
+        let rotated = Data("synthetic-session-two".utf8)
+        try SessionVault.save(rotated,account:account)
+        XCTAssertEqual(try SessionVault.read(account:account),rotated)
+        try SessionVault.clear(account:account)
+        XCTAssertNil(try SessionVault.read(account:account))
+    }
     func testStatusParity() {
         XCTAssertEqual(StatusPolicy.group("🏆 Platinado",media:false),"Platinados")
         XCTAssertEqual(StatusPolicy.group("Em progresso",media:false),"Em progresso")

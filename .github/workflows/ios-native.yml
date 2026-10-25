@@ -31,7 +31,7 @@ jobs:
           xcrun simctl bootstatus "$IOS_SIMULATOR_ID" -b
       - name: Compilar e testar sem assinatura de distribuição
         working-directory: ios-native
-        run: xcodebuild -project BatCaverna.xcodeproj -scheme BatCaverna -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" -derivedDataPath build -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO test
+        run: xcodebuild -project BatCaverna.xcodeproj -scheme BatCaverna -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" -derivedDataPath build -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- -parallel-testing-enabled NO test
       - name: Abrir aplicativo e capturar tela inicial
         timeout-minutes: 3
         working-directory: ios-native
