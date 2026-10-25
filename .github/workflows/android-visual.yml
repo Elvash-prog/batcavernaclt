@@ -23,6 +23,8 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Preparar build visual sem registro no Firebase
+        run: rm android-native/app/google-services.json
       - name: Testar e capturar componentes nativos
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -31,7 +33,7 @@ jobs:
           profile: pixel_7
           working-directory: android-native
           script: |
-            bash gradlew :app:connectedDebugAndroidTest -x :app:processDebugGoogleServices --no-daemon
+            bash gradlew :app:connectedDebugAndroidTest --no-daemon
             mkdir -p build/mobile-previews
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/login-android.png > build/mobile-previews/login-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/controles-android.png > build/mobile-previews/controles-android.png
