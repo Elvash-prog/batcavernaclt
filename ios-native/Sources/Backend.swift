@@ -2,25 +2,25 @@ import Foundation
 import Combine
 import Security
 
-private enum SessionVault {
-    static var query: [String: Any] { [kSecClass as String:kSecClassGenericPassword, kSecAttrService as String:"dev.gamersclt.batcaverna.session", kSecAttrAccount as String:"current"] }
-    static func read() throws -> Data? {
-        var q = query; q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
+enum SessionVault {
+    static func query(account: String) -> [String: Any] { [kSecClass as String:kSecClassGenericPassword, kSecAttrService as String:"dev.gamersclt.batcaverna.session", kSecAttrAccount as String:account] }
+    static func read(account: String = "current") throws -> Data? {
+        var q = query(account: account); q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
         var value: CFTypeRef?; let status = SecItemCopyMatching(q as CFDictionary, &value)
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess else { throw BackendError.storage }
         return value as? Data
     }
-    static func save(_ data: Data) throws {
+    static func save(_ data: Data, account: String = "current") throws {
         let attributes: [String:Any] = [kSecValueData as String:data, kSecAttrAccessible as String:kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        let status = SecItemUpdate(query(account: account) as CFDictionary, attributes as CFDictionary)
         if status == errSecItemNotFound {
-            var q = query; attributes.forEach { q[$0.key] = $0.value }
+            var q = query(account: account); attributes.forEach { q[$0.key] = $0.value }
             guard SecItemAdd(q as CFDictionary, nil) == errSecSuccess else { throw BackendError.storage }
         } else if status != errSecSuccess { throw BackendError.storage }
     }
-    static func clear() throws {
-        let status = SecItemDelete(query as CFDictionary)
+    static func clear(account: String = "current") throws {
+        let status = SecItemDelete(query(account: account) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { throw BackendError.storage }
     }
 }
