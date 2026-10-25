@@ -1,83 +1,94 @@
-# BatCaverna CLT
+<p align="center">
+  <img src="public/marketing/brand.jpg" width="112" alt="Logo do BatCaverna CLT">
+</p>
 
-Aplicativo para organizar jogos, filmes, séries e animes, acompanhar progresso e compartilhar indicações com amigos. Disponível para Windows e Android, com dados da conta sincronizados pelo Supabase.
+<h1 align="center">BatCaverna CLT</h1>
 
-## Downloads
+<p align="center">
+  Seus jogos, filmes, séries e animes, organizados no mesmo lugar.<br>
+  Acompanhe sua coleção no Windows e no Android.
+</p>
 
-| Plataforma | Versão publicada | Download |
+<p align="center">
+  <a href="#baixar">Baixar o aplicativo</a> ·
+  <a href="#recursos">Conhecer os recursos</a> ·
+  <a href="#por-dentro-do-batcaverna">Ver as telas</a> ·
+  <a href="https://batcavernaclt.gamersclt.workers.dev/">Visitar o site</a>
+</p>
+
+![Tela inicial do BatCaverna com dados de demonstração, jogo em progresso e atalhos da coleção](docs/images/inicio.webp)
+
+<p align="center"><sub>Interface atual com dados de demonstração.</sub></p>
+
+**Um organizador pessoal para quem joga e acompanha histórias.** Guarde o que pretende começar, registre o que já concluiu, avalie seus títulos e troque indicações com amigos. A mesma conta mantém sua coleção sincronizada entre o computador e o celular.
+
+## Baixar
+
+O BatCaverna é gratuito. Os downloads abaixo levam aos arquivos oficiais usados no site do projeto.
+
+| Plataforma | Disponibilidade | Download |
 | --- | --- | --- |
-| Windows | 0.17.59 | [Instalador Windows](https://github.com/Elvash-prog/batcavernaclt/releases/latest/download/BatCaverna-CLT-Windows-setup.exe) |
-| Android | 1.7.19 | [APK Android](https://github.com/Elvash-prog/batcavernaclt/releases/download/android-v1.7.19/BatCaverna-1.7.19.apk) |
+| **Windows** | Aplicativo desktop com instalador `.exe` | [Baixar para Windows](https://drive.usercontent.google.com/download?id=1tWVxsv3OJj_6HYZNcPPjcKT0MjEb_uT-&export=download) |
+| **Android** | Aplicativo nativo · Android 6.0 ou superior | [Baixar APK](https://drive.usercontent.google.com/download?id=1_8zuBmrjxylWpMGSFDpDriu5axgvLvAe&export=download) |
+| **iOS** | Em desenvolvimento · versão inicial para simulador | [Acompanhar a versão iOS](ios-native/README.md) |
 
-Android 6.0 ou superior. No Android, pode ser necessário autorizar a instalação do APK pelo navegador. Os aplicativos têm avisos de atualização; o Windows verifica pacotes assinados.
-
-Consulte o [histórico de versões](https://github.com/Elvash-prog/batcavernaclt/releases) para notas de atualização e arquivos publicados.
+Também estão disponíveis os [arquivos e notas de versão no GitHub](https://github.com/Elvash-prog/batcavernaclt/releases). Windows e Android avisam quando há uma nova atualização. Para instalar o APK, o Android pode pedir autorização para instalar aplicativos pelo navegador.
 
 ## Recursos
 
-- Biblioteca de jogos, filmes, séries e animes com categorias, listas, notas e status.
-- Integrações com Steam e RetroAchievements para acompanhar os dados disponíveis de progresso e conquistas.
-- Comunidade com publicações, imagens, curtidas e comentários.
-- Amigos, mensagens privadas, grupos e indicações com busca e filtros por categoria.
-- No Windows, detecção de jogos configurados pelo executável e registro de tempo enquanto o aplicativo estiver aberto.
-- Personalização da interface e acesso à coleção pela mesma conta no Windows e no Android.
-
-A sincronização depende da privacidade do perfil e dos dados disponibilizados pelos serviços vinculados. Detectar um executável permite registrar tempo; conquistas precisam de uma integração compatível. O BatCaverna organiza a coleção e não distribui jogos, filmes ou outros conteúdos.
-
-## Site de apresentação
-
-O [site público](https://batcavernaclt.gamersclt.workers.dev/) apresenta o programa, explica seus recursos e oferece downloads. O acesso à conta e às funções do produto acontece nos aplicativos.
-
-A versão publicada pelo Sites pode ser consultada [neste endereço](https://batcaverna-clt-apresentacao.el-vash.chatgpt.site). As alterações no Sites não são sincronizadas automaticamente com este repositório.
-
-## Estrutura do projeto
-
-| Caminho | Responsabilidade |
+| Sua coleção | O que você pode fazer |
 | --- | --- |
-| `desktop/` | Aplicativo Windows com Tauri e interface própria |
-| `android-native/` | Aplicativo Android nativo |
-| `supabase/functions/` | Funções de backend e integrações |
-| `supabase/migrations/` | Migrações do banco de dados |
-| `public/index.html` | Página pública de apresentação e downloads |
-| `public/marketing/` | Estilos, imagens e script da apresentação |
-| `worker.js` | Entrega da página e bloqueio dos antigos endpoints web |
-| `tests/` | Verificações de backend e dependências dos aplicativos |
-| `docs/` | Documentação técnica e notas de versões |
+| **Jogos** | Organizar por em progresso, backlog, zerados, platinados e outros status; registrar notas, horas e plataformas. |
+| **Filmes, séries e animes** | Separar o que está assistindo, o que já terminou e o que ficou para depois; acompanhar episódios de séries compatíveis. |
+| **Steam** | Consultar a biblioteca vinculada e acompanhar as horas e conquistas disponibilizadas pelo serviço. |
+| **Meu Retrô** | Vincular o RetroAchievements, consultar conquistas, pontos e progresso e organizar a coleção por status. |
+| **Amigos e indicações** | Trocar recomendações, conversar por mensagens privadas ou em grupos e visitar os perfis de amigos. |
+| **Personalização** | Escolher temas, fundos, formatos de capa e dimensões dos cards para montar seu próprio espaço. |
 
-Os aplicativos acessam o Supabase diretamente e não dependem da hospedagem do site. O Worker permite somente a página pública e seus assets; as antigas rotas de configuração, login, APIs e scripts web retornam HTTP 410.
+No Windows, jogos vinculados a executáveis também podem ter o tempo registrado enquanto o BatCaverna estiver aberto. Conquistas e dados das integrações dependem da compatibilidade, da privacidade do perfil e do que cada serviço disponibiliza.
 
-## Implantação no Cloudflare
+## Por dentro do BatCaverna
 
-No projeto **Workers & Pages → batcavernaclt → Settings → Builds**, conecte este repositório com:
+As imagens mostram a interface do aplicativo em um ambiente de demonstração, com uma coleção ilustrativa. Não expõem dados de contas reais.
 
-- Branch de produção: `main`.
-- Diretório raiz: raiz do repositório (`/`).
-- Comando de build: vazio; a apresentação não precisa de compilação.
-- Comando de deploy: `npx wrangler@4 deploy`.
+### Sua coleção, organizada por progresso
 
-O `wrangler.toml` define o Worker `batcavernaclt`, o entrypoint `worker.js` e os arquivos estáticos de `public/`. Depois de configurar a integração, pushes na branch de produção acionam a publicação. Confira o resultado do deploy no painel antes de considerar o endereço atualizado.
+Encontre seus jogos, alterne entre categorias e consulte o que já concluiu ou pretende começar. Os resumos e filtros ajudam a navegar pela biblioteca.
 
-## Validação
+![Biblioteca de jogos do BatCaverna organizada por status, com capas e resumos da coleção](docs/images/biblioteca.webp)
 
-Na raiz do repositório:
+### Um espaço com o seu visual
 
-```bash
-node tests/native-dependencies.mjs
-node tests/igdb.mjs
-node tests/native-api.mjs
-node tests/bright-api-security.mjs
-```
+Temas, cores, fundos e formatos de cards permitem ajustar a apresentação da coleção. As preferências de layout são associadas à conta.
 
-A interface Windows tem verificações adicionais em `desktop/` e os builds Windows e Android são executados pelos workflows de `.github/workflows/`.
+![Configurações de aparência do BatCaverna, com temas, cores e opções de formato dos cards](docs/images/personalizacao.webp)
 
-## Segurança
+## Começar a usar
 
-Consulte a [avaliação de segurança](docs/PENTEST-2026-10-18.md), as [correções complementares verificadas](docs/SECURITY-FOLLOWUP-2026-10-18.md) e o [procedimento de recuperação](docs/RECOVERY.md). Há pendências explícitas de backup real e ensaios com contas/dispositivos dedicados.
+1. **Instale o aplicativo** no Windows ou no Android e crie sua conta.
+2. **Monte sua coleção:** busque os títulos, escolha um status e registre sua avaliação.
+3. **Vincule suas integrações**, se desejar, nas configurações do desktop para acompanhar Steam e RetroAchievements.
+4. **Continue em outro dispositivo:** entre com a mesma conta para acessar os dados sincronizados.
 
-## Integrações e uso comercial
+## Catálogos e serviços
 
-Os catálogos e integrações incluem IGDB, TMDB, AniList, Steam e RetroAchievements. As marcas pertencem aos respectivos titulares; o projeto é independente e não implica afiliação ou endosso. Consulte [a documentação de APIs e uso comercial](docs/API-COMMERCIAL.md) antes de distribuir uma oferta comercial: disponibilidade de uma API não substitui a licença exigida por cada fornecedor.
+O BatCaverna integra informações de [IGDB](https://www.igdb.com), [TMDB](https://www.themoviedb.org), [AniList](https://anilist.co), [Steam](https://store.steampowered.com) e [RetroAchievements](https://retroachievements.org). As traduções automáticas, quando disponíveis, são identificadas com crédito ao [DeepL.com](https://www.deepl.com).
+
+O aplicativo mantém os créditos dos fornecedores nas interfaces. As marcas e obras pertencem aos respectivos titulares; o BatCaverna é um projeto independente. Consulte os [créditos e condições das integrações](docs/API-COMMERCIAL.md) para saber mais.
+
+## Desenvolvimento e documentação
+
+Quer conhecer a estrutura ou contribuir com o projeto?
+
+- [Estrutura, execução e implantação](docs/DEVELOPMENT.md)
+- [Aplicativo Windows](desktop/README.md)
+- [Aplicativo Android](android-native/README.md)
+- [Versão inicial para iOS](ios-native/README.md)
+- [Backup e recuperação](docs/RECOVERY.md)
+- [Tradução dos catálogos](docs/CATALOG_TRANSLATION.md)
+
+O desktop usa Tauri, o Android é nativo e o iOS está sendo desenvolvido com SwiftUI. As contas e os dados são atendidos pelo Supabase; o site público funciona como apresentação e página de downloads.
 
 ## Problemas e sugestões
 
-Use as [issues do GitHub](https://github.com/Elvash-prog/batcavernaclt/issues) para relatar problemas. Inclua a versão, a plataforma e os passos para reproduzir, sem publicar senhas, tokens ou dados pessoais.
+Encontrou um problema ou tem uma ideia? [Abra uma issue](https://github.com/Elvash-prog/batcavernaclt/issues) com a plataforma, a versão do aplicativo e os passos para reproduzir. Não inclua senhas, tokens ou dados pessoais.
