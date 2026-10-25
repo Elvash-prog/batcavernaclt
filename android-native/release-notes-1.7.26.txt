@@ -1,0 +1,10 @@
+BatCaverna CLT Android 1.7.26
+
+- Biblioteca mais organizada, com formato das capas e cadastro em lote no painel Opções.
+- Busca mais leve: os cards são atualizados após uma breve pausa na digitação.
+- Estados vazios com ações para adicionar títulos ou limpar busca e filtros.
+- Detalhes e controles adaptados a telas estreitas e fontes ampliadas.
+- Botão Ver mais informa quantos títulos serão exibidos e quantos restam.
+- Mensagens de erro permanecem visíveis ao filtrar a biblioteca.
+
+A atualização mantém o pacote e a assinatura de produção. Não é necessário desinstalar o aplicativo anterior.
