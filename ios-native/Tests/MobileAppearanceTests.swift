@@ -27,6 +27,8 @@ import SwiftUI
         let session = try JSONDecoder().decode(AppSession.self,from:Data(#"{"access_token":"preview","refresh_token":"preview","expires_at":4000000000,"user":{"id":"00000000-0000-4000-8000-000000000001"}}"#.utf8))
         let backend = Backend(network:URLSession(configuration:config),initialSession:session)
         try capture("biblioteca-ios",NavigationStack { LibraryView(items:rows,media:false,busy:false,error:nil,reload:{}) }.environmentObject(backend))
+        try capture("cadastro-ios",NavigationStack { AccountAccessView(flow:.register) }.environmentObject(backend))
+        try capture("recuperacao-ios",NavigationStack { AccountAccessView(flow:.recovery) }.environmentObject(backend))
         try capture("editor-ios",NavigationStack { LibraryEditorView(media:false,item:rows[0],onSaved:{}) }.environmentObject(backend))
     }
 }

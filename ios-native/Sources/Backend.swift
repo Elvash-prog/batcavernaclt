@@ -69,7 +69,7 @@ private final class NoRedirect: NSObject, URLSessionTaskDelegate {
         if let body { request.setValue("application/json", forHTTPHeaderField: "Content-Type"); request.httpBody = try JSONSerialization.data(withJSONObject: body) }
         let (data, response) = try await network.data(for: request)
         guard let response = response as? HTTPURLResponse else { throw BackendError.http(503) }
-        if response.statusCode == 409 { throw BackendError.duplicate }
+        if response.statusCode == 409 && path == "/rest/v1/itens" { throw BackendError.duplicate }
         guard (200..<300).contains(response.statusCode) else { throw BackendError.http(response.statusCode) }
         return data
     }
@@ -183,5 +183,52 @@ private final class NoRedirect: NSObject, URLSessionTaskDelegate {
         guard let hit = result.results.first(where:{key($0.name ?? $0.title ?? "") == key(name)}) else { throw BackendError.noMatch }
         let detail = try await get(CatalogueTitle.self,base + (media ? kind : "games") + "/" + String(hit.id),query:[.init(name:"language",value:"pt-BR")])
         return detail.description_raw ?? detail.overview ?? "Sem descrição disponível."
+    }
+}
+
+// Verification credentials are transient: they never replace or persist the normal session.
+extension Backend {
+    private struct EmailVerification:Decodable {
+        struct User:Decodable { let email:String? }
+        let access_token:String?
+        let user:User?
+    }
+    func register(name:String,username:String,email:String,password:String,confirmation:String) async throws -> EmailActionOutcome {
+        let body = try AccountInput.registration(name:name,username:username,email:email,password:password,confirmation:confirmation)
+        let data = try await send("/auth/v1/signup",body:body)
+        let response = try JSONDecoder().decode(EmailVerification.self,from:data)
+        if let token = response.access_token,!token.isEmpty {
+            do { _ = try await send("/auth/v1/logout",query:[.init(name:"scope",value:"local")],body:[:],token:token) }
+            catch { return EmailActionOutcome(message:"Cadastro recebido. A sessão temporária não foi encerrada no servidor. Entre com seu usuário e senha para conferir a conta.",warning:true) }
+        }
+        return EmailActionOutcome(message:"Cadastro recebido. Confira seu e-mail para confirmar a conta e depois entre com seu usuário e senha.")
+    }
+    func sendAccountEmail(_ email:String,recovery:Bool) async throws {
+        let address = try AccountInput.email(email)
+        var body:[String:Any] = ["email":address]
+        if !recovery { body["type"] = "signup" }
+        _ = try await send(recovery ? "/auth/v1/recover":"/auth/v1/resend",body:body)
+    }
+    func finishAccountEmail(email:String,proof:String,recovery:Bool,password:String = "",confirmation:String = "") async throws -> EmailActionOutcome {
+        let address = try AccountInput.email(email),credential = try EmailProof(proof,recovery:recovery)
+        if recovery { try AccountInput.password(password,confirmation:confirmation) }
+        let data:Data
+        do { data = try await send("/auth/v1/verify",body:credential.payload(email:address)) }
+        catch BackendError.http(let code) where [400,401,403,422].contains(code) { throw BackendError.invalidInput("Código ou link inválido, expirado ou já utilizado. Solicite outro e-mail.") }
+        let response = try JSONDecoder().decode(EmailVerification.self,from:data)
+        guard let token = response.access_token,!token.isEmpty else { throw BackendError.invalidInput("Não foi possível validar o e-mail. Solicite outro código.") }
+        do {
+            guard response.user?.email?.lowercased() == address else { throw BackendError.invalidInput("Este código ou link não pertence ao e-mail informado.") }
+            if recovery { _ = try await send("/auth/v1/user",body:["password":password],token:token,method:"PUT") }
+        } catch {
+            _ = try? await send("/auth/v1/logout",query:[.init(name:"scope",value:"local")],body:[:],token:token)
+            throw error
+        }
+        do { _ = try await send("/auth/v1/logout",query:[.init(name:"scope",value:recovery ? "global":"local")],body:[:],token:token) }
+        catch {
+            if recovery { _ = try? await send("/auth/v1/logout",query:[.init(name:"scope",value:"local")],body:[:],token:token) }
+            return EmailActionOutcome(message:recovery ? "A senha foi alterada, mas o encerramento das outras sessões não foi confirmado. Entre com a nova senha e altere-a novamente pelo desktop para tentar encerrá-las.":"E-mail confirmado. O encerramento da sessão temporária não foi confirmado no servidor. Você já pode entrar com seu usuário e senha.",warning:true)
+        }
+        return EmailActionOutcome(message:recovery ? "Senha atualizada. Entre com sua nova senha.":"E-mail confirmado. Você já pode entrar.")
     }
 }

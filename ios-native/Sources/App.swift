@@ -28,6 +28,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var busy = false
     @State private var error: String?
+    @State private var accountFlow:AccountAccessFlow?
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:22) {
@@ -41,8 +42,13 @@ struct LoginView: View {
                 if let error { Text(error).foregroundStyle(.red).accessibilityAddTraits(.updatesFrequently) }
                 Button(action:login) { HStack { Spacer(); if busy { ProgressView() }; Text(busy ? "Entrando…":"Entrar").bold(); Spacer() }.padding(10) }
                     .buttonStyle(.borderedProminent).disabled(busy || username.isEmpty || password.isEmpty)
+                VStack(spacing:18) {
+                    Button("Esqueci minha senha") { accountFlow = .recovery }
+                    Button("Confirmar meu cadastro") { accountFlow = .confirm }
+                    Button("Criar meu perfil") { accountFlow = .register }
+                }.frame(maxWidth:.infinity).padding(.top,8).disabled(busy)
             }.padding(24).frame(maxWidth:520).frame(maxWidth:.infinity).padding(.top,60)
-        }.background { Image("LoginBackground").resizable().scaledToFill().overlay(Caverna.background.opacity(0.72)).ignoresSafeArea() }.onAppear { error = backend.startupError }
+        }.background { Image("LoginBackground").resizable().scaledToFill().overlay(Caverna.background.opacity(0.72)).ignoresSafeArea() }.onAppear { error = backend.startupError }.sheet(item:$accountFlow) { flow in NavigationStack { AccountAccessView(flow:flow) } }
     }
     private func login() {
         guard !busy else { return }; busy = true; error = nil
