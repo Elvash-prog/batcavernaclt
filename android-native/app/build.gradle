@@ -10,6 +10,7 @@ if (!(publicSupabaseKey ==~ /sb_publishable_[A-Za-z0-9_-]+/)) {
 android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
     defaultConfig {
         applicationId 'dev.gamersclt.batcaverna.nativeapp.preview'
+        testInstrumentationRunner 'android.test.InstrumentationTestRunner'
         minSdk 23
         targetSdk 36
         versionCode 71
