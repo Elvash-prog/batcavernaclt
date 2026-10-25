@@ -14,7 +14,7 @@ O endpoint está fixado em `https://api-free.deepl.com/v2/translate`; ele não m
 
 Somente descrições públicas buscadas do catálogo são enviadas ao tradutor. Senhas, conversas, avaliações pessoais, anotações e dados da conta não são enviados. Não existe endpoint que aceite texto arbitrário do cliente para tradução.
 
-As traduções são reutilizadas por 30 dias no cache de catálogo existente, com chave derivada do hash do conteúdo e idioma; alterações no texto original geram uma nova chave. Chamadas simultâneas compartilham a solicitação. O acesso ao catálogo continua exigindo autenticação e o limitador distribuído existente. Textos acima de 16.000 caracteres não são enviados.
+As traduções são reutilizadas por 7 dias no cache de catálogo existente, com chave derivada do hash do conteúdo e idioma; alterações no texto original geram uma nova chave. Chamadas simultâneas compartilham a solicitação. O acesso ao catálogo continua exigindo autenticação e o limitador distribuído existente. Textos acima de 16.000 caracteres não são enviados.
 
 Se a chave estiver ausente, a franquia acabar ou o serviço falhar, o aplicativo preserva a descrição original. Não se deve afirmar que a tradução está ativa antes de configurar e testar uma chave real. Descrições Steam já localizadas são mantidas; quando houver tradução IGDB pt-BR, o desktop a utiliza com os demais dados da Steam.
 

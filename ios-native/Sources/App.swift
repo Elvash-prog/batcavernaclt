@@ -31,7 +31,7 @@ struct LoginView: View {
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:22) {
-                Image(systemName:"gamecontroller.fill").font(.system(size:48)).foregroundStyle(Caverna.accent).accessibilityHidden(true)
+                Image("AppLogo").resizable().scaledToFit().frame(width:88,height:88).accessibilityHidden(true)
                 Text("BatCaverna").font(.largeTitle.bold())
                 Text("Sua biblioteca. Suas conquistas.").foregroundStyle(.secondary)
                 VStack(spacing:16) {
@@ -42,7 +42,7 @@ struct LoginView: View {
                 Button(action:login) { HStack { Spacer(); if busy { ProgressView() }; Text(busy ? "Entrando…":"Entrar").bold(); Spacer() }.padding(10) }
                     .buttonStyle(.borderedProminent).disabled(busy || username.isEmpty || password.isEmpty)
             }.padding(24).frame(maxWidth:520).frame(maxWidth:.infinity).padding(.top,60)
-        }.onAppear { error = backend.startupError }
+        }.background { Image("LoginBackground").resizable().scaledToFill().overlay(Caverna.background.opacity(0.72)).ignoresSafeArea() }.onAppear { error = backend.startupError }
     }
     private func login() {
         guard !busy else { return }; busy = true; error = nil
@@ -226,7 +226,7 @@ struct DescriptionView: View {
                     if let achievementsError { Text(achievementsError).foregroundStyle(.red) }
                     if let achievements { ForEach(achievements.lista) { a in HStack(alignment:.top,spacing:12) { CoverImage(source:a.icon).frame(width:48,height:48).saturation(a.got ? 1:0); VStack(alignment:.leading,spacing:5) { Text((a.got ? "✓ ":"")+a.nome).bold(); Text(a.desc).font(.subheadline); Text("\(a.pontos) pontos · \(a.got ? "Adquirida":"Não adquirida")").font(.caption) }.foregroundStyle(a.got ? Color.primary:Color.gray) } } }
                 }
-                if media { Link("Dados de filmes e séries: TMDB",destination:URL(string:"https://www.themoviedb.org")!) }
+                if media { Image("TMDBLogo").resizable().scaledToFit().frame(width:120,height:22).accessibilityLabel("TMDB"); Link("Dados de filmes e séries: TMDB",destination:URL(string:"https://www.themoviedb.org")!); Text("This product uses the TMDB API but is not endorsed or certified by TMDB.").font(.caption).foregroundStyle(.secondary) }
                 else { Link("Dados e mídia dos jogos: IGDB.com",destination:URL(string:"https://www.igdb.com")!) }
                 if retro != nil { Link("Conquistas: RetroAchievements",destination:URL(string:"https://retroachievements.org")!) }
             }.padding(20)

@@ -18,6 +18,7 @@ jobs:
         working-directory: ios-native
         run: |
           brew install xcodegen
+          python3 prepare-assets.py
           xcodegen generate
       - name: Selecionar simulador disponível
         run: |

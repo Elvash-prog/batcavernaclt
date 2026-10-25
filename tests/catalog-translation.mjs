@@ -7,7 +7,7 @@ test('translation is server-side, deduplicated and reused across devices',async(
  let calls=0,cache=null;
  globalThis.fetch=async(url,o)=>{
   if(url.includes('cache_claim'))return Response.json(cache?{state:'hit',payload:cache}:{state:'fetch'});
-  if(url.includes('cache_store')){const body=JSON.parse(o.body);assert.equal(body.p_ttl,2592000);cache=body.p_payload;return Response.json(true)}
+  if(url.includes('cache_store')){const body=JSON.parse(o.body);assert.equal(body.p_ttl,604800);cache=body.p_payload;return Response.json(true)}
   assert.equal(url,'https://api-free.deepl.com/v2/translate');assert.equal(o.headers.Authorization,'DeepL-Auth-Key synthetic-free-key');assert.equal(o.redirect,'error');
   const body=JSON.parse(o.body);assert.equal(body.source_lang,'EN');assert.equal(body.target_lang,'PT-BR');assert.deepEqual(body.text,['A game about exploring space.']);calls++;await new Promise(r=>setTimeout(r,5));
   return Response.json({translations:[{text:'Um jogo sobre explorar o espaço.'}]});
@@ -29,6 +29,6 @@ test('missing key, provider quota and malformed responses preserve the original 
    globalThis.fetch=async()=>response;
    assert.deepEqual(await translateDescription({DEEPL_API_KEY:'private'},original),{text:original,translated:false});
   }
-  assert.equal(catalogTtl('translation:en:pt-BR:v1:Some text'),2592000);
+  assert.equal(catalogTtl('translation:en:pt-BR:v1:Some text'),604800);
  }finally{globalThis.fetch=originalFetch}
 });

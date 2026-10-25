@@ -11,6 +11,7 @@ Em um Mac com Xcode e um simulador iOS instalado:
 ```sh
 brew install xcodegen
 cd ios-native
+python3 prepare-assets.py
 xcodegen generate
 open BatCaverna.xcodeproj
 ```
