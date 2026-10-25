@@ -33,7 +33,20 @@ public final class MobileAppearanceTest {
    getInstrumentation().waitForIdleSync();
    assertTrue(primary[0].getHeight()>=Math.round(48*activity.getResources().getDisplayMetrics().density));
    capture(activity,"controles-android");
+   final HomeView[] home=new HomeView[1];
+   getInstrumentation().runOnMainSync(()->{home[0]=new HomeView(activity);activity.setContentView(home[0]);home[0].navigate(12);});
+   getInstrumentation().waitForIdleSync();
+   View retro=findDescription(home[0],"Meu Retrô"),games=findDescription(home[0],"Jogos");
+   assertNotNull(retro);assertNotNull(games);assertTrue(retro.isSelected());assertFalse(games.isSelected());
+   for(String name:new String[]{"Início","Jogos","Meu Retrô","Filmes","Amigos","Perfil"}){View tab=findDescription(home[0],name);assertNotNull(tab);assertTrue(tab.getWidth()>=NativeSheet.dp(activity,48));}
+   capture(activity,"navegacao-retro-android");
+   getInstrumentation().runOnMainSync(()->{assertTrue(home[0].back());assertTrue(findDescription(home[0],"Início").isSelected());});
   } finally { getInstrumentation().runOnMainSync(activity::finish); }
+ }
+ private View findDescription(View view,String description){
+  if(description.contentEquals(view.getContentDescription()==null?"":view.getContentDescription()))return view;
+  if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){View found=findDescription(group.getChildAt(i),description);if(found!=null)return found;}}
+  return null;
  }
  private void capture(Activity activity,String name) throws Exception {
   // Capture the app view itself; emulator launcher/system dialogs are separate windows.

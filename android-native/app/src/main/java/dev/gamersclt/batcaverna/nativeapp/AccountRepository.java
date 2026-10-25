@@ -180,15 +180,27 @@ public final class AccountRepository {
             return get("/rest/v1/itens?select=id,nome,status,nota,capa,tipo,onde,duracao,updated_at&user_id=eq."+encode(user)+"&categoria=eq.filmes"+suffix+"&order=created_at.desc,id.desc&limit=50&offset="+offset,token,config);
         },callback);
     }
+    public void steamMetadata(JSONObject item,Callback cb){execute((user,token,config)->new JSONArray().put(steamMetadataObject(item,token,config)),cb);}
+    private JSONObject steamMetadataObject(JSONObject item,String token,String[] config)throws Exception{
+        JSONArray appids=new JSONArray();String id=item.optString("steam_appid");if(id.matches("[1-9][0-9]{0,9}"))appids.put(Long.parseLong(id));
+        JSONObject result=brightRequest(new JSONObject().put("op","steamInfo").put("appids",appids).put("nomes",new JSONArray().put(item.optString("nome"))),token,config);
+        JSONObject game=SteamMetadataPolicy.select(result.optJSONArray("lista"),item.optString("nome"));
+        if(game==null)throw new IOException("Sem correspondência confirmada para este jogo na Steam.");return game;
+    }
     public void catalogDescription(JSONObject item,boolean media,Callback cb){execute((user,token,config)->{
         String name=item.optString("nome");if(name.length()<2||name.length()>180)throw new IOException("Nome indisponível no catálogo.");
-        String kind=LibraryCategory.classify(item.optString("tipo")).equals("filme")?"movie":"tv";
-        JSONObject search=catalogObject(media?"tmdb/search/"+kind+"?language=pt-BR&query="+encode(name):"igdb/games?search="+encode(name),token);
-        JSONArray hits=search.optJSONArray("results");String wanted=catalogTitleKey(name);JSONObject chosen=null;
-        for(int n=0;hits!=null&&n<hits.length();n++){JSONObject hit=hits.optJSONObject(n);if(hit==null)continue;if(wanted.equals(catalogTitleKey(hit.optString("name",hit.optString("title"))))||media&&wanted.equals(catalogTitleKey(hit.optString("original_name",hit.optString("original_title"))))){chosen=hit;break;}}
-        if(chosen==null||chosen.optLong("id")<=0)throw new IOException("Descrição indisponível para este título no catálogo.");
-        JSONObject detail=catalogObject(media?"tmdb/"+kind+"/"+chosen.optLong("id")+"?language=pt-BR":"igdb/games/"+chosen.optLong("id"),token);
-        return new JSONArray().put(detail);
+        try{
+            String kind=LibraryCategory.classify(item.optString("tipo")).equals("filme")?"movie":"tv";
+            JSONObject search=catalogObject(media?"tmdb/search/"+kind+"?language=pt-BR&query="+encode(name):"igdb/games?search="+encode(name),token);
+            JSONArray hits=search.optJSONArray("results");String wanted=catalogTitleKey(name);JSONObject chosen=null;
+            for(int n=0;hits!=null&&n<hits.length();n++){JSONObject hit=hits.optJSONObject(n);if(hit==null)continue;if(wanted.equals(catalogTitleKey(hit.optString("name",hit.optString("title"))))||media&&wanted.equals(catalogTitleKey(hit.optString("original_name",hit.optString("original_title"))))){chosen=hit;break;}}
+            if(chosen==null||chosen.optLong("id")<=0)throw new IOException("Descrição indisponível para este título no catálogo.");
+            JSONObject detail=catalogObject(media?"tmdb/"+kind+"/"+chosen.optLong("id")+"?language=pt-BR":"igdb/games/"+chosen.optLong("id"),token);
+            if(media||!detail.optString("description_raw").trim().isEmpty())return new JSONArray().put(detail);
+        }catch(Exception error){if(media)throw error;}
+        JSONObject steam=steamMetadataObject(item,token,config);
+        String description=android.text.Html.fromHtml(steam.optString("descricao")).toString().trim();
+        return new JSONArray().put(new JSONObject().put("source","steam").put("description_raw",description).put("background_image",steam.optString("capa")));
     },cb);}
     private static String catalogTitleKey(String value){return java.text.Normalizer.normalize(value,java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]","");}
     public void gameDescription(long id,Callback callback){if(id<=0){callback.done(null,"Jogo inválido.");return;}execute((user,token,config)->new JSONArray().put(catalogObject("igdb/games/"+id,token)),callback);}
@@ -203,7 +215,7 @@ public final class AccountRepository {
         String q=term==null?"":term.trim();if(q.length()<2||q.length()>100||type<0||type>2){callback.done(null,"Digite entre 2 e 100 caracteres para buscar.");return;}
         execute((user,token,config)->{
             HttpURLConnection conn=(HttpURLConnection)new URL(NativeBackend.ORIGIN+"/api/catalog/tmdb/search/"+(type==0?"movie":"tv")+"?language=pt-BR&query="+encode(q)).openConnection();
-            try{conn.setInstanceFollowRedirects(false);conn.setConnectTimeout(12000);conn.setReadTimeout(45000);conn.setRequestProperty("Authorization","Bearer "+token);int code=conn.getResponseCode();if(code!=200)throw new IOException("A busca não respondeu (HTTP "+code+"). Você pode cadastrar pelo nome.");JSONArray source=new JSONObject(read(conn.getInputStream())).optJSONArray("results"),rows=new JSONArray();if(source!=null)for(int i=0;i<Math.min(source.length(),8);i++){JSONObject row=source.optJSONObject(i);if(row==null||row.optBoolean("adult"))continue;String title=row.optString(type==0?"title":"name","");try{GameInput.name(title);}catch(IllegalArgumentException e){continue;}String poster=row.isNull("poster_path")?"":row.optString("poster_path","");rows.put(new JSONObject().put("nome",title).put("capa",poster.startsWith("/")?"https://image.tmdb.org/t/p/w500"+poster:"").put("catalog_id",row.optLong("id")).put("ano",row.optString(type==0?"release_date":"first_air_date","").replaceFirst("-.*$","")).put("sinopse",row.optString("overview","")));}return rows;}finally{conn.disconnect();}
+            try{conn.setInstanceFollowRedirects(false);conn.setConnectTimeout(12000);conn.setReadTimeout(45000);conn.setRequestProperty("Authorization","Bearer "+token);int code=conn.getResponseCode();if(code!=200)throw new IOException("A busca não respondeu (HTTP "+code+"). Você pode cadastrar pelo nome.");JSONArray source=new JSONObject(read(conn.getInputStream())).optJSONArray("results"),rows=new JSONArray();if(source!=null)for(int i=0;i<Math.min(source.length(),8);i++){JSONObject row=source.optJSONObject(i);if(row==null||row.optBoolean("adult"))continue;String title=row.optString(type==0?"title":"name","");try{GameInput.name(title);}catch(IllegalArgumentException e){continue;}String poster=row.isNull("poster_path")?"":row.optString("poster_path","");rows.put(new JSONObject().put("nome",title).put("capa",poster.startsWith("/")?"https://image.tmdb.org/t/p/w500"+poster:"").put("background_image",row.optString("backdrop_path","").startsWith("/")?"https://image.tmdb.org/t/p/w780"+row.optString("backdrop_path"):"").put("catalog_id",row.optLong("id")).put("ano",row.optString(type==0?"release_date":"first_air_date","").replaceFirst("-.*$","")).put("sinopse",row.optString("overview","")));}return rows;}finally{conn.disconnect();}
         },callback);
     }
     public void episodeGuide(String title,Callback callback){

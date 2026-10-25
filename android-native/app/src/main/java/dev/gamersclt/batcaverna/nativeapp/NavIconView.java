@@ -14,6 +14,7 @@ final class NavIconView extends View {
  if(type==3){canvas.drawRoundRect(3,3,21,18,4,4,p);path.moveTo(6,18);path.lineTo(6,22);path.lineTo(11,18);canvas.drawPath(path,p);canvas.drawLine(7,8,17,8,p);canvas.drawLine(7,12,14,12,p);}
  if(type==4){canvas.drawCircle(12,8,4,p);canvas.drawArc(3,15,21,29,180,180,false,p);}
  if(type==5){canvas.drawRoundRect(3,5,21,21,2,2,p);canvas.drawLine(3,10,21,10,p);canvas.drawLine(6,5,10,10,p);canvas.drawLine(13,5,17,10,p);path.moveTo(10,13);path.lineTo(15,16);path.lineTo(10,19);path.close();canvas.drawPath(path,p);}
+ if(type==12){canvas.drawRoundRect(3,5,21,21,3,3,p);canvas.drawLine(8,10,8,16,p);canvas.drawLine(5,13,11,13,p);canvas.drawCircle(16,11,1,p);canvas.drawCircle(18,15,1,p);canvas.drawLine(8,2,16,2,p);canvas.drawLine(12,2,12,5,p);}
  if(type==8){path.moveTo(5,17);path.lineTo(7,14);path.lineTo(7,9);path.cubicTo(7,2,17,2,17,9);path.lineTo(17,14);path.lineTo(19,17);path.close();canvas.drawPath(path,p);canvas.drawArc(10,18,14,22,0,180,false,p);canvas.drawLine(12,2,12,4,p);}
  // Small colored accents keep the icon recognizable without relying on emoji glyphs.
  p.setStyle(Paint.Style.FILL);p.setColor(type==1||type==3?0xff88d9ef:type==5?0xffffa0b1:type==8?0xffffd086:0xffbc9bff);

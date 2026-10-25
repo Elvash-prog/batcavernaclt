@@ -34,6 +34,7 @@ struct LibraryItem: Decodable, Identifiable {
     let capa: String?
     let tipo: String?
     let horas: Double?
+    let steamAppId: String?
     let nota: String?
     let plataforma: String?
     let onde: String?
@@ -53,10 +54,11 @@ struct LibraryItem: Decodable, Identifiable {
         onde = try c.decodeIfPresent(String.self,forKey:.onde)
         updatedAt = try c.decodeIfPresent(String.self,forKey:.updatedAt)
         if let number = try? c.decode(Int.self,forKey:.ano) { ano = number } else { ano = (try? c.decode(String.self,forKey:.ano)).flatMap(Int.init) }
+        if let number = try? c.decode(Int64.self,forKey:.steamAppId) { steamAppId = String(number) } else { steamAppId = try? c.decode(String.self,forKey:.steamAppId) }
         if let number = try? c.decode(Double.self, forKey: .horas) { horas = number }
         else { horas = (try? c.decode(String.self, forKey: .horas)).flatMap(Double.init) }
     }
-    enum CodingKeys: String, CodingKey { case id, nome, categoria, status, capa, tipo, horas, nota, plataforma, onde, ano; case updatedAt = "updated_at" }
+    enum CodingKeys: String, CodingKey { case id, nome, categoria, status, capa, tipo, horas, nota, plataforma, onde, ano; case updatedAt = "updated_at"; case steamAppId = "steam_appid" }
     var group: String { StatusPolicy.group(status ?? "", media: categoria != "jogos") }
 }
 enum StatusPolicy {
@@ -115,7 +117,7 @@ struct GameAchievements: Decodable {
 struct CatalogueResult: Decodable { let results: [CatalogueTitle] }
 struct CatalogueTitle: Decodable, Identifiable {
     let id: Int; let name: String?; let title: String?; let description_raw: String?; let overview: String?
-    let cover_image: String?; let background_image: String?; let poster_path: String?
+    let cover_image: String?; let background_image: String?; let poster_path: String?; let backdrop_path: String?
     let released: String?; let release_date: String?; let first_air_date: String?
     let genre_ids: [Int]?
     var displayName: String { title ?? name ?? "Título" }
@@ -184,5 +186,33 @@ enum LibraryWriteTarget {
         guard let number = Int64(item.id),number > 0,let stamp = item.updatedAt,stamp.count <= 48,
               stamp.range(of:"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$",options:.regularExpression) != nil else { throw BackendError.conflict }
         return [.init(name:"id",value:"eq."+item.id),.init(name:"user_id",value:"eq."+user.uuidString),.init(name:"categoria",value:"eq."+item.categoria),.init(name:"updated_at",value:"eq."+stamp),.init(name:"select",value:"id,nome,categoria,status,capa,tipo,horas,nota,plataforma,onde,updated_at")]
+    }
+}
+
+/// Presentation preferences live in iOS UserDefaults, never in the shared library row.
+enum MobilePresentation {
+    static let gamesKey = "ios_games_cover_vertical"
+    static let mediaKey = "ios_media_cover_vertical"
+    static let retroKey = "ios_retro_cover_vertical"
+    static func hours(_ value:Double?) -> String {
+        guard let value,value.isFinite,value >= 0 else { return "—" }
+        let format = NumberFormatter(); format.locale = Locale(identifier:"pt_BR")
+        format.numberStyle = .decimal; format.minimumFractionDigits = 1; format.maximumFractionDigits = 1
+        return (format.string(from:NSNumber(value:value)) ?? "—") + " h"
+    }
+    static func steamCover(_ id:String?,vertical:Bool) -> String? {
+        guard let id,id.range(of:"^[1-9][0-9]{0,9}$",options:.regularExpression) != nil else { return nil }
+        return "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/" + id + (vertical ? "/library_600x900.jpg":"/header.jpg")
+    }
+    static func selectArtwork(_ titles:[CatalogueTitle],name:String,year:Int?,vertical:Bool) -> String? {
+        func key(_ value:String) -> String { value.trimmingCharacters(in:.whitespacesAndNewlines).folding(options:[.caseInsensitive,.diacriticInsensitive],locale:Locale(identifier:"pt_BR")) }
+        let matches = titles.filter { title in key(title.displayName) == key(name) && (year.map { title.year == String($0) } ?? true) }
+        guard matches.count == 1 else { return nil }
+        return catalogueCover(matches[0],vertical:vertical)
+    }
+    static func catalogueCover(_ title:CatalogueTitle,vertical:Bool) -> String? {
+        let raw = vertical ? (title.cover_image ?? title.poster_path) : (title.background_image ?? title.backdrop_path)
+        guard let raw,!raw.isEmpty else { return nil }
+        return raw.hasPrefix("/") ? "https://image.tmdb.org/t/p/w780" + raw : raw
     }
 }

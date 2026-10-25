@@ -93,6 +93,9 @@ struct LibraryView: View {
     @State private var selection: LibraryItem?
     @State private var adding = false
     @State private var kind = "Todos"
+    @AppStorage(MobilePresentation.gamesKey) private var gameVertical = false
+    @AppStorage(MobilePresentation.mediaKey) private var mediaVertical = true
+    private var vertical:Bool { media ? mediaVertical:gameVertical }
     private var own: [LibraryItem] { items.filter { ($0.categoria != "jogos") == media && (kind == "Todos" || StatusPolicyKey.type($0.tipo ?? "") == kind) } }
     private var filtered: [LibraryItem] {
         own.filter { item in
@@ -116,11 +119,13 @@ struct LibraryView: View {
                     summary(media ? "Títulos":"Jogos",value:String(own.count),color:.purple,key:.all)
                     summary(media ? "Assistidos":"Finalizados",value:String(own.filter{(media ? ["Assistidos","Favoritos"]:["Zerados","Platinados"]).contains($0.group)}.count),color:.green,key:.finished)
                     summary(media ? "Assistindo":"Platinados",value:String(own.filter{$0.group == (media ? "Assistindo":"Platinados")}.count),color:.cyan,key:media ? .progress:.platinum)
-                    summary(media ? "Para assistir":"Horas jogadas",value:media ? String(own.filter{$0.group == "Para assistir"}.count):String(format:"%.0fh",own.reduce(0){$0 + (($1.horas ?? 0).isFinite ? max(0,$1.horas ?? 0):0)}),color:.orange,key:media ? .backlog:.hours)
+                    summary(media ? "Para assistir":"Horas jogadas",value:media ? String(own.filter{$0.group == "Para assistir"}.count):MobilePresentation.hours(own.reduce(0){$0 + (($1.horas ?? 0).isFinite ? max(0,$1.horas ?? 0):0)}),color:.orange,key:media ? .backlog:.hours)
                 }
                 if !media {
                     HStack { summary("Em progresso",value:String(own.filter{["Em progresso","Jogando agora"].contains($0.group)}.count),color:.blue,key:.progress); summary("Backlog",value:String(own.filter{$0.group == "Backlog"}.count),color:.purple,key:.backlog) }
                 }
+                Picker("Capas neste iPhone/iPad",selection:Binding(get:{vertical},set:{ if media { mediaVertical = $0 } else { gameVertical = $0 } })) { Text("Horizontal").tag(false); Text("Vertical").tag(true) }.pickerStyle(.segmented)
+                Text("O formato das capas é salvo somente neste aparelho.").font(.caption).foregroundStyle(.secondary)
                 if filter != .all { Button("← Mostrar todos os títulos") { filter = .all } }
                 if busy { ProgressView("Carregando biblioteca…") }
                 if let error { Text(error).foregroundStyle(.red); Button("Tentar novamente") { Task { await reload() } } }
@@ -129,7 +134,7 @@ struct LibraryView: View {
                     if !rows.isEmpty {
                         Text(group + " · " + String(rows.count)).font(.title3.bold()).foregroundStyle(Caverna.accent)
                         LazyVGrid(columns:[GridItem(.adaptive(minimum:145),alignment:.top)],spacing:14) {
-                            ForEach(rows) { item in Button { selection = item } label: { CoverCard(name:item.nome,subtitle:item.status ?? "",image:item.capa) }.buttonStyle(.plain) }
+                            ForEach(rows) { item in Button { selection = item } label: { CoverCard(name:item.nome,subtitle:item.status ?? "",image:item.capa,vertical:vertical,mobileArtwork:true,media:media,type:item.tipo ?? "",steamAppId:item.steamAppId,year:item.ano) }.buttonStyle(.plain) }
                         }
                     }
                 }
@@ -155,23 +160,52 @@ enum StatusPolicyKey {
 }
 struct CoverCard: View {
     let name:String; let subtitle:String; let image:String?
+    var vertical = true; var mobileArtwork = false; var media = false; var type = ""; var steamAppId:String? = nil; var year:Int? = nil
     var body: some View {
         VStack(alignment:.leading,spacing:0) {
-            CoverImage(source:image).aspectRatio(0.72,contentMode:.fit).clipped()
+            Group {
+                if mobileArtwork { MobileCoverImage(name:name,source:image,media:media,type:type,steamAppId:steamAppId,year:year,vertical:vertical) }
+                else { CoverImage(source:image,fit:false) }
+            }.aspectRatio(vertical ? 2.0/3.0:16.0/9.0,contentMode:.fit).clipped()
             VStack(alignment:.leading,spacing:6) { Text(name).font(.headline).lineLimit(2); Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(2) }.padding(12)
         }.background(Caverna.panel,in:RoundedRectangle(cornerRadius:16)).clipShape(RoundedRectangle(cornerRadius:16))
     }
 }
 struct CoverImage: View {
     let source:String?
+    var fit = false
+    var fallback:String? = nil
+    private var placeholder:some View { ZStack { Caverna.panel; Image(systemName:"gamecontroller").font(.largeTitle).foregroundStyle(Caverna.accent) } }
     var body: some View {
         GeometryReader { geometry in
-            AsyncImage(url:Caverna.safeImage(source)) { image in image.resizable().scaledToFill() } placeholder: { ZStack { Caverna.panel; Image(systemName:"gamecontroller").font(.largeTitle).foregroundStyle(Caverna.accent) } }.frame(width:geometry.size.width,height:geometry.size.height).clipped()
+            AsyncImage(url:Caverna.safeImage(source)) { phase in
+                if let image = phase.image { image.resizable().aspectRatio(contentMode:fit ? .fit:.fill) }
+                else if phase.error != nil,let fallback,fallback != source {
+                    AsyncImage(url:Caverna.safeImage(fallback)) { image in image.resizable().aspectRatio(contentMode:fit ? .fit:.fill) } placeholder:{ placeholder }
+                } else { placeholder }
+            }.frame(width:geometry.size.width,height:geometry.size.height).background(Caverna.panel).clipped()
         }.accessibilityHidden(true)
+    }
+}
+struct MobileCoverImage:View {
+    let name:String; let source:String?; let media:Bool; let type:String; var steamAppId:String? = nil; var year:Int? = nil; let vertical:Bool
+    var fillsCard = true
+    @EnvironmentObject private var backend:Backend
+    @State private var resolved:String?
+    private var requestKey:String { "\(name):\(source ?? ""):\(media):\(type):\(steamAppId ?? ""):\(year ?? 0):\(vertical)" }
+    var body:some View {
+        CoverImage(source:resolved ?? source,fit:!fillsCard,fallback:source)
+            .task(id:requestKey) {
+                resolved = nil
+                if !media,let steam = MobilePresentation.steamCover(steamAppId,vertical:vertical) { resolved = steam;return }
+                let result = await backend.mobileArtwork(name:name,media:media,type:type,vertical:vertical,year:year)
+                if !Task.isCancelled { resolved = Caverna.safeImage(result) == nil ? nil:result }
+            }
     }
 }
 struct RetroView: View {
     @EnvironmentObject private var backend: Backend
+    @AppStorage(MobilePresentation.retroKey) private var vertical = true
     @State private var profile: RetroProfile?
     @State private var games: [RetroGame] = []
     @State private var statuses: [String:String] = [:]
@@ -189,12 +223,13 @@ struct RetroView: View {
                 }
                 if busy { ProgressView("Sincronizando RetroAchievements…") }
                 if let error { Text(error).foregroundStyle(.red); Button("Tentar novamente") { Task { await load() } } }
+                Picker("Capas do Meu Retrô neste aparelho",selection:$vertical) { Text("Horizontal").tag(false); Text("Vertical").tag(true) }.pickerStyle(.segmented)
                 ForEach(["Em progresso","Backlog","Zerados","Platinados","Pausados","Abandonados"],id:\.self) { group in
                     let rows = games.filter { $0.group(statuses[String($0.id)]) == group && (query.isEmpty || $0.nome.localizedCaseInsensitiveContains(query)) }.sorted{$0.nome.localizedStandardCompare($1.nome) == .orderedAscending}
                     if !rows.isEmpty {
                         Text(group + " · " + String(rows.count)).font(.title3.bold()).foregroundStyle(Caverna.accent)
                         LazyVGrid(columns:[GridItem(.adaptive(minimum:145),alignment:.top)],spacing:14) {
-                            ForEach(rows) { game in Button { selected = game } label: { CoverCard(name:game.nome,subtitle:"\(game.desbloqueadas)/\(game.total) conquistas",image:game.capa) }.buttonStyle(.plain) }
+                            ForEach(rows) { game in Button { selected = game } label: { CoverCard(name:game.nome,subtitle:"\(game.desbloqueadas)/\(game.total) conquistas",image:game.capa,vertical:vertical,mobileArtwork:true) }.buttonStyle(.plain) }
                         }
                     }
                 }
@@ -231,7 +266,7 @@ struct DescriptionView: View {
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:20) {
-                CoverImage(source:image).frame(height:230).clipShape(RoundedRectangle(cornerRadius:20))
+                MobileCoverImage(name:name,source:image,media:media,type:tv ? "📺 Série":"🎬 Filme",steamAppId:libraryItem?.steamAppId,year:libraryItem?.ano,vertical:false,fillsCard:false).frame(height:230).clipShape(RoundedRectangle(cornerRadius:20))
                 Text(name).font(.title.bold()); Text(changedStatus ?? status).foregroundStyle(Caverna.accent)
                 if let item = libraryItem {
                     VStack(alignment:.leading,spacing:10) {
@@ -242,7 +277,7 @@ struct DescriptionView: View {
                             if let service = item.onde,!service.isEmpty { Label(service,systemImage:"play.rectangle") }
                         } else {
                             if let platform = item.plataforma,!platform.isEmpty { Label(platform,systemImage:"gamecontroller") }
-                            if let hours = item.horas,hours.isFinite { Label(String(format:"%.1f horas jogadas",hours),systemImage:"clock") }
+                            if let hours = item.horas,hours.isFinite { Label(MobilePresentation.hours(hours)+" jogadas",systemImage:"clock") }
                         }
                     }.font(.subheadline).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(16).background(Caverna.panel,in:RoundedRectangle(cornerRadius:16))
                 }

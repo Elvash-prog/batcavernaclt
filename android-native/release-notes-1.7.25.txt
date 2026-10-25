@@ -1,0 +1,11 @@
+BatCaverna CLT Android 1.7.25
+
+- Meu Retrô com aba própria no rodapé, filtros por status e resumo da coleção.
+- Visual reorganizado, navegação destacada e controles com melhor contraste.
+- Capas horizontais ou verticais configuradas somente no aparelho, sem alterar o desktop.
+- Correção da proporção e do preenchimento dos cards nos dois formatos.
+- Horas jogadas em português: 3.717 horas agora aparecem como 3,7 h.
+- Consulta alternativa à Steam para capa e descrição quando o catálogo ou os caminhos de imagem não estão disponíveis, com confirmação do título.
+- Menos reconstruções durante a busca, cache de capas e exibição progressiva das coleções.
+
+A atualização oficial mantém o pacote e a assinatura de produção. Não é necessário desinstalar o aplicativo anterior.

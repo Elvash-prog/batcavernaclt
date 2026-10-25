@@ -41,7 +41,8 @@ jobs:
             python3 -c "from pathlib import Path; s=Path('build/mobile-test-results.txt').read_text(); print(s); assert 'OK (1 test)' in s and 'FAILURES' not in s"
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/login-android.png > build/mobile-previews/login-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/controles-android.png > build/mobile-previews/controles-android.png
-            python3 -c "from pathlib import Path; files=list(Path('build/mobile-previews').glob('*.png')); assert len(files)==2 and all(p.read_bytes().startswith(bytes([137,80,78,71,13,10,26,10])) for p in files)"
+            adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/navegacao-retro-android.png > build/mobile-previews/navegacao-retro-android.png
+            python3 -c "from pathlib import Path; files=list(Path('build/mobile-previews').glob('*.png')); assert len(files)==3 and all(p.read_bytes().startswith(bytes([137,80,78,71,13,10,26,10])) for p in files)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
