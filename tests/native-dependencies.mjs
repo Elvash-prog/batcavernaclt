@@ -33,10 +33,15 @@ assert.equal(downloads.length,2,'Windows and Android downloads must remain avail
 const officialFiles=['1tWVxsv3OJj_6HYZNcPPjcKT0MjEb_uT-','1_8zuBmrjxylWpMGSFDpDriu5axgvLvAe'];
 for(const [index,url] of downloads.entries()){
  assert.equal(url.protocol,'https:');
- assert.equal(url.hostname,'drive.usercontent.google.com');
- assert.equal(url.pathname,'/download');
- assert.equal(url.searchParams.get('id'),officialFiles[index],'download must use the configured official Drive file');
- assert.equal(url.searchParams.get('export'),'download');
+ if(index===1&&url.hostname==='github.com'){
+  assert.match(url.pathname,/^\/Elvash-prog\/batcavernaclt\/releases\/download\/android-v(\d+\.\d+\.\d+)\/BatCaverna-\1\.apk$/,'Android must use the official repository and a consistent release version');
+  assert.equal(url.search,'');
+ }else{
+  assert.equal(url.hostname,'drive.usercontent.google.com');
+  assert.equal(url.pathname,'/download');
+  assert.equal(url.searchParams.get('id'),officialFiles[index],'download must use the configured official Drive file');
+  assert.equal(url.searchParams.get('export'),'download');
+ }
  assert.equal(url.username,'');assert.equal(url.password,'');assert.equal(url.port,'');
 }
 console.log('Public presentation serves approved assets; legacy web application and APIs remain unavailable');
