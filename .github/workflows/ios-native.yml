@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths: ['ios-native/**', '.github/workflows/ios-native.yml']
   workflow_dispatch:
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

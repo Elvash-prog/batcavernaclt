@@ -16,9 +16,9 @@ private final class LibraryProtocol: URLProtocol {
 }
 @MainActor final class LibraryMutationTests:XCTestCase {
     private let owner = UUID(uuidString:"00000000-0000-4000-8000-000000000001")!
-    private func item(stamp:String = "2026-10-25T10:20:30.123456+00:00") throws -> LibraryItem {
+    private func item(stamp:String = "2026-10-25T10:20:30.123456+00:00") throws -> BatCaverna.LibraryItem {
         let json:[String:Any] = ["id":42,"nome":"Black","categoria":"jogos","status":"🎮 Em Progresso","horas":1.5,"updated_at":stamp]
-        return try JSONDecoder().decode(LibraryItem.self,from:JSONSerialization.data(withJSONObject:json))
+        return try JSONDecoder().decode(BatCaverna.LibraryItem.self,from:JSONSerialization.data(withJSONObject:json))
     }
     private func backend() throws -> Backend {
         let config = URLSessionConfiguration.ephemeral; config.protocolClasses = [LibraryProtocol.self]

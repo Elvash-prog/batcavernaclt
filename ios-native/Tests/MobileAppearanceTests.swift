@@ -22,7 +22,7 @@ import SwiftUI
     func testLibraryAndEditorAppearance() throws {
         // Synthetic collection; previews never authenticate or write remote data.
         let data = Data(#"[{"id":1,"nome":"Black","categoria":"jogos","status":"🎮 Em Progresso","horas":2.5},{"id":2,"nome":"Horizon Zero Dawn","categoria":"jogos","status":"📌 Backlog"}]"#.utf8)
-        let rows = try JSONDecoder().decode([LibraryItem].self,from:data)
+        let rows = try JSONDecoder().decode([BatCaverna.LibraryItem].self,from:data)
         let config = URLSessionConfiguration.ephemeral
         let session = try JSONDecoder().decode(AppSession.self,from:Data(#"{"access_token":"preview","refresh_token":"preview","expires_at":4000000000,"user":{"id":"00000000-0000-4000-8000-000000000001"}}"#.utf8))
         let backend = Backend(network:URLSession(configuration:config),initialSession:session)
