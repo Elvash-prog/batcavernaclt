@@ -29,7 +29,7 @@ O BatCaverna é gratuito. Os downloads abaixo levam aos arquivos oficiais usados
 | Plataforma | Disponibilidade | Download |
 | --- | --- | --- |
 | **Windows** | Aplicativo desktop com instalador `.exe` | [Baixar para Windows](https://drive.usercontent.google.com/download?id=1tWVxsv3OJj_6HYZNcPPjcKT0MjEb_uT-&export=download) |
-| **Android** | Aplicativo nativo · Android 6.0 ou superior | [Baixar APK 1.7.25](https://github.com/Elvash-prog/batcavernaclt/releases/download/android-v1.7.25/BatCaverna-1.7.25.apk) |
+| **Android** | Aplicativo nativo · Android 6.0 ou superior | [Baixar APK 1.7.26](https://github.com/Elvash-prog/batcavernaclt/releases/download/android-v1.7.26/BatCaverna-1.7.26.apk) |
 | **iOS** | Em desenvolvimento · versão inicial para simulador | [Acompanhar a versão iOS](ios-native/README.md) |
 
 Também estão disponíveis os [arquivos e notas de versão no GitHub](https://github.com/Elvash-prog/batcavernaclt/releases). Windows e Android avisam quando há uma nova atualização. Para instalar o APK, o Android pode pedir autorização para instalar aplicativos pelo navegador.
