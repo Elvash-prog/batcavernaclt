@@ -3,15 +3,19 @@ package dev.gamersclt.batcaverna.nativeapp;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.test.InstrumentationTestCase;
+import android.app.Instrumentation;
+import androidx.test.platform.app.InstrumentationRegistry;
+import org.junit.Test;
+import static org.junit.Assert.*;
 import android.view.View;
 import android.widget.*;
 import java.io.File;
 import java.io.FileOutputStream;
 
 /** Captures production components without authenticating or mutating account data. */
-public final class MobileAppearanceTest extends InstrumentationTestCase {
- public void testLoginAndSharedControls() throws Exception {
+public final class MobileAppearanceTest {
+ private Instrumentation getInstrumentation(){return InstrumentationRegistry.getInstrumentation();}
+ @Test public void testLoginAndSharedControls() throws Exception {
   Intent intent=new Intent(getInstrumentation().getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
   Activity activity=getInstrumentation().startActivitySync(intent);
   try {
