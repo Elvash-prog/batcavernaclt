@@ -1,5 +1,5 @@
 // Public IGDB data only: authentication and per-user rate limits run before this layer.
-export const catalogTtl=body=>/where id = \d+;/.test(body)?604800:/search "/.test(body)?21600:3600;
+export const catalogTtl=body=>body.startsWith('translation:en:pt-BR:v1:')?604800:/where id = \d+;/.test(body)?604800:/search "/.test(body)?21600:3600;
 async function digest(value){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('igdb:v2:'+value));return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');}
 async function rpc(env,name,data){
  const r=await fetch(env.SUPABASE_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,'content-type':'application/json'},body:JSON.stringify(data),redirect:'error',signal:AbortSignal.timeout(6000)});

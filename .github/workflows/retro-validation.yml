@@ -17,7 +17,7 @@ jobs:
           node-version: '24'
       - run: node tests/native-dependencies.mjs
       - run: node --test tests/https-security.mjs
-      - run: node --test tests/catalog-cache.mjs tests/operational-metrics.mjs tests/security-events.mjs
+      - run: node --test tests/catalog-cache.mjs tests/catalog-translation.mjs tests/operational-metrics.mjs tests/security-events.mjs
       - run: node tests/igdb.mjs
       - run: node tests/native-api.mjs
       - run: node tests/request-security.mjs && node tests/login-rate.mjs && node tests/edge-pentest.mjs

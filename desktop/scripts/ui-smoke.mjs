@@ -1393,6 +1393,7 @@ try {
   );
   await page.waitForTimeout(800);
   assert.match(await page.locator('.retro-profile').evaluate(n=>getComputedStyle(n).backgroundImage),/data:image/,'A capa privada do Retrô deve ser carregada autenticada');
+  assert.deepEqual(await page.locator('.cavern-retro-stats .cavern-stat b').allTextContents(),['120','45','1','3/10','1'],'O resumo Retrô deve refletir os desbloqueios dos jogos, não o texto do status');
   await page.screenshot({ path: "preview/retro-check.png" });
   await page.evaluate(() => (window.failRetroAchievements = true));
   assert.equal(await page.locator('.retro-actions [data-retro-achievements]').count(),0);

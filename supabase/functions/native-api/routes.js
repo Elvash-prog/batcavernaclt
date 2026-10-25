@@ -1,3 +1,4 @@
+import {translateDescription} from './translation.js';
 import {igdbCatalog} from './igdb.js';
 import {filterCatalog,authenticate} from './handlers.js';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store',...(status===429?{'Retry-After':'60'}:{})}});
@@ -21,7 +22,7 @@ async function catalog(request,env,url){
     const upstream=new URL(path,'https://api.themoviedb.org/3/');
     const params=new Set(['search','query','page','page_size','ordering','language','sort_by','vote_count.gte','with_genres','without_genres','with_original_language','with_keywords','without_keywords']);
     for(const [k,v] of url.searchParams){if(params.has(k)&&v.length<=500)upstream.searchParams.set(k,v);}
-    if(!key.includes('.'))upstream.searchParams.set('api_key',key);upstream.searchParams.set('include_adult','false');
+    if(!key.includes('.'))upstream.searchParams.set('api_key',key);upstream.searchParams.set('include_adult','false');upstream.searchParams.set('language','pt-BR');
     const headers={Accept:'application/json'};if(provider==='tmdb'&&key.includes('.'))headers.Authorization='Bearer '+key;
     let response=await fetch(upstream,{headers,redirect:'manual',signal:AbortSignal.timeout(15000)});
     if([500,502,503,504].includes(response.status))response=await fetch(upstream,{headers,redirect:'manual',signal:AbortSignal.timeout(15000)});
@@ -32,6 +33,11 @@ async function catalog(request,env,url){
     }
     etapa='response';
     const data=await response.json();
+    // Localized provider descriptions take precedence. Fetch English only if pt-BR is missing.
+    if(/^(movie|tv)\/\d+$/.test(path)&&!data.overview){
+      try{const english=new URL(upstream);english.searchParams.set('language','en-US');const fallback=await fetch(english,{headers,redirect:'error',signal:AbortSignal.timeout(8000)});if(fallback.ok){const source=await fallback.json();if(source.adult!==true&&source.overview){const translated=await translateDescription(env,source.overview);data.overview=translated.text;data.description_language=translated.translated?'pt-BR':'en';}}}catch{}
+    }
+
     const filtered=filterCatalog(data);return filtered instanceof Response?filtered:json(filtered);
   }catch(e){
     if(e.message==='CONFIG')return json({error:'Serviço temporariamente indisponível.'},503);

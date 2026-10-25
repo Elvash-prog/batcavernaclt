@@ -1,0 +1,3 @@
+Meu Retrô: corrigido o resumo que exibia conquistas zeradas.
+Descrições: suporte a tradução pt-BR do catálogo pelo Supabase com cache compartilhado e preservação do original em caso de indisponibilidade.
+A tradução automática precisa da chave do serviço configurada no backend.

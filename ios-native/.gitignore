@@ -1,0 +1,5 @@
+BatCaverna.xcodeproj/
+build/
+*.xcresult/
+login-ios.png
+Resources/
