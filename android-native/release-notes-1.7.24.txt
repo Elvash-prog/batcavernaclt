@@ -1,0 +1,5 @@
+BatCaverna Android 1.7.24
+
+Visual alinhado ao aplicativo iOS: login com campos agrupados, botões e formulários mais consistentes, navegação mais leve e capas em formato de pôster.
+Meu Retrô organizado em grade de cartões, preservando os status e as conquistas reais.
+Os recursos existentes do Android foram mantidos.

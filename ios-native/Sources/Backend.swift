@@ -25,12 +25,15 @@ enum SessionVault {
     }
 }
 enum BackendError: LocalizedError {
-    case http(Int), storage, missingRetro, tooLarge, noMatch
+    case http(Int), storage, missingRetro, tooLarge, noMatch, conflict, duplicate, invalidInput(String)
     var errorDescription: String? {
         switch self {
         case .http(401): return "Sessão inválida ou usuário e senha incorretos. Entre novamente."
         case .http(429): return "Muitas solicitações. Aguarde um minuto e tente novamente."
         case .http: return "Não foi possível concluir a solicitação. Tente novamente."
+        case .conflict: return "O título mudou em outro dispositivo. Feche esta janela e atualize a biblioteca antes de tentar novamente."
+        case .duplicate: return "Este título já está na sua biblioteca."
+        case .invalidInput(let message): return message
         case .storage: return "Não foi possível acessar a sessão protegida neste dispositivo."
         case .missingRetro: return "Conecte seu usuário RetroAchievements nas integrações do desktop."
         case .tooLarge: return "A coleção ultrapassou o limite de sincronização. Nenhum resumo parcial foi exibido."
@@ -49,21 +52,24 @@ private final class NoRedirect: NSObject, URLSessionTaskDelegate {
     private let publicKey = "sb_publishable_g_dTf0TrTXy_p8PjjHip2Q_ByqI2r_e"
     private let network: URLSession
     private var refreshTask: Task<AppSession, Error>?
-    init() {
+    init(network suppliedNetwork: URLSession? = nil, initialSession: AppSession? = nil) {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieStorage = nil; config.urlCache = nil; config.timeoutIntervalForRequest = 30
-        network = URLSession(configuration: config, delegate: NoRedirect(), delegateQueue: nil)
+        network = suppliedNetwork ?? URLSession(configuration: config, delegate: NoRedirect(), delegateQueue: nil)
+        if let initialSession { session = initialSession; return }
         do { if let data = try SessionVault.read() { session = try JSONDecoder().decode(AppSession.self, from: data) } }
         catch { startupError = "Não foi possível restaurar a sessão. Entre novamente." }
     }
-    private func send(_ path: String, query: [URLQueryItem] = [], body: [String:Any]? = nil, token: String? = nil) async throws -> Data {
+    private func send(_ path: String, query: [URLQueryItem] = [], body: [String:Any]? = nil, token: String? = nil, method: String? = nil, representation: Bool = false) async throws -> Data {
         var parts = URLComponents(string: origin + path)!; parts.queryItems = query.isEmpty ? nil : query
-        var request = URLRequest(url: parts.url!); request.httpMethod = body == nil ? "GET" : "POST"
+        var request = URLRequest(url: parts.url!); request.httpMethod = method ?? (body == nil ? "GET" : "POST")
+        if representation { request.setValue("return=representation",forHTTPHeaderField:"Prefer") }
         request.setValue(publicKey, forHTTPHeaderField: "apikey")
         if let token { request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization") }
         if let body { request.setValue("application/json", forHTTPHeaderField: "Content-Type"); request.httpBody = try JSONSerialization.data(withJSONObject: body) }
         let (data, response) = try await network.data(for: request)
         guard let response = response as? HTTPURLResponse else { throw BackendError.http(503) }
+        if response.statusCode == 409 { throw BackendError.duplicate }
         guard (200..<300).contains(response.statusCode) else { throw BackendError.http(response.statusCode) }
         return data
     }
@@ -103,10 +109,48 @@ private final class NoRedirect: NSObject, URLSessionTaskDelegate {
         guard let user = session?.user.id.uuidString else { throw BackendError.http(401) }
         var all: [LibraryItem] = []
         for offset in stride(from:0,to:20000,by:250) {
-            let rows = try await get([LibraryItem].self,"/rest/v1/itens",query:[.init(name:"select",value:"id,nome,categoria,status,capa,tipo,horas"),.init(name:"user_id",value:"eq."+user),.init(name:"order",value:"id.asc"),.init(name:"limit",value:"250"),.init(name:"offset",value:String(offset))])
+            let rows = try await get([LibraryItem].self,"/rest/v1/itens",query:[.init(name:"select",value:"id,nome,categoria,status,capa,tipo,horas,nota,plataforma,onde,ano,updated_at"),.init(name:"user_id",value:"eq."+user),.init(name:"order",value:"id.asc"),.init(name:"limit",value:"250"),.init(name:"offset",value:String(offset))])
             all += rows; if rows.count < 250 { return all }
         }
         throw BackendError.tooLarge
+    }
+    func saveLibrary(_ draft:LibraryDraft,media:Bool,item:LibraryItem? = nil) async throws {
+        if let item,item.categoria != (media ? "filmes":"jogos") { throw BackendError.invalidInput("Tipo de biblioteca inválido.") }
+        let fields = try draft.fields(media:media,original:item)
+        guard let user = session?.user.id else { throw BackendError.http(401) }
+        let access = try await token()
+        guard session?.user.id == user else { throw BackendError.http(401) }
+        var body = fields
+        let query:[URLQueryItem]
+        if let item { query = try LibraryWriteTarget.query(item:item,user:user) }
+        else { body["user_id"] = user.uuidString; body["categoria"] = media ? "filmes":"jogos"; body["generos"] = []; query = [.init(name:"select",value:"id")] }
+        let data = try await send("/rest/v1/itens",query:query,body:body,token:access,method:item == nil ? "POST":"PATCH",representation:true)
+        guard session?.user.id == user else { throw BackendError.http(401) }
+        guard let rows = try JSONSerialization.jsonObject(with:data) as? [[String:Any]],rows.count == 1 else { throw BackendError.conflict }
+    }
+    func removeLibrary(_ item:LibraryItem) async throws {
+        guard let user = session?.user.id else { throw BackendError.http(401) }
+        let query = try LibraryWriteTarget.query(item:item,user:user),access = try await token()
+        guard session?.user.id == user else { throw BackendError.http(401) }
+        let data = try await send("/rest/v1/itens",query:query,token:access,method:"DELETE",representation:true)
+        guard session?.user.id == user else { throw BackendError.http(401) }
+        guard let rows = try JSONSerialization.jsonObject(with:data) as? [[String:Any]],rows.count == 1 else { throw BackendError.conflict }
+    }
+    func searchCatalogue(_ query:String,media:Bool,type:String) async throws -> [CatalogueTitle] {
+        let text = query.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard (2...160).contains(text.count) else { throw BackendError.invalidInput("Digite entre 2 e 160 caracteres.") }
+        let tv = StatusPolicyKey.type(type) != "Filmes"
+        let path = "/functions/v1/native-api/api/catalog/" + (media ? "tmdb/search/"+(tv ? "tv":"movie") : "igdb/games")
+        let result = try await get(CatalogueResult.self,path,query:[.init(name:media ? "query":"search",value:text),.init(name:"language",value:"pt-BR"),.init(name:"page_size",value:"20")])
+        return type == "🍥 Anime" && media ? result.results.filter { $0.genre_ids?.contains(16) == true } : result.results
+    }
+    func setRetroStatus(game:Int,status:String) async throws {
+        guard game > 0,["progress","backlog","finished","platinum","paused","abandoned"].contains(status) else { throw BackendError.invalidInput("Status inválido.") }
+        _ = try await bright(RetroCollection.self,["op":"raSaveCollection","statusGameId":game,"status":status])
+    }
+    func removeRetro(game:Int) async throws {
+        guard game > 0 else { throw BackendError.invalidInput("Jogo inválido.") }
+        _ = try await bright(RetroCollection.self,["op":"raSaveCollection","removeGameId":game])
     }
     func retro() async throws -> (RetroProfile,[RetroGame],[String:String]) {
         struct Profile:Decodable { let retroachievements_user: String? }

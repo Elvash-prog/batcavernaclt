@@ -1,0 +1,50 @@
+package dev.gamersclt.batcaverna.nativeapp;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.app.Instrumentation;
+import androidx.test.platform.app.InstrumentationRegistry;
+import org.junit.Test;
+import static org.junit.Assert.*;
+import android.view.View;
+import android.widget.*;
+import java.io.File;
+import java.io.FileOutputStream;
+
+/** Captures production components without authenticating or mutating account data. */
+public final class MobileAppearanceTest {
+ private Instrumentation getInstrumentation(){return InstrumentationRegistry.getInstrumentation();}
+ @Test public void testLoginAndSharedControls() throws Exception {
+  Intent intent=new Intent(getInstrumentation().getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+  Activity activity=getInstrumentation().startActivitySync(intent);
+  try {
+   getInstrumentation().waitForIdleSync(); capture(activity,"login-android");
+   final Button[] primary=new Button[1];
+   getInstrumentation().runOnMainSync(()->{
+    LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(24,48,24,24);body.setBackgroundColor(NativeTheme.backgroundEnd(activity));
+    TextView title=new TextView(activity);title.setText("Adicionar título");title.setTextColor(0xfff4f2ff);title.setTextSize(26);body.addView(title);
+    EditText name=NativeSheet.input(activity,"Nome do título",160);name.setText("Black");body.addView(name);
+    EditText hours=NativeSheet.input(activity,"Horas jogadas",20);hours.setText("2,5");body.addView(hours);
+    Button save=new Button(activity);save.setText("Salvar alterações");AppStyle.button(save,true);body.addView(save);
+    Button cancel=new Button(activity);cancel.setText("Cancelar");AppStyle.button(cancel,false);body.addView(cancel);
+    activity.setContentView(body);primary[0]=save;
+   });
+   getInstrumentation().waitForIdleSync();
+   assertTrue(primary[0].getHeight()>=Math.round(48*activity.getResources().getDisplayMetrics().density));
+   capture(activity,"controles-android");
+  } finally { getInstrumentation().runOnMainSync(activity::finish); }
+ }
+ private void capture(Activity activity,String name) throws Exception {
+  // Capture the app view itself; emulator launcher/system dialogs are separate windows.
+  final Bitmap[] pixels=new Bitmap[1];
+  getInstrumentation().runOnMainSync(()->{
+   View content=activity.findViewById(android.R.id.content);
+   pixels[0]=Bitmap.createBitmap(content.getWidth(),content.getHeight(),Bitmap.Config.ARGB_8888);
+   content.draw(new android.graphics.Canvas(pixels[0]));
+  });
+  Bitmap image=pixels[0];assertNotNull(image);
+  File directory=new File(getInstrumentation().getTargetContext().getFilesDir(),"mobile-previews");assertTrue(directory.isDirectory()||directory.mkdirs());
+  try(FileOutputStream out=new FileOutputStream(new File(directory,name+".png"))){assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,out));}finally{image.recycle();}
+ }
+}

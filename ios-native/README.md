@@ -1,6 +1,6 @@
-# BatCaverna para iOS — primeira etapa
+# BatCaverna para iOS — versão 0.2.0
 
-Aplicativo nativo SwiftUI, iOS 17+, com a paleta Caverna, cartões, resumos e organização por status do Android. Esta primeira etapa oferece login por usuário, sessão no Keychain, renovação de tokens, logout confirmado no servidor, biblioteca sincronizada de jogos e mídias, filtros interativos, descrições do catálogo e coleção RetroAchievements com conquistas coloridas/cinzas.
+Aplicativo nativo SwiftUI, iOS 17+, com a paleta Caverna, cartões, resumos e organização por status do Android. Esta versão oferece login por usuário, sessão no Keychain, renovação de tokens, logout confirmado no servidor, biblioteca sincronizada de jogos e mídias, cadastro, edição e remoção de títulos, busca nos catálogos IGDB/TMDB, filtros interativos, descrições do catálogo e coleção RetroAchievements com conquistas coloridas/cinzas, mudança de status e remoção da coleção. As alterações da biblioteca verificam o proprietário e a versão original do registro para evitar sobrescrever uma edição feita em outro dispositivo.
 
 O acesso usa a chave publicável e as mesmas permissões RLS e funções Supabase do APK. Não inclui chave privilegiada nem exceção ao HTTPS. As descrições traduzidas dependem da configuração descrita em `docs/CATALOG_TRANSLATION.md`.
 
@@ -22,4 +22,4 @@ Para um iPhone físico, configure a conta Apple e o Team em Signing & Capabiliti
 
 ## Próximas etapas de paridade
 
-Ainda não inclui edição/cadastro/exclusão da biblioteca, amigos/chat, indicações, progresso de episódios, notificações push, recuperação/cadastro de conta ou atualização via App Store. Estes fluxos precisam de implementação e testes próprios antes de chamar a versão iOS de completa. O aplicativo inicial não exibe botões para funções ausentes.
+Ainda não inclui amigos/chat, indicações, progresso de episódios, notificações push, recuperação/cadastro de conta ou atualização via App Store. Estes fluxos precisam de implementação e testes próprios antes de chamar a versão iOS de completa. O aplicativo inicial não exibe botões para funções ausentes.

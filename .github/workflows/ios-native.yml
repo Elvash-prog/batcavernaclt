@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths: ['ios-native/**', '.github/workflows/ios-native.yml']
   workflow_dispatch:
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -32,6 +35,11 @@ jobs:
       - name: Compilar e testar sem assinatura de distribuição
         working-directory: ios-native
         run: xcodebuild -project BatCaverna.xcodeproj -scheme BatCaverna -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" -derivedDataPath build -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- -parallel-testing-enabled NO test
+      - name: Guardar capturas dos componentes nativos
+        working-directory: ios-native
+        run: |
+          CONTAINER=$(xcrun simctl get_app_container "$IOS_SIMULATOR_ID" dev.gamersclt.batcaverna data)
+          cp -R "$CONTAINER/Documents/mobile-previews" mobile-previews
       - name: Abrir aplicativo e capturar tela inicial
         timeout-minutes: 3
         working-directory: ios-native
@@ -47,4 +55,5 @@ jobs:
           path: |
             ios-native/TestResults.xcresult
             ios-native/login-ios.png
+            ios-native/mobile-previews/
             ios-native/build/Build/Products/Debug-iphonesimulator/BatCaverna.app
