@@ -136,13 +136,6 @@
   const games=state.libraryCategory==='jogos',tabs=libTabs(games),key=tabs.some(t=>t[0]===state.cavernFilter)?state.cavernFilter:'all',view=localStorage.getItem('cavern-lib-view')==='list'?'list':'grid';
   state.cavernFilter=key;
   const match=tabs.find(t=>t[0]===key)[2];
-  if(key!=='all'){
-   box.querySelectorAll('[data-detail]').forEach(card=>{const row=state.libraryRows.find(r=>String(r.id)===String(card.dataset.detail));if(!row||!match(normalizedStatus(row.status)))card.remove()});
-   box.querySelectorAll('.collection-section').forEach(s=>{if(!s.querySelector('[data-detail]'))s.remove()});
-   const total=box.querySelectorAll('[data-detail]').length,count=box.querySelector('.collection-result-count');
-   if(count)count.textContent=`${total} títulos na sua coleção`;
-   if(!total&&!box.querySelector('.empty'))box.innerHTML='<div class="empty">Nenhum título neste filtro.</div>';
-  }
   box.classList.toggle('cavern-list',view==='list');
   content.querySelector('.cavern-lib-bar')?.remove();
   content.querySelector('.cavern-featured')?.remove();
@@ -161,7 +154,7 @@
   section.querySelector('[data-featured-all]').onclick=()=>{state.librarySort='hours';const sort=$('#librarySort');if(sort)sort.value='hours';drawLibrary();box.scrollIntoView({block:'start'})};
   section.querySelectorAll('.cavern-featured-card').forEach(card=>{
    const row=featured.find(r=>String(r.id)===card.dataset.featured);
-   card.querySelector('[data-featured-details]').onclick=()=>box.querySelector(`[data-detail="${CSS.escape(String(row.id))}"]`)?.click();
+   card.querySelector('[data-featured-details]').onclick=()=>window.batcavernaOpenDetails(row);
    const play=card.querySelector('[data-featured-play]');
    if(play)play.onclick=()=>call('launch_game',{appid:Number(row.steam_appid)}).catch(e=>globalThis.toast(failure(e)));
   });

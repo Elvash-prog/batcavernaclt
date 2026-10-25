@@ -1,0 +1,10 @@
+BatCaverna CLT Android 1.7.27
+
+- Início com Continuar de onde parei: jogos em andamento, progresso de episódios e Meu Retrô.
+- Atalhos para abrir detalhes e atualizar progresso diretamente do início.
+- Biblioteca com carregamento progressivo e preservação dos cards existentes ao exibir mais títulos.
+- Busca na coleção completa, mesmo nos títulos ainda não exibidos.
+- Detalhes reorganizados com progresso e avaliação em destaque, descrição expansível e ações mais acessíveis.
+- Atualização da biblioteca após editar um título com reaproveitamento dos demais cards.
+
+Mesma assinatura oficial; instale por cima da versão anterior.

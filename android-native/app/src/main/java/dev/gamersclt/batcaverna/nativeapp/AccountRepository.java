@@ -156,10 +156,10 @@ public final class AccountRepository {
             String active="&or=(status.ilike.*progresso*,status.ilike.*jogando*)";
             int playing=count(own+active,token,config);
             int finished=count(own+"&or=(status.ilike.*zerado*,status.ilike.*platina*)",token,config);
-            JSONArray recent=get(own+active+"&select=id,nome,status,capa,horas,steam_appid&order=id.desc&limit=8",token,config);
+            JSONArray recent=get(own+active+"&select=id,nome,categoria,status,capa,horas,steam_appid,updated_at&order=updated_at.desc,id.desc&limit=4",token,config);
             int media=count("/rest/v1/itens?user_id=eq."+encode(user)+"&categoria=eq.filmes",token,config);
             JSONArray profile=get("/rest/v1/perfis?select=nome,avatar_url,banner_url&id=eq."+encode(user)+"&limit=1",token,config);
-            JSONArray movies=get("/rest/v1/itens?select=nome,capa,status,tipo&user_id=eq."+encode(user)+"&categoria=eq.filmes&order=updated_at.desc,id.desc&limit=6",token,config);
+            JSONArray movies=get("/rest/v1/itens?select=id,nome,categoria,capa,status,tipo,updated_at&user_id=eq."+encode(user)+"&categoria=eq.filmes&status=ilike.*assistindo*&order=updated_at.desc,id.desc&limit=4",token,config);
             JSONArray updates=get("/rest/v1/itens?select=nome,categoria,status,updated_at&user_id=eq."+encode(user)+"&order=updated_at.desc,id.desc&limit=5",token,config);
             return new JSONArray().put(new JSONObject().put("total",total).put("playing",playing).put("finished",finished).put("media",media).put("profile",profile.optJSONObject(0)).put("games",recent).put("movies",movies).put("updates",updates));
         },callback);

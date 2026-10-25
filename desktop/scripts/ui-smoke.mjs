@@ -307,6 +307,7 @@ try {
             await new Promise((r) =>
               setTimeout(r, window.libraryDelay || 120),
             );
+          if(c==='library'&&p.category==='jogos'&&window.largeLibrary)return Array.from({length:1200},(_,i)=>({id:'large-'+i,nome:'Coleção '+String(i).padStart(4,'0'),categoria:'jogos',status:i<1000?'📌 Backlog':'✅ Zerado',capa:image}));
           if (c === "library")
             return p.category === "jogos"
               ? rows
@@ -820,6 +821,13 @@ try {
     await page.locator(".dashboard-columns").evaluate((n) => n.children.length),
     1,
   );
+  await page.getByRole('heading',{name:'Continuar de onde parei',exact:true}).waitFor();
+  await page.locator('.continuity-card').filter({hasText:'Série de teste'}).waitFor();
+  await page.waitForFunction(()=>document.querySelector('.continuity')?.textContent.includes('Temporada 1 · Episódio 2'));
+  assert.equal(await page.locator('.continuity-card').filter({hasText:'Jogo zerado'}).count(),0);
+  await page.locator('.continuity-card').filter({hasText:'Jogo em progresso'}).getByRole('button',{name:'Ver detalhes',exact:true}).click();
+  await page.locator('.detail-title-row h2').filter({hasText:'Jogo em progresso'}).waitFor();
+  await page.locator('.reference-detail [data-close]').click();
   for (const [width, height, name] of [
     [1920, 1080, "home-check.png"],
     [2560, 1440, "home-qhd-check.png"],
@@ -1279,7 +1287,13 @@ try {
   );
   await page.locator('[data-detail-tab="about"]').click();
   const editBounds=await page.locator('#editInformation').boundingBox(),listBounds=await page.locator('[data-detail-list]').boundingBox(),dialogBounds=await page.locator('.reference-detail').boundingBox(),closeBounds=await page.locator('.reference-detail .detail-close').boundingBox();
-  assert.ok(Math.abs(editBounds.y-listBounds.y)<3,'Ações dos detalhes devem estar alinhadas');
+  assert.ok(listBounds.y>=editBounds.y+editBounds.height,'Ações secundárias devem ficar abaixo da ação principal');
+  assert.equal(await page.locator('.detail-poster #editInformation').count(),1);
+  await page.evaluate(()=>document.querySelector('#detailDescription').textContent='Descrição longa de teste. '.repeat(200));
+  await page.locator('.description-toggle').click();
+  assert.equal(await page.locator('#detailDescription.description-expanded').count(),1);
+  await page.locator('.description-toggle').click();
+  await page.evaluate(()=>document.querySelector('#detailDescription').textContent='Descrição da Steam');
   assert.ok(closeBounds.x>=dialogBounds.x&&closeBounds.x+closeBounds.width<=dialogBounds.x+dialogBounds.width&&closeBounds.y>=dialogBounds.y,'Fechar deve permanecer dentro da janela');
   await page.screenshot({ path: "preview/details-check.png" });
   await page.locator("#editInformation").click();
@@ -1811,6 +1825,18 @@ try {
   assert.equal(await page.locator('.group-settings-dialog [data-remove="member-2"]').count(),1);
   await page.screenshot({path:'preview/group-settings-check.png'});
   await page.locator('.group-settings-dialog [data-close]').click();
+  await page.evaluate(async()=>{window.largeLibrary=true;state.libraryCategory='jogos';state.libraryStatus='all';state.libraryQuery='';state.cavernFilter='all';await navigate('library')});
+  assert.equal(await page.locator('#libraryGroups .cinema-card').count(),48,'Only first 24 cards per status should be mounted');
+  assert.match(await page.locator('.collection-result-count').innerText(),/1200/);
+  await page.evaluate(()=>window.firstLibraryCard=document.querySelector('#libraryGroups [data-detail="large-0"]'));
+  await page.locator('[data-status-group="backlog"] .collection-more').click();
+  assert.equal(await page.locator('#libraryGroups .cinema-card').count(),72);
+  assert.equal(await page.evaluate(()=>window.firstLibraryCard===document.querySelector('#libraryGroups [data-detail="large-0"]')),true,'Expanding keeps original cards and image state');
+  await page.locator('#librarySearch').fill('Coleção 0999');
+  await page.waitForFunction(()=>document.querySelectorAll('#libraryGroups .cinema-card').length===1);
+  assert.equal(await page.locator('#libraryGroups [data-detail="large-999"]').count(),1,'Search includes unloaded titles');
+  await page.screenshot({path:'preview/large-library-check.png'});
+  await page.evaluate(()=>{window.largeLibrary=false;state.libraryQuery=''});
   await page.evaluate(() => showLogin());
   await page.locator("#loginScreen").waitFor({ state: "visible" });
   await page.locator('[data-auth="recover"]').click();
