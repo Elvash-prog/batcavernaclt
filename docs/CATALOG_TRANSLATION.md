@@ -19,3 +19,9 @@ As traduções são reutilizadas por 7 dias no cache de catálogo existente, com
 Se a chave estiver ausente, a franquia acabar ou o serviço falhar, o aplicativo preserva a descrição original. Não se deve afirmar que a tradução está ativa antes de configurar e testar uma chave real. Descrições Steam já localizadas são mantidas; quando houver tradução IGDB pt-BR, o desktop a utiliza com os demais dados da Steam.
 
 Referências: https://developers.deepl.com/api-reference/translate/request-translation e https://support.deepl.com/hc/pt-br/articles/360021200939-Planos-da-API-do-DeepL
+
+## Crédito da tradução
+
+Traduções automáticas exibem “Tradução automática por DeepL.com”, com o domínio oficial. O crédito é incluído pelo servidor após a leitura do cache, inclusive para traduções já armazenadas, sem consumir novamente a franquia. As novas interfaces transformam essa identificação em um link e preservam a atribuição do catálogo original. Descrições não traduzidas não recebem crédito de tradução. As prévias truncadas mantêm o crédito separado e visível.
+
+Referência: cláusula 8.3.3 de https://www.deepl.com/en/pro-license .

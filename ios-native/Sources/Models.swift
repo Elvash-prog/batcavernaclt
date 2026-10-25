@@ -106,3 +106,9 @@ struct CatalogueResult: Decodable { let results: [CatalogueTitle] }
 struct CatalogueTitle: Decodable {
     let id: Int; let name: String?; let title: String?; let description_raw: String?; let overview: String?
 }
+
+enum DescriptionAttribution {
+    static let notice = "\n\nTradução automática por DeepL.com — https://www.deepl.com"
+    static func isTranslated(_ text:String) -> Bool { text.hasSuffix(notice) }
+    static func body(_ text:String) -> String { isTranslated(text) ? String(text.dropLast(notice.count)) : text }
+}
