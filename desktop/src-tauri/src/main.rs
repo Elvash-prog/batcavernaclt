@@ -827,7 +827,9 @@ mod tests {
     #[test] fn invalid_steam_launch_ids_are_rejected() { assert!(launch_game(0).is_err()); assert!(launch_game(10_000_000_000).is_err()); }
     #[test] fn provider_links_only_allow_trusted_https_origins() {
         for url in ["https://www.deepl.com", "https://www.igdb.com", "https://www.themoviedb.org", "https://anilist.co", "https://retroachievements.org", "https://supabase.com", "https://firebase.google.com", "https://sightengine.com", "https://store.steampowered.com/app/42", "https://store.epicgames.com/", "https://batcavernaclt.gamersclt.workers.dev/privacidade"] { assert!(allowed_provider_url(url), "{url}"); }
-        for url in ["http://www.deepl.com", "https://www.deepl.com.evil.test/", "https://www.deepl.com@evil.test/", "https://user@www.deepl.com/", "https://www.deepl.com:444/", "javascript:alert(1)", "file:///tmp/test", "https://example.com/", "https://batcavernaclt.gamersclt.workers.dev/api/"] { assert!(!allowed_provider_url(url), "{url}"); }
+        for url in ["http://www.deepl.com", "https://www.deepl.com.evil.test/", "https://www.deepl.com@evil.test/", "https://user@www.deepl.com/", "https://www.deepl.com:444/", "javascript:alert(1)", "file:///tmp/test", "https://example.com/"] { assert!(!allowed_provider_url(url), "{url}"); }
+        let privacy = "https://batcavernaclt.gamersclt.workers.dev/privacidade";
+        assert!(!allowed_provider_url(&privacy.replace("/privacidade", "/api/")));
     }
     #[test] fn direct_backend_only() { assert!(SUPABASE_URL.starts_with("https://")); assert!(SUPABASE_URL.ends_with(".supabase.co")); }
 }
