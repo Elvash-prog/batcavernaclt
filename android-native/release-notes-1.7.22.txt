@@ -1,0 +1,3 @@
+Biblioteca: os resumos agora abrem filtros de títulos, finalizados, platinados, em progresso e backlog.
+Meu Retrô: resumo com pontos, jogos e conquistas da coleção.
+Detalhes: descrições do catálogo na biblioteca, com suporte a tradução pt-BR pelo servidor. A tradução exige ativação do serviço no Supabase.
