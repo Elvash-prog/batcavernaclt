@@ -32,3 +32,22 @@ test('missing key, provider quota and malformed responses preserve the original 
   assert.equal(catalogTtl('translation:en:pt-BR:v1:Some text'),604800);
  }finally{globalThis.fetch=originalFetch}
 });
+test('TMDB forces pt-BR and translates a missing localized description after authenticated lookup',async()=>{
+ const {createHandler}=await import('../supabase/functions/native-api/router.js');
+ const languages=[];
+ globalThis.fetch=async(url,o)=>{
+  const u=new URL(url);
+  if(u.pathname==='/auth/v1/user')return Response.json({id:'2d3268d1-4993-46d6-abba-340a2ffdd0fa'});
+  if(u.hostname==='api.themoviedb.org'){
+   languages.push(u.searchParams.get('language'));
+   return Response.json({id:10,title:'Filme',adult:false,overview:u.searchParams.get('language')==='en-US'?'A journey through the stars.':''});
+  }
+  if(u.hostname==='api-free.deepl.com')return Response.json({translations:[{text:'Uma jornada pelas estrelas.'}]});
+  throw Error('Unexpected provider');
+ };
+ try{
+  const handler=createHandler({SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'synthetic-public',TMDB_KEY:'synthetic-tmdb',DEEPL_API_KEY:'synthetic-deepl',USER_RATE_LIMITER:{limit:async()=>({success:true})}});
+  const r=await handler(new Request('https://test.supabase.co/functions/v1/native-api/api/catalog/tmdb/movie/10?language=en-US',{headers:{Authorization:'Bearer eyJtest.payload.signature'}}));
+  assert.equal(r.status,200);const data=await r.json();assert.equal(data.overview,'Uma jornada pelas estrelas.');assert.equal(data.description_language,'pt-BR');assert.deepEqual(languages,['pt-BR','en-US']);
+ }finally{globalThis.fetch=originalFetch}
+});
