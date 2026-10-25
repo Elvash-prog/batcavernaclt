@@ -28,3 +28,21 @@ for name, (filename, data) in assets.items():
         content["properties"] = {"preserves-vector-representation": True}
     (folder / "Contents.json").write_text(json.dumps(content))
 print("Android logo, login background and TMDB attribution assets prepared.")
+
+# iOS app icons require a distinct AppIcon asset set. Flatten transparency only
+# for that packaged icon; the logo displayed inside the app stays untouched.
+import platform
+import subprocess
+icon = catalog / "AppIcon.appiconset"
+icon.mkdir(exist_ok=True)
+source = catalog / "AppLogo.imageset" / "logo.png"
+target = icon / "app-icon.png"
+if platform.system() == "Darwin":
+    subprocess.run(["swift", str(root / "prepare-icon.swift"), str(source), str(target)], check=True)
+else:
+    from PIL import Image
+    image = Image.open(source).convert("RGBA").resize((1024, 1024), Image.Resampling.LANCZOS)
+    background = Image.new("RGB", image.size, (13, 16, 25))
+    background.paste(image, mask=image.getchannel("A"))
+    background.save(target)
+(icon / "Contents.json").write_text(json.dumps({"images":[{"filename":"app-icon.png","idiom":"universal","platform":"ios","size":"1024x1024"}],"info":info}))
