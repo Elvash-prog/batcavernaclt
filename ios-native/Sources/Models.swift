@@ -131,7 +131,7 @@ enum DescriptionAttribution {
 
 struct LibraryDraft {
     static let gameStatuses = ["📌 Backlog","🎮 Em Progresso","✅ Zerado","🏆 100% (Platina)","⏸️ Pausado","❌ Abandonado","🧪 Simulando","⌛ Wishlist","🟦 Biblioteca Steam"]
-    static let mediaStatuses = ["📌 Para assistir","📺 Assistindo","✅ Assistido","❤️ Favorito","⏸️ Pausado","❌ Abandonado","🍿 Maratonando"]
+    static let mediaStatuses = ["⏳ Para Assistir","📺 Assistindo","✅ Assistido","❤️ Favorito","⏸️ Pausado","❌ Abandonado","🍿 Maratonando"]
     static let ratings = ["Sem avaliação","💎 Lenda (GOTY)","⭐⭐⭐⭐⭐ Obra-prima","⭐⭐⭐⭐½ Excelente","⭐⭐⭐⭐ Muito bom","⭐⭐⭐½ Bom","⭐⭐⭐ Ok","⭐⭐ Fraco","⭐ Ruim","🤔 A considerar"]
     static let mediaTypes = ["🎬 Filme","📺 Série","🍥 Anime"]
     var name = ""
@@ -175,7 +175,7 @@ struct LibraryDraft {
                 result["horas"] = number
             }
         }
-        if !year.isEmpty { guard year.count == 4, let number = Int(year), (1900...2200).contains(number) else { throw BackendError.invalidInput("Informe um ano válido.") }; result["ano"] = number }
+        if !year.isEmpty { guard year.count == 4, let number = Int(year), (1900...2200).contains(number) else { throw BackendError.invalidInput("Informe um ano válido.") }; result["ano"] = number } else if original?.ano != nil { result["ano"] = NSNull() }
         return result
     }
 }

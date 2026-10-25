@@ -227,6 +227,19 @@ struct DescriptionView: View {
             VStack(alignment:.leading,spacing:20) {
                 CoverImage(source:image).frame(height:230).clipShape(RoundedRectangle(cornerRadius:20))
                 Text(name).font(.title.bold()); Text(changedStatus ?? status).foregroundStyle(Caverna.accent)
+                if let item = libraryItem {
+                    VStack(alignment:.leading,spacing:10) {
+                        if let rating = item.nota,!rating.isEmpty { Label(rating,systemImage:"star") }
+                        if let year = item.ano { Label(String(year),systemImage:"calendar") }
+                        if media {
+                            if let type = item.tipo,!type.isEmpty { Label(type,systemImage:"film") }
+                            if let service = item.onde,!service.isEmpty { Label(service,systemImage:"play.rectangle") }
+                        } else {
+                            if let platform = item.plataforma,!platform.isEmpty { Label(platform,systemImage:"gamecontroller") }
+                            if let hours = item.horas,hours.isFinite { Label(String(format:"%.1f horas jogadas",hours),systemImage:"clock") }
+                        }
+                    }.font(.subheadline).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(16).background(Caverna.panel,in:RoundedRectangle(cornerRadius:16))
+                }
                 if let mutationError { Text(mutationError).foregroundStyle(.red) }
                 if libraryItem != nil { HStack { Button("Editar informações") { editing = true }.buttonStyle(.borderedProminent); Button("Remover",role:.destructive) { confirmingRemoval = true }.buttonStyle(.bordered) }.disabled(mutating) }
                 if let description {
