@@ -1,0 +1,2 @@
+Crédito de tradução DeepL.com visível e clicável.
+Corrigida a abertura dos sites oficiais dos fornecedores, com validação de domínio, HTTPS e bloqueio de credenciais e portas não autorizadas.
