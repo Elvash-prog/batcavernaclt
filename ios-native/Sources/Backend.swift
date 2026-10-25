@@ -200,8 +200,9 @@ extension Backend {
         if let token = response.access_token,!token.isEmpty {
             do { _ = try await send("/auth/v1/logout",query:[.init(name:"scope",value:"local")],body:[:],token:token) }
             catch { return EmailActionOutcome(message:"Cadastro recebido. A sessão temporária não foi encerrada no servidor. Entre com seu usuário e senha para conferir a conta.",warning:true) }
+            return EmailActionOutcome(message:"Cadastro concluído. Entre com seu usuário e senha.")
         }
-        return EmailActionOutcome(message:"Cadastro recebido. Confira seu e-mail para confirmar a conta e depois entre com seu usuário e senha.")
+        return EmailActionOutcome(message:"Cadastro recebido. Confira seu e-mail para confirmar a conta e depois entre com seu usuário e senha.",confirmationRequired:true)
     }
     func sendAccountEmail(_ email:String,recovery:Bool) async throws {
         let address = try AccountInput.email(email)
