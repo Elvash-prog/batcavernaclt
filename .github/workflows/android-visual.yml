@@ -28,7 +28,7 @@ jobs:
           profile: pixel_7
           working-directory: android-native
           script: |
-            bash gradlew :app:connectedDebugAndroidTest --no-daemon
+            bash gradlew :app:connectedDebugAndroidTest -x :app:processDebugGoogleServices --no-daemon
             mkdir -p build/mobile-previews
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/login-android.png > build/mobile-previews/login-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/controles-android.png > build/mobile-previews/controles-android.png

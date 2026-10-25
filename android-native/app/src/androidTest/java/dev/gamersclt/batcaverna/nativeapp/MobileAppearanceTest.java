@@ -16,6 +16,7 @@ public final class MobileAppearanceTest extends InstrumentationTestCase {
   Activity activity=getInstrumentation().startActivitySync(intent);
   try {
    getInstrumentation().waitForIdleSync(); capture("login-android");
+   final Button[] primary=new Button[1];
    getInstrumentation().runOnMainSync(()->{
     LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(24,48,24,24);body.setBackgroundColor(NativeTheme.backgroundEnd(activity));
     TextView title=new TextView(activity);title.setText("Adicionar título");title.setTextColor(0xfff4f2ff);title.setTextSize(26);body.addView(title);
@@ -23,10 +24,11 @@ public final class MobileAppearanceTest extends InstrumentationTestCase {
     EditText hours=NativeSheet.input(activity,"Horas jogadas",20);hours.setText("2,5");body.addView(hours);
     Button save=new Button(activity);save.setText("Salvar alterações");AppStyle.button(save,true);body.addView(save);
     Button cancel=new Button(activity);cancel.setText("Cancelar");AppStyle.button(cancel,false);body.addView(cancel);
-    activity.setContentView(body);
-    assertTrue(save.getMinimumHeight()>=Math.round(48*activity.getResources().getDisplayMetrics().density));
+    activity.setContentView(body);primary[0]=save;
    });
-   getInstrumentation().waitForIdleSync();capture("controles-android");
+   getInstrumentation().waitForIdleSync();
+   assertTrue(primary[0].getHeight()>=Math.round(48*activity.getResources().getDisplayMetrics().density));
+   capture("controles-android");
   } finally { getInstrumentation().runOnMainSync(activity::finish); }
  }
  private void capture(String name) throws Exception {
