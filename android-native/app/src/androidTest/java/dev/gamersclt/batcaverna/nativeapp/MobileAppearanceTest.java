@@ -19,7 +19,7 @@ public final class MobileAppearanceTest {
   Intent intent=new Intent(getInstrumentation().getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
   Activity activity=getInstrumentation().startActivitySync(intent);
   try {
-   getInstrumentation().waitForIdleSync(); capture("login-android");
+   getInstrumentation().waitForIdleSync(); capture(activity,"login-android");
    final Button[] primary=new Button[1];
    getInstrumentation().runOnMainSync(()->{
     LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(24,48,24,24);body.setBackgroundColor(NativeTheme.backgroundEnd(activity));
@@ -32,11 +32,18 @@ public final class MobileAppearanceTest {
    });
    getInstrumentation().waitForIdleSync();
    assertTrue(primary[0].getHeight()>=Math.round(48*activity.getResources().getDisplayMetrics().density));
-   capture("controles-android");
+   capture(activity,"controles-android");
   } finally { getInstrumentation().runOnMainSync(activity::finish); }
  }
- private void capture(String name) throws Exception {
-  Bitmap image=getInstrumentation().getUiAutomation().takeScreenshot();assertNotNull(image);
+ private void capture(Activity activity,String name) throws Exception {
+  // Capture the app view itself; emulator launcher/system dialogs are separate windows.
+  final Bitmap[] pixels=new Bitmap[1];
+  getInstrumentation().runOnMainSync(()->{
+   View content=activity.findViewById(android.R.id.content);
+   pixels[0]=Bitmap.createBitmap(content.getWidth(),content.getHeight(),Bitmap.Config.ARGB_8888);
+   content.draw(new android.graphics.Canvas(pixels[0]));
+  });
+  Bitmap image=pixels[0];assertNotNull(image);
   File directory=new File(getInstrumentation().getTargetContext().getFilesDir(),"mobile-previews");assertTrue(directory.isDirectory()||directory.mkdirs());
   try(FileOutputStream out=new FileOutputStream(new File(directory,name+".png"))){assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,out));}finally{image.recycle();}
  }
