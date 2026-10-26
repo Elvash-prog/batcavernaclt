@@ -7,7 +7,7 @@ final class MobileCoverPolicy {
    chosen=row;matches++;String release=row.optString("ano",row.optString("released",""));if(year.matches("[0-9]{4}")&&release.startsWith(year)){dated=row;datedMatches++;}
   }
   if(datedMatches==1)chosen=dated;else if(matches!=1)return "";
-  String source=chosen.optString(media?(vertical?"capa":"background_image"):(vertical?"cover_image":"background_image"));return CoverPolicy.publicUrl(source)?source:"";
+  String source=chosen.optString(media?(vertical?"capa":"background_image"):(vertical?"cover_image":"background_image"));if(!media&&(vertical?source.contains("/t_screenshot_"):source.contains("/t_cover_")))return "";return CoverPolicy.publicUrl(source)?source:"";
  }
  private static String titleKey(String value){return java.text.Normalizer.normalize(value,java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").trim().toLowerCase(java.util.Locale.ROOT);}
  static String preferenceKey(boolean media){return media?"native_media_cover_vertical":"native_games_cover_vertical";}
