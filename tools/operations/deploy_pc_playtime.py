@@ -8,5 +8,7 @@ req=urllib.request.Request('https://api.supabase.com/v1/projects/luoqlhgfmixvfqb
 try:
  with urllib.request.urlopen(req,timeout=90) as response:
   if response.status!=201 and response.status!=200: raise SystemExit('Database update did not complete.')
-except urllib.error.HTTPError as error: raise SystemExit(f'Database update failed: HTTP {error.code}') from None
+except urllib.error.HTTPError as error:
+ detail=error.read().decode('utf-8','replace').replace(token,'[redacted]')[:1500]
+ raise SystemExit(f'Database update failed: HTTP {error.code}: {detail}') from None
 print('Executable playtime migration applied successfully.')
