@@ -23,7 +23,7 @@ globalThis.fetch=async (url, options={})=>{
   if(u.hostname==='www.steamgriddb.com'){assert.equal(options.headers.Authorization,'Bearer test-grid');return json({data:[{id:1,width:600,height:900,url:'https://cdn2.steamgriddb.com/grid/portrait.png',score:1},{id:2,width:920,height:430,url:'https://cdn2.steamgriddb.com/grid/landscape.png',score:2}]});}
   if(u.pathname.includes('ResolveVanityURL')) return json({response:{success:1,steamid:'76561198000000000'}});
   if(u.pathname.includes('GetPlayerSummaries')) return json({response:{players:[{steamid:'76561198000000000',personaname:'Player',communityvisibilitystate:3,gameid:'42'}]}});
-  if(u.pathname.includes('GetOwnedGames')||u.pathname.includes('GetRecentlyPlayedGames')) return json({response:{game_count:1,games:[{appid:42,name:'Safe Game',playtime_forever:120,playtime_2weeks:60}]}});
+  if(u.pathname.includes('GetOwnedGames')||u.pathname.includes('GetRecentlyPlayedGames')) return json({response:{game_count:1,games:[{appid:42,name:'Safe Game',playtime_forever:mode==='precisetime'?223:120,playtime_2weeks:mode==='precisetime'?1:60}]}});
   if(u.pathname.includes('GetPlayerAchievements')&&mode==='privateach')return json({playerstats:{success:false}});
   if(u.pathname.includes('GetPlayerAchievements')) return json({playerstats:{achievements:[{apiname:'WIN',achieved:1}]}});
   if(u.pathname.includes('GetSchemaForGame')) return json({game:{availableGameStats:{achievements:[{name:'WIN',displayName:'Win',icon:'https://images.test/win.png'}]}}});
@@ -101,3 +101,5 @@ await check('Steam progress rejects excessive batches',async()=>{assert.equal((a
 await check('SteamGridDB selects the requested orientation without exposing its credential',async()=>{for(const format of ['poster','landscape']){const r=await handler(req({op:'capas',appids:[42],format}));assert.equal(r.status,200);const data=await r.json();assert.match(data.capas[0],format==='poster'?/portrait/:/landscape/);assert.ok(!JSON.stringify(data).includes('test-grid'));}});
 
 await check('provider outage returns an empty cover for client fallback',async()=>{mode='upstreamfail';const r=await handler(req({op:'capas',appids:[43],format:'poster'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).capas,[null]);});
+
+await check('Steam library preserves minute precision instead of rounding to tenths',async()=>{mode='precisetime';const r=await handler(req({op:'jogos',steamid:'76561198000000000'}));assert.equal(r.status,200);const data=await r.json();assert.equal(data.jogos[0].horas,223/60);assert.equal(data.recentes[0].horasRecentes,1/60);});

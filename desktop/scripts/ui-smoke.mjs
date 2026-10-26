@@ -1850,12 +1850,12 @@ try {
   await page.evaluate(()=>{window.largeLibrary=false;state.libraryQuery=''});
   const cleanDescription=await page.evaluate(()=>{const node=document.createElement('p');document.body.append(node);window.batcavernaRenderDescription(node,'<p>&amp;quot;How to Fish&amp;quot;</p><p>Pesca &amp; amigos</p>&lt;script&gt;window.descriptionExecuted=true&lt;/script&gt;');const result={text:node.textContent,scripts:node.querySelectorAll('script').length,executed:!!window.descriptionExecuted};node.remove();return result});
   assert.equal(cleanDescription.text,'"How to Fish"\nPesca & amigos');assert.equal(cleanDescription.scripts,0);assert.equal(cleanDescription.executed,false);
-  await page.evaluate(()=>{const root=document.createElement('div');root.id='cover-orientation-check';root.innerHTML='<img data-cover="https://images.igdb.com/old-landscape.jpg" data-cover-name="Red Dead Redemption" data-cover-game="1" data-cover-format="poster">';document.body.append(root);hydrateCovers(root)});
+  await page.evaluate(()=>{const root=document.createElement('div');root.id='cover-orientation-check';root.style.cssText='position:fixed;top:10px;left:10px;width:100px;height:150px;z-index:9999';root.innerHTML='<img data-cover="https://images.igdb.com/old-landscape.jpg" data-cover-name="Red Dead Redemption" data-cover-game="1" data-cover-format="poster">';document.body.append(root);hydrateCovers(root)});
   await page.locator('#cover-orientation-check').scrollIntoViewIfNeeded();
-  await page.waitForFunction(()=>document.querySelector('#cover-orientation-check img').src.endsWith('/rdr-portrait.jpg'));
+  await page.waitForFunction(()=>savedCoverChoice(coverKey('https://images.igdb.com/old-landscape.jpg','Red Dead Redemption','','poster')).endsWith('/rdr-portrait.jpg'));
   assert.equal(await page.evaluate(async()=>{coverChoices.clear();readyImages.clear();const root=document.querySelector('#cover-orientation-check');root.innerHTML='<img data-cover-visible="1" data-cover="https://images.igdb.com/old-landscape.jpg" data-cover-name="Red Dead Redemption" data-cover-game="1" data-cover-format="poster">';hydrateCovers(root);await Promise.resolve();return root.querySelector('img').src.endsWith('/rdr-portrait.jpg')}),true,'A capa escolhida persiste sem mostrar a imagem antiga ao recriar o card');
   await page.evaluate(()=>{const root=document.querySelector('#cover-orientation-check'),img=root.querySelector('img');img.dataset.coverFormat='landscape';img.dataset.cover='https://images.igdb.com/old-landscape.jpg';hydrateCovers(root)});
-  await page.waitForFunction(()=>document.querySelector('#cover-orientation-check img').src.endsWith('/rdr-landscape.jpg'));
+  await page.waitForFunction(()=>savedCoverChoice(coverKey('https://images.igdb.com/old-landscape.jpg','Red Dead Redemption','','landscape')).endsWith('/rdr-landscape.jpg'));
   await page.evaluate(()=>document.querySelector('#cover-orientation-check').remove());
   await page.evaluate(() => showLogin());
   await page.locator("#loginScreen").waitFor({ state: "visible" });

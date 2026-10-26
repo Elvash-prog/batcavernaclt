@@ -1,5 +1,6 @@
 BatCaverna CLT Windows 0.17.69
 
+- Horas da Steam preservam a precisão de minutos, sem arredondamento para décimos.
 - Minha Steam exibe o tempo jogado abaixo da capa, sem cortes ou sobreposição.
 - SteamGridDB reintegrado para capas verticais e horizontais, com chave protegida no servidor.
 - Capas carregadas conforme aparecem na tela, com limite de consultas simultâneas.

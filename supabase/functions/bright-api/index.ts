@@ -361,11 +361,11 @@ async function steamGratis(requestSignal: AbortSignal) {
         const o = owned.response ?? {};
         const r = recent.response ?? {};
         out = {
-          jogos: (o.games ?? []).filter((g: any) => !adultTitle(g.name)).map((g: any) => ({ appid: g.appid, nome: g.name, horas: Math.round((g.playtime_forever / 60) * 10) / 10 })),
+          jogos: (o.games ?? []).filter((g: any) => !adultTitle(g.name)).map((g: any) => ({ appid: g.appid, nome: g.name, horas: (Number.isFinite(g.playtime_forever)&&g.playtime_forever>=0?g.playtime_forever/60:null) })),
           recentes: (r.games ?? []).filter((g: any) => !adultTitle(g.name)).map((g: any) => ({
             appid: g.appid, nome: g.name,
-            horas: Math.round((g.playtime_forever / 60) * 10) / 10,
-            horasRecentes: Math.round((g.playtime_2weeks / 60) * 10) / 10,
+            horas: (Number.isFinite(g.playtime_forever)&&g.playtime_forever>=0?g.playtime_forever/60:null),
+            horasRecentes: (Number.isFinite(g.playtime_2weeks)&&g.playtime_2weeks>=0?g.playtime_2weeks/60:null),
             ultimaVez: g.rtime_last_played ? new Date(g.rtime_last_played * 1000).toISOString() : "",
           })).sort((a: any, b: any) => String(b.ultimaVez).localeCompare(String(a.ultimaVez))),
         };
