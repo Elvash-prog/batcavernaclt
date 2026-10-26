@@ -566,3 +566,10 @@ test('Meu Retrô agrupa estados por conta e exibe a atribuição exigida pela IG
  assert.match(migration,/drop function if exists public\.clt_retro_mutate\(uuid,integer,integer,text\)/);
  assert.match(migration,/revoke execute on function public\.clt_retro_mutate[\s\S]*from public, anon, authenticated/);
 });
+
+
+test('tempo detalhado arredonda minutos sem alterar as horas originais',()=>{
+ const source=read('src/app.js'),start=source.indexOf('function detailedPlaytime'),end=source.indexOf('function playtimeBadge',start),context=vm.createContext({});vm.runInContext(source.slice(start,end),context);
+ assert.equal(context.detailedPlaytime(3.717),'3 h 43 min');assert.equal(context.detailedPlaytime(1.999),'2 h');assert.equal(context.detailedPlaytime(0),'0 min');assert.equal(context.detailedPlaytime(.001),'Menos de 1 min');
+ for(const value of [null,'',NaN,Infinity,-1])assert.equal(context.detailedPlaytime(value),'Sem tempo registrado');
+});

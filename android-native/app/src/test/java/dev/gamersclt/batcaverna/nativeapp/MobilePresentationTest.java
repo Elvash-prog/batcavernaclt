@@ -3,6 +3,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 public class MobilePresentationTest {
  @Test public void decimalHoursAreNotThousands(){assertEquals("3,7 h",HoursDisplay.format("3.717"));assertEquals("3,7 h",HoursDisplay.format(3.717));assertEquals("3.717,0 h",HoursDisplay.format(3717));assertEquals("0,0 h",HoursDisplay.format(0));}
+ @Test public void readableHoursIncludeMinutes(){assertEquals("3 h 43 min",HoursDisplay.detailed(3.717));assertEquals("2 h",HoursDisplay.detailed(1.999));assertEquals("0 min",HoursDisplay.detailed(0));assertEquals("Menos de 1 min",HoursDisplay.detailed(.001));assertEquals("Sem tempo registrado",HoursDisplay.detailed(null));assertEquals("Sem tempo registrado",HoursDisplay.detailed(Double.NaN));}
  @Test public void invalidHoursStayUnavailable(){for(Object value:new Object[]{null,"null","","NaN","Infinity",-1})assertEquals("—",HoursDisplay.format(value));}
  @Test public void steamArtworkPrefersTheMobileOrientation(){String source="https://images.igdb.com/desktop.jpg";String[] landscape=MobileCoverPolicy.candidates(source,"461000",false),portrait=MobileCoverPolicy.candidates(source,"461000",true);assertTrue(landscape[0].endsWith("/header.jpg"));assertTrue(portrait[0].endsWith("/library_600x900.jpg"));assertEquals(source,landscape[landscape.length-1]);assertEquals(source,portrait[portrait.length-1]);}
  @Test public void invalidSteamIdentifiersCannotBecomeUrls(){assertEquals(0,MobileCoverPolicy.candidates("","../../evil",false).length);assertEquals(0,MobileCoverPolicy.candidates("","0",true).length);}
@@ -12,7 +13,8 @@ public class MobilePresentationTest {
   org.json.JSONArray rows=new org.json.JSONArray().put(a);
   assertEquals("https://images.igdb.com/landscape.jpg",MobileCoverPolicy.artwork(rows,"Biped","2020",false,false));
   assertEquals("https://images.igdb.com/poster.jpg",MobileCoverPolicy.artwork(rows,"Biped","2020",false,true));
-  assertEquals("",MobileCoverPolicy.artwork(rows,"Biped","2021",false,false));
+  assertEquals("https://images.igdb.com/landscape.jpg",MobileCoverPolicy.artwork(rows,"Biped","2021",false,false));
+  assertEquals("",MobileCoverPolicy.artwork(rows,"Biped 2","2020",false,true));
   rows.put(a);assertEquals("",MobileCoverPolicy.artwork(rows,"Biped","",false,false));
  }
  @Test public void catalogueArtworkRejectsUntrustedSources()throws Exception{

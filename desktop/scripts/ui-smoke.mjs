@@ -630,6 +630,7 @@ try {
           if (c === "realtime_start") return {};
           if (c === "catalog") {
             const i = p.input;
+            if(i.provider==='igdb'&&i.query==='Red Dead Redemption')return {results:[{id:1,name:'Red Dead Redemption',released:'2010-05-18',cover_image:'https://images.igdb.com/rdr-portrait.jpg',background_image:'https://images.igdb.com/rdr-landscape.jpg'},{id:2,name:'Red Dead Redemption 2',cover_image:'https://images.igdb.com/wrong-sequel.jpg'}]};
             if (i.provider === "igdb" && i.recommend)
               return {
                 results: Array.from({ length: 6 }, (_, n) => ({
@@ -1170,6 +1171,9 @@ try {
       .evaluate((n) => getComputedStyle(n).position),
     "static",
   );
+  assert.match(await page.locator('#libraryGroups [data-detail="1"] .playtime-badge').innerText(),/20 h/);
+  await page.locator('#libraryGroups [data-detail="1"]').scrollIntoViewIfNeeded();
+  await page.screenshot({path:'preview/playtime-card-check.png'});
   const libraryCover = page.locator("#libraryGroups .cover-wrap").first();
   let libraryCoverBox = await libraryCover.boundingBox();
   assert.ok(
@@ -1837,6 +1841,13 @@ try {
   assert.equal(await page.locator('#libraryGroups [data-detail="large-999"]').count(),1,'Search includes unloaded titles');
   await page.screenshot({path:'preview/large-library-check.png'});
   await page.evaluate(()=>{window.largeLibrary=false;state.libraryQuery=''});
+  const cleanDescription=await page.evaluate(()=>{const node=document.createElement('p');document.body.append(node);window.batcavernaRenderDescription(node,'<p>&amp;quot;How to Fish&amp;quot;</p><p>Pesca &amp; amigos</p>&lt;script&gt;window.descriptionExecuted=true&lt;/script&gt;');const result={text:node.textContent,scripts:node.querySelectorAll('script').length,executed:!!window.descriptionExecuted};node.remove();return result});
+  assert.equal(cleanDescription.text,'"How to Fish"\nPesca & amigos');assert.equal(cleanDescription.scripts,0);assert.equal(cleanDescription.executed,false);
+  await page.evaluate(()=>{const root=document.createElement('div');root.id='cover-orientation-check';root.innerHTML='<img data-cover="https://images.igdb.com/old-landscape.jpg" data-cover-name="Red Dead Redemption" data-cover-game="1" data-cover-format="poster">';document.body.append(root);hydrateCovers(root)});
+  await page.waitForFunction(()=>document.querySelector('#cover-orientation-check img').src.endsWith('/rdr-portrait.jpg'));
+  await page.evaluate(()=>{const root=document.querySelector('#cover-orientation-check'),img=root.querySelector('img');img.dataset.coverFormat='landscape';img.dataset.cover='https://images.igdb.com/old-landscape.jpg';hydrateCovers(root)});
+  await page.waitForFunction(()=>document.querySelector('#cover-orientation-check img').src.endsWith('/rdr-landscape.jpg'));
+  await page.evaluate(()=>document.querySelector('#cover-orientation-check').remove());
   await page.evaluate(() => showLogin());
   await page.locator("#loginScreen").waitFor({ state: "visible" });
   await page.locator('[data-auth="recover"]').click();
