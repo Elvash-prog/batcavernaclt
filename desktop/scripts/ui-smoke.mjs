@@ -1409,7 +1409,8 @@ try {
   );
   const steamTime=page.locator('.steam-library-grid .playtime-badge');await steamTime.waitFor();assert.equal(await steamTime.count(),1);assert.match(await steamTime.innerText(),/1\.234 h 34 min/);
   assert.equal(await steamTime.evaluate(n=>{const b=n.getBoundingClientRect(),t=n.querySelector('strong').getBoundingClientRect();return b.width>0&&t.width>0&&t.left>=b.left&&t.right<=b.right+1&&t.bottom<=b.bottom}),true,'Tempo Steam deve caber no indicador sem corte ou sobreposição');
-  await page.screenshot({path:'preview/steam-playtime-check.png'});
+  await page.waitForFunction(()=>[...document.querySelectorAll('.steam-library-grid .cover-wrap img')].every(img=>img.complete&&img.naturalWidth>1));
+  await page.screenshot({path:'preview/steam-playtime-check.png',animations:'disabled'});
   await page.locator('#mainNav [data-discover-kind="retro"]').click();
   await page.locator(".retro-game-card").waitFor();
   await page.waitForFunction(() =>
