@@ -268,6 +268,7 @@ try {
             return {complete,email:complete?'novo@exemplo.com':'old@exemplo.com',message:complete?'E-mail alterado. Use o novo endereço no próximo login.':'Código aceito. Confirme também o código enviado ao outro endereço.'};
           }
           if (c === "change_email" || c === "link_steam") {
+            if(c==="link_steam")profile.steam_id=p.steamId;
             window.saved.push({ c, p });
             return { message: "Confirme o e-mail" };
           }
