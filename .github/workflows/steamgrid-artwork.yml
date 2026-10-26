@@ -1,0 +1,38 @@
+name: SteamGridDB artwork service
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [inspect, deploy]
+        default: inspect
+        required: true
+permissions:
+  contents: read
+jobs:
+  artwork-service:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: latest
+      - name: Check configured provider key names
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json,subprocess
+          result=subprocess.run(['supabase','secrets','list','--project-ref','luoqlhgfmixvfqbfcdoc','--output','json'],capture_output=True,text=True)
+          if result.returncode: raise SystemExit('Unable to inspect provider configuration.')
+          names={row.get('name','') for row in json.loads(result.stdout)}
+          configured=bool(names & {'STEAMGRIDDB_KEY','STEAMGRIDDB_API_KEY','SGDB_KEY','STEAMGRID_KEY'})
+          print('SteamGridDB provider key configured: '+str(configured))
+          if not configured: raise SystemExit('Configure a SteamGridDB key in Supabase Edge Function secrets before deploying.')
+          PY
+      - name: Deploy authenticated artwork service
+        if: inputs.operation == 'deploy'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy bright-api --project-ref luoqlhgfmixvfqbfcdoc --no-verify-jwt
