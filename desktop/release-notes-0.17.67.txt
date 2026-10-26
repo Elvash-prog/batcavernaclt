@@ -1,0 +1,7 @@
+BatCaverna CLT Windows 0.17.67
+
+- Correção de descrições com códigos HTML visíveis, como &quot;, preservando parágrafos e créditos de tradução.
+- Novo destaque de tempo jogado nos cards, com ícone e duração em horas e minutos.
+- Busca de imagens correspondente ao formato horizontal ou vertical, mesmo quando a capa salva já carrega.
+- Android consulta o catálogo também para jogos da Steam e reaproveita as duas orientações encontradas.
+- Correspondência exata do título e tratamento de anos diferentes entre lançamento original e versões para outras plataformas.

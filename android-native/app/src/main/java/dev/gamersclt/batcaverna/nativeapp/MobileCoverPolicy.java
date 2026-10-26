@@ -2,12 +2,12 @@ package dev.gamersclt.batcaverna.nativeapp;
 import java.util.LinkedHashSet;
 final class MobileCoverPolicy {
  static String artwork(org.json.JSONArray rows,String name,String year,boolean media,boolean vertical){
-  org.json.JSONObject chosen=null;int matches=0;String wanted=titleKey(name);
+  org.json.JSONObject chosen=null,dated=null;int matches=0,datedMatches=0;String wanted=titleKey(name);
   for(int i=0;i<rows.length();i++){org.json.JSONObject row=rows.optJSONObject(i);if(row==null||!wanted.equals(titleKey(row.optString("nome",row.optString("name",row.optString("title"))))))continue;
-   String release=row.optString("ano",row.optString("released",""));if(year.matches("[0-9]{4}")&&!release.startsWith(year))continue;chosen=row;matches++;
+   chosen=row;matches++;String release=row.optString("ano",row.optString("released",""));if(year.matches("[0-9]{4}")&&release.startsWith(year)){dated=row;datedMatches++;}
   }
-  if(matches!=1)return "";
-  String source=chosen.optString(media?(vertical?"capa":"background_image"):(vertical?"cover_image":"background_image"));return CoverPolicy.publicUrl(source)?source:"";
+  if(datedMatches==1)chosen=dated;else if(matches!=1)return "";
+  String source=chosen.optString(media?(vertical?"capa":"background_image"):(vertical?"cover_image":"background_image"));if(!media&&(vertical?source.contains("/t_screenshot_"):source.contains("/t_cover_")))return "";return CoverPolicy.publicUrl(source)?source:"";
  }
  private static String titleKey(String value){return java.text.Normalizer.normalize(value,java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").trim().toLowerCase(java.util.Locale.ROOT);}
  static String preferenceKey(boolean media){return media?"native_media_cover_vertical":"native_games_cover_vertical";}

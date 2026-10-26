@@ -10,18 +10,18 @@ function installRefinement(env){
  const isGame=item=>item.categoria==='jogos'||!item.categoria;
  const format=()=>ui.theme.cardFormat==='landscape'?'landscape':'poster';
  const coverFallback=async(url,name,appid,game,orientation)=>{
-  if(url){try{return await api.coverImage(await signed(url))}catch{}}
+  if(game&&name){try{const preferred=await chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation);if(preferred)return await api.coverImage(preferred)}catch{}}
   if(game&&appid){const steam=`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appid}/${orientation==='poster'?'library_600x900.jpg':'header.jpg'}`;try{return await api.coverImage(steam)}catch{}}
-  if(game&&name){try{const alt=await chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation);if(alt)return await api.coverImage(alt)}catch{}}
+  if(url){try{return await api.coverImage(await signed(url))}catch{}}
   throw Error('Capa indisponível');
  };
  async function chooseCover(item,orientation=format(),fallback=''){
   if(!isGame(item))return fallback||coverUrl(item.capa);
-  const key=JSON.stringify([item.nome,item.steam_appid||'',orientation]);
-  let task=coverChoices.get(key);if(!task){task=(async()=>{try{const data=await api.catalog({provider:'igdb',query:item.nome}),hit=matchCatalogTitle(data.results,item);const image=orientation==='poster'?hit?.cover_image:hit?.background_image;if(image)return image}catch{}try{const d=await api.bright({op:'capas',nomes:[item.nome],...(item.steam_appid?{appids:[Number(item.steam_appid)]}:{}),format:orientation});if(d.capas?.[0])return d.capas[0]}catch{}return fallback||coverUrl(item.capa)})();coverChoices.set(key,task)}return task;
+  const key=JSON.stringify([item.nome,item.ano||'',item.steam_appid||'',orientation]);
+  let task=coverChoices.get(key);if(!task){task=(async()=>{try{const data=await api.catalog({provider:'igdb',query:item.nome}),hit=matchCatalogTitle(data.results,item);const image=orientation==='poster'?hit?.cover_image:hit?.background_image;if(image&&!(orientation==='poster'?/\/t_screenshot_/.test(image):/\/t_cover_/.test(image)))return image}catch{}if(/^[1-9][0-9]{0,9}$/.test(String(item.steam_appid||''))){const steam=`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${item.steam_appid}/${orientation==='poster'?'library_600x900.jpg':'header.jpg'}`;try{await api.coverImage(steam);return steam}catch{}}try{const d=await api.bright({op:'capas',nomes:[item.nome],...(item.steam_appid?{appids:[Number(item.steam_appid)]}:{}),format:orientation});if(d.capas?.[0])return d.capas[0]}catch{}return fallback||coverUrl(item.capa)})();coverChoices.set(key,task);if(coverChoices.size>128)coverChoices.delete(coverChoices.keys().next().value)}return task;
  }
  hydrateCovers=function(root){for(const img of root.querySelectorAll('[data-cover]')){
-  const url=img.dataset.cover,name=img.dataset.coverName,appid=img.dataset.steamAppid,game=img.dataset.coverGame==='1',autoFormat=img.dataset.autoFormat==='1',orientation=img.dataset.coverFormat||format(),key=coverKey(url,name,appid,orientation);img.removeAttribute('data-cover');
+  const url=img.dataset.cover,name=img.dataset.coverName,appid=img.dataset.steamAppid,game=img.dataset.coverGame==='1',autoFormat=(img.dataset.autoFormat==='1'||game)&&!(/supabase\.co\/storage\//i.test(url||'')),orientation=img.dataset.coverFormat||format(),key=coverKey(url,name,appid,orientation);img.removeAttribute('data-cover');
   const fallback=()=>{const task=imageJobs.get(key)||queueCover(()=>coverFallback(url,name,appid,game,orientation)).then(src=>{readyImages.set(key,src);if(readyImages.size>160)readyImages.delete(readyImages.keys().next().value);imageJobs.delete(key);return src}).catch(error=>{imageJobs.delete(key);rememberFailedImage(key);throw error});imageJobs.set(key,task);task.then(src=>{if(!img.isConnected)return;img.src=src;img.onerror=()=>{rememberFailedImage(key);img.src=emptyImage;img.classList.add('image-unavailable');img.title='Capa indisponível. Use Atualizar dados e capas.'}}).catch(()=>{if(!img.isConnected)return;img.src=emptyImage;img.classList.add('image-unavailable');img.title='Capa indisponível. Use Atualizar dados e capas.'})};
   const ready=readyImages.get(key);if(ready){img.src=ready;img.onerror=()=>{rememberFailedImage(key);img.src=emptyImage;img.classList.add('image-unavailable')};continue}
   const failedUntil=failedImages.get(key);if(failedUntil&&failedUntil>Date.now()){img.src=url||emptyImage;img.onerror=()=>{img.src=emptyImage;img.classList.add('image-unavailable')};continue}failedImages.delete(key);

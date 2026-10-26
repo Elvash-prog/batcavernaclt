@@ -159,9 +159,20 @@ $('#registerForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget
 $('#recoverForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('.primary'),err=f.querySelector('.error');b.disabled=true;try{const email=f.elements.email.value;await api.recover(email);openEmailProof(true,email)}catch(x){err.textContent=failure(x)}finally{b.disabled=false}};
 applyPrefs();let appInitialized=false;const initializeApp=()=>{if(appInitialized)return;appInitialized=true;api.state().then(s=>{state.version=s.version;state.userId=s.user?.id||'';state.email=s.user?.email||'';s.authenticated?showApp():showLogin()}).catch(error=>{showLogin();$('#loginError').textContent=failureMessage(error)})};window.addEventListener('batcaverna:legacy-ready',initializeApp,{once:true});
 
+function catalogDescriptionText(value){
+ const decoder=document.createElement('textarea');let text=String(value||'');
+ for(let pass=0;pass<2;pass++){const next=text.replace(/&(?:#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9]+);/gi,entity=>{decoder.innerHTML=entity;return decoder.value});if(next===text)break;text=next;}
+ return text.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,'').replace(/<br\s*\/?\s*>|<\/(?:p|div|li|h[1-6])\s*>/gi,'\n').replace(/<[^>]*>/g,'').replace(/\u00a0/g,' ').trim();
+}
+function detailedPlaytime(value){
+ if(value==null||String(value).trim()==='')return 'Sem tempo registrado';const hours=Number(String(value).replace(',','.'));if(!Number.isFinite(hours)||hours<0)return 'Sem tempo registrado';
+ if(hours>0&&hours*60<1)return 'Menos de 1 min';const minutes=Math.round(hours*60),h=Math.floor(minutes/60),m=minutes%60;
+ return h?`${h.toLocaleString('pt-BR')} h${m?` ${m} min`:''}`:`${m} min`;
+}
+function playtimeBadge(value){return `<span class="playtime-badge" aria-label="Tempo jogado: ${esc(detailedPlaytime(value))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><strong>${esc(detailedPlaytime(value))}</strong><small>TEMPO JOGADO</small></span></span>`;}
 // Attribution travels with the translated description, including for older clients.
 window.batcavernaRenderDescription=function(node,value,limit=0){
- const notice='\n\nTradução automática por DeepL.com — https://www.deepl.com',source=String(value||'').replace(/<[^>]*>/g,''),translated=source.endsWith(notice),body=translated?source.slice(0,-notice.length):source;
+ const notice='\n\nTradução automática por DeepL.com — https://www.deepl.com',source=catalogDescriptionText(value),translated=source.endsWith(notice),body=translated?source.slice(0,-notice.length):source;
  node.textContent=limit?body.slice(0,limit):body;
  if(node.nextElementSibling?.hasAttribute('data-translation-credit'))node.nextElementSibling.remove();
  if(translated){const credit=document.createElement('p');credit.className='muted';credit.setAttribute('data-translation-credit','');credit.append('Tradução automática por ');const link=document.createElement('button');link.type='button';link.className='link-button';link.textContent='DeepL.com';link.onclick=()=>api.open('https://www.deepl.com');credit.append(link);node.after(credit);}
