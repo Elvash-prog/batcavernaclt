@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 const uid='2d3268d1-4993-46d6-abba-340a2ffdd0fa';
 const site='https://batcavernaclt.gamersclt.workers.dev';
 let handler, calls=[], mode='ok';
-const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_PUBLISHABLE_KEYS:JSON.stringify({default:'sb_publishable_test_public'}),SUPABASE_SECRET_KEYS:JSON.stringify({batcaverna_backend:'sb_secret_test_service'}),STEAM_KEY:'test-steam',RETROACHIEVEMENTS_KEY:'test-retro'};
+const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_PUBLISHABLE_KEYS:JSON.stringify({default:'sb_publishable_test_public'}),SUPABASE_SECRET_KEYS:JSON.stringify({batcaverna_backend:'sb_secret_test_service'}),STEAMGRIDDB_KEY:'test-grid',STEAM_KEY:'test-steam',RETROACHIEVEMENTS_KEY:'test-retro'};
 globalThis.Deno={env:{get:k=>env[k]},serve:fn=>{handler=fn}};
 const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
 globalThis.fetch=async (url, options={})=>{
@@ -20,9 +20,10 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname==='/rest/v1/perfis')return json([{steam_id:'76561198000000000'}]);
   if(u.pathname==='/rest/v1/itens'){assert.equal(u.searchParams.get('user_id'),'eq.'+uid);if(options.method==='PATCH'){assert.equal(u.searchParams.get('id'),'eq.41');const b=JSON.parse(options.body);assert.equal(b.horas,2);assert.equal(b.status,undefined);assert.equal(b.nota,undefined);return json({})}return json([{id:41,steam_appid:42,horas:1,conquistas:0}])}
 
+  if(u.hostname==='www.steamgriddb.com'){assert.equal(options.headers.Authorization,'Bearer test-grid');return json({data:[{id:1,width:600,height:900,url:'https://cdn2.steamgriddb.com/grid/portrait.png',score:1},{id:2,width:920,height:430,url:'https://cdn2.steamgriddb.com/grid/landscape.png',score:2}]});}
   if(u.pathname.includes('ResolveVanityURL')) return json({response:{success:1,steamid:'76561198000000000'}});
   if(u.pathname.includes('GetPlayerSummaries')) return json({response:{players:[{steamid:'76561198000000000',personaname:'Player',communityvisibilitystate:3,gameid:'42'}]}});
-  if(u.pathname.includes('GetOwnedGames')||u.pathname.includes('GetRecentlyPlayedGames')) return json({response:{game_count:1,games:[{appid:42,name:'Safe Game',playtime_forever:120,playtime_2weeks:60}]}});
+  if(u.pathname.includes('GetOwnedGames')||u.pathname.includes('GetRecentlyPlayedGames')) return json({response:{game_count:1,games:[{appid:42,name:'Safe Game',playtime_forever:mode==='precisetime'?223:120,playtime_2weeks:mode==='precisetime'?1:60}]}});
   if(u.pathname.includes('GetPlayerAchievements')&&mode==='privateach')return json({playerstats:{success:false}});
   if(u.pathname.includes('GetPlayerAchievements')) return json({playerstats:{achievements:[{apiname:'WIN',achieved:1}]}});
   if(u.pathname.includes('GetSchemaForGame')) return json({game:{availableGameStats:{achievements:[{name:'WIN',displayName:'Win',icon:'https://images.test/win.png'}]}}});
@@ -40,7 +41,7 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('API_GetGameInfoAndUserProgress.php')) return json({Title:'Retro Game',ConsoleName:'SNES',Achievements:{1:{ID:1,Title:'Start',Description:'Begin',Points:5,BadgeName:'00001',DateEarnedHardcore:'2026-10-15'}}});
   throw new Error('Unexpected simulated URL '+u);
 };
-const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8')).replace("'../_shared/api-keys.js'",JSON.stringify(new URL('../supabase/functions/_shared/api-keys.js',import.meta.url).href)).replace("'../_shared/operational-metrics.js'",JSON.stringify(new URL('../supabase/functions/_shared/operational-metrics.js',import.meta.url).href));
+const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8')).replace("'../_shared/steamgrid.js'",JSON.stringify(new URL('../supabase/functions/_shared/steamgrid.js',import.meta.url).href)).replace("'../_shared/api-keys.js'",JSON.stringify(new URL('../supabase/functions/_shared/api-keys.js',import.meta.url).href)).replace("'../_shared/operational-metrics.js'",JSON.stringify(new URL('../supabase/functions/_shared/operational-metrics.js',import.meta.url).href));
 await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 function req(body,opts={}) {
   return new Request('https://test.supabase.co/functions/v1/bright-api',{
@@ -96,3 +97,9 @@ await check('Retro conflicting actions rejected',async()=>{assert.equal((await h
 await check('Steam progress uses authenticated owner and exact saved App ID',async()=>{const r=await handler(req({op:'steamSync',appids:[42],user_id:'someone-else',steamid:'76561198999999999'}));assert.equal(r.status,200);assert.equal((await r.json()).updated,1);const patch=JSON.parse(calls.find(x=>x.options.method==='PATCH').options.body);assert.equal(patch.conquistas,100);assert.ok(calls.some(x=>x.u.pathname.includes('GetPlayerAchievements')&&x.u.searchParams.get('steamid')==='76561198000000000'));});
 await check('private achievement progress leaves the stored percentage unchanged',async()=>{mode='privateach';const r=await handler(req({op:'steamSync',appids:[42]}));assert.equal(r.status,200);const patch=JSON.parse(calls.find(x=>x.options.method==='PATCH').options.body);assert.equal(patch.conquistas,undefined);});
 await check('Steam progress rejects excessive batches',async()=>{assert.equal((await handler(req({op:'steamSync',appids:[1,2,3,4,5,6]}))).status,400);});
+
+await check('SteamGridDB selects the requested orientation without exposing its credential',async()=>{for(const format of ['poster','landscape']){const r=await handler(req({op:'capas',appids:[42],format}));assert.equal(r.status,200);const data=await r.json();assert.match(data.capas[0],format==='poster'?/portrait/:/landscape/);assert.ok(!JSON.stringify(data).includes('test-grid'));}});
+
+await check('provider outage returns an empty cover for client fallback',async()=>{mode='upstreamfail';const r=await handler(req({op:'capas',appids:[43],format:'poster'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).capas,[null]);});
+
+await check('Steam library preserves minute precision instead of rounding to tenths',async()=>{mode='precisetime';const r=await handler(req({op:'jogos',steamid:'76561198000000000'}));assert.equal(r.status,200);const data=await r.json();assert.equal(data.jogos[0].horas,223/60);assert.equal(data.recentes[0].horasRecentes,1/60);});

@@ -1,0 +1,5 @@
+BatCaverna CLT Android 1.7.30
+
+- SteamGridDB reintegrado para capas verticais e horizontais.
+- Escolha estável por formato e fallback para IGDB e Steam.
+- Mesma assinatura oficial; instale por cima da versão anterior.

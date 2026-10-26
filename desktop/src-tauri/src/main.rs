@@ -632,7 +632,7 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     value(response).await
 }
 fn image_host(host: &str)->bool {
-    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || ["igdb.com","steamstatic.com","tmdb.org","anilist.co","retroachievements.org"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
+    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || host=="cdn2.steamgriddb.com" || host=="cdn.steamgriddb.com" || ["igdb.com","steamstatic.com","tmdb.org","anilist.co","retroachievements.org"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
 }
 #[tauri::command]
 async fn cover_image(app:tauri::AppHandle,url: String) -> Result<String,String> {
@@ -824,6 +824,7 @@ mod tests {
         assert_eq!(normalize_genres(&Value::Null).unwrap(), json!([]));
         assert!(normalize_genres(&json!([42])).is_err());
     }
+    #[test] fn steamgrid_artwork_hosts_are_exact(){assert!(image_host("cdn2.steamgriddb.com"));assert!(!image_host("cdn2.steamgriddb.com.evil.test"));}
     #[test] fn invalid_steam_launch_ids_are_rejected() { assert!(launch_game(0).is_err()); assert!(launch_game(10_000_000_000).is_err()); }
     #[test] fn provider_links_only_allow_trusted_https_origins() {
         for url in ["https://www.deepl.com", "https://www.igdb.com", "https://www.themoviedb.org", "https://anilist.co", "https://retroachievements.org", "https://supabase.com", "https://firebase.google.com", "https://sightengine.com", "https://store.steampowered.com/app/42", "https://store.epicgames.com/", "https://batcavernaclt.gamersclt.workers.dev/privacidade"] { assert!(allowed_provider_url(url), "{url}"); }

@@ -21,7 +21,7 @@ jobs:
       - run: node tests/igdb.mjs
       - run: node tests/native-api.mjs
       - run: node tests/request-security.mjs && node tests/login-rate.mjs && node tests/edge-pentest.mjs
-      - run: node tests/bright-api-security.mjs
+      - run: node tests/bright-api-security.mjs && node --test tests/steamgrid.mjs
       - run: npm ci
         working-directory: desktop
       - run: npm test

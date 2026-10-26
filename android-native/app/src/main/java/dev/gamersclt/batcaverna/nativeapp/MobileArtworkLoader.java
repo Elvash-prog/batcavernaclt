@@ -17,8 +17,8 @@ final class MobileArtworkLoader {
   new AccountRepository(image.getContext()).steamMetadata(item,(rows,error)->{List<Target> targets=PENDING.remove(key);if(error!=null||rows==null)return;JSONObject game=rows.optJSONObject(0);String source=game==null?"":game.optString("capa");if(!CoverPolicy.publicUrl(source))source="";CACHE.put(key,source);if(targets!=null&&!source.isEmpty())for(Target target:targets){ImageView view=target.view.get();if(view!=null&&view.isAttachedToWindow()&&view.getTag()==target.ticket)AccountImageLoader.loadArtwork(view,source,target.fallback);}});
  }
  private static String choiceKey(JSONObject item,boolean media,boolean vertical){return new org.json.JSONArray().put(media).put(item.optString("tipo")).put(item.optString("nome")).put(item.optString("ano")).put(item.optString("steam_appid")).put(item.optString("capa")).put(vertical).toString();}
- private static String saved(android.content.SharedPreferences prefs,String owner,String key){try{return new JSONObject(prefs.getString("artwork_choices:"+owner,"{}")).optString(key,null);}catch(Exception error){return null;}}
- private static void remember(android.content.SharedPreferences prefs,String owner,String key,String source){try{JSONObject choices=new JSONObject(prefs.getString("artwork_choices:"+owner,"{}"));choices.put(key,source);while(choices.length()>512)choices.remove(choices.keys().next());prefs.edit().putString("artwork_choices:"+owner,choices.toString()).apply();}catch(Exception ignored){}}
+ private static String saved(android.content.SharedPreferences prefs,String owner,String key){try{return new JSONObject(prefs.getString("artwork_choices_v2:"+owner,"{}")).optString(key,null);}catch(Exception error){return null;}}
+ private static void remember(android.content.SharedPreferences prefs,String owner,String key,String source){try{JSONObject choices=new JSONObject(prefs.getString("artwork_choices_v2:"+owner,"{}"));choices.put(key,source);while(choices.length()>512)choices.remove(choices.keys().next());prefs.edit().putString("artwork_choices_v2:"+owner,choices.toString()).apply();}catch(Exception ignored){}}
  private static void display(ImageView image,JSONObject item,boolean media,boolean vertical,String source){if(source!=null&&!source.isEmpty())AccountImageLoader.loadArtwork(image,source,item.optString("capa"));else AccountImageLoader.loadMobile(image,item.optString("capa"),media?"":item.optString("steam_appid"),vertical,media?null:()->steamFallback(image,item));}
  static void load(ImageView image,JSONObject item,boolean media,boolean vertical){
   String fallback=item.optString("capa");
@@ -30,9 +30,9 @@ final class MobileArtworkLoader {
   waiting=new ArrayList<>();waiting.add(new Target(image,fallback));PENDING.put(key,waiting);
   AccountRepository.Callback complete=(rows,error)->{
    List<Target> targets=PENDING.remove(key);if(!owner.equals(prefs.getString("user_id","")))return;
-   String source="";if(error==null&&rows!=null){source=MobileCoverPolicy.artwork(rows,item.optString("nome"),item.optString("ano"),media,vertical);remember(prefs,owner,choice,source);remember(prefs,owner,choiceKey(item,media,!vertical),MobileCoverPolicy.artwork(rows,item.optString("nome"),item.optString("ano"),media,!vertical));}
+   String source="";if(error==null&&rows!=null){source=MobileCoverPolicy.artwork(rows,item.optString("nome"),item.optString("ano"),media,vertical);remember(prefs,owner,choice,source);if(rows.length()==0||!rows.optJSONObject(0).optBoolean("_singleOrientation"))remember(prefs,owner,choiceKey(item,media,!vertical),MobileCoverPolicy.artwork(rows,item.optString("nome"),item.optString("ano"),media,!vertical));}
    if(targets!=null)for(Target target:targets){ImageView view=target.view.get();if(view!=null&&view.getTag()==target.ticket)display(view,item,media,vertical,source);}
   };
-  AccountRepository repo=new AccountRepository(image.getContext());if(media)repo.searchMedia(item.optString("nome"),LibraryCategory.classify(item.optString("tipo")).equals("filme")?0:1,complete);else repo.searchGames(item.optString("nome"),complete);
+  AccountRepository repo=new AccountRepository(image.getContext());if(media)repo.searchMedia(item.optString("nome"),LibraryCategory.classify(item.optString("tipo")).equals("filme")?0:1,complete);else repo.searchGameArtwork(item,vertical,complete);
  }
 }
