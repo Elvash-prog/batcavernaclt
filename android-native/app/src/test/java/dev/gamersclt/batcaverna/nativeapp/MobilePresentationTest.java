@@ -17,6 +17,7 @@ public class MobilePresentationTest {
   assertEquals("",MobileCoverPolicy.artwork(rows,"Biped 2","2020",false,true));
   rows.put(a);assertEquals("",MobileCoverPolicy.artwork(rows,"Biped","",false,false));
  }
+ @Test public void cardsOnlyShowPositiveRecordedTime(){for(Object value:new Object[]{null,org.json.JSONObject.NULL,"",0,-1,Double.NaN,Double.POSITIVE_INFINITY})assertFalse(HoursDisplay.hasTime(value));assertTrue(HoursDisplay.hasTime(3.717));assertTrue(HoursDisplay.hasTime("0,01"));}
  @Test public void normalizedLandscapeFallbackIsNotAPortrait()throws Exception{org.json.JSONArray rows=new org.json.JSONArray().put(new org.json.JSONObject().put("name","Red Dead Redemption").put("cover_image","https://images.igdb.com/igdb/image/upload/t_screenshot_huge/rdr.jpg"));assertEquals("",MobileCoverPolicy.artwork(rows,"Red Dead Redemption","",false,true));}
  @Test public void catalogueArtworkRejectsUntrustedSources()throws Exception{
   org.json.JSONArray rows=new org.json.JSONArray().put(new org.json.JSONObject().put("name","Biped").put("background_image","https://example.com/wrong.jpg"));

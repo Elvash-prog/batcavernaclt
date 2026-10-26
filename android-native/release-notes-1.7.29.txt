@@ -1,0 +1,6 @@
+BatCaverna CLT Android 1.7.29
+
+- Capas escolhidas por formato ficam guardadas localmente, sem alternar entre a imagem salva e o catálogo ao recriar os cards.
+- Cards ocultam o indicador quando não há tempo jogado positivo registrado.
+
+Mesma assinatura oficial; instale por cima da versão anterior.

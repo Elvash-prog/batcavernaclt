@@ -573,3 +573,19 @@ test('tempo detalhado arredonda minutos sem alterar as horas originais',()=>{
  assert.equal(context.detailedPlaytime(3.717),'3 h 43 min');assert.equal(context.detailedPlaytime(1.999),'2 h');assert.equal(context.detailedPlaytime(0),'0 min');assert.equal(context.detailedPlaytime(.001),'Menos de 1 min');
  for(const value of [null,'',NaN,Infinity,-1])assert.equal(context.detailedPlaytime(value),'Sem tempo registrado');
 });
+
+test('cards omitem tempo ausente ou zero e mantêm duração positiva',()=>{
+ const s=read('src/app.js'),a=s.indexOf('function detailedPlaytime'),b=s.indexOf('// Attribution',a),c=vm.createContext({esc:String});vm.runInContext(s.slice(a,b),c);
+ for(const v of [null,undefined,'',0,'0',NaN,-1,Infinity])assert.equal(c.playtimeBadge(v),'');
+ assert.match(c.playtimeBadge(3.717),/3 h 43 min/);
+});
+test('sessões fecham na troca de jogo e repetem o mesmo identificador após falha',async()=>{
+ const s=read('src/cavern-shell.js'),a=s.indexOf('function createPcPlayTracker'),b=s.indexOf('\n(()=>{let owner=',a),c=vm.createContext({});vm.runInContext(s.slice(a,b),c);
+ let clock=0,seq=0,fail=false;const calls=[];
+ const tracker=c.createPcPlayTracker({now:()=>clock,uuid:()=>String(++seq),onProgress:()=>{},send:async x=>{calls.push({...x});if(fail)throw Error('offline');return x.seconds/3600;}});
+ await tracker.update({id:1});clock=30000;await tracker.update({id:1});assert.equal(calls.at(-1).seconds,30);
+ clock=60000;fail=true;await assert.rejects(tracker.update({id:2}));assert.equal(calls.at(-1).item_id,1);assert.equal(calls.at(-1).seconds,60);
+ clock=90000;fail=false;await tracker.update({id:2});assert.equal(calls.at(-2).seconds,60);assert.equal(calls.at(-2).session,'1');assert.equal(calls.at(-1).item_id,2);assert.equal(calls.at(-1).seconds,30);
+ clock=120000;await tracker.update(null);assert.equal(calls.at(-1).seconds,60);
+ tracker.reset();await tracker.update({id:1});assert.equal(calls.at(-1).seconds,0);assert.equal(calls.at(-1).session,'3');
+});
