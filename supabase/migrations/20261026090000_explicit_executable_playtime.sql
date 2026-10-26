@@ -1,3 +1,19 @@
+-- Ensure the ledger exists for installations without the earlier optional migration.
+-- One active desktop session per owned non-Steam game; cumulative ticks are idempotent.
+create table if not exists public.clt_pc_play_clock (
+ user_id uuid not null references auth.users(id) on delete cascade,
+ item_id bigint not null references public.itens(id) on delete cascade,
+ session_id uuid not null,
+ elapsed_seconds bigint not null check (elapsed_seconds between 0 and 604800),
+ last_ping timestamptz not null default now(),
+ primary key (user_id,item_id)
+);
+alter table public.clt_pc_play_clock enable row level security;
+revoke all on public.clt_pc_play_clock from public,anon;
+grant select,insert,update on public.clt_pc_play_clock to authenticated;
+drop policy if exists own_play_clock on public.clt_pc_play_clock;
+create policy own_play_clock on public.clt_pc_play_clock for all to authenticated
+ using ((select auth.uid())=user_id) with check ((select auth.uid())=user_id);
 -- Explicit executable associations may track Steam games as well.
 create or replace function public.clt_record_pc_play(p_item bigint,p_session uuid,p_seconds bigint)
 returns numeric language plpgsql security invoker set search_path='' as $$
