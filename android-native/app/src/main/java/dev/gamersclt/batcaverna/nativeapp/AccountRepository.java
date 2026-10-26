@@ -204,6 +204,9 @@ public final class AccountRepository {
     },cb);}
     private static String catalogTitleKey(String value){return java.text.Normalizer.normalize(value,java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]","");}
     public void gameDescription(long id,Callback callback){if(id<=0){callback.done(null,"Jogo inválido.");return;}execute((user,token,config)->new JSONArray().put(catalogObject("igdb/games/"+id,token)),callback);}
+    public void searchGameArtwork(JSONObject item,boolean vertical,Callback callback){
+        execute((user,token,config)->{JSONObject request=new JSONObject().put("op","capas").put("nomes",new JSONArray().put(item.optString("nome"))).put("format",vertical?"poster":"landscape");String appid=item.optString("steam_appid");if(appid.matches("[1-9][0-9]{0,9}"))request.put("appids",new JSONArray().put(Long.parseLong(appid)));JSONArray covers=brightRequest(request,token,config).optJSONArray("capas");String source=covers==null?"":covers.optString(0,"");if(!CoverPolicy.publicUrl(source))return new JSONArray();return new JSONArray().put(new JSONObject().put("name",item.optString("nome")).put(vertical?"cover_image":"background_image",source).put("_singleOrientation",true));},(rows,error)->{if(error!=null||rows==null||rows.length()==0)searchGames(item.optString("nome"),callback);else callback.done(rows,null);});
+    }
     public void searchGames(String term,Callback callback){
         String q=term==null?"":term.trim();if(q.length()<2||q.length()>100){callback.done(null,"Digite entre 2 e 100 caracteres para buscar.");return;}
         execute((user,token,config)->{

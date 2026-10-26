@@ -1,0 +1,6 @@
+BatCaverna CLT Windows 0.17.69
+
+- Minha Steam exibe o tempo jogado abaixo da capa, sem cortes ou sobreposição.
+- SteamGridDB reintegrado para capas verticais e horizontais, com chave protegida no servidor.
+- Capas carregadas conforme aparecem na tela, com limite de consultas simultâneas.
+- Escolha estável por formato e fallback para IGDB e Steam.

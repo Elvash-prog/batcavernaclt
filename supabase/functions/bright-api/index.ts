@@ -1,3 +1,4 @@
+import {steamGridCover} from '../_shared/steamgrid.js';
 import {backendKeys} from '../_shared/api-keys.js';
 const apiKeys=backendKeys(name=>Deno.env.get(name));
 import {instrument,metricRecorder} from '../_shared/operational-metrics.js';
@@ -103,7 +104,7 @@ function validate(b: any): {body: any, cost:number} {
     case "capas": case "steamInfo":
       out.appids = array(b.appids, 50, appid); out.nomes = array(b.nomes, 20, name);
       out.format = b.format === "landscape" ? "landscape" : "poster";
-      cost = Math.max(1, out.appids.length * 2 + out.nomes.length * 3); break;
+      cost = Math.max(1, out.appids.length ? out.appids.length * 2 : out.nomes.length * 3); break;
     case "perfil": out.entrada = entry(b.entrada ?? b.steamid); cost=3; break;
     case "steamSync": out.appids=array(b.appids,5,appid);cost=10;break;
     case "agora": out.steamid=steamid(b.steamid); break;
@@ -157,6 +158,8 @@ function raMedia(v: unknown, prefix = "", suffix = ""): string {
   if (suffix && !/\.[a-z0-9]{2,5}$/i.test(path)) path += suffix;
   return safeImage("https://media.retroachievements.org/" + path) || "";
 }
+const STEAMGRID = Deno.env.get("STEAMGRIDDB_KEY") || Deno.env.get("STEAMGRIDDB_API_KEY") || Deno.env.get("SGDB_KEY") || Deno.env.get("STEAMGRID_KEY") || "";
+const gridCache = new Map<string,{until:number,url:string|null}>();
 const STEAM = Deno.env.get("STEAM_KEY") ?? "";
 const RA = Deno.env.get("RETROACHIEVEMENTS_KEY") ?? "";
 
@@ -175,14 +178,8 @@ const ra = (endpoint: string, params: Record<string,string|number>) => {
 };
 async function capa(nome?: string, appid?: number, format = "poster"): Promise<string | null> {
   if (adultTitle(nome)) return null;
-  if (appid) {
-    try {
-      const z = await steamAppInfo(Number(appid));
-      return z?.capa || null;
-    } catch {}
-    return null;
-  }
-  return null;
+  const cacheKey=JSON.stringify([nome||'',appid||0,format]),hit=gridCache.get(cacheKey);if(hit&&hit.until>Date.now())return hit.url;
+  try{const url=await steamGridCover({name:nome,appid,format,key:STEAMGRID,getJson});gridCache.set(cacheKey,{until:Date.now()+(url?86400000:300000),url});if(gridCache.size>2048)gridCache.delete(gridCache.keys().next().value!);return url;}catch{return null;}
 }
 async function resolver(entrada: string): Promise<string> {
   const e = String(entrada ?? "").trim();
