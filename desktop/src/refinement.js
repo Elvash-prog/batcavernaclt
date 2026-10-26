@@ -1,10 +1,11 @@
 'use strict';
 const readyImages=new Map(),imageJobs=new Map(),coverChoices=new Map(),failedImages=new Map();
 const COVER_RETRY_MS=300000;
+function savedCoverChoice(key,value){try{const name='bc-cover-choices-v1:'+state.userId,rows=JSON.parse(localStorage.getItem(name)||'{}');if(value===undefined)return rows[key]||'';delete rows[key];rows[key]=value;const entries=Object.entries(rows).slice(-512);localStorage.setItem(name,JSON.stringify(Object.fromEntries(entries)));}catch{}return value||'';}
 const emptyImage='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/%3E';
 function rememberFailedImage(key){failedImages.delete(key);failedImages.set(key,Date.now()+COVER_RETRY_MS);if(failedImages.size>160)failedImages.delete(failedImages.keys().next().value)}
 const coverKey=(url,name,appid,format)=>JSON.stringify([state.userId,url||'',name||'',appid||'',format||'']);
-function cachedCover(item,format){return readyImages.get(coverKey(coverUrl(item.capa),item.nome,String(item.steam_appid||''),format))||coverUrl(item.capa)||emptyImage;}
+function cachedCover(item,format){return readyImages.get(coverKey(coverUrl(item.capa),item.nome,String(item.steam_appid||''),format))||savedCoverChoice(coverKey(coverUrl(item.capa),item.nome,String(item.steam_appid||''),format))||emptyImage;}
 function installRefinement(env){
  const {ui,xapi,popup,wireShelves,genreList,number,details,catalogDetails,icon}=env;
  const isGame=item=>item.categoria==='jogos'||!item.categoria;
@@ -27,7 +28,8 @@ function installRefinement(env){
   const failedUntil=failedImages.get(key);if(failedUntil&&failedUntil>Date.now()){img.src=url||emptyImage;img.onerror=()=>{img.src=emptyImage;img.classList.add('image-unavailable')};continue}failedImages.delete(key);
   let fallbackStarted=false;img.onerror=()=>{if(fallbackStarted)return;fallbackStarted=true;fallback()};
   const setSource=source=>{void (requiresMediaSigning(source)?signed(source):Promise.resolve(source)).then(src=>{if(img.isConnected)img.src=src}).catch(()=>{fallbackStarted=true;if(img.isConnected)fallback()})};
-  if(url){setSource(url);if(autoFormat&&game)void chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation,url).then(preferred=>{if(img.isConnected&&!fallbackStarted&&preferred&&preferred!==url)setSource(preferred)}).catch(()=>{})}else{img.src=emptyImage;if(game){fallbackStarted=true;fallback()}}
+  const selected=savedCoverChoice(key);
+  if(selected){setSource(selected)}else if(autoFormat&&game){img.src=emptyImage;void chooseCover({nome:name,steam_appid:appid,categoria:'jogos'},orientation,url).then(preferred=>{if(!img.isConnected||fallbackStarted)return;const source=preferred||url;if(source){savedCoverChoice(key,source);setSource(source)}else{fallbackStarted=true;fallback()}}).catch(()=>{fallbackStarted=true;fallback()})}else if(url){setSource(url)}else{img.src=emptyImage;if(game){fallbackStarted=true;fallback()}}
  }};
  const mediaURLs=new Map(),baseSigned=signed;
  signed=async function(url){const key=state.userId+':'+url,hit=mediaURLs.get(key);if(hit&&hit.until>Date.now())return hit.task;const task=baseSigned(url);mediaURLs.set(key,{task,until:Date.now()+300000});return task};

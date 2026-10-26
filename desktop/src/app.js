@@ -169,7 +169,7 @@ function detailedPlaytime(value){
  if(hours>0&&hours*60<1)return 'Menos de 1 min';const minutes=Math.round(hours*60),h=Math.floor(minutes/60),m=minutes%60;
  return h?`${h.toLocaleString('pt-BR')} h${m?` ${m} min`:''}`:`${m} min`;
 }
-function playtimeBadge(value){return `<span class="playtime-badge" aria-label="Tempo jogado: ${esc(detailedPlaytime(value))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><strong>${esc(detailedPlaytime(value))}</strong><small>TEMPO JOGADO</small></span></span>`;}
+function playtimeBadge(value){const hours=Number(String(value??'').replace(',','.'));if(!Number.isFinite(hours)||hours<=0)return '';return `<span class="playtime-badge" aria-label="Tempo jogado: ${esc(detailedPlaytime(value))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><strong>${esc(detailedPlaytime(value))}</strong><small>TEMPO JOGADO</small></span></span>`;}
 // Attribution travels with the translated description, including for older clients.
 window.batcavernaRenderDescription=function(node,value,limit=0){
  const notice='\n\nTradução automática por DeepL.com — https://www.deepl.com',source=catalogDescriptionText(value),translated=source.endsWith(notice),body=translated?source.slice(0,-notice.length):source;

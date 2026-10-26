@@ -1,0 +1,27 @@
+name: Executable playtime database
+on:
+  pull_request:
+    paths: ['tests/pc-playtime.mjs', 'supabase/migrations/20261026090000_explicit_executable_playtime.sql', '.github/workflows/pc-playtime.yml', 'tools/operations/deploy_pc_playtime.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  playtime-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --prefix tests --ignore-scripts --no-package-lock --no-audit --no-fund
+      - run: node tests/pc-playtime.mjs
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: playtime-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply reviewed playtime migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python3 tools/operations/deploy_pc_playtime.py
