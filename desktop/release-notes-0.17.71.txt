@@ -1,0 +1,5 @@
+BatCaverna CLT Windows 0.17.71
+
+- Recupera automaticamente capas ausentes ou inválidas pelo nome do título.
+- Usa TMDB para filmes e séries e AniList para animes.
+- Mantém as capas recuperadas em cache para evitar mudanças e consultas repetidas.

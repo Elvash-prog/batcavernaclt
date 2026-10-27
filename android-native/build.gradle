@@ -6,7 +6,8 @@ buildscript {
             'org.jdom:jdom2': '2.0.6.1',
             'org.bitbucket.b_c:jose4j': '0.9.6',
             'org.apache.commons:commons-compress': '1.28.0',
-            'com.google.protobuf:protobuf-java': '3.25.8'
+            'com.google.protobuf:protobuf-java': '3.25.8',
+            'com.google.guava:guava': '33.7.2-jre'
         ]
         def coordinate = details.requested.group + ':' + details.requested.name
         if (patches.containsKey(coordinate)) details.useVersion(patches[coordinate])
