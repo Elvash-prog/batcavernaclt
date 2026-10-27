@@ -1,0 +1,5 @@
+BatCaverna CLT Windows 0.17.73
+
+- Corrige o erro “popup is not defined” ao abrir os resultados do SteamGridDB.
+- Exibe corretamente a galeria de capas encontradas para seleção.
+- Mantém mensagens distintas entre falha ao abrir a galeria e ausência real de imagens.
