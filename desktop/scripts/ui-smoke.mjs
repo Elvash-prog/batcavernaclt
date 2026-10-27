@@ -1053,6 +1053,7 @@ try {
   );
   await page.evaluate(() => {
     window.failCoverImage = true;
+    window.mediaCallsBeforePublicCoverFallback = window.mediaCalls;
     const root = document.createElement("div");
     root.innerHTML =
       '<img data-cover="https://media.rawg.io/failing-cover-smoke-test.jpg" data-cover-name="Falha simulada" data-cover-game="0">';
@@ -1062,6 +1063,11 @@ try {
     root.querySelector("img").dispatchEvent(new Event("error"));
   });
   await page.waitForFunction(() => window.coverFailureCalls > 0);
+  assert.equal(
+    await page.evaluate(() => window.mediaCalls),
+    await page.evaluate(() => window.mediaCallsBeforePublicCoverFallback),
+    "O fallback de uma capa pública não deve tentar assiná-la como mídia privada.",
+  );
   await page.evaluate(() => {
     window.coverFailureRoot.remove();
     window.failCoverImage = false;
@@ -1246,6 +1252,9 @@ try {
   assert.equal(await page.locator("#bulkErrors li").count(), 4);
   await page.locator("[data-finish]").click();
   await page.locator("#selectItems").click();
+  assert.equal(await page.locator("#selectItems").innerText(), "Selecionar títulos");
+  assert.equal(await page.locator("#bulkBar").isHidden(), true);
+  assert.equal(await page.locator(".card-select").count(), 0);
   await page.locator('[data-detail="1"]').click();
   await page.locator("#editInformation").waitFor();
   assert.equal(

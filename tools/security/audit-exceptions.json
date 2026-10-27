@@ -1,0 +1,14 @@
+[
+  {
+    "id": "GHSA-qwgh-2vcv-g2f7",
+    "expires": "2026-12-31",
+    "reason": "Tauri 2.12.4 and tungstenite 0.28 still resolve digest 0.10, which requires block-buffer 0.10.4. The issue requires a caller-controlled compression callback to panic, catch the panic, and reuse the corrupted buffer; BatCaverna only reaches fixed SHA-1/SHA-2 implementations whose compression callbacks do not panic. Remove this exception when Tauri and tungstenite adopt digest 0.11/block-buffer 0.12.1.",
+    "packages": [
+      {
+        "ecosystem": "crates.io",
+        "name": "block-buffer",
+        "version": "0.10.4"
+      }
+    ]
+  }
+]

@@ -1,5 +1,5 @@
-import unittest
-from audit_dependencies import audit,cargo_inventory
+import datetime,unittest
+from audit_dependencies import audit,cargo_inventory,reviewed_exceptions
 
 class AuditTests(unittest.TestCase):
  def test_only_reachable_windows_dependencies_are_selected(self):
@@ -19,5 +19,12 @@ class AuditTests(unittest.TestCase):
   with self.assertRaises(RuntimeError):audit([('npm','synthetic','1.0.0')],lambda *_:{'results':[]})
  def test_package_errors_are_failure(self):
   with self.assertRaises(RuntimeError):audit([('npm','synthetic','1.0.0')],lambda *_:{'results':[{'error':'failed'}]})
+ def test_reviewed_exception_requires_exact_package_reason_and_valid_expiry(self):
+  finding={'id':'FIXTURE-1','affected':[{'ecosystem':'crates.io','name':'fixture','version':'1.0.0'}]}
+  row={'id':'FIXTURE-1','expires':'2026-12-31','reason':'Upstream migration is pending.','packages':finding['affected']}
+  active,suppressed=reviewed_exceptions([finding],[row],datetime.date(2026,10,27))
+  self.assertEqual(active,[]);self.assertEqual([x['id']for x in suppressed],['FIXTURE-1'])
+  active,_=reviewed_exceptions([finding],[{**row,'expires':'2026-01-01'}],datetime.date(2026,10,27))
+  self.assertEqual([x['id']for x in active],['FIXTURE-1'])
 
 if __name__=='__main__':unittest.main()
