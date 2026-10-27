@@ -1,4 +1,4 @@
-import {steamGridCover} from '../_shared/steamgrid.js';
+import {steamGridCover,steamGridCovers} from '../_shared/steamgrid.js';
 import {backendKeys} from '../_shared/api-keys.js';
 const apiKeys=backendKeys(name=>Deno.env.get(name));
 import {instrument,metricRecorder} from '../_shared/operational-metrics.js';
@@ -101,7 +101,7 @@ function validate(b: any): {body: any, cost:number} {
   if (!b || Array.isArray(b) || typeof b !== "object" || typeof b.op !== "string") throw new ApiError(400, "Pedido inválido.");
   const out: any = {op:b.op}; let cost = 1;
   switch (b.op) {
-    case "capas": case "steamInfo":
+    case "capas": case "capaOpcoes": case "steamInfo":
       out.appids = array(b.appids, 50, appid); out.nomes = array(b.nomes, 20, name);
       out.format = b.format === "landscape" ? "landscape" : "poster";
       cost = Math.max(1, out.appids.length ? out.appids.length * 2 : out.nomes.length * 3); break;
@@ -301,12 +301,34 @@ async function steamGratis(requestSignal: AbortSignal) {
   } catch {}
   return out;
 }
+async function comunidadeGratis(requestSignal: AbortSignal) {
+  const text=await fetch("https://www.reddit.com/r/FreeGameFindings/new/.rss",{headers:{"User-Agent":"BatCavernaCLT/1.0"},signal:AbortSignal.any([requestSignal,AbortSignal.timeout(8000)]),redirect:"error"}).then(async r=>{if(!r.ok)throw Error("feed");return readText(r,1024*1024)});
+  const official=["store.steampowered.com","store.epicgames.com","store.ubisoft.com","www.gog.com","gog.com","itch.io","www.microsoft.com","www.xbox.com","www.ea.com","us.shop.battle.net"],rows:any[]=[],seen=new Set<string>();
+  const decode=(value:string)=>value.replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">");
+  for(const entry of text.matchAll(/<entry\b[\s\S]*?<\/entry>/g)){
+    const block=decode(entry[0]),title=decode((block.match(/<title[^>]*>([\s\S]*?)<\/title>/)||[])[1]||"").replace(/<[^>]+>/g,"").trim();
+    if(!title||adultTitle(title))continue;
+    const links=[...block.matchAll(/https:\/\/[^\s"'<>]+/g)].map(x=>x[0].replace(/[),.]+$/,""));
+    const url=links.find(raw=>{try{return official.includes(new URL(raw).hostname.toLowerCase())}catch{return false}});if(!url||seen.has(url))continue;
+    const steam=url.match(/store\.steampowered\.com\/app\/(\d+)/);if(steam){const info=await steamAppInfo(Number(steam[1])).catch(()=>null);if(!info||info.preco!==0||Number(info.precoInicial||0)<=0)continue;rows.push({nome:info.nome,capa:info.capa,url:info.url,appid:info.steamAppid,tipo:info.tipo||"Jogo"});}
+    else rows.push({nome:title.replace(/^\[[^\]]+\]\s*/,"").slice(0,160),capa:"",url,tipo:"Jogo"});
+    seen.add(url);if(rows.length>=20)break;
+  }
+  return rows;
+}
     let out: unknown;
     switch (b.op) {
       case "capas": {
         const nomes: string[] = b.nomes ?? [], appids: number[] = b.appids ?? [];
         const capas = await Promise.all(appids.length ? appids.map((a) => capa(undefined, a, b.format)) : nomes.map((n) => capa(n, undefined, b.format)));
         out = { capas };
+        break;
+      }
+      case "capaOpcoes": {
+        const nome=b.nomes?.[0], id=b.appids?.[0];
+        if(!nome&&!id){out={opcoes:[]};break;}
+        const opcoes=await steamGridCovers({name:nome,appid:id,format:b.format,key:STEAMGRID,getJson}).catch(()=>[]);
+        out={opcoes:opcoes||[]};
         break;
       }
       case "perfil": {
@@ -449,8 +471,8 @@ async function steamGratis(requestSignal: AbortSignal) {
         break;
       }
       case "gratis": {
-        const [ep, sd] = await Promise.allSettled([epicGratis(), steamGratis(signal)]);
-        out = { epic: ep.status === "fulfilled" ? ep.value : [], steam: sd.status === "fulfilled" ? sd.value : [] };
+        const [ep, sd, community] = await Promise.allSettled([epicGratis(), steamGratis(signal), comunidadeGratis(signal)]);
+        out = { epic: ep.status === "fulfilled" ? ep.value : [], steam: sd.status === "fulfilled" ? sd.value : [], community: community.status === "fulfilled" ? community.value : [] };
         break;
       }
       default:

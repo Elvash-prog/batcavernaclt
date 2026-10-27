@@ -1,0 +1,5 @@
+BatCaverna CLT Android 1.7.31
+
+- Adiciona uma galeria do SteamGridDB para escolher capas verticais ou horizontais dos jogos.
+- Usa o App ID da Steam para evitar capas de jogos com nomes parecidos.
+- Inclui ofertas gratuitas encontradas em lojas oficiais pelo mesmo padrão do bot-jogos-gratis.

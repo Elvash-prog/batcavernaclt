@@ -3,3 +3,4 @@ html.booting body{visibility:hidden}.screen-pending{visibility:hidden!important}
 
 .reference-ui .community-hub>.section-head{width:100%;max-width:960px;margin:22px auto 16px}
 .reference-ui #content.screen-pending{visibility:hidden!important;opacity:0;pointer-events:none}
+.cover-picker{width:min(1040px,calc(100vw - 40px));max-height:calc(100vh - 40px);overflow:auto;padding:28px}.cover-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:20px}.cover-picker-grid button{display:flex;flex-direction:column;gap:8px;padding:8px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:inherit;cursor:pointer}.cover-picker-grid button:hover,.cover-picker-grid button:focus-visible{border-color:var(--accent);transform:translateY(-2px)}.cover-picker-grid img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:9px}.cover-picker-grid small{text-align:center}
