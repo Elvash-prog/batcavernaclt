@@ -219,6 +219,17 @@ test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em portug
   }
 });
 
+test('capas escolhidas manualmente permanecem fixas e ofertas preservam imagens oficiais', () => {
+  const app=read('src/app.js'),redesign=read('src/redesign.js'),refinement=read('src/refinement.js'),reference=read('src/reference.js');
+  assert.match(app,/function isPinnedCover\(value\)/);
+  assert.match(app,/steamgriddb\\\.com/);
+  assert.match(redesign,/image\.dataset\.steamAppid&&!image\.dataset\.cover/);
+  assert.match(refinement,/genericGameCover/);
+  assert.match(refinement,/!isPinnedCover\(url\)/);
+  assert.match(reference,/if\(isPinnedCover\(url\)\)continue/);
+  assert.match(app,/\$\{cover\?'':'data-auto-format="1"'\}/);
+});
+
 test('login informa andamento e nunca falha silenciosamente', () => {
   const html = read('src/AppShell.tsx');
   const script = read('src/app.js');
