@@ -1,0 +1,5 @@
+BatCaverna CLT Windows 0.17.70
+
+- Corrige o carregamento das capas de filmes, séries e animes.
+- Mantém URLs públicas de TMDB e AniList separadas das mídias privadas.
+- Faz “Concluir seleção” encerrar imediatamente o modo de seleção múltipla.
