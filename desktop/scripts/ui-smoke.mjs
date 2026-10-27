@@ -433,6 +433,7 @@ try {
                 },
               ],
             };
+          if(c==='bright_api'&&p.input.op==='capaOpcoes')return {opcoes:[{url:'https://cdn2.steamgriddb.com/grid/portrait-one.png',width:600,height:900,score:10},{url:'https://cdn2.steamgriddb.com/grid/portrait-two.png',width:600,height:900,score:8}]};
           if (c === "bright_api")
             return {
               capas: ["https://images.igdb.com/igdb/image/upload/t_cover_big/test.jpg"],
@@ -1847,6 +1848,12 @@ try {
   await page.locator('#addItem').click();
   await page.locator('[name="nota"]').selectOption('⭐⭐⭐⭐ Muito bom');
   assert.equal(await page.locator('[name="nota"]').inputValue(),'⭐⭐⭐⭐ Muito bom');
+  await page.locator('[data-item-tab="cover"]').click();
+  await page.getByRole('button',{name:'SteamGridDB',exact:true}).click();
+  await page.locator('.cover-picker').waitFor();
+  assert.equal(await page.locator('.cover-picker [data-cover-option]').count(),2);
+  await page.locator('.cover-picker [data-cover-option]').first().click();
+  await page.waitForFunction(()=>document.querySelector('[name="capa"]').value.includes('portrait-one.png'));
   await page.locator('.editor-overlay [data-close]').first().click();
   await page.evaluate(()=>{window.batcavernaConfirm('Excluir teste?').then(value=>window.confirmResult=value)});
   await page.locator('.app-confirm-dialog [data-cancel]').click();
