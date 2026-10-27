@@ -1848,6 +1848,7 @@ try {
   await page.locator('#addItem').click();
   await page.locator('[name="nota"]').selectOption('⭐⭐⭐⭐ Muito bom');
   assert.equal(await page.locator('[name="nota"]').inputValue(),'⭐⭐⭐⭐ Muito bom');
+  await page.locator('[data-item-tab="cover"]').click();
   await page.getByRole('button',{name:'SteamGridDB',exact:true}).click();
   await page.locator('.cover-picker').waitFor();
   assert.equal(await page.locator('.cover-picker [data-cover-option]').count(),2);
