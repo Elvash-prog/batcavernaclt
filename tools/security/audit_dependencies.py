@@ -54,11 +54,23 @@ def audit(packages,transport=request):
   findings.append({'id':ident,'url':'https://osv.dev/vulnerability/'+ident,'summary':detail.get('summary',''),'severity':detail.get('severity',[]),'affected':[{'ecosystem':e,'name':n,'version':v}for e,n,v in sorted(affected)],'record':detail})
  return findings
 
+def reviewed_exceptions(findings,rows,now=None):
+ today=now or datetime.date.today();active=[];suppressed=[]
+ for finding in findings:
+  exception=next((row for row in rows if row.get('id')==finding['id']),None)
+  if not exception:active.append(finding);continue
+  expires=datetime.date.fromisoformat(exception['expires'])
+  allowed={(p['ecosystem'],p['name'],p['version'])for p in exception.get('packages',[])}
+  affected={(p['ecosystem'],p['name'],p['version'])for p in finding['affected']}
+  if expires<today or not exception.get('reason','').strip() or affected!=allowed:active.append(finding);continue
+  suppressed.append({**finding,'exception':{'expires':exception['expires'],'reason':exception['reason']}})
+ return active,suppressed
+
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--maven');parser.add_argument('--cargo-metadata');parser.add_argument('--output',default='dependency-audit.json');args=parser.parse_args()
  result={'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'status':'incomplete'}
  try:
-  packages=inventory(args.maven,args.cargo_metadata);result.update(packages=len(packages),ecosystems=dict(collections.Counter(p[0]for p in packages)),android_resolved=bool(args.maven),cargo_target='windows-resolved'if args.cargo_metadata else 'all-lock-targets',findings=audit(packages),status='complete')
+  packages=inventory(args.maven,args.cargo_metadata);findings=audit(packages);exception_path=ROOT/'tools/security/audit-exceptions.json';exceptions=json.loads(exception_path.read_text())if exception_path.is_file()else[];findings,suppressed=reviewed_exceptions(findings,exceptions);result.update(packages=len(packages),ecosystems=dict(collections.Counter(p[0]for p in packages)),android_resolved=bool(args.maven),cargo_target='windows-resolved'if args.cargo_metadata else 'all-lock-targets',findings=findings,suppressed=suppressed,status='complete')
  except Exception as error:
   result['error']=type(error).__name__;pathlib.Path(args.output).write_text(json.dumps(result,indent=2));print('Dependency audit incomplete; network or resolution failure',file=sys.stderr);return 2
  pathlib.Path(args.output).write_text(json.dumps(result,indent=2))
