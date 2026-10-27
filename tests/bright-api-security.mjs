@@ -99,6 +99,7 @@ await check('private achievement progress leaves the stored percentage unchanged
 await check('Steam progress rejects excessive batches',async()=>{assert.equal((await handler(req({op:'steamSync',appids:[1,2,3,4,5,6]}))).status,400);});
 
 await check('SteamGridDB selects the requested orientation without exposing its credential',async()=>{for(const format of ['poster','landscape']){const r=await handler(req({op:'capas',appids:[42],format}));assert.equal(r.status,200);const data=await r.json();assert.match(data.capas[0],format==='poster'?/portrait/:/landscape/);assert.ok(!JSON.stringify(data).includes('test-grid'));}});
+await check('SteamGridDB returns safe options for the cover picker',async()=>{const r=await handler(req({op:'capaOpcoes',appids:[42],format:'poster'}));assert.equal(r.status,200);const data=await r.json();assert.equal(data.opcoes.length,1);assert.match(data.opcoes[0].url,/portrait/);assert.ok(!JSON.stringify(data).includes('test-grid'));});
 
 await check('provider outage returns an empty cover for client fallback',async()=>{mode='upstreamfail';const r=await handler(req({op:'capas',appids:[43],format:'poster'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).capas,[null]);});
 

@@ -1,0 +1,7 @@
+BatCaverna CLT Windows 0.17.72
+
+- Permite escolher manualmente capas verticais ou horizontais em uma galeria do SteamGridDB.
+- Prioriza o App ID da Steam e bloqueia resultados de nomes ambíguos para preservar a capa original do jogo.
+- Filmes e séries agora exigem correspondência exata de título e ano antes de recuperar uma capa.
+- A área Jogando na Steam mostra somente amigos que também estão online na BatCaverna.
+- Jogos grátis passam a incluir ofertas com links oficiais seguindo as regras do bot-jogos-gratis.
