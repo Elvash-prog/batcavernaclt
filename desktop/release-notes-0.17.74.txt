@@ -1,0 +1,5 @@
+BatCaverna CLT Windows 0.17.74
+
+- Mantém a capa escolhida manualmente no SteamGridDB, inclusive em jogos vinculados à Steam.
+- Preserva as imagens oficiais das ofertas gratuitas e busca uma alternativa somente quando não há capa.
+- Acelera o carregamento progressivo das capas sem repetir substituições desnecessárias.
