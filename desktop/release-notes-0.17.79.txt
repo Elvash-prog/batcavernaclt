@@ -1,0 +1,7 @@
+BatCaverna CLT Windows 0.17.79
+
+- Atualiza a lista de executáveis imediatamente após o reconhecimento automático.
+- Adiciona o botão Verificar agora para testar o jogo aberto sem esperar o próximo intervalo.
+- Salva correspondências conservadoras já aprovadas pelo detector nativo.
+- Informa claramente quando o jogo foi detectado, já estava associado ou precisa de escolha manual.
+- Explica na tela que a verificação automática ocorre a cada 30 segundos.

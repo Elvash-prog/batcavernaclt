@@ -626,8 +626,9 @@ test('associação automática aprende apenas correspondências confiáveis e pr
  const learned=c.learnPcExecutable([],{nome:'Red Dead Redemption 2'},{source:'automatic',confidence:100,process:'RDR2.exe'});
  assert.deepEqual(JSON.parse(JSON.stringify(learned)),[{name:'Red Dead Redemption 2',process:'RDR2',automatic:true}]);
  assert.equal(c.learnPcExecutable(learned,{nome:'Red Dead Redemption 2'},{source:'automatic',confidence:100,process:'other'}),learned);
- assert.equal(c.learnPcExecutable(learned,{nome:'Control'},{source:'automatic',confidence:88,process:'Control_DX12'}),learned);
- assert.equal(c.learnPcExecutable(learned,{nome:'Outro jogo'},{source:'automatic',confidence:100,process:'rdr2'}),learned);
+ const compatible=c.learnPcExecutable(learned,{nome:'Control'},{source:'automatic',confidence:82,process:'Control_DX12'});
+ assert.equal(compatible.length,2);assert.equal(compatible[1].name,'Control');
+ assert.equal(c.learnPcExecutable(compatible,{nome:'Outro jogo'},{source:'automatic',confidence:100,process:'rdr2'}),compatible);
 });
 test('sessões fecham na troca de jogo e repetem o mesmo identificador após falha',async()=>{
  const s=read('src/cavern-shell.js'),a=s.indexOf('function createPcPlayTracker'),b=s.indexOf('\n(()=>{let owner=',a),c=vm.createContext({});vm.runInContext(s.slice(a,b),c);
