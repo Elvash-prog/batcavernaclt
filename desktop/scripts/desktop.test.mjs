@@ -230,6 +230,14 @@ test('capas escolhidas manualmente permanecem fixas e ofertas preservam imagens 
   assert.match(app,/\$\{cover\?'':'data-auto-format="1"'\}/);
 });
 
+test('carregamento usa capas persistidas e Steam CDN antes de consultar catálogos', () => {
+  const refinement=read('src/refinement.js');
+  const chooser=refinement.slice(refinement.indexOf('async function chooseCover'),refinement.indexOf('const pendingCovers'));
+  assert.ok(chooser.indexOf('shared.cloudflare.steamstatic.com')<chooser.indexOf("op:'capas'"));
+  assert.doesNotMatch(refinement,/else if\(!game&&name&&year/);
+  assert.match(refinement,/else if\(url\)\{setSource\(url\)\}/);
+});
+
 test('login informa andamento e nunca falha silenciosamente', () => {
   const html = read('src/AppShell.tsx');
   const script = read('src/app.js');

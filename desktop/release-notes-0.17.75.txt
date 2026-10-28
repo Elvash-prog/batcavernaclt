@@ -1,0 +1,6 @@
+BatCaverna CLT Windows 0.17.75
+
+- Exibe capas já salvas sem repetir pesquisas no catálogo.
+- Usa as imagens oficiais da Steam antes de consultar serviços alternativos.
+- Reserva SteamGridDB, IGDB, TMDB e AniList para capas ausentes ou indisponíveis.
+- Reduz chamadas externas e acelera a abertura da biblioteca e das coleções de mídia.
