@@ -29,14 +29,13 @@ fn title_aliases(title:&str)->Vec<String>{
 }
 fn process_alias(process:&str)->String{
     let mut value=key(&process_key(process));
-    const SUFFIXES:&[&str]=&["win64shipping","win32shipping","shipping","directx12","directx11","win64","win32","dx12","dx11","x64","x86"];
+    const SUFFIXES:&[&str]=&["win64shipping","win32shipping","shipping","directx12","directx11","win64","win32","dx12","dx11","x64","x86","64","32"];
     loop{let before=value.len();for suffix in SUFFIXES{if value.ends_with(suffix)&&value.len()>suffix.len()+2{value.truncate(value.len()-suffix.len());break;}}if value.len()==before{break}}
     value
 }
 fn automatic_score(title:&str,process:&str)->u8{
     let process=process_alias(process);if process.len()<3{return 0}
     let aliases=title_aliases(title);if aliases.iter().any(|alias|alias==&process){return 100}
-    if aliases.iter().any(|alias|alias.len()>=5&&process.starts_with(alias)){return 88}
     if aliases.iter().any(|alias|process.len()>=6&&alias.starts_with(&process)&&process.len()*10>=alias.len()*7){return 82}
     0
 }
@@ -97,7 +96,7 @@ mod tests {use super::*;
  #[test]fn recognizes_common_game_executables(){
   assert_eq!(match_automatic(&["Red Dead Redemption 2".into()],&["RDR2.exe".into()]),Some(("Red Dead Redemption 2".into(),"rdr2".into(),100)));
   assert_eq!(match_automatic(&["Control".into()],&["Control_DX12.exe".into()]),Some(("Control".into(),"control_dx12".into(),100)));
-  assert_eq!(match_automatic(&["The Elder Scrolls Online".into()],&["eso64.exe".into()]),Some(("The Elder Scrolls Online".into(),"eso64".into(),88)));
+  assert_eq!(match_automatic(&["The Elder Scrolls Online".into()],&["eso64.exe".into()]),Some(("The Elder Scrolls Online".into(),"eso64".into(),100)));
  }
  #[test]fn refuses_ambiguous_automatic_matches(){assert_eq!(match_automatic(&["Control".into(),"Control Ultimate Edition".into()],&["Control_DX12.exe".into()]),None);}
 }
