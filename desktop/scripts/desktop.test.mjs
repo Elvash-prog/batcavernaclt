@@ -233,9 +233,20 @@ test('capas escolhidas manualmente permanecem fixas e ofertas preservam imagens 
 test('carregamento usa capas persistidas e Steam CDN antes de consultar catálogos', () => {
   const refinement=read('src/refinement.js');
   const chooser=refinement.slice(refinement.indexOf('async function chooseCover'),refinement.indexOf('const pendingCovers'));
-  assert.ok(chooser.indexOf('shared.cloudflare.steamstatic.com')<chooser.indexOf("op:'capas'"));
+  assert.ok(chooser.indexOf('shared.cloudflare.steamstatic.com')<chooser.indexOf('batchGridCover'));
+  assert.doesNotMatch(chooser,/op:'capas'/);
   assert.doesNotMatch(refinement,/else if\(!game&&name&&year/);
-  assert.match(refinement,/else if\(url\)\{setSource\(url\)\}/);
+  assert.match(refinement,/else if\(url\)\{coverMetric\('direct'\);setSource\(url\)\}/);
+});
+
+test('capas ausentes são agrupadas, priorizadas e observáveis no diagnóstico', () => {
+  const app=read('src/app.js'),refinement=read('src/refinement.js');
+  assert.match(app,/queueCover\(work,priority=0\)/);
+  assert.match(app,/b\.priority-a\.priority/);
+  assert.match(refinement,/batch\.rows\.splice\(0,20\)/);
+  assert.match(refinement,/op:'capas',nomes:rows\.map/);
+  assert.match(refinement,/stage:'COVER_PIPELINE'/);
+  assert.match(refinement,/Capa cancelada/);
 });
 
 test('login informa andamento e nunca falha silenciosamente', () => {

@@ -1,0 +1,6 @@
+BatCaverna CLT Windows 0.17.76
+
+- Agrupa até 20 buscas de capas ausentes em uma única consulta.
+- Prioriza imagens dos cards visíveis antes das capas fora da tela.
+- Cancela trabalhos de imagem quando o usuário troca de página.
+- Adiciona métricas agregadas do carregamento de capas ao diagnóstico.
