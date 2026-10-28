@@ -340,8 +340,32 @@ mod tests {
         let root=std::env::temp_dir().join(format!("batcaverna-steam-local-{}",std::process::id()));
         let stats=root.join("appcache").join("stats");fs::create_dir_all(&stats).unwrap();
         let appid_text=appid.to_string();
-        let schema=binary_fixture(vec![(appid_text.as_str(),TestValue::Block(vec![("stats",TestValue::Block(vec![("1",TestValue::Block(vec![("bits",TestValue::Block(vec![("0",TestValue::Block(vec![("name",TestValue::Text("BLOOD")),("display",TestValue::Block(vec![("name",TestValue::Block(vec![("brazilian",TestValue::Text("O sangue fala"))])),("desc",TestValue::Block(vec![("brazilian",TestValue::Text("Derrote o Decaído"))]))]))])),("1",TestValue::Block(vec![("name",TestValue::Text("LOCKED"))]))]))]))]))]))]))]);
-        let user=binary_fixture(vec![("cache",TestValue::Block(vec![("1",TestValue::Block(vec![("data",TestValue::Int(1)),("AchievementTimes",TestValue::Block(vec![("0",TestValue::Int(1_792_969_200))]))]))]))]);
+        let schema=binary_fixture(vec![
+            (appid_text.as_str(),TestValue::Block(vec![
+                ("stats",TestValue::Block(vec![
+                    ("1",TestValue::Block(vec![
+                        ("bits",TestValue::Block(vec![
+                            ("0",TestValue::Block(vec![
+                                ("name",TestValue::Text("BLOOD")),
+                                ("display",TestValue::Block(vec![
+                                    ("name",TestValue::Block(vec![("brazilian",TestValue::Text("O sangue fala"))])),
+                                    ("desc",TestValue::Block(vec![("brazilian",TestValue::Text("Derrote o Decaído"))])),
+                                ])),
+                            ])),
+                            ("1",TestValue::Block(vec![("name",TestValue::Text("LOCKED"))])),
+                        ])),
+                    ])),
+                ])),
+            ])),
+        ]);
+        let user=binary_fixture(vec![
+            ("cache",TestValue::Block(vec![
+                ("1",TestValue::Block(vec![
+                    ("data",TestValue::Int(1)),
+                    ("AchievementTimes",TestValue::Block(vec![("0",TestValue::Int(1_792_969_200))])),
+                ])),
+            ])),
+        ]);
         fs::write(stats.join(format!("UserGameStatsSchema_{appid}.bin")),schema).unwrap();
         fs::write(stats.join(format!("UserGameStats_{account}_{appid}.bin")),user).unwrap();
         let parsed=local_stats_cache(&root,account,appid).unwrap();
