@@ -250,7 +250,7 @@ function createPcPlayTracker({send,now,uuid,onProgress}){
   if(active){active.seconds=Math.max(0,Math.floor((now()-active.start)/1000));await flush(active);}
  }};
 }
-(()=>{let owner='',rows=[],loaded=0,busy=false,nextSteam=0,cursor=0,lastError=0;
+(()=>{let owner='',rows=[],loaded=0,busy=false,nextSteam=0,nextLocal=0,cursor=0,lastError=0;
  const tracker=createPcPlayTracker({send:input=>{if(owner!==state.userId)throw Error('Conta alterada');return call('community',{input})},now:()=>performance.now(),uuid:()=>crypto.randomUUID(),onProgress:()=>{if(owner!==state.userId)return;loaded=0;window.dispatchEvent(new Event('batcaverna:progress-updated'))}});
  const tick=async event=>{const manual=event?.detail?.manual===true;if(busy||!state.userId||$('#appShell').hidden){if(manual)toast('A verificação já está em andamento.');return}busy=true;const user=state.userId;
  try{
@@ -262,6 +262,7 @@ function createPcPlayTracker({send,now,uuid,onProgress}){
    const learned=learnPcExecutable(mappings,row,detected);if(learned!==mappings){mappings=learned;prefs.mappings=mappings;localStorage.setItem('bc-pc-games:'+user,JSON.stringify(prefs));toast(`Executável reconhecido: ${row.nome} → ${detected.process}.exe`);window.dispatchEvent(new CustomEvent('batcaverna:pc-mapping-learned',{detail:{user,name:row.nome,process:detected.process}}));if(state.current==='settings'&&state.settingsTab==='app')renderSettings().catch(()=>{});}else if(manual){toast(row?`Jogo detectado: ${row.nome}.`:'Nenhum jogo foi reconhecido. Use “Associar executável” para escolher o processo aberto.');}
   }
   await tracker.update(row);if(user!==state.userId)return;
+  if(row?.steam_appid&&Date.now()>=nextLocal){nextLocal=Date.now()+60000;try{const local=await api.localSteamAchievements(row.steam_appid);if(local?.found){loaded=0;window.dispatchEvent(new Event('batcaverna:progress-updated'))}}catch{nextLocal=Date.now()+120000}}
   // Do not import the Steam total while the same game has a local active session.
   const linked=[...new Set(rows.filter(r=>/steam/i.test(r.loja||'')&&String(r.id)!==String(row?.id)).map(r=>Number(r.steam_appid)).filter(id=>id>0))];
   if(linked.length&&state.profile?.steam_id&&Date.now()>=nextSteam){if(cursor>=linked.length)cursor=0;const batch=linked.slice(cursor,cursor+5);cursor=(cursor+5)%linked.length;nextSteam=Date.now()+60000;try{const result=await api.bright({op:'steamSync',appids:batch});if(result.updated){loaded=0;window.dispatchEvent(new Event('batcaverna:progress-updated'))}}catch{nextSteam=Date.now()+120000}}

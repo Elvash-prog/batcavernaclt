@@ -1,0 +1,7 @@
+Conquistas Steam locais permanentes
+
+- Lê o progresso que aparece no cliente Steam mesmo quando ele não está publicado na conta.
+- Guarda cumulativamente os desbloqueios no perfil do jogo da BatCaverna.
+- Mantém o progresso salvo caso o cache local seja limpo ou deixe de mostrar o jogo.
+- Identifica claramente os registros como Steam local.
+- Atualiza automaticamente o percentual de conquistas do jogo.
