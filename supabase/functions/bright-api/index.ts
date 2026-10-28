@@ -416,7 +416,7 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
         if(b.steamid){try{const id=await resolver(b.steamid);player=(await st(`/ISteamUserStats/GetPlayerAchievements/v1/?steamid=${id}&appid=${app}&l=brazilian`)).playerstats}catch{}}
         const progressKnown=player?.success!==false&&Array.isArray(player?.achievements);
         const unlocked=new Map((player?.achievements??[]).map((a:any)=>[a.apiname,a]));
-        const lista=(schema.game?.availableGameStats?.achievements??[]).map((a:any)=>{const p:any=unlocked.get(a.name);return {nome:a.displayName||a.name,desc:a.description||'',got:progressKnown?p?.achieved===1:null,quando:p?.unlocktime?new Date(p.unlocktime*1000).toISOString().slice(0,10):'',icon:a.icon||a.icongray,progressKnown}});
+        const lista=(schema.game?.availableGameStats?.achievements??[]).map((a:any)=>{const p:any=unlocked.get(a.name);return {id:a.name,nome:a.displayName||a.name,desc:a.description||'',got:progressKnown?p?.achieved===1:null,quando:p?.unlocktime?new Date(p.unlocktime*1000).toISOString().slice(0,10):'',icon:a.icon||a.icongray,progressKnown}});
         out={lista,progressKnown,erro:lista.length?'':'Este jogo não disponibiliza conquistas na Steam.'};
         break;
       }

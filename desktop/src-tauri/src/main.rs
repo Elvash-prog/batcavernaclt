@@ -5,6 +5,7 @@ mod game_detection;
 mod account_preferences;
 mod session_persistence;
 mod catalog_disk_cache;
+mod steam_local;
 
 mod native_auth;
 mod auth_revocation;
@@ -517,6 +518,46 @@ async fn delete_item(id: String, state: tauri::State<'_, AppState>) -> Result<Va
         .send().await.map_err(|_| "Não foi possível excluir o título.".to_string())?).await
 }
 
+#[tauri::command]
+async fn steam_local_achievements(appid: u32, state: tauri::State<'_, AppState>) -> Result<Value, String> {
+    if appid == 0 { return Err("Steam App ID inválido.".into()); }
+    let session = current(&state).await?;
+    let profile = get(&state.client, &format!("/rest/v1/perfis?select=steam_id&id=eq.{}&limit=1", session.user.id), &session.access_token).await?;
+    let steam_id = profile.as_array().and_then(|rows| rows.first()).and_then(|row| row.get("steam_id")).and_then(Value::as_str)
+        .and_then(|id| id.parse::<u64>().ok()).ok_or("Conecte seu Steam ID nas configurações para ler as conquistas locais.")?;
+    let existing_rows = get(&state.client, &format!("/rest/v1/steam_local_progress?select=steam_appid,unlocked,total,achievements,observed_at&user_id=eq.{}&steam_appid=eq.{appid}&limit=1", session.user.id), &session.access_token).await?;
+    let existing = existing_rows.as_array().and_then(|rows| rows.first()).cloned();
+    let local = tauri::async_runtime::spawn_blocking(move || steam_local::read(appid, steam_id)).await.map_err(|_| "Não foi possível ler o cache local da Steam.")?;
+    let Some(local) = local else {
+        return Ok(existing.as_ref().map(|row| steam_local::stored_snapshot(row, appid)).unwrap_or_else(|| json!({"found":false,"source":"steam_local","appid":appid,"unlocked":0,"total":0,"lista":[],"persisted":false})));
+    };
+    let merged = steam_local::merge_snapshot(existing.as_ref(), &local, appid);
+    let observed_at = chrono::Utc::now().to_rfc3339();
+    let row = json!({
+        "user_id": session.user.id,
+        "steam_appid": appid,
+        "unlocked": merged["unlocked"],
+        "total": merged["total"],
+        "achievements": merged["lista"],
+        "observed_at": observed_at,
+        "updated_at": observed_at
+    });
+    let saved = value(state.client.post(format!("{SUPABASE_URL}/rest/v1/steam_local_progress?on_conflict=user_id,steam_appid&select=steam_appid,unlocked,total,achievements,observed_at"))
+        .header("apikey", SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type", "application/json")
+        .header("prefer", "resolution=merge-duplicates,return=representation").json(&row).send().await
+        .map_err(|_| "Não foi possível guardar as conquistas locais na BatCaverna.".to_string())?).await?;
+    let stored = saved.as_array().and_then(|rows| rows.first()).map(|row| steam_local::stored_snapshot(row, appid)).unwrap_or(merged);
+    let total = stored["total"].as_u64().unwrap_or(0);
+    if total > 0 {
+        let percent = (stored["unlocked"].as_u64().unwrap_or(0) as f64 / total as f64 * 10_000.0).round() / 100.0;
+        value(state.client.patch(format!("{SUPABASE_URL}/rest/v1/itens?user_id=eq.{}&categoria=eq.jogos&steam_appid=eq.{appid}", session.user.id))
+            .header("apikey", SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type", "application/json")
+            .header("prefer", "return=minimal").json(&json!({"conquistas":percent})).send().await
+            .map_err(|_| "As conquistas foram guardadas, mas o percentual do jogo não foi atualizado.".to_string())?).await?;
+    }
+    Ok(stored)
+}
+
 async fn attach_authors(client: &reqwest::Client, posts: Value, token: &str) -> Result<Value, String> {
     let rows = posts.as_array().cloned().unwrap_or_default();
     let mut ids: Vec<String> = rows.iter().filter_map(|p| p.get("user_id").and_then(Value::as_str).map(str::to_owned)).collect();
@@ -787,7 +828,7 @@ fn main() {
             }
         })
         .manage(AppState { client, session: Mutex::new(None), auth_gate: tokio::sync::Mutex::new(()) })
-        .invoke_handler(tauri::generate_handler![account_preferences::desktop_layout,game_detection::running_processes, game_detection::detect_pc_game, desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, native_auth::resend_confirmation, native_auth::verify_email_proof, email_change::verify_email_change, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, link_retroachievements, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
+        .invoke_handler(tauri::generate_handler![account_preferences::desktop_layout,game_detection::running_processes, game_detection::detect_pc_game, desktop_runtime::desktop_preferences, desktop_runtime::test_windows_notification, desktop_runtime::client_log, desktop_runtime::diagnostic_status, desktop_runtime::diagnostic_clear, desktop_runtime::diagnostic_export, app_state, check_for_updates, install_update, login, register, recover_password, native_auth::resend_confirmation, native_auth::verify_email_proof, email_change::verify_email_change, change_password, change_email, launcher_settings, launcher_permission, set_login_background, upload_login_background, friend_activity, link_steam, link_retroachievements, logout, dashboard, profile, update_profile, update_profile_background, library, save_item, delete_item, steam_local_achievements, feed, social_meta, publish, upload_media, media_url, catalog, cover_image, upload_profile_image, bright_api, open_external, launch_game, toggle_like, add_comment, friends, search_people, send_friend_invite, chat_messages, send_message, notifications, mark_notifications_read, respond_friend_invite, journey_stats, v06::community, v06::upload_chat_image, v06::realtime_start, v06::realtime_presence])
         .setup(|app| {
             desktop_runtime::initialize(app.handle())?;
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("BatCaverna CLT").visible(!desktop_runtime::start_minimized(app.handle())).focused(!desktop_runtime::start_minimized(app.handle())).inner_size(1360.,860.).min_inner_size(980.,640.).devtools(cfg!(debug_assertions)).initialization_script(include_str!("../../src/webview-policy.js")).on_navigation(local_url).build()?;
