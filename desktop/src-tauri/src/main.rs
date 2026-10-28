@@ -646,12 +646,11 @@ async fn cover_image(app:tauri::AppHandle,url: String) -> Result<String,String> 
     })).build().map_err(|_|"Imagem indisponível.".to_string())?;
     let mut r=client.get(parsed).send().await.map_err(|_|"Imagem indisponível.".to_string())?;
     if !r.status().is_success(){return Err("Capa indisponível.".into());}
-    let final_url=r.url().as_str().to_string();
     let mime=r.headers().get("content-type").and_then(|h|h.to_str().ok()).unwrap_or("").split(';').next().unwrap_or("").to_string();
     if !matches!(mime.as_str(),"image/png"|"image/jpeg"|"image/webp"|"image/gif"|"image/avif"){return Err("Formato de capa inválido.".into());}
     let mut bytes=Vec::new();while let Some(chunk)=r.chunk().await.map_err(|_|"Imagem interrompida.".to_string())?{if bytes.len()+chunk.len()>8*1024*1024{return Err("Capa muito grande.".into());}bytes.extend_from_slice(&chunk);}
     let data=format!("data:{mime};base64,{}",base64::engine::general_purpose::STANDARD.encode(bytes));
-    if final_url==url{if let Some(root)=cache_dir{catalog_disk_cache::write(&root,&url,&data);}}
+    if let Some(root)=cache_dir{catalog_disk_cache::write(&root,&url,&data);}
     Ok(data)
 }
 #[tauri::command]
