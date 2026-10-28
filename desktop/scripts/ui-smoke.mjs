@@ -1870,7 +1870,8 @@ try {
   assert.equal(await page.locator('#libraryGroups .cinema-card').count(),48,'Only first 24 cards per status should be mounted');
   assert.match(await page.locator('.collection-result-count').innerText(),/1200/);
   await page.evaluate(()=>window.firstLibraryCard=document.querySelector('#libraryGroups [data-detail="large-0"]'));
-  await page.locator('[data-status-group="backlog"] .collection-more').click();
+  await page.locator('[data-status-group="backlog"] .collection-more').scrollIntoViewIfNeeded();
+  await page.waitForFunction(()=>document.querySelectorAll('#libraryGroups .cinema-card').length===72);
   assert.equal(await page.locator('#libraryGroups .cinema-card').count(),72);
   assert.equal(await page.evaluate(()=>window.firstLibraryCard===document.querySelector('#libraryGroups [data-detail="large-0"]')),true,'Expanding keeps original cards and image state');
   await page.locator('#librarySearch').fill('Coleção 0999');

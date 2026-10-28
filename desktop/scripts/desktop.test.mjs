@@ -249,6 +249,18 @@ test('capas ausentes são agrupadas, priorizadas e observáveis no diagnóstico'
   assert.match(refinement,/Capa cancelada/);
 });
 
+test('desktop 0.17.77 mantém capas públicas no disco e repara somente falhas', () => {
+  const refinement=read('src/refinement.js'),cache=read('src-tauri/src/catalog_disk_cache.rs'),rust=read('src-tauri/src/main.rs');
+  assert.match(cache,/const TTL:u64=30\*24\*3600/);
+  assert.match(cache,/public-covers-v2/);
+  for(const host of ['cdn2.steamgriddb.com','shared.cloudflare.steamstatic.com','image.tmdb.org','s4.anilist.co'])assert.match(cache,new RegExp(host.replaceAll('.','\\.')));
+  assert.match(cache,/private_or_ambiguous_media_never_cached/);
+  assert.match(rust,/catalog_disk_cache::write\(&root,&url,&data\)/);
+  assert.match(refinement,/id='repairCovers'/);
+  assert.match(refinement,/!isPinnedCover\(item\.capa\)/);
+  assert.match(refinement,/progressiveObserver=new IntersectionObserver/);
+});
+
 test('login informa andamento e nunca falha silenciosamente', () => {
   const html = read('src/AppShell.tsx');
   const script = read('src/app.js');

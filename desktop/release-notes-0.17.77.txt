@@ -1,0 +1,6 @@
+BatCaverna CLT Windows 0.17.77
+
+- Mantém capas públicas em cache no disco por até 30 dias.
+- Carrega automaticamente os próximos blocos da biblioteca durante a rolagem.
+- Adiciona reparo em lote para capas ausentes ou que falharam.
+- Preserva capas escolhidas manualmente durante o reparo.
