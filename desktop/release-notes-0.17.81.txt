@@ -1,0 +1,7 @@
+Leitura imediata das conquistas locais da Steam
+
+- Lê diretamente os arquivos binários UserGameStats gravados pela Steam e pelo Cloud Redirect.
+- Identifica quais conquistas foram desbloqueadas, incluindo a data local quando disponível.
+- Mantém a compatibilidade com o cache da biblioteca usado como alternativa.
+- Mostra uma mensagem clara quando o cache local ainda não foi encontrado ou quando a leitura falha.
+- Continua guardando cumulativamente o progresso no perfil do jogo da BatCaverna.
