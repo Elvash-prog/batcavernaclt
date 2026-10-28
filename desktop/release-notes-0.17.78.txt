@@ -1,0 +1,7 @@
+BatCaverna CLT Windows 0.17.78
+
+- Reconhece automaticamente executáveis de jogos abertos no Windows.
+- Aprende associações confiáveis como RDR2.exe e Control_DX12.exe na primeira execução.
+- Registra localmente o tempo de jogos Steam reconhecidos, sem esperar apenas a sincronização da loja.
+- Mantém associações manuais e solicita escolha quando mais de um título pode corresponder ao mesmo processo.
+- Identifica na configuração quais executáveis foram reconhecidos automaticamente.

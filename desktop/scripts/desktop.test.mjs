@@ -621,6 +621,14 @@ test('cards omitem tempo ausente ou zero e mantêm duração positiva',()=>{
  for(const v of [null,undefined,'',0,'0',NaN,-1,Infinity])assert.equal(c.playtimeBadge(v),'');
  assert.match(c.playtimeBadge(3.717),/3 h 43 min/);
 });
+test('associação automática aprende apenas correspondências confiáveis e preserva escolhas existentes',()=>{
+ const s=read('src/cavern-shell.js'),a=s.indexOf('function learnPcExecutable'),b=s.indexOf('// Cumulative sessions',a),c=vm.createContext({});vm.runInContext(s.slice(a,b),c);
+ const learned=c.learnPcExecutable([],{nome:'Red Dead Redemption 2'},{source:'automatic',confidence:100,process:'RDR2.exe'});
+ assert.deepEqual(JSON.parse(JSON.stringify(learned)),[{name:'Red Dead Redemption 2',process:'RDR2',automatic:true}]);
+ assert.equal(c.learnPcExecutable(learned,{nome:'Red Dead Redemption 2'},{source:'automatic',confidence:100,process:'other'}),learned);
+ assert.equal(c.learnPcExecutable(learned,{nome:'Control'},{source:'automatic',confidence:88,process:'Control_DX12'}),learned);
+ assert.equal(c.learnPcExecutable(learned,{nome:'Outro jogo'},{source:'automatic',confidence:100,process:'rdr2'}),learned);
+});
 test('sessões fecham na troca de jogo e repetem o mesmo identificador após falha',async()=>{
  const s=read('src/cavern-shell.js'),a=s.indexOf('function createPcPlayTracker'),b=s.indexOf('\n(()=>{let owner=',a),c=vm.createContext({});vm.runInContext(s.slice(a,b),c);
  let clock=0,seq=0,fail=false;const calls=[];
