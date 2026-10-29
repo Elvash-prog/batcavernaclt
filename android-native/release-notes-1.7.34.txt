@@ -1,0 +1,4 @@
+BatCaverna CLT Android 1.7.34
+
+- Corrige o descarte de respostas válidas do catálogo Steam com campo de erro vazio.
+- Recupera os ícones oficiais e as conquistas bloqueadas ao abrir Ver conquistas.
