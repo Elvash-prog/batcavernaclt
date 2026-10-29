@@ -18,3 +18,9 @@ Nome e responsável pelo produto; descrição e capturas; plataformas Windows e 
 ## Pendências antes de monetizar
 
 Guardar as autorizações comerciais e licenças no controle do responsável; publicar política de privacidade com identidade e contato do controlador, finalidades, fornecedores, países reais de armazenamento, retenção, exclusão de conta e direitos dos titulares; disponibilizar termos e canal para remoção de conteúdo protegido. Conferir contratos diretamente com cada fornecedor antes do lançamento comercial. Nenhuma autorização externa foi solicitada automaticamente.
+
+## Atualização de 29 de outubro de 2026 — Steam e RetroAchievements
+
+O responsável forneceu respostas de Steam Support e RAAdmin favoráveis à integração de acompanhamento, com condições. RAAdmin destacou não guardar em cache a lógica de conquistas executada pelos emuladores e informou que o limite da API é dinâmico. Steam Support remeteu aos termos da Web API, às cotas e à privacidade; informou que scraping de metadados da loja não está coberto por esses termos. Essas respostas não estabelecem, por si só, autorização específica para metadados JSON da loja, monetização ou todos os direitos de imagens.
+
+A revisão e as correções técnicas estão documentadas em [Provider API controls](PROVIDER-API-CONTROLS.md) e [Revisão Steam/Retro](REVISAO-APIS-STEAM-RETRO-2026-10-29.md). O parsing de HTML da loja foi removido, mas os endpoints JSON permanecem ativos com controles e opção de pausa, aguardando a escolha do responsável e o esclarecimento específico da Valve. O banco principal foi confirmado em São Paulo; a localização física das cópias criptografadas do Google Drive continua sem confirmação.
