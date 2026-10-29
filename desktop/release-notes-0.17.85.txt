@@ -1,0 +1,5 @@
+Correção de validação ao salvar jogos
+
+- Permite porcentagens decimais nas conquistas, como 13,79%, mantendo o limite de 0 a 100%.
+- Permite tempo estimado decimal, como 12,5 horas.
+- Preserva os valores sem arredondar ao salvar.
