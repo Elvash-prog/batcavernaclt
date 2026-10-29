@@ -11,6 +11,7 @@ fn steam_query_id(query:&str)->Option<u64>{
  };
  parsed.filter(|id|*id>0&&*id<=2147483647)
 }
+#[cfg(test)]
 fn steam_search_terms(query:&str)->Vec<String>{
  let q=query.trim().replace(['™','®'],"");let mut terms=vec![q.clone()];let lower=q.to_ascii_lowercase();
  for suffix in ["special edition","complete edition","definitive edition","deluxe edition","ultimate edition","game of the year","goty edition","remastered"]{
@@ -18,17 +19,6 @@ fn steam_search_terms(query:&str)->Vec<String>{
  }
  let roman=q.split_whitespace().map(|word|match word.to_ascii_uppercase().as_str(){"II"=>"2","III"=>"3","IV"=>"4","V"=>"5","VI"=>"6","VII"=>"7","VIII"=>"8","IX"=>"9","X"=>"10",_=>word}).collect::<Vec<_>>().join(" ");
  if roman!=q&&!terms.contains(&roman){terms.push(roman);}terms.truncate(3);terms
-}
-async fn steam_search_candidates(client:&reqwest::Client,query:&str)->Result<Value,String>{
- let q=query.trim();if q.len()<2||q.len()>180{return Err("Digite um nome, App ID ou link da loja Steam.".into());}
- let terms=steam_search_terms(q);let mut jobs=Vec::new();
- for term in &terms{for (country,language) in [("br","portuguese"),("us","english")]{
-  jobs.push(async move{let response=client.get("https://store.steampowered.com/api/storesearch/").timeout(Duration::from_secs(12)).query(&[("term",term.as_str()),("cc",country),("l",language)]).send().await.map_err(|_|"Steam indisponível.".to_string())?;value(response).await});
- }}
- let results=futures_util::future::join_all(jobs).await;let mut seen=std::collections::HashSet::new();let mut rows=Vec::new();let mut answered=false;
- for result in results{if let Ok(data)=result{answered=true;for row in data["items"].as_array().into_iter().flatten(){let Some(id)=row["id"].as_u64()else{continue};let name=row["name"].as_str().unwrap_or("");let lowered=name.to_lowercase();if name.is_empty()||["hentai","porn","xxx","sex with"].iter().any(|term|lowered.contains(term))||!seen.insert(id){continue}rows.push(json!({"appid":id,"nome":name,"capa":row["tiny_image"]}));}}}
- if !answered{return Err("A loja Steam não respondeu. Tente novamente.".into());}
- rows.sort_by_key(|row|if steam_title_key(row["nome"].as_str().unwrap_or(""))==steam_title_key(q){0}else{1});rows.truncate(50);Ok(json!({"results":rows}))
 }
 
 use futures_util::{SinkExt, StreamExt};
@@ -130,13 +120,11 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
  "group_send"=>{let id=safe_id(ident)?;let text=input["text"].as_str().unwrap_or("").trim();let media=input["media"].as_str();if let Some(path)=media{if !path.starts_with(&format!("{me}/"))||path.contains(".."){return Err("Imagem de grupo inválida.".into());}}if (text.is_empty()&&media.is_none())||text.chars().count()>2000{return Err("Escreva até 2.000 caracteres.".into());}write(&state,&session,reqwest::Method::POST,"/rest/v1/clt_chat_group_messages",json!({"group_id":id,"remetente_id":me,"texto":text,"midia_path":media})).await},
  "read_group"=>{let id=safe_id(ident)?;let response=state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_chat_group_reads?on_conflict=group_id,user_id")).header("apikey",SUPABASE_KEY).bearer_auth(token).header("content-type","application/json").header("prefer","resolution=merge-duplicates").json(&json!({"group_id":id,"user_id":me,"last_read_at":chrono::Utc::now().to_rfc3339()})).send().await.map_err(|_|"Falha ao marcar leitura.".to_string())?;value(response).await},
  "group_invite"=>{let id=safe_id(ident)?;rpc(&state.client,"responder_convite_grupo_clt",json!({"p_invite_id":id,"p_accept":input["accept"].as_bool().unwrap_or(false)}),token).await},
- "steam_search"=>steam_search_candidates(&state.client,input["query"].as_str().unwrap_or("")).await,
+ "steam_search"=>bright_api(json!({"op":"steamStoreSearch","query":input["query"]}),state).await,
  "steam_details"=>{
-   let id=if let Some(id)=input["appid"].as_u64().or_else(||input["query"].as_str().and_then(steam_query_id)){id}else{let q=input["query"].as_str().unwrap_or("").trim();let r=steam_search_candidates(&state.client,q).await?;let exact:Vec<_>=r["results"].as_array().into_iter().flatten().filter(|row|steam_title_key(row["nome"].as_str().unwrap_or(""))==steam_title_key(q)).collect();if exact.len()!=1{return Err("Selecione a edição correta nos resultados da busca Steam.".into());}exact[0]["appid"].as_u64().ok_or("Jogo inválido.")?};
+   let id=if let Some(id)=input["appid"].as_u64().or_else(||input["query"].as_str().and_then(steam_query_id)){id}else{let q=input["query"].as_str().unwrap_or("").trim();let r=bright_api(json!({"op":"steamStoreSearch","query":q}),state.clone()).await?;let exact:Vec<_>=r["results"].as_array().into_iter().flatten().filter(|row|steam_title_key(row["nome"].as_str().unwrap_or(""))==steam_title_key(q)).collect();if exact.len()!=1{return Err("Selecione a edição correta nos resultados da busca Steam.".into());}exact[0]["appid"].as_u64().ok_or("Jogo inválido.")?};
    if id==0||id>2147483647{return Err("App ID inválido.".into());}
-   let r=value(state.client.get("https://store.steampowered.com/api/appdetails").query(&[("appids",id.to_string()),("cc","br".into()),("l","brazilian".into())]).send().await.map_err(|_|"Steam indisponível.".to_string())?).await?;
-   let d=&r[id.to_string()]["data"];if d.is_null(){return Err("Dados da Steam indisponíveis.".into());}let genres=d["genres"].as_array().cloned().unwrap_or_default();if genres.iter().any(|g|g["id"].as_str()==Some("71")){return Err("Título adulto indisponível.".into());}
-   Ok(json!({"steam_appid":id,"nome":d["name"],"generos":genres,"capa":d["header_image"],"descricao":d["short_description"],"preco":d["price_overview"]["final_formatted"],"desenvolvedores":d["developers"],"lancamento":d["release_date"]["date"],"screenshots":d["screenshots"],"movies":d["movies"],"metacritic":d["metacritic"],"recommendations":d["recommendations"],"platforms":d["platforms"]}))
+   bright_api(json!({"op":"steamStoreDetails","appid":id}),state).await
  },
  _=>Err("Operação não permitida.".into())
  }
