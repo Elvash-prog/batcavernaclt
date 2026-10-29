@@ -1,0 +1,6 @@
+Destaque do início em alta resolução
+
+- Prioriza arte panorâmica de alta resolução da Steam no banner.
+- Permite fixar um jogo da biblioteca em Escolher destaque.
+- Modo automático considera a atividade recente da Steam e os jogos detectados neste PC.
+- Preferência manual salva por conta neste computador.

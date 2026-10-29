@@ -261,7 +261,7 @@ function createPcPlayTracker({send,now,uuid,onProgress}){
   let row=null;if(prefs.trackTime!==false){const detected=await call('detect_pc_game',{input:{names:rows.map(r=>r.nome),mappings}});if(user!==state.userId)return;row=rows.find(r=>r.nome===detected?.name)||null;
    const learned=learnPcExecutable(mappings,row,detected);if(learned!==mappings){mappings=learned;prefs.mappings=mappings;localStorage.setItem('bc-pc-games:'+user,JSON.stringify(prefs));toast(`Executável reconhecido: ${row.nome} → ${detected.process}.exe`);window.dispatchEvent(new CustomEvent('batcaverna:pc-mapping-learned',{detail:{user,name:row.nome,process:detected.process}}));if(state.current==='settings'&&state.settingsTab==='app')renderSettings().catch(()=>{});}else if(manual){toast(row?`Jogo detectado: ${row.nome}.`:'Nenhum jogo foi reconhecido. Use “Associar executável” para escolher o processo aberto.');}
   }
-  await tracker.update(row);if(user!==state.userId)return;
+  if(row)rememberHomeGame(row);await tracker.update(row);if(user!==state.userId)return;
   if(row?.steam_appid&&Date.now()>=nextLocal){nextLocal=Date.now()+60000;try{const local=await api.localSteamAchievements(row.steam_appid);if(local?.found){loaded=0;window.dispatchEvent(new Event('batcaverna:progress-updated'))}}catch{nextLocal=Date.now()+120000}}
   // Do not import the Steam total while the same game has a local active session.
   const linked=[...new Set(rows.filter(r=>/steam/i.test(r.loja||'')&&String(r.id)!==String(row?.id)).map(r=>Number(r.steam_appid)).filter(id=>id>0))];

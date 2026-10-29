@@ -841,6 +841,16 @@ try {
   await page.locator('.continuity-card').filter({hasText:'Série de teste'}).waitFor();
   await page.waitForFunction(()=>document.querySelector('.continuity')?.textContent.includes('Temporada 1 · Episódio 2'));
   assert.equal(await page.locator('.continuity-card').filter({hasText:'Jogo zerado'}).count(),0);
+  await page.getByRole('button',{name:'Escolher destaque',exact:true}).click();
+  const highlight=page.locator('[data-highlight]');
+  assert.equal(await highlight.inputValue(),'');
+  await highlight.selectOption({label:'Jogo em progresso'});
+  await page.locator('[data-save-highlight]').click();
+  await page.locator('.highlight-picker').waitFor({state:'detached'});
+  await page.getByRole('button',{name:'Escolher destaque',exact:true}).click();
+  assert.notEqual(await page.locator('[data-highlight]').inputValue(),'');
+  await page.locator('[data-highlight]').selectOption('');
+  await page.locator('[data-save-highlight]').click();
   await page.locator('.continuity-card').filter({hasText:'Jogo em progresso'}).getByRole('button',{name:'Ver detalhes',exact:true}).click();
   await page.locator('.detail-title-row h2').filter({hasText:'Jogo em progresso'}).waitFor();
   await page.locator('.reference-detail [data-close]').click();
