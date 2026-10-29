@@ -278,3 +278,5 @@ body.reference-ui[data-card-format="landscape"] .cavern-home .cover-wrap {
   .reference-ui .cavern-home .cinema-card,
   .reference-ui .cavern-home .reference-card { transform: none !important; }
 }
+
+.highlight-picker select{display:block;width:100%;margin:12px 0 20px;padding:12px}.highlight-picker p{line-height:1.6;color:var(--muted)}
