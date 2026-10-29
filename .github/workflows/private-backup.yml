@@ -1,5 +1,7 @@
 name: Backup privado Supabase
 on:
+  pull_request:
+    paths: ['tools/operations/**', '.github/workflows/private-backup.yml', 'docs/BACKUP-SAO-PAULO.md']
   workflow_dispatch:
     inputs:
       mode:
@@ -16,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validate:
-    if: github.event_name == 'workflow_dispatch' || vars.BACKUP_AUTOMATION_ENABLED == 'true'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || vars.BACKUP_AUTOMATION_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -28,7 +30,15 @@ jobs:
           python-version: '3.12'
       - name: Testar integridade, criptografia e seguranca do Drive com dados sinteticos
         run: python3 -m unittest discover -s tools/operations -p 'test_*.py' -v
+      - name: Validar template AWS sem criar recursos
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 -m pip install --disable-pip-version-check cfn-lint==1.59.0
+          cfn-lint tools/operations/backup-s3-stack.json
   backup:
+    permissions:
+      contents: read
+      id-token: write
     needs: validate
     if: >-
       github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
@@ -96,6 +106,7 @@ jobs:
           print('CLI vinculado ao projeto esperado.')
           PY
       - name: Exportar e criptografar com a chave publica
+        id: export-backup
         if: github.event_name == 'schedule' || inputs.mode == 'backup'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -113,6 +124,56 @@ jobs:
         run: >-
           python3 tools/operations/drive_backup.py
           --archive "$RUNNER_TEMP/batcaverna-backup/BatCaverna.tar.gz.gpg"
+      # Optional until the owner creates the AWS account and validates recovery.
+      # Runs after Drive, so an S3 failure does not prevent the existing Drive copy.
+      - name: Validar parametros do destino S3
+        id: s3-config
+        if: >-
+          !cancelled() && vars.BACKUP_S3_ENABLED == 'true' &&
+          (steps.export-backup.outcome == 'success' || inputs.mode == 'check')
+        env:
+          BACKUP_S3_BUCKET: ${{ vars.BACKUP_S3_BUCKET }}
+          BACKUP_AWS_ACCOUNT_ID: ${{ vars.BACKUP_AWS_ACCOUNT_ID }}
+          BACKUP_AWS_ROLE_ARN: ${{ vars.BACKUP_AWS_ROLE_ARN }}
+        run: |
+          python3 - <<'PYCONFIG'
+          import os, re, sys
+          sys.path.insert(0,'tools/operations')
+          from s3_backup import Aws
+          account=os.environ.get('BACKUP_AWS_ACCOUNT_ID','')
+          Aws(os.environ.get('BACKUP_S3_BUCKET',''),account)
+          if not re.fullmatch('arn:aws:iam::'+account+r':role/[A-Za-z0-9+=,.@_/-]{1,512}',os.environ.get('BACKUP_AWS_ROLE_ARN','')):
+              raise SystemExit('Configure a role de backup gerada pelo CloudFormation na mesma conta do bucket.')
+          print('Destino S3 configurado; identidade temporaria ainda sera conferida.')
+          PYCONFIG
+      - name: Conectar AWS por identidade temporaria
+        id: aws-auth
+        if: >-
+          !cancelled() && vars.BACKUP_S3_ENABLED == 'true' &&
+          steps.s3-config.outcome == 'success'
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+        with:
+          aws-region: sa-east-1
+          role-to-assume: ${{ vars.BACKUP_AWS_ROLE_ARN }}
+          allowed-account-ids: ${{ vars.BACKUP_AWS_ACCOUNT_ID }}
+          role-duration-seconds: 3600
+          role-session-name: batcaverna-backup-${{ github.run_id }}
+          unset-current-credentials: true
+      - name: Conferir bucket privado e copiar pacote criptografado para Sao Paulo
+        if: >-
+          !cancelled() && vars.BACKUP_S3_ENABLED == 'true' &&
+          steps.aws-auth.outcome == 'success' &&
+          (steps.export-backup.outcome == 'success' || inputs.mode == 'check')
+        env:
+          BACKUP_S3_BUCKET: ${{ vars.BACKUP_S3_BUCKET }}
+          BACKUP_AWS_ACCOUNT_ID: ${{ vars.BACKUP_AWS_ACCOUNT_ID }}
+          BACKUP_MODE: ${{ inputs.mode || 'backup' }}
+        run: |
+          if [ "$BACKUP_MODE" = 'check' ]; then
+            python3 tools/operations/s3_backup.py --check-only
+          else
+            python3 tools/operations/s3_backup.py --archive "$RUNNER_TEMP/batcaverna-backup/BatCaverna.tar.gz.gpg"
+          fi
       - name: Registrar resultado
         if: success()
         run: |

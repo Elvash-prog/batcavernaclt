@@ -4,7 +4,7 @@ Revisão: 17 de outubro de 2026. Os créditos ficam em Configurações → Créd
 
 | Serviço | Exigência / próximo passo |
 |---|---|
-| IGDB | A documentação oferece parceria comercial gratuita e exige atribuição visível e permanente. Contatar partner@igdb.com, apresentar a BatCaverna e obter confirmação da parceria. https://api-docs.igdb.com/#business-related-faq |
+| IGDB | O responsável informou em 29/10/2026 que recebeu autorização de uso da IGDB. Guardar o e-mail e cumprir as condições recebidas, incluindo a atribuição aplicável. Este registro não amplia o escopo da autorização além da resposta recebida. https://api-docs.igdb.com/#business-related-faq |
 | TMDB | Obter licença comercial antes de monetizar. Informar que o projeto é brasileiro. O app inclui o logo oficial sem alterações e o aviso obrigatório: “This product uses the TMDB API but is not endorsed or certified by TMDB.” https://developer.themoviedb.org/docs/faq |
 | AniList | Há gratuidade comercial abaixo de US$150/mês de receita, mas a restrição a serviços concorrentes de listas e acompanhamento também se aplica, independentemente da receita. A BatCaverna organiza animes: pedir autorização expressa para esse caso a contact@anilist.co e esclarecer o enquadramento no limite. https://docs.anilist.co/guide/terms-of-use |
 | RetroAchievements | Confirmar com a equipe se a integração, dados e imagens podem integrar o produto comercial. A documentação técnica consultada não comprova uma licença comercial. https://api-docs.retroachievements.org/ |

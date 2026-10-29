@@ -115,3 +115,8 @@ Uma falha de subprocesso informa somente código de saída e uma categoria fixa 
 - `UNCLASSIFIED`: mensagem não reconhecida; não habilitar logs brutos no CI. Investigar em ambiente privado, sem compartilhar credenciais.
 
 Se a execução falhar antes da etapa de upload, nenhum arquivo do Drive terá sido substituído por essa execução. Não habilitar a agenda enquanto não houver backup real verificado e recuperado.
+
+
+## Destino adicional em São Paulo — preparado em 29/10/2026
+
+O guia [BACKUP-SAO-PAULO.md](BACKUP-SAO-PAULO.md) e o template CloudFormation preparam um bucket S3 privado com versionamento, proteção Governance por sete dias e acesso temporário pelo GitHub. Essa integração é opcional e fica desativada sem `BACKUP_S3_ENABLED=true`. O responsável ainda precisa criar a conta AWS, revisar/provisionar o destino, cadastrar as variáveis e validar upload, descriptografia e restauração. Não há confirmação de backup real no S3 nesta etapa. O backup atual do Drive não é removido.
