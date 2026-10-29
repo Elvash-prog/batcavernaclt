@@ -4,8 +4,8 @@
  const trophy='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z M8 6H4v2a4 4 0 0 0 4 4 M16 6h4v2a4 4 0 0 1-4 4 M12 13v4 M8 21h8 M9 17h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
  const discoverButton=nav?.querySelector('[data-view="discover"]');
  if(discoverButton){
-  discoverButton.dataset.discoverKind='free';
-  discoverButton.querySelector('span').textContent='Jogos grátis';
+  discoverButton.dataset.discoverKind='steam';
+  discoverButton.querySelector('span').textContent='Minha Steam';
   let steamButton=nav.querySelector('[data-discover-kind="steam"]');
   if(!steamButton){
    steamButton=discoverButton.cloneNode(true);

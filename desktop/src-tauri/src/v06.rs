@@ -120,12 +120,8 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
  "group_send"=>{let id=safe_id(ident)?;let text=input["text"].as_str().unwrap_or("").trim();let media=input["media"].as_str();if let Some(path)=media{if !path.starts_with(&format!("{me}/"))||path.contains(".."){return Err("Imagem de grupo inválida.".into());}}if (text.is_empty()&&media.is_none())||text.chars().count()>2000{return Err("Escreva até 2.000 caracteres.".into());}write(&state,&session,reqwest::Method::POST,"/rest/v1/clt_chat_group_messages",json!({"group_id":id,"remetente_id":me,"texto":text,"midia_path":media})).await},
  "read_group"=>{let id=safe_id(ident)?;let response=state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_chat_group_reads?on_conflict=group_id,user_id")).header("apikey",SUPABASE_KEY).bearer_auth(token).header("content-type","application/json").header("prefer","resolution=merge-duplicates").json(&json!({"group_id":id,"user_id":me,"last_read_at":chrono::Utc::now().to_rfc3339()})).send().await.map_err(|_|"Falha ao marcar leitura.".to_string())?;value(response).await},
  "group_invite"=>{let id=safe_id(ident)?;rpc(&state.client,"responder_convite_grupo_clt",json!({"p_invite_id":id,"p_accept":input["accept"].as_bool().unwrap_or(false)}),token).await},
- "steam_search"=>bright_api(json!({"op":"steamStoreSearch","query":input["query"]}),state).await,
- "steam_details"=>{
-   let id=if let Some(id)=input["appid"].as_u64().or_else(||input["query"].as_str().and_then(steam_query_id)){id}else{let q=input["query"].as_str().unwrap_or("").trim();let r=bright_api(json!({"op":"steamStoreSearch","query":q}),state.clone()).await?;let exact:Vec<_>=r["results"].as_array().into_iter().flatten().filter(|row|steam_title_key(row["nome"].as_str().unwrap_or(""))==steam_title_key(q)).collect();if exact.len()!=1{return Err("Selecione a edição correta nos resultados da busca Steam.".into());}exact[0]["appid"].as_u64().ok_or("Jogo inválido.")?};
-   if id==0||id>2147483647{return Err("App ID inválido.".into());}
-   bright_api(json!({"op":"steamStoreDetails","appid":id}),state).await
- },
+ "steam_search"=>game_catalog::search(input["query"].as_str().unwrap_or(""),state).await,
+ "steam_details"=>game_catalog::details(input,state).await,
  _=>Err("Operação não permitida.".into())
  }
 }

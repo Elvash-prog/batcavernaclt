@@ -618,13 +618,14 @@ try {
               messages = messages.filter((m) => m.id !== i.id);
               return {};
             }
+            if(i.op==='steam_search'&&i.query==='Jogo zerado')return {results:[{appid:10,nome:'Jogo zerado'}]};
             if(i.op==='steam_search')return {results:[{appid:601150,nome:'Devil May Cry 5',capa:'https://shared.cloudflare.steamstatic.com/header.jpg'},{appid:220440,nome:'DmC: Devil May Cry',capa:'https://shared.cloudflare.steamstatic.com/header.jpg'}]};
             if (i.op === "steam_details")
               return {
                 nome: i.query || "Resultado Steam",
                 steam_appid: i.appid||10,
                 generos: [{ description: "Ação" }, { description: "Aventura" }],
-                descricao: "Descrição da Steam",
+                descricao: "Descrição do jogo",
                 metacritic: { score: 90 },
                 platforms: { windows: true },
                 desenvolvedores: ["Estúdio de teste"],
@@ -677,12 +678,14 @@ try {
                     genres: [{ name: "Action" }],
                     stores: [{ store: { name: "Steam" } }],
                     description_raw: "Descrição do jogo",
+                    steam_appid:10,rating:4.5,ratings_count:100,
                   }
                 : {
                     results: [
                       {
                         id: 10,
-                        name: "Resultado IGDB",
+                        name: i.query==='Jogo zerado'?i.query:"Resultado IGDB",
+                        steam_appid:10,
                         background_image: "https://media.rawg.io/cover.jpg",
                       },
                     ],
@@ -1313,7 +1316,7 @@ try {
   await page.waitForFunction(
     () =>
       document.querySelector("#detailDescription").textContent ===
-      "Descrição da Steam",
+      "Descrição do jogo",
   );
   assert.match(await page.locator("#catalogRating").innerText(), /9.0/);
   await page.locator("#autoGenres").click();
@@ -1322,7 +1325,7 @@ try {
       (s) =>
         s.c === "save_item" &&
         Array.isArray(s.p.item.generos) &&
-        s.p.item.generos[0] === "Ação",
+        s.p.item.generos[0] === "Action",
     ),
   );
   await page.locator('[data-detail-tab="achievements"]').click();
@@ -1357,24 +1360,25 @@ try {
   await page.locator('.description-toggle').click();
   assert.equal(await page.locator('#detailDescription.description-expanded').count(),1);
   await page.locator('.description-toggle').click();
-  await page.evaluate(()=>document.querySelector('#detailDescription').textContent='Descrição da Steam');
+  await page.evaluate(()=>document.querySelector('#detailDescription').textContent='Descrição do jogo');
   assert.ok(closeBounds.x>=dialogBounds.x&&closeBounds.x+closeBounds.width<=dialogBounds.x+dialogBounds.width&&closeBounds.y>=dialogBounds.y,'Fechar deve permanecer dentro da janela');
   await page.screenshot({ path: "preview/details-check.png" });
   await page.locator("#editInformation").click();
   await page
-    .getByRole("button", { name: "Buscar dados da Steam", exact: true })
+    .getByRole("button", { name: "Associar Steam App ID", exact: true })
     .click();
   await page.waitForFunction(
     () => document.querySelector('[name="steam_appid"]').value === "10",
   );
   assert.equal(
     await page.locator('[name="generos"]').inputValue(),
-    "Ação • Aventura",
+    "Action",
   );
+  assert.equal(await page.locator('[name="loja"], [name="preco"]').count(),0);
   const previousName=await page.locator('[name="nome"]').inputValue();
   await page.locator('[name="nome"]').fill('Devil May Cry V Special Edition');
   await page.evaluate(()=>document.querySelector('[name="steam_appid"]').value='');
-  await page.getByRole('button',{name:'Buscar dados da Steam',exact:true}).click();
+  await page.getByRole('button',{name:'Associar Steam App ID',exact:true}).click();
   await page.locator('.steam-search-dialog [data-steam-result="601150"]').click();
   await page.waitForFunction(()=>document.querySelector('[name="steam_appid"]').value==='601150');
   await page.locator('[name="nome"]').fill(previousName);
@@ -1439,27 +1443,9 @@ try {
   );
   assert.deepEqual(
     await page.locator('#mainNav [data-discover-kind] span').allTextContents(),
-    ["Minha Steam", "Meu Retrô", "Jogos grátis"],
+    ["Minha Steam", "Meu Retrô"],
   );
-  await page.locator('#mainNav [data-discover-kind="free"]').click();
-  await page.waitForFunction(() =>
-    document.querySelector('#mainNav [data-discover-kind="free"].active'),
-  );
-  await page.locator('.free-store-section .offer-card img').first().waitFor();
-  let offerBox=await page.locator('.free-store-section .offer-card img').first().boundingBox();
-  assert.ok(offerBox.height>offerBox.width*1.4,'Ofertas devem respeitar o formato vertical');
-  // Change the actual preference: a DOM-only override can be reset by theme sync.
-  await page.locator('#mainNav [data-view="settings"]').click();
-  await page.locator('[data-settings-tab="appearance"]').click();
-  await page.locator('#referenceCardFormat').selectOption('landscape');
-  await page.locator('#mainNav [data-discover-kind="free"]').click();
-  await page.locator('.free-store-section .offer-card img').first().waitFor();
-  offerBox=await page.locator('.free-store-section .offer-card img').first().boundingBox();
-  assert.ok(offerBox.width>offerBox.height*1.6,'Ofertas devem respeitar o formato horizontal');
-  await page.screenshot({path:'preview/free-landscape-check.png'});
-  await page.locator('#mainNav [data-view="settings"]').click();
-  await page.locator('[data-settings-tab="appearance"]').click();
-  await page.locator('#referenceCardFormat').selectOption('poster');
+  assert.equal(await page.locator('#mainNav [data-discover-kind="free"]').count(),0);
   await page.locator('#mainNav [data-discover-kind="steam"]').click();
   await page.waitForFunction(() =>
     document.querySelector('#mainNav [data-discover-kind="steam"].active'),

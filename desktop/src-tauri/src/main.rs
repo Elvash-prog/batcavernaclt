@@ -6,6 +6,7 @@ mod account_preferences;
 mod session_persistence;
 mod catalog_disk_cache;
 mod steam_local;
+mod game_catalog;
 mod progress_outbox;
 
 mod native_auth;

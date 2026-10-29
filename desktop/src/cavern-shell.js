@@ -28,7 +28,7 @@
   ['settings','Configurações','settings']
  ];
  const more=[
-  ['lists','Listas','lists'],['recommendations','Indicações','recommend'],['discover','Jogos grátis','gift',{kind:'free'}]
+  ['lists','Listas','lists'],['recommendations','Indicações','recommend']
  ];
  const button=([view,label,icon,extra={}])=>{
   const attrs=extra.action?`data-shell-action="${extra.action}"`:`data-view="${view}"`;
@@ -98,22 +98,6 @@
  };
  const baseRetroDiscover=renderDiscover;
  renderDiscover=async function(){
-  if(state.discoverTab==='free'){
-   setPage('Jogos grátis','OFERTAS PARA RESGATAR');
-   const content=$('#content');
-   content.innerHTML='<div id="discoverBody" class="free-offers-page"><div class="loading"><span class="spinner"></span>Buscando jogos grátis…</div></div>';
-   const out=$('#discoverBody');
-   try{
-    const data=await api.bright({op:'gratis'});
-    if(state.current!=='discover'||state.discoverTab!=='free'||!out.isConnected)return;
-    const rows=[...(data.epic||[]).map(item=>({...item,store:'Epic'})),...(data.steam||[]).map(item=>({...item,store:'Steam'})),...(data.community||[]).map(item=>({...item,store:'Outras lojas'}))];
-    out.innerHTML=`<div class="section-head"><div><span class="eyebrow">OFERTAS DA SEMANA</span><h2>Jogos 100% grátis <small>${rows.length}</small></h2><p>Resgate enquanto as ofertas ainda estão disponíveis. As ofertas de outras lojas seguem links oficiais verificados.</p></div></div>${['Epic','Steam','Outras lojas'].map(store=>`<section class="free-store-section"><h2>${store==='Epic'?'Epic Games':store}</h2><section class="offers">${rows.filter(r=>r.store===store).map(offerCard).join('')||'<p class="empty">Nenhuma oferta disponível nesta loja.</p>'}</section></section>`).join('')}`;
-    out.querySelectorAll('.offer-card').forEach(card=>{const store=card.querySelector('small')?.textContent||'';card.classList.toggle('offer-steam',/steam/i.test(store));card.classList.toggle('offer-epic',/epic/i.test(store));const tag=document.createElement('span');tag.className='offer-discount';tag.textContent='−100%';card.querySelector('.body')?.prepend(tag)});
-    hydrateCovers(out);
-    out.querySelectorAll('[data-open-url]').forEach(button=>button.onclick=()=>api.open(button.dataset.openUrl));
-   }catch(error){if(out.isConnected)out.innerHTML=`<div class="error-card"><p>Não foi possível carregar os jogos grátis.</p><p>${esc(failure(error))}</p><button class="secondary" id="retryFreeGames">Tentar novamente</button></div>`;$('#retryFreeGames')?.addEventListener('click',renderDiscover)}
-   return;
-  }
   await baseRetroDiscover();
   if(state.current!=='discover'||state.discoverTab!=='retro')return;
   const out=$('#discoverBody'),hero=out?.querySelector('.retro-profile');
@@ -265,7 +249,7 @@ function createPcPlayTracker({send,now,uuid,onProgress}){
   if(row)rememberHomeGame(row);await tracker.update(row);if(user!==state.userId)return;
   if(row?.steam_appid&&Date.now()>=nextLocal){nextLocal=Date.now()+60000;try{const local=await api.localSteamAchievements(row.steam_appid);if(local?.found){loaded=0;window.dispatchEvent(new Event('batcaverna:progress-updated'))}}catch{nextLocal=Date.now()+120000}}
   // Do not import the Steam total while the same game has a local active session.
-  const linked=[...new Set(rows.filter(r=>/steam/i.test(r.loja||'')&&String(r.id)!==String(row?.id)).map(r=>Number(r.steam_appid)).filter(id=>id>0))];
+  const linked=[...new Set(rows.filter(r=>String(r.id)!==String(row?.id)).map(r=>Number(r.steam_appid)).filter(id=>id>0))];
   if(linked.length&&state.profile?.steam_id&&Date.now()>=nextSteam){if(cursor>=linked.length)cursor=0;const batch=linked.slice(cursor,cursor+5);cursor=(cursor+5)%linked.length;nextSteam=Date.now()+60000;try{const result=await api.bright({op:'steamSync',appids:batch});if(result.updated){loaded=0;window.dispatchEvent(new Event('batcaverna:progress-updated'))}}catch{nextSteam=Date.now()+120000}}
  }catch(error){if(manual)toast(failure(error));else if(user===state.userId&&Date.now()-lastError>300000){lastError=Date.now();toast('Não foi possível registrar o tempo de jogo. Nova tentativa automática em 30 segundos.');}}
  finally{busy=false}};setTimeout(tick,10000);setInterval(tick,30000);
