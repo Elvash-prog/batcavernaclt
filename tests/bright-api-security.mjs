@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 const uid='2d3268d1-4993-46d6-abba-340a2ffdd0fa';
 const site='https://batcavernaclt.gamersclt.workers.dev';
-let handler, calls=[], mode='ok';
+let handler, calls=[], mode='ok',testClock=Date.now();Date.now=()=>testClock;
 const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_PUBLISHABLE_KEYS:JSON.stringify({default:'sb_publishable_test_public'}),SUPABASE_SECRET_KEYS:JSON.stringify({batcaverna_backend:'sb_secret_test_service'}),STEAMGRIDDB_KEY:'test-grid',STEAM_KEY:'test-steam',RETROACHIEVEMENTS_KEY:'test-retro'};
 globalThis.Deno={env:{get:k=>env[k]},serve:fn=>{handler=fn}};
 const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json'}});
@@ -16,6 +16,10 @@ globalThis.fetch=async (url, options={})=>{
     assert.equal(JSON.parse(options.body).p_user_id,uid);
     return mode==='dbfail'?json({},500):json(mode!=='limited');
   }
+  if(u.pathname==='/rest/v1/rpc/clt_provider_reserve')return json({allowed:true});
+  if(u.pathname==='/rest/v1/rpc/clt_provider_pause'||u.pathname==='/rest/v1/rpc/clt_provider_cache_release')return json(null);
+  if(u.pathname==='/rest/v1/rpc/clt_provider_cache_claim')return json({state:'fetch'});
+  if(u.pathname==='/rest/v1/rpc/clt_provider_cache_store'){assert.ok(!JSON.stringify(JSON.parse(options.body).p_payload).includes('FORBIDDEN_LOGIC'));return json(true);}
   if(mode==='upstreamfail') throw new Error('secret='+env.STEAM_KEY);
   if(u.pathname==='/rest/v1/perfis')return json([{steam_id:'76561198000000000'}]);
   if(u.pathname==='/rest/v1/itens'){assert.equal(u.searchParams.get('user_id'),'eq.'+uid);if(options.method==='PATCH'){assert.equal(u.searchParams.get('id'),'eq.41');const b=JSON.parse(options.body);assert.equal(b.horas,2);assert.equal(b.status,undefined);assert.equal(b.nota,undefined);return json({})}return json([{id:41,steam_appid:42,horas:1,conquistas:0}])}
@@ -28,20 +32,20 @@ globalThis.fetch=async (url, options={})=>{
   if(u.pathname.includes('GetPlayerAchievements')) return json({playerstats:{achievements:[{apiname:'WIN',achieved:1}]}});
   if(u.pathname.includes('GetSchemaForGame')) return json({game:{availableGameStats:{achievements:[{name:'WIN',displayName:'Win',icon:'https://images.test/win.png'}]}}});
   if(u.pathname.includes('appdetails')) return json({[u.searchParams.get('appids')]:{success:true,data:{name:mode==='adult'?'Hentai Game':'Safe Game',header_image:'https://images.test/game.jpg',is_free:false,price_overview:{initial:1000,final:0,discount_percent:100}}}});
-  if(u.pathname.includes('storesearch')) return json({items:[{id:42}]});
+  if(u.pathname.includes('storesearch')) return json({items:[{id:42,name:'Safe Game',tiny_image:'https://images.test/tiny.jpg'}]});
   if(u.pathname.includes('freeGamesPromotions')) return json({data:{Catalog:{searchStore:{elements:[]}}}});
-  if(u.pathname.includes('featuredcategories')) return json({});
+  if(u.pathname.includes('featuredcategories')) return json({specials:{items:[]}});
   if(u.pathname.includes('/search/results')) return new Response('');
   if(u.pathname==='/rest/v1/rpc/clt_retro_mutate'){const b=JSON.parse(options.body);assert.equal(b.p_user,uid);assert.equal(options.headers.Authorization,undefined);assert.equal(options.headers.apikey,'sb_secret_test_service');return json({cover_url:b.p_cover||'',game_ids:b.p_remove?[]:[7],hidden_game_ids:b.p_remove?[b.p_remove]:[]});}
   if(u.pathname==='/rest/v1/clt_retro_collection'){if(options.method==='POST'){const body=JSON.parse(options.body);assert.equal(body.user_id,uid);return json({})}return json([{cover_url:'',game_ids:[7]}])}
-  if(u.pathname.includes('API_GetGameList.php'))return json([{ID:7,Title:'Retro Game',ConsoleName:'SNES',NumAchievements:10}]);
+  if(u.pathname.includes('API_GetGameList.php'))return json([{ID:7,Title:'Retro Game',ConsoleName:'SNES',NumAchievements:10,MemAddr:'FORBIDDEN_LOGIC'}]);
   if(u.pathname.includes('API_GetUserProfile.php')) return json({User:'RetroPlayer',ULID:'00003EMFWR7XB8SDPEHB3K56ZQ',UserPic:'/UserPic/RetroPlayer.png',TotalPoints:123,TotalTruePoints:456});
   if(u.pathname.includes('API_GetUserCompletionProgress.php')) return json({Total:1,Results:[{GameID:7,Title:'Retro Game',ConsoleName:'SNES',MaxPossible:10,NumAwarded:5,NumAwardedHardcore:4}]});
   if(u.pathname.includes('API_GetUserRecentlyPlayedGames.php')) return json([{GameID:7,Title:'Retro Game',ConsoleName:'SNES',NumPossibleAchievements:10,NumAchieved:5,NumAchievedHardcore:4}]);
-  if(u.pathname.includes('API_GetGameInfoAndUserProgress.php')) return json({Title:'Retro Game',ConsoleName:'SNES',Achievements:{1:{ID:1,Title:'Start',Description:'Begin',Points:5,BadgeName:'00001',DateEarnedHardcore:'2026-10-15'}}});
+  if(u.pathname.includes('API_GetGameInfoAndUserProgress.php')) return json({Title:'Retro Game',ConsoleName:'SNES',Achievements:{1:{ID:1,Title:'Start',Description:'Begin',Points:5,MemAddr:'FORBIDDEN_LOGIC',BadgeName:'00001',DateEarnedHardcore:'2026-10-15'}}});
   throw new Error('Unexpected simulated URL '+u);
 };
-const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8')).replace("'../_shared/steamgrid.js'",JSON.stringify(new URL('../supabase/functions/_shared/steamgrid.js',import.meta.url).href)).replace("'../_shared/api-keys.js'",JSON.stringify(new URL('../supabase/functions/_shared/api-keys.js',import.meta.url).href)).replace("'../_shared/operational-metrics.js'",JSON.stringify(new URL('../supabase/functions/_shared/operational-metrics.js',import.meta.url).href));
+const source=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/bright-api/index.ts',import.meta.url),'utf8')).replace("'../_shared/provider-requests.js'",JSON.stringify(new URL('../supabase/functions/_shared/provider-requests.js',import.meta.url).href)).replace("'../_shared/steamgrid.js'",JSON.stringify(new URL('../supabase/functions/_shared/steamgrid.js',import.meta.url).href)).replace("'../_shared/api-keys.js'",JSON.stringify(new URL('../supabase/functions/_shared/api-keys.js',import.meta.url).href)).replace("'../_shared/operational-metrics.js'",JSON.stringify(new URL('../supabase/functions/_shared/operational-metrics.js',import.meta.url).href));
 await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 function req(body,opts={}) {
   return new Request('https://test.supabase.co/functions/v1/bright-api',{
@@ -50,7 +54,7 @@ function req(body,opts={}) {
   });
 }
 let passed=0;
-async function check(label,run){mode='ok';calls=[];await run();passed++;console.log('PASS',label)}
+async function check(label,run){mode='ok';calls=[];testClock+=172800000;await run();passed++;console.log('PASS',label)}
 await check('retired web origin rejected',async()=>{const r=await handler(req(null,{method:'OPTIONS',headers:{Origin:site}}));assert.equal(r.status,403);assert.equal(r.headers.get('Access-Control-Allow-Origin'),null);assert.equal(calls.length,0)});
 await check('foreign origin rejected',async()=>{assert.equal((await handler(req({op:'gratis'},{headers:{Origin:'https://evil.test'}}))).status,403);assert.equal(calls.length,0)});
 await check('GET rejected',async()=>{assert.equal((await handler(req(null,{method:'GET'}))).status,405)});
@@ -104,3 +108,8 @@ await check('SteamGridDB returns safe options for the cover picker',async()=>{co
 await check('provider outage returns an empty cover for client fallback',async()=>{mode='upstreamfail';const r=await handler(req({op:'capas',appids:[43],format:'poster'}));assert.equal(r.status,200);assert.deepEqual((await r.json()).capas,[null]);});
 
 await check('Steam library preserves minute precision instead of rounding to tenths',async()=>{mode='precisetime';const r=await handler(req({op:'jogos',steamid:'76561198000000000'}));assert.equal(r.status,200);const data=await r.json();assert.equal(data.jogos[0].horas,223/60);assert.equal(data.recentes[0].horasRecentes,1/60);});
+
+await check('desktop storefront search uses budgeted JSON requests',async()=>{const r=await handler(req({op:'steamStoreSearch',query:'Safe Game'}));assert.equal(r.status,200);assert.equal((await r.json()).results[0].appid,42);assert.ok(calls.some(c=>c.u.pathname.endsWith('clt_provider_reserve')));assert.ok(!calls.some(c=>c.u.pathname.includes('/search/results')));});
+await check('desktop details preserve their existing public shape',async()=>{const r=await handler(req({op:'steamStoreDetails',appid:42}));assert.equal(r.status,200);assert.equal((await r.json()).steam_appid,42);});
+env.STEAM_STORE_METADATA_ENABLED='false';await import('data:text/javascript;base64,'+Buffer.from(source+'\n// paused-config').toString('base64'));
+await check('storefront pause does not affect official Steam library',async()=>{const paused=await handler(req({op:'steamStoreDetails',appid:42}));assert.equal(paused.status,503);assert.ok(!calls.some(c=>c.u.hostname==='store.steampowered.com'));const library=await handler(req({op:'jogos',steamid:'76561198000000000'}));assert.equal(library.status,200);});

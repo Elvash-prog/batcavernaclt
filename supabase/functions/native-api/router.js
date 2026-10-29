@@ -16,8 +16,8 @@ export function createHandler(env){
    if(path==='/api/media/video-review')return await mediaVideoReview(local,env);
    if(path==='/api/media/prepare')return await mediaPrepare(local,env);
    if(path.startsWith('/api/catalog/'))return await catalog(local,env,url);
-   if(path==='/api/steam-free'){await authenticate(local,env);return await steamFree(local);}
-   if(path.startsWith('/api/steam-cover/')){await authenticate(local,env);return await steamCover(local,null,path.slice('/api/steam-cover/'.length));}
+   if(path==='/api/steam-free'){await authenticate(local,env);return await steamFree(local,env);}
+   if(path.startsWith('/api/steam-cover/')){await authenticate(local,env);return await steamCover(local,env,path.slice('/api/steam-cover/'.length));}
    return json({error:'Rota não encontrada.'},404);
   }catch(e){return json({error:e?.message==='UNAUTHORIZED'?'Sessão inválida. Entre novamente.':e?.message==='RATE_LIMIT'?'Muitas solicitações. Aguarde um minuto.':'Não foi possível concluir a solicitação.'},e?.message==='UNAUTHORIZED'?401:e?.message==='RATE_LIMIT'?429:503);}
  };

@@ -45,47 +45,18 @@ async function catalog(request,env,url){
     return json({error:timeout?'A consulta demorou demais. Tente novamente.':etapa==='auth'?'Não foi possível validar a conexão da conta.':etapa==='response'?'O catálogo retornou uma resposta inválida.':'Não foi possível conectar ao catálogo. Tente novamente.',code:timeout?'CATALOG_TIMEOUT':etapa==='auth'?'AUTH_CONNECTION_FAILED':etapa==='response'?'CATALOG_INVALID_RESPONSE':'CATALOG_CONNECTION_FAILED'},502);
   }
 }
-function steamFreeRows(html){
-  const games=[],seen=new Set();
-  for(const match of html.matchAll(/<a\b[^>]*\bclass="[^"]*\bsearch_result_row\b[^"]*"[^>]*>[\s\S]*?<\/a>/g)){
-    const row=match[0],id=(row.match(/data-ds-appid="(\d+)"/)||[])[1];
-    const title=(row.match(/<span\b[^>]*class="title"[^>]*>([\s\S]*?)<\/span>/)||[])[1];
-    if(!id||!title||seen.has(id)||!(/data-discount="100"/.test(row)&&/data-price-final="0"/.test(row)))continue;
-    const tags=(row.match(/data-ds-tagids="([^"]*)"/)||[])[1]||'';
-    if(/\b(?:5611|6650|12095)\b/.test(tags))continue;
-    seen.add(id);
-    const nome=title.replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
-    if(/\b(?:hentai|porn(?:o|ography|ographic)?|nsfw|erotic|sexual content|adult only|sex simulator|nudity)\b/i.test(nome))continue;
-    games.push({appid:Number(id),nome,capa:'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/'+id+'/header.jpg',url:'https://store.steampowered.com/app/'+id+'/',agora:true,tipo:/\bdlc\b/i.test(row)?'DLC':'Jogo'});
-  }
-  return games;
+async function steamFree(request,env){
+ if(request.method!=='GET')return json({error:'Método não permitido'},405);
+ const r=await fetch(env.SUPABASE_URL+'/functions/v1/bright-api',{method:'POST',headers:{Authorization:request.headers.get('Authorization'),apikey:env.SUPABASE_ANON_KEY,'content-type':'application/json'},body:JSON.stringify({op:'gratis'}),redirect:'error',signal:AbortSignal.timeout(35000)});
+ if(!r.ok){const headers={'content-type':'application/json','cache-control':'no-store'};if(r.status===429)headers['retry-after']=r.headers.get('retry-after')||'60';return new Response(JSON.stringify({error:r.status===429?'Aguarde antes de atualizar as ofertas.':'Ofertas indisponíveis.'}),{status:r.status===429?429:503,headers});}
+ const data=await r.json();if(data.steamError)return json({error:'Ofertas Steam temporariamente indisponíveis.'},503);return json({steam:data.steam||[],updatedAt:new Date().toISOString()});
 }
-async function steamFree(request,ctx){
-  if(request.method!=='GET')return json({error:'Método não permitido'},405);
-  const cacheKey=new Request(new URL('/api/steam-free',request.url));
-  const cache=globalThis.caches&&caches.default;
-  if(cache){const hit=await cache.match(cacheKey);if(hit)return hit;}
-  try{
-    const categories=[['998','Jogo'],['21','DLC']],games=[],seen=new Set();
-    for(const [category,type] of categories){const url='https://store.steampowered.com/search/results/?query&start=0&count=100&maxprice=free&specials=1&category1='+category+'&cc=br&l=brazilian&infinite=1';const res=await fetch(url,{redirect:'manual',headers:{Accept:'application/json'},signal:AbortSignal.timeout(15000)});if(!res.ok||res.status>=300)throw new Error('upstream');const data=await res.json();if(!data.success||typeof data.results_html!=='string')throw new Error('invalid');const rows=steamFreeRows(data.results_html);if(Number(data.total_count)>0&&!rows.length&&!data.results_html.includes('search_result_row'))throw new Error('markup');for(const row of rows)if(!seen.has(row.appid)){seen.add(row.appid);games.push({...row,tipo:type})}}
-    const response=new Response(JSON.stringify({steam:games,updatedAt:new Date().toISOString()}),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=300'}});
-    if(cache&&ctx)ctx.waitUntil(cache.put(cacheKey,response.clone()));
-    return response;
-  }catch(e){return json({error:'Não foi possível atualizar as ofertas da Steam. Tente novamente.'},502);}
-}
-async function steamCover(request,ctx,id){
-  if(request.method!=='GET')return json({error:'Método não permitido'},405);
-  if(!/^\d{1,10}$/.test(id))return json({error:'Jogo inválido'},400);
-  const key=new Request(new URL('/api/steam-cover/'+id,request.url)),cache=globalThis.caches&&caches.default;
-  if(cache){const hit=await cache.match(key);if(hit)return hit;}
-  try{
-    const r=await fetch('https://store.steampowered.com/api/appdetails?appids='+id+'&filters=basic&l=brazilian',{redirect:'manual',signal:AbortSignal.timeout(10000)});
-    if(!r.ok||r.status>=300)throw new Error('steam');
-    const d=await r.json(),app=d[id],cover=app&&app.success&&app.data&&(app.data.header_image||app.data.capsule_image);
-    if(!cover||!/^https:\/\/[^/]*steamstatic\.com\//i.test(cover))return json({capa:''},200);
-    const res=new Response(JSON.stringify({capa:cover}),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=86400'}});
-    if(cache&&ctx)ctx.waitUntil(cache.put(key,res.clone()));return res;
-  }catch(e){return json({error:'Capa indisponível na Steam'},502);}
+async function steamCover(request,env,id){
+ if(request.method!=='GET')return json({error:'Método não permitido'},405);
+ if(!/^[1-9][0-9]{0,9}$/.test(id))return json({error:'Jogo inválido'},400);
+ const r=await fetch(env.SUPABASE_URL+'/functions/v1/bright-api',{method:'POST',headers:{Authorization:request.headers.get('Authorization'),apikey:env.SUPABASE_ANON_KEY,'content-type':'application/json'},body:JSON.stringify({op:'steamInfo',appids:[Number(id)]}),redirect:'error',signal:AbortSignal.timeout(15000)});
+ if(!r.ok)return new Response(JSON.stringify({error:'Capa temporariamente indisponível.'}),{status:r.status===429?429:503,headers:{'content-type':'application/json',...(r.status===429?{'retry-after':r.headers.get('retry-after')||'60'}:{})}});
+ const result=await r.json();return json({capa:result.lista?.[0]?.capa||''});
 }
 
 export {catalog,steamFree,steamCover};
