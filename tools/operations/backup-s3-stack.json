@@ -1,0 +1,268 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "BatCaverna encrypted backups in Sao Paulo. Creates resources only in sa-east-1; no replication and no long-lived AWS keys.",
+  "Parameters": {
+    "ExistingGitHubProviderArn": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Leave blank for a new AWS account. If GitHub OIDC already exists in IAM, provide its ARN.",
+      "AllowedPattern": "^$|^arn:aws:iam::[0-9]{12}:oidc-provider/token\\.actions\\.githubusercontent\\.com$"
+    }
+  },
+  "Conditions": {
+    "InSaoPaulo": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::Region"
+        },
+        "sa-east-1"
+      ]
+    },
+    "UseExistingProvider": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "ExistingGitHubProviderArn"
+            },
+            ""
+          ]
+        }
+      ]
+    },
+    "CreateProvider": {
+      "Fn::And": [
+        {
+          "Condition": "InSaoPaulo"
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "ExistingGitHubProviderArn"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "BackupBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Condition": "InSaoPaulo",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "batcaverna-backups-${AWS::AccountId}-${AWS::Region}"
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "IgnorePublicAcls": true,
+          "BlockPublicPolicy": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "ObjectLockEnabled": true,
+        "ObjectLockConfiguration": {
+          "ObjectLockEnabled": "Enabled",
+          "Rule": {
+            "DefaultRetention": {
+              "Mode": "GOVERNANCE",
+              "Days": 7
+            }
+          }
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireBackupCopies",
+              "Status": "Enabled",
+              "Prefix": "backups/",
+              "ExpirationInDays": 8,
+              "NoncurrentVersionExpiration": {
+                "NoncurrentDays": 8
+              },
+              "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 1
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": "BatCavernaCLT"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "EncryptedBackups"
+          }
+        ]
+      }
+    },
+    "PrivateBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Condition": "InSaoPaulo",
+      "Properties": {
+        "Bucket": {
+          "Ref": "BackupBucket"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "RequireTLS",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${BackupBucket}"
+                },
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${BackupBucket}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "GitHubProvider": {
+      "Type": "AWS::IAM::OIDCProvider",
+      "Condition": "CreateProvider",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Url": "https://token.actions.githubusercontent.com",
+        "ClientIdList": [
+          "sts.amazonaws.com"
+        ]
+      }
+    },
+    "BackupRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "InSaoPaulo",
+      "Properties": {
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": {
+                  "Fn::If": [
+                    "UseExistingProvider",
+                    {
+                      "Ref": "ExistingGitHubProviderArn"
+                    },
+                    {
+                      "Ref": "GitHubProvider"
+                    }
+                  ]
+                }
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:Elvash-prog/batcavernaclt:ref:refs/heads/main"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "EncryptedBackupOnly",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketOwnershipControls",
+                    "s3:GetBucketObjectLockConfiguration",
+                    "s3:GetEncryptionConfiguration"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${BackupBucket}"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:PutObject",
+                    "s3:GetObject",
+                  "s3:GetObjectVersion",
+                    "s3:GetObjectRetention"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${BackupBucket}/backups/*"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "BackupBucketName": {
+      "Condition": "InSaoPaulo",
+      "Value": {
+        "Ref": "BackupBucket"
+      }
+    },
+    "BackupRoleArn": {
+      "Condition": "InSaoPaulo",
+      "Value": {
+        "Fn::GetAtt": [
+          "BackupRole",
+          "Arn"
+        ]
+      }
+    },
+    "BackupAccountId": {
+      "Condition": "InSaoPaulo",
+      "Value": {
+        "Ref": "AWS::AccountId"
+      }
+    },
+    "BackupRegion": {
+      "Condition": "InSaoPaulo",
+      "Value": {
+        "Ref": "AWS::Region"
+      }
+    }
+  }
+}
