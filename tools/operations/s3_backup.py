@@ -55,9 +55,13 @@ class Aws:
   head=self.run('s3api:head-object','--key',key)
   if not head.get('VersionId') or head.get('ContentLength')!=path.stat().st_size or head.get('Metadata',{}).get('sha256')!=sha or head.get('ServerSideEncryption')!='AES256':raise ValueError('O objeto recebido não corresponde ao pacote enviado.')
   version=head['VersionId'];lock=self.run('s3api:get-object-retention','--key',key,'--version-id',version).get('Retention',{})
-  try:until=datetime.datetime.fromisoformat(lock.get('RetainUntilDate','').replace('Z','+00:00'))
-  except ValueError:raise ValueError('Prazo de proteção do objeto inválido.') from None
-  if lock.get('Mode')!='GOVERNANCE' or until<datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(days=7,minutes=-10):raise ValueError('A cópia não recebeu a proteção de sete dias esperada.')
+  try:
+   until=datetime.datetime.fromisoformat(lock.get('RetainUntilDate','').replace('Z','+00:00'))
+   created=datetime.datetime.fromisoformat(head.get('LastModified','').replace('Z','+00:00'))
+   if until.tzinfo is None or created.tzinfo is None:raise ValueError('Timezone')
+  except (ValueError,AttributeError):raise ValueError('Prazo de proteção do objeto inválido.') from None
+  # Retention starts at object creation, not at the time of a later retry.
+  if lock.get('Mode')!='GOVERNANCE' or until<created+datetime.timedelta(days=7,minutes=-10) or until<=datetime.datetime.now(datetime.timezone.utc):raise ValueError('A cópia não recebeu a proteção de sete dias esperada.')
   # Verify the precise version uploaded, not a mutable latest pointer.
   with tempfile.TemporaryDirectory(prefix='batcaverna-s3-verify-') as folder:
    target=pathlib.Path(folder)/'ciphertext.gpg'

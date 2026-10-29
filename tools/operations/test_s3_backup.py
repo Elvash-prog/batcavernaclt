@@ -4,7 +4,7 @@ sys.path.insert(0,str(pathlib.Path(__file__).parent))
 import s3_backup as backup
 ACCOUNT='123456789012';BUCKET='batcaverna-backups-'+ACCOUNT+'-sa-east-1'
 class Fake(backup.Aws):
- def __init__(self):super().__init__(BUCKET,ACCOUNT);self.calls=[];self.remote=b'';self.corrupt=False;self.expired=False;self.conflict=False;self.overrides={}
+ def __init__(self):super().__init__(BUCKET,ACCOUNT);self.calls=[];self.remote=b'';self.corrupt=False;self.expired=False;self.conflict=False;self.overrides={};self.created=datetime.datetime.now(datetime.timezone.utc)
  def run(self,operation,*arguments):
   self.calls.append((operation,arguments))
   if operation in self.overrides:return self.overrides[operation]
@@ -18,8 +18,8 @@ class Fake(backup.Aws):
   if operation=='s3api:put-object':
    if self.conflict:raise backup.AwsFailure(operation,True)
    self.remote=pathlib.Path(arguments[arguments.index('--body')+1]).read_bytes();return {}
-  if operation=='s3api:head-object':return {'VersionId':'synthetic-version','ContentLength':len(self.remote),'Metadata':{'sha256':hashlib.sha256(self.remote).hexdigest()},'ServerSideEncryption':'AES256'}
-  if operation=='s3api:get-object-retention':return {'Retention':{'Mode':'GOVERNANCE','RetainUntilDate':(datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(days=0 if self.expired else 7)).isoformat()}}
+  if operation=='s3api:head-object':return {'VersionId':'synthetic-version','LastModified':self.created.isoformat(),'ContentLength':len(self.remote),'Metadata':{'sha256':hashlib.sha256(self.remote).hexdigest()},'ServerSideEncryption':'AES256'}
+  if operation=='s3api:get-object-retention':return {'Retention':{'Mode':'GOVERNANCE','RetainUntilDate':(self.created+datetime.timedelta(days=0 if self.expired else 7)).isoformat()}}
   if operation=='s3api:get-object':
    assert arguments[arguments.index('--version-id')+1]=='synthetic-version'
    pathlib.Path(arguments[-1]).write_bytes(self.remote+(b'bad' if self.corrupt else b''));return {}
@@ -42,6 +42,11 @@ class S3Tests(unittest.TestCase):
    with self.assertRaises(ValueError):client.upload(path)
    client.corrupt=False;client.expired=True
    with self.assertRaises(ValueError):client.upload(path)
+ def test_retry_after_two_hours_preserves_creation_based_retention(self):
+  with tempfile.TemporaryDirectory() as folder:
+   path=pathlib.Path(folder)/'synthetic.tar.gz.gpg';path.write_bytes(b'\x85'+b'ciphertext-fixture'*8)
+   client=Fake();client.remote=path.read_bytes();client.conflict=True;client.created-=datetime.timedelta(hours=2)
+   self.assertTrue(client.upload(path)['download_verified'])
  def test_rejects_plaintext_and_invalid_target(self):
   with tempfile.TemporaryDirectory() as folder:
    path=pathlib.Path(folder)/'database.tar.gz.gpg';path.write_bytes(b'CREATE TABLE private_users (secret text);')
