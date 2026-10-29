@@ -5,6 +5,7 @@ const token='eyJtest.payload.signature';
 const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'private-service',IGDB_CLIENT_ID:'private-client',IGDB_CLIENT_SECRET:'private-secret',TMDB_KEY:'private-tmdb',SIGHTENGINE_API_USER:'private-user',SIGHTENGINE_API_SECRET:'private-moderation',USER_RATE_LIMITER:{limit:async()=>({success:mode!=='limited'})}};
 let mode='ok',calls=[];const json=(d,status=200)=>new Response(JSON.stringify(d),{status});
 globalThis.fetch=async(url,options={})=>{const u=new URL(url);calls.push({u,options});
+ if(u.pathname==='/functions/v1/bright-api'){assert.equal(options.headers.Authorization,'Bearer '+token);assert.equal(JSON.parse(options.body).op,'gratis');return json({steam:[{appid:42,nome:'Offer'}]});}
  if(u.pathname==='/auth/v1/user')return mode==='invalid'?json({},401):json({id:uid,is_anonymous:mode==='anonymous'});
  if(u.hostname==='id.twitch.tv')return json({access_token:'private-application-token',expires_in:3600});
  if(u.hostname==='api.igdb.com'){if(mode==='upstreamfail')throw Error('private-secret');return json([{id:1,name:'Safe Game',cover:{image_id:'safe_cover'}},{id:2,name:'Hentai Game'}]);}
@@ -53,4 +54,5 @@ mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.j
 mode='denied';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:other+'/image.jpg'}));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.pathname.startsWith('/storage/v1/object/sign')),false);
 mode='ok';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:uid+'/image.jpg'}));assert.equal(r.status,200);assert.ok((await r.json()).signedUrl.startsWith('https://test.supabase.co/storage/v1/object/sign/'));
 r=await request('/api/catalog/rawg/games','DELETE');assert.equal(r.status,405);
+mode='ok';r=await request('/api/steam-free');assert.equal(r.status,200);assert.equal((await r.json()).steam[0].appid,42);assert.equal(calls.some(c=>c.u.hostname==='store.steampowered.com'),false);
 console.log('native-api: Auth, shared limit, catalog filtering, key redaction, media ownership, group admin, blocking and signed URLs passed');

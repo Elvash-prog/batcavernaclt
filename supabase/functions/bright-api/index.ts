@@ -1,3 +1,4 @@
+import {createProviderRequests,ProviderError} from '../_shared/provider-requests.js';
 import {steamGridCover,steamGridCovers} from '../_shared/steamgrid.js';
 import {backendKeys} from '../_shared/api-keys.js';
 const apiKeys=backendKeys(name=>Deno.env.get(name));
@@ -13,7 +14,7 @@ class ApiError extends Error {
 const SB_URL = Deno.env.get("SUPABASE_URL") || "";
 const SB_ANON = apiKeys.publicKey;
 const SB_SERVICE = apiKeys.secretKey;
-function response(req: Request, data: unknown, status = 200) {
+function response(req: Request, data: unknown, status = 200, retryAfter = 60) {
   const headers: Record<string,string> = {
     "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff", "Vary": "Origin",
@@ -21,7 +22,7 @@ function response(req: Request, data: unknown, status = 200) {
     "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-client-info",
   };
 
-  if (status === 429) headers["Retry-After"] = "60";
+  if (status === 429) headers["Retry-After"] = String(retryAfter);
   return new Response(status === 204 ? null : JSON.stringify(data), {status, headers});
 }
 async function readText(r: Response | Request, max: number): Promise<string> {
@@ -105,6 +106,8 @@ function validate(b: any): {body: any, cost:number} {
       out.appids = array(b.appids, 50, appid); out.nomes = array(b.nomes, 20, name);
       out.format = b.format === "landscape" ? "landscape" : "poster";
       cost = Math.max(1, out.appids.length ? out.appids.length * 2 : out.nomes.length * 3); break;
+    case "steamStoreSearch": out.query=name(b.query);cost=6;break;
+    case "steamStoreDetails": out.appid=appid(b.appid);cost=2;break;
     case "perfil": out.entrada = entry(b.entrada ?? b.steamid); cost=3; break;
     case "steamSync": out.appids=array(b.appids,5,appid);cost=10;break;
     case "agora": out.steamid=steamid(b.steamid); break;
@@ -148,6 +151,7 @@ function safeImage(v: unknown): string | null {
   if (typeof v !== "string") return null;
   try { const u=new URL(v); return u.protocol === "https:" && !u.username && !u.password ? u.href : null; } catch { return null; }
 }
+function raText(v:unknown):string{return typeof v==='string'?v.slice(0,2000):'';}
 function raMedia(v: unknown, prefix = "", suffix = ""): string {
   const raw = typeof v === "string" ? v.trim() : "";
   if (!raw) return "";
@@ -161,20 +165,23 @@ function raMedia(v: unknown, prefix = "", suffix = ""): string {
 const STEAMGRID = Deno.env.get("STEAMGRIDDB_KEY") || Deno.env.get("STEAMGRIDDB_API_KEY") || Deno.env.get("SGDB_KEY") || Deno.env.get("STEAMGRID_KEY") || "";
 const gridCache = new Map<string,{until:number,url:string|null}>();
 const STEAM = Deno.env.get("STEAM_KEY") ?? "";
+const STORE_METADATA_ENABLED=Deno.env.get("STEAM_STORE_METADATA_ENABLED")!=="false";
 const RA = Deno.env.get("RETROACHIEVEMENTS_KEY") ?? "";
 
+const providerRequests=createProviderRequests({url:SB_URL,key:SB_SERVICE});
 const raSystemCache = new Map<number,{expires:number,rows:any[]}>();
 const raSearchSystems = [1,2,3,4,5,6,7,8,10,12,13,14,16,17,18,21,23,25,27,28,39,40,41,53];
 async function runOperation(b: any, signal: AbortSignal, uid: string): Promise<unknown> {
 const getJson = async (u: string, h: HeadersInit = {}) => {
-  for(let attempt=0;attempt<2;attempt++){try{const r=await fetch(u,{headers:h,signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:"error"});if((r.status===429||r.status>=500)&&attempt===0){await new Promise(resolve=>setTimeout(resolve,400));continue}if(!r.ok)throw new ApiError(502,"Serviço de jogos indisponível. Tente novamente.");return await readJson(r,8*1024*1024)}catch(error){if(error instanceof ApiError||attempt>0||signal.aborted)throw error;await new Promise(resolve=>setTimeout(resolve,400))}}
-  throw new ApiError(502,"Serviço de jogos indisponível. Tente novamente.");
+ const host=new URL(u).hostname,provider=host==='api.steampowered.com'?'steam':host==='retroachievements.org'?'retro':host==='store.steampowered.com'?'steam_store':null;
+ if(provider)return providerRequests.request(provider,u,{headers:h,signal,read:(r:Response)=>readJson(r,8*1024*1024)});
+ const r=await fetch(u,{headers:h,signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:'error'});if(!r.ok)throw new ApiError(502,'Serviço de jogos indisponível.');return readJson(r,8*1024*1024);
 };
-const st = (p: string) => getJson("https://api.steampowered.com" + p + (p.includes("?") ? "&" : "?") + "key=" + STEAM + "&format=json");
+const st = (p: string) => {const schema=p.includes('GetSchemaForGame');return providerRequests.cached((schema?'steam-public:':'steam-account:'+uid+':')+p,schema?86400:p.includes('GetOwnedGames')?120:30,async()=>{const value=await getJson('https://api.steampowered.com'+p+(p.includes('?')?'&':'?')+'key='+STEAM+'&format=json');return schema?{game:{availableGameStats:{achievements:(value.game?.availableGameStats?.achievements||[]).map((a:any)=>({name:a.name,displayName:a.displayName,description:a.description,icon:a.icon,icongray:a.icongray}))}}}:value;},{publicMetadata:schema});};
 const ra = (endpoint: string, params: Record<string,string|number>) => {
-  if (!RA) throw new ApiError(503, "Integração RetroAchievements indisponível.");
-  const q = new URLSearchParams({y:RA}); for (const [key,value] of Object.entries(params)) q.set(key,String(value));
-  return getJson(`https://retroachievements.org/API/${endpoint}?${q}`);
+ if (!RA) throw new ApiError(503,'Integração RetroAchievements indisponível.');
+ const q=new URLSearchParams({y:RA});for(const [key,value] of Object.entries(params))q.set(key,String(value));
+ return getJson(`https://retroachievements.org/API/${endpoint}?${q}`);
 };
 async function capa(nome?: string, appid?: number, format = "poster"): Promise<string | null> {
   if (adultTitle(nome)) return null;
@@ -209,8 +216,15 @@ async function epicGratis() {
   }
   return out;
 }
+async function steamStoreSearch(term:string,country='br',language='portuguese'){
+ return providerRequests.cached('steam-store-search:'+country+':'+term.toLowerCase(),3600,async()=>{const q=await getJson(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(term)}&cc=${country}&l=${language}`);if(!Array.isArray(q?.items))throw new ApiError(502,'Busca indisponível.');return {items:q.items.filter((g:any)=>g&&typeof g.name==='string').map((g:any)=>({id:g.id,name:g.name,tiny_image:g.tiny_image}))};},{publicMetadata:true});
+}
+async function steamStoreApp(id:number){
+ return providerRequests.cached('steam-store-app:'+id,3600,async()=>{const j=await getJson(`https://store.steampowered.com/api/appdetails?appids=${id}&cc=br&l=brazilian`);if(!j?.[String(id)]?.success||!j[String(id)].data)throw new ApiError(404,'Título indisponível.');return j;},{publicMetadata:true});
+}
 async function steamAppInfo(appid: number) {
-  const j = await getJson(`https://store.steampowered.com/api/appdetails?appids=${appid}&cc=br&l=portuguese`);
+  if(!STORE_METADATA_ENABLED)return null;
+  const j = await steamStoreApp(appid);
   const z = j?.[String(appid)];
   if (!z?.success || !z.data) return null;
   const d = z.data;
@@ -231,17 +245,18 @@ async function steamAppInfo(appid: number) {
   };
 }
 async function steamInfo(appids: number[] = [], nomes: string[] = []) {
+  if(!STORE_METADATA_ENABLED)return [];
   const out: any[] = [];
   const seen = new Set<number>();
   for (const a of appids.slice(0, 50)) {
     const id = Number(a);
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    try { const z = await steamAppInfo(id); if (z) out.push(z); } catch {}
+    try { const z = await steamAppInfo(id); if (z) out.push(z); } catch(error){if(error instanceof ProviderError&&error.status===429)throw error;}
   }
   for (const nome of nomes.slice(0, 20)) {
     try {
-      const q = await getJson(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(nome)}&cc=br&l=portuguese`);
+      const q = await steamStoreSearch(nome);
       const canonical=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
       const hit=(q?.items||[]).find((g:any)=>canonical(g.name||"")===canonical(nome));
       const id = Number(hit?.id);
@@ -249,11 +264,12 @@ async function steamInfo(appids: number[] = [], nomes: string[] = []) {
       seen.add(id);
       const z = await steamAppInfo(id);
       if (z) out.push(z);
-    } catch {}
+    } catch(error){if(error instanceof ProviderError&&error.status===429)throw error;}
   }
   return out;
 }
 async function steamGratis(requestSignal: AbortSignal) {
+  if(!STORE_METADATA_ENABLED)return [];
   const seen = new Set<number>();
   const out: any[] = [];
   const add = (g: any) => {
@@ -275,30 +291,12 @@ async function steamGratis(requestSignal: AbortSignal) {
     });
   };
   try {
-    const j = await getJson("https://store.steampowered.com/api/featuredcategories?cc=br&l=portuguese");
+    const j = await providerRequests.cached("steam-featured-br",300,async()=>{const value=await getJson("https://store.steampowered.com/api/featuredcategories?cc=br&l=portuguese");if(!["specials","featured_win","featured_mac","featured_linux","large_capsules"].some(k=>Array.isArray(value?.[k]?.items)))throw new ApiError(502,"Ofertas indisponíveis.");return value;},{publicMetadata:true});
+    if(!["specials","featured_win","featured_mac","featured_linux","large_capsules"].some(k=>Array.isArray(j?.[k]?.items)))throw new ApiError(502,"Ofertas indisponíveis.");
     for (const key of ["specials", "featured_win", "featured_mac", "featured_linux", "large_capsules"]) {
       for (const g of j?.[key]?.items ?? []) add(g);
     }
-  } catch {}
-  // A busca da loja encontra promoções temporárias que não entram em featuredcategories.
-  try {
-    const pages=await Promise.allSettled([998,21].map(async category=>{const r=await fetch(`https://store.steampowered.com/search/results/?maxprice=free&specials=1&category1=${category}&ndl=1&count=100&cc=br&l=portuguese`,{headers:{"User-Agent":"Mozilla/5.0","Accept-Language":"pt-BR,pt;q=0.9"},signal:AbortSignal.any([requestSignal,AbortSignal.timeout(8000)]),redirect:"error"});if(!r.ok)throw Error('Steam search');return readText(r,2*1024*1024)}));
-    const html=pages.filter(x=>x.status==='fulfilled').map((x:any)=>x.value).join('');
-    const ids=[...new Set([...html.matchAll(/data-ds-appid="([0-9]+)"/g)].map(m=>Number(m[1])))];
-    for(let offset=0;offset<Math.min(ids.length,60);offset+=6){await Promise.all(ids.slice(offset,offset+6).map(async id=>{
-
-      if (!id || seen.has(id)) return;
-      try {
-        const z = await steamAppInfo(id);
-        if (!z || z.preco !== 0 || Number(z.precoInicial ?? 0) <= 0 || z.desconto!==100) return;
-        seen.add(id);
-        out.push({
-          appid: id, nome: z.nome, capa: z.capa, url: z.url, tipo:z.tipo,
-          fim: "", preco: 0, precoInicial: z.precoInicial, desconto: 100,
-        });
-      } catch {}
-    }));}
-  } catch {}
+  } catch(error){throw error;}
   return out;
 }
 async function comunidadeGratis(requestSignal: AbortSignal) {
@@ -330,6 +328,23 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
         const opcoes=await steamGridCovers({name:nome,appid:id,format:b.format,key:STEAMGRID,getJson}).catch(()=>[]);
         out={opcoes:opcoes||[]};
         break;
+      }
+      case "steamStoreSearch": {
+        if(!STORE_METADATA_ENABLED)throw new ApiError(503,'Metadados da loja pausados. Use o catálogo ou o App ID.');
+        const terms=[b.query],base=b.query.replace(/\s*(special|complete|definitive|deluxe|ultimate|game of the year|goty) edition.*$/i,'').trim();if(base.length>1&&base!==b.query)terms.push(base);
+        const roman=b.query.replace(/\bIII\b/gi,'3').replace(/\bII\b/gi,'2');if(roman!==b.query&&!terms.includes(roman))terms.push(roman);
+        const found:any[]=[],seen=new Set<number>();
+        for(const term of terms.slice(0,3))for(const [country,language] of [['br','portuguese'],['us','english']]){
+          const q=await steamStoreSearch(term,country,language);
+          for(const g of q.items||[]){const id=Number(g.id);if(!id||typeof g.name!=='string'||!g.name.trim()||seen.has(id)||adultTitle(g.name))continue;seen.add(id);found.push({appid:id,nome:g.name,capa:safeImage(g.tiny_image)||''});}
+        }
+        const norm=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]/g,''),queryKey=norm(b.query);out={results:found.sort((a,b)=>Number(norm(b.nome)===queryKey)-Number(norm(a.nome)===queryKey)).slice(0,50)};break;
+      }
+      case "steamStoreDetails": {
+        if(!STORE_METADATA_ENABLED)throw new ApiError(503,'Metadados da loja pausados. Use o catálogo.');
+        const id=Number(b.appid),r=await steamStoreApp(id);
+        const d=r[String(id)]?.data;if(!d||adultTitle(d.name)||adultTitle(d.content_descriptors?.notes)||(d.genres||[]).some((g:any)=>String(g.id)==='71'))throw new ApiError(404,'Título indisponível.');
+        out={steam_appid:id,nome:d.name,generos:d.genres||[],capa:safeImage(d.header_image)||'',descricao:d.short_description||'',preco:d.price_overview?.final_formatted||'',desenvolvedores:d.developers||[],lancamento:d.release_date?.date||'',screenshots:d.screenshots||[],movies:d.movies||[],metacritic:d.metacritic,recommendations:d.recommendations,platforms:d.platforms};break;
       }
       case "perfil": {
         if (!STEAM) throw new ApiError(503, "Integração Steam indisponível.");
@@ -413,7 +428,7 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
         const app=Number(b.appid);
         const schema=await st(`/ISteamUserStats/GetSchemaForGame/v2/?appid=${app}&l=brazilian`);
         let player:any=null;
-        if(b.steamid){try{const id=await resolver(b.steamid);player=(await st(`/ISteamUserStats/GetPlayerAchievements/v1/?steamid=${id}&appid=${app}&l=brazilian`)).playerstats}catch{}}
+        if(b.steamid){try{const id=await resolver(b.steamid);player=(await st(`/ISteamUserStats/GetPlayerAchievements/v1/?steamid=${id}&appid=${app}&l=brazilian`)).playerstats}catch(error){if(error instanceof ProviderError&&error.status===429)throw error;}}
         const progressKnown=player?.success!==false&&Array.isArray(player?.achievements);
         const unlocked=new Map((player?.achievements??[]).map((a:any)=>[a.apiname,a]));
         const lista=(schema.game?.availableGameStats?.achievements??[]).map((a:any)=>{const p:any=unlocked.get(a.name);return {id:a.name,nome:a.displayName||a.name,desc:a.description||'',got:progressKnown?p?.achieved===1:null,quando:p?.unlocktime?new Date(p.unlocktime*1000).toISOString().slice(0,10):'',icon:a.icon||a.icongray,progressKnown}});
@@ -440,10 +455,10 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
       }
       case "raSearch": {
         const norm=(v:string)=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-        const load=async(system:number)=>{let cached=raSystemCache.get(system);if(!cached||cached.expires<Date.now()){const rows=await ra("API_GetGameList.php",{i:system,f:1,h:0});if(!Array.isArray(rows))throw new ApiError(502,"Catálogo RetroAchievements indisponível.");cached={expires:Date.now()+86400000,rows};if(raSystemCache.size>=80)raSystemCache.delete(raSystemCache.keys().next().value!);raSystemCache.set(system,cached);}return cached.rows;};
+        const load=async(system:number)=>{let cached=raSystemCache.get(system);if(!cached||cached.expires<Date.now()){const rows=await providerRequests.cached('retro-public-games:'+system,86400,async()=>{const raw=await ra("API_GetGameList.php",{i:system,f:1,h:0});if(!Array.isArray(raw))throw new ApiError(502,'Catálogo indisponível.');return raw.map((g:any)=>({ID:Number(g.ID)||0,Title:raText(g.Title),ConsoleName:raText(g.ConsoleName),ImageIcon:raMedia(g.ImageIcon),NumAchievements:Number(g.NumAchievements)||0}));},{publicMetadata:true});if(!Array.isArray(rows))throw new ApiError(502,"Catálogo RetroAchievements indisponível.");cached={expires:Date.now()+86400000,rows};if(raSystemCache.size>=80)raSystemCache.delete(raSystemCache.keys().next().value!);raSystemCache.set(system,cached);}return cached.rows;};
         const systems=b.consoleId?[b.consoleId]:raSearchSystems,catalog:any[]=[];
         // Limit concurrency so RetroAchievements does not drop entire platforms under burst load.
-        let cursor=0;const workers=Array.from({length:Math.min(4,systems.length)},async()=>{while(cursor<systems.length){const system=systems[cursor++];try{catalog.push(...await load(system));}catch{}}});await Promise.all(workers);
+        let cursor=0;const workers=Array.from({length:Math.min(4,systems.length)},async()=>{while(cursor<systems.length){const system=systems[cursor++];try{catalog.push(...await load(system));}catch(error){if(error instanceof ProviderError&&error.status===429)throw error;}}});await Promise.all(workers);
         if(!catalog.length)throw new ApiError(502,"Catálogo RetroAchievements indisponível.");
         const query=norm(b.query),score=(title:string)=>{const value=norm(title||'');return value===query?0:value.startsWith(query)?1:value.includes(' '+query)?2:3;},seen=new Set<number>();
         out={jogos:catalog.filter(g=>{const id=Number(g.ID);return !seen.has(id)&&seen.add(id)&&!adultTitle(g.Title)&&norm(g.Title||'').includes(query)}).sort((a,b)=>score(a.Title)-score(b.Title)||String(a.Title).localeCompare(String(b.Title),'pt-BR')).slice(0,80).map(g=>({gameId:Number(g.ID),nome:g.Title,console:g.ConsoleName,capa:raMedia(g.ImageIcon,"Images/"),total:Number(g.NumAchievements)||0}))};break;
@@ -451,7 +466,7 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
       case "raPerfil": {
         const p=await ra("API_GetUserProfile.php",{u:b.usuario});
         if(!p?.User&&!p?.ULID)throw new ApiError(404,"Perfil RetroAchievements não encontrado.");
-        out={usuario:p.User||b.usuario,ulid:p.ULID||"",avatar:raMedia(p.UserPic,"UserPic/"),pontos:Number(p.TotalPoints)||0,pontosHardcore:Number(p.TotalTruePoints)||0,jogoAtual:Number(p.LastGameID)||null,presenca:p.RichPresenceMsg||"",membroDesde:p.MemberSince||""};
+        out={usuario:raText(p.User)||b.usuario,ulid:raText(p.ULID),avatar:raMedia(p.UserPic,"UserPic/"),pontos:Number(p.TotalPoints)||0,pontosHardcore:Number(p.TotalTruePoints)||0,jogoAtual:Number(p.LastGameID)||null,presenca:raText(p.RichPresenceMsg),membroDesde:raText(p.MemberSince)};
         break;
       }
       case "raJogos": {
@@ -459,20 +474,21 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
           ra("API_GetUserCompletionProgress.php",{u:b.usuario,c:500,o:b.offset||0}),
           ra("API_GetUserRecentlyPlayedGames.php",{u:b.usuario,c:50,o:0}),
         ]);
-        const map=(g:any)=>({gameId:Number(g.GameID)||0,nome:g.Title||"Jogo retrô",console:g.ConsoleName||"",capa:raMedia(g.ImageIcon,"Images/"),total:Number(g.MaxPossible??g.NumPossibleAchievements??g.AchievementsTotal)||0,desbloqueadas:Number(g.NumAwarded??g.NumAchieved)||0,hardcore:Number(g.NumAwardedHardcore??g.NumAchievedHardcore)||0,ultimaVez:g.MostRecentAwardedDate||g.LastPlayed||"",premio:g.HighestAwardKind||""});
+        const map=(g:any)=>({gameId:Number(g.GameID)||0,nome:raText(g.Title)||"Jogo retrô",console:raText(g.ConsoleName),capa:raMedia(g.ImageIcon,"Images/"),total:Number(g.MaxPossible??g.NumPossibleAchievements??g.AchievementsTotal)||0,desbloqueadas:Number(g.NumAwarded??g.NumAchieved)||0,hardcore:Number(g.NumAwardedHardcore??g.NumAchievedHardcore)||0,ultimaVez:g.MostRecentAwardedDate||g.LastPlayed||"",premio:g.HighestAwardKind||""});
         out={total:Number(progress?.Total)||0,jogos:(progress?.Results||[]).map(map),recentes:(recentes||[]).map(map)};
         break;
       }
       case "raConquistas": {
         const g=await ra("API_GetGameInfoAndUserProgress.php",{u:b.usuario,g:b.gameId,a:1});
+        if(typeof g?.Title!=='string'||!g.Title||g.Error||g.error)throw new ApiError(502,"Conquistas RetroAchievements indisponíveis.");
         const source=Array.isArray(g?.Achievements)?g.Achievements:Object.values(g?.Achievements||{});
-        const achievements=source.map((a:any)=>({id:Number(a.ID)||0,nome:a.Title||"Conquista",desc:a.Description||"",pontos:Number(a.Points)||0,got:Boolean(a.DateEarned||a.DateEarnedHardcore),hardcore:Boolean(a.DateEarnedHardcore),quando:a.DateEarnedHardcore||a.DateEarned||"",icon:raMedia(a.BadgeURL||a.BadgeName,"Badge/",".png")}));
-        out={gameId:b.gameId,nome:g?.Title||"",console:g?.ConsoleName||"",capa:raMedia(g?.ImageIcon,"Images/"),lista:achievements};
+        const achievements=source.map((a:any)=>({id:Number(a.ID)||0,nome:raText(a.Title)||"Conquista",desc:raText(a.Description),pontos:Number(a.Points)||0,got:Boolean(a.DateEarned||a.DateEarnedHardcore),hardcore:Boolean(a.DateEarnedHardcore),quando:raText(a.DateEarnedHardcore)||raText(a.DateEarned),icon:raMedia(a.BadgeURL||a.BadgeName,"Badge/",".png")}));
+        out={gameId:b.gameId,nome:raText(g?.Title),console:raText(g?.ConsoleName),capa:raMedia(g?.ImageIcon,"Images/"),lista:achievements};
         break;
       }
       case "gratis": {
-        const [ep, sd, community] = await Promise.allSettled([epicGratis(), steamGratis(signal), comunidadeGratis(signal)]);
-        out = { epic: ep.status === "fulfilled" ? ep.value : [], steam: sd.status === "fulfilled" ? sd.value : [], community: community.status === "fulfilled" ? community.value : [] };
+        const [ep, sd, community] = await Promise.allSettled([providerRequests.cached("offers-epic",300,epicGratis,{publicMetadata:true}),providerRequests.cached("offers-steam",300,()=>steamGratis(signal),{publicMetadata:true}),providerRequests.cached("offers-community",300,()=>comunidadeGratis(signal),{publicMetadata:true})]);
+        out = { epic: ep.status === "fulfilled" ? ep.value : [], steam: sd.status === "fulfilled" ? sd.value : [], community: community.status === "fulfilled" ? community.value : [], ...(ep.status==='rejected'?{epicError:'Ofertas Epic temporariamente indisponíveis.'}:{}),...(sd.status==='rejected'?{steamError:'Ofertas Steam temporariamente indisponíveis.'}:{}) };
         break;
       }
       default:
@@ -496,12 +512,14 @@ const handleRequest=async (req: Request) => {
       throw new ApiError(503, "Integração Steam indisponível.");
     if (["raPerfil","raJogos","raConquistas"].includes(b.op) && !RA)
       throw new ApiError(503, "Integração RetroAchievements indisponível.");
-    const out = await runOperation(b,AbortSignal.timeout(35000),uid);
+    const cachedOps=['perfil','agora','steamAmigos','jogos','conquistas','raPerfil','raJogos','raConquistas','steamStoreSearch','steamStoreDetails'];
+    const load=()=>runOperation(b,AbortSignal.timeout(35000),uid);
+    const out = cachedOps.includes(b.op)?await providerRequests.cached('normalized-account:'+uid+':'+JSON.stringify(b),b.op==='agora'?30:60,load):await load();
     return response(req,out);
   } catch (e) {
-    const known = e instanceof ApiError;
+    const known = e instanceof ApiError || e instanceof ProviderError;
     // Never return/log tokens, provider URLs containing keys, or raw upstream exceptions.
-    return response(req,{erro:known ? e.message : "Não foi possível concluir a busca. Tente novamente."},known ? e.status : 502);
+    return response(req,{erro:known ? e.message : "Não foi possível concluir a busca. Tente novamente."},known ? e.status : 502,e instanceof ProviderError?e.retryAfter||60:60);
   }
  };
 Deno.serve(instrument(handleRequest,{service:'bright-api',record:metricRecorder({SUPABASE_URL:SB_URL,SUPABASE_SERVICE_ROLE_KEY:SB_SERVICE}),background:(task:Promise<unknown>)=>{const runtime=(globalThis as any).EdgeRuntime;if(runtime?.waitUntil)runtime.waitUntil(task);else void task.catch(()=>{});}}));
