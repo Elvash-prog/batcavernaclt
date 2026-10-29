@@ -10,3 +10,7 @@ test('automatic uses real Steam recency instead of edited date',()=>assert.equal
 test('local play after Steam session wins, removed pin falls back',()=>assert.equal(context.chooseHomeHighlight(games,'deleted',{'2':Date.parse('2026-10-29')},[{appid:10,ultimaVez:'2026-10-28'}]).id,2));
 test('without play history uses latest in-progress game',()=>assert.equal(context.chooseHomeHighlight(games).id,2));
 test('empty library has no highlight',()=>assert.equal(context.chooseHomeHighlight([]),null));
+
+test('achievement progress uses real local count and official catalogue',()=>{const p=context.homeAchievementProgress({}, {lista:[{got:false},{got:false},{got:false},{got:false}]},{total:4,unlocked:1});assert.equal(p.percent,25);assert.match(p.label,/1 de 4/)});
+test('unknown achievement progress stays unavailable and zero stays zero',()=>{assert.equal(context.homeAchievementProgress({},null,null),null);assert.equal(context.homeAchievementProgress({conquistas:0},null,null).percent,0)});
+test('time editor shows hours and minutes with carry',()=>{assert.equal(context.playtimeEditorParts(3.775).hours,3);assert.equal(context.playtimeEditorParts(3.775).minutes,47);assert.equal(context.playtimeEditorParts(1.999).hours,2);assert.equal(context.playtimeEditorParts(1.999).minutes,0)});

@@ -1,0 +1,7 @@
+Progresso real, capas por formato e tempo simples
+
+- Destaque do início mostra a porcentagem e a contagem de conquistas desbloqueadas.
+- Remove a barra decorativa fixa; informa quando o progresso está indisponível.
+- Seletor SteamGridDB alterna entre capas verticais e horizontais na mesma janela.
+- Prévias carregam pelo carregador seguro do desktop e imagens com falha não podem ser selecionadas.
+- Edição de tempo em horas e minutos, preservando a precisão quando não há alteração.

@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {flushSync} from 'react-dom';
 import AppShell from './AppShell';
 import './styles.css';import './visibility.css';import './phase03.css';import './redesign.css';import './reference.css';import './refinement.css';import './polish.css';import './catalog-library.css';import './journey.css';import './alignment.css';import './desktop-fixes.css';import './react-motion.css';import './professional.css';import './cavern-home.css';import './cavern-library.css';import './cavern-profile.css';import './cavern-social.css';import './cavern-community.css';import './cavern-shell.css';import './continuity.css';
+import coverPicker from './cover-picker.js?url';
 import homeHighlight from './home-highlight.js?url';
 import layoutSync from './layout-sync.js?url';import app from './app.js?url';import reference from './reference.js?url';import refinement from './refinement.js?url';import polish from './polish.js?url';import redesign from './redesign.js?url';import journey from './journey.js?url';import alignment from './alignment.js?url';import fixes from './desktop-fixes.js?url';import retro from './retro.js?url';import shell from './cavern-shell.js?url';import continuity from './continuity.js?url';
 
@@ -14,7 +15,7 @@ type TauriWindow=Window&{__TAURI__?:{core?:{invoke:(command:string,payload?:unkn
 function nativeLog(level:string,stage:string,message:string){const invoke=(window as TauriWindow).__TAURI__?.core?.invoke;if(!invoke)return Promise.resolve();return invoke('client_log',{input:{level,stage,message}}).then(()=>undefined).catch(()=>undefined)}
 
 const modules:BootModule[]=[
- {name:'Preferências da conta',src:layoutSync},{name:'Destaque do início',src:homeHighlight},{name:'Núcleo do aplicativo',src:app},{name:'Interface da biblioteca',src:reference},
+ {name:'Preferências da conta',src:layoutSync},{name:'Destaque do início',src:homeHighlight},{name:'Seletor de capas',src:coverPicker},{name:'Núcleo do aplicativo',src:app},{name:'Interface da biblioteca',src:reference},
  {name:'Ajustes de navegação',src:refinement},{name:'Acabamento visual',src:polish},
  {name:'Comunidade e conversas',src:redesign},{name:'Jornada e indicações',src:journey},
  {name:'Alinhamento da interface',src:alignment},{name:'Correções do desktop',src:fixes},

@@ -62,7 +62,7 @@ test('início Neon Underground mantém conteúdo real e cards responsivos', () =
   const shell=read('src/main.tsx'),script=read('src/reference.js'),css=read('src/cavern-home.css');
   assert.match(shell,/import '\.\/cavern-home\.css'/);
   assert.match(script,/classList\.add\('reference-home','cavern-home'\)/);
-  assert.match(script,/Progresso da jornada/);
+  assert.match(script,/createHomeAchievementProgress/);
   assert.match(script,/Recomendados para você/);
   assert.match(script,/Continuar jogando/);
   assert.match(css,/grid-template-columns:\s*minmax\(0, 1fr\) clamp\(280px, 20vw, 330px\)/);
