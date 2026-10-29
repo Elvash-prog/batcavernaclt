@@ -1,0 +1,7 @@
+Conquistas locais na tela principal de detalhes
+
+- Conecta a sincronização local ao modal de detalhes usado pela interface atual.
+- Combina os desbloqueios do Cloud Redirect com nomes, descrições e imagens oficiais.
+- Exibe o resumo Steam local salvo acima dos cartões de conquistas.
+- Informa claramente quando o cache local não foi encontrado ou não pôde ser lido.
+- Mantém a consulta de perfis de amigos separada do progresso local deste computador.
