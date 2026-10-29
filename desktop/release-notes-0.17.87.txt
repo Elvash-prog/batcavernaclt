@@ -1,0 +1,6 @@
+Horas e conquistas protegidas quando a conexão falha.
+
+O desktop salva o progresso por conta no PC antes do envio e retoma os pendentes após reiniciar. O reenvio não duplica horas, e conquistas locais de PCs diferentes são unidas.
+
+Os detalhes do jogo mostram quando há progresso aguardando envio e permitem tentar sincronizar novamente. O tempo com o aplicativo fechado não é contado.
+Conquistas locais continuam identificadas como locais, separadas da Steam oficial.

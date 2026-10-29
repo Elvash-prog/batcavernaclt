@@ -242,7 +242,7 @@ function learnPcExecutable(mappings,row,detected){
 // Cumulative sessions remain idempotent when a heartbeat is retried.
 function createPcPlayTracker({send,now,uuid,onProgress}){
  let active=null;const pending=[];
- const flush=async session=>{const hours=await send({op:'record_pc_play',item_id:Number(session.id),session:session.key,seconds:session.seconds});if(Number.isFinite(Number(hours))&&Number(hours)!==session.lastHours){session.lastHours=Number(hours);onProgress(session.id,Number(hours));}};
+ const flush=async session=>{const hours=await send({op:'record_pc_play',item_id:Number(session.id),session:session.key,seconds:session.seconds});if(hours!=null&&Number.isFinite(Number(hours))&&Number(hours)!==session.lastHours){session.lastHours=Number(hours);onProgress(session.id,Number(hours));}};
  return {reset(){active=null;pending.length=0},async update(row){
   if(active&&String(active.id)!==String(row?.id)){active.seconds=Math.max(active.seconds,Math.floor((now()-active.start)/1000));pending.push(active);active=null;}
   if(row&&!active)active={id:row.id,key:uuid(),start:now(),seconds:0};
@@ -251,11 +251,12 @@ function createPcPlayTracker({send,now,uuid,onProgress}){
  }};
 }
 (()=>{let owner='',rows=[],loaded=0,busy=false,nextSteam=0,nextLocal=0,cursor=0,lastError=0;
- const tracker=createPcPlayTracker({send:input=>{if(owner!==state.userId)throw Error('Conta alterada');return call('community',{input})},now:()=>performance.now(),uuid:()=>crypto.randomUUID(),onProgress:()=>{if(owner!==state.userId)return;loaded=0;window.dispatchEvent(new Event('batcaverna:progress-updated'))}});
+ const tracker=createPcPlayTracker({send:input=>{if(owner!==state.userId)throw Error('Conta alterada');return call('progress_sync',{input:{...input,op:'record',owner}}).then(result=>{if(owner!==state.userId)return;window.dispatchEvent(new CustomEvent('batcaverna:sync-state',{detail:result}));return result.synced?.[String(input.item_id)]?.hours})},now:()=>performance.now(),uuid:()=>crypto.randomUUID(),onProgress:()=>{if(owner!==state.userId)return;loaded=0;window.dispatchEvent(new Event('batcaverna:progress-updated'))}});
  const tick=async event=>{const manual=event?.detail?.manual===true;if(busy||!state.userId||$('#appShell').hidden){if(manual)toast('A verificação já está em andamento.');return}busy=true;const user=state.userId;
  try{
   if(owner!==user){owner=user;rows=[];loaded=nextSteam=cursor=0;tracker.reset()}
-  if(Date.now()-loaded>60000){rows=await api.library('jogos');loaded=Date.now()}if(user!==state.userId)return;
+  await call('progress_sync',{input:{op:'flush',owner:user}}).then(result=>{if(user===state.userId)window.dispatchEvent(new CustomEvent('batcaverna:sync-state',{detail:result}))});
+  if(Date.now()-loaded>60000){try{rows=await api.library('jogos');loaded=Date.now()}catch{loaded=Date.now();if(!rows.length)return}}if(user!==state.userId)return;
   let prefs;try{prefs=JSON.parse(localStorage.getItem('bc-pc-games:'+user)||'{}')}catch{prefs={}}
   let mappings=Array.isArray(prefs.mappings)?prefs.mappings:[];
   let row=null;if(prefs.trackTime!==false){const detected=await call('detect_pc_game',{input:{names:rows.map(r=>r.nome),mappings}});if(user!==state.userId)return;row=rows.find(r=>r.nome===detected?.name)||null;

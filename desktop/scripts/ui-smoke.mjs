@@ -216,6 +216,10 @@ try {
       },
       core: {
         invoke: async (c, p) => {
+        if (c === "progress_sync") {
+          if(p.input.op==='flush')window.progressPending=false;
+          return {plays:window.progressPending?[{item_id:1,seconds:3600}]:[],synced:window.progressPending?{}:{'1':{hours:11,at:'2026-10-29T12:00:00Z'}},achievements:{}};
+        }
         if (c === "running_processes") return ["Control_DX12","game_executable","explorer"];
         if (c === "detect_pc_game") return {name:null};
         if (c === "check_for_updates") {
@@ -1294,8 +1298,13 @@ try {
   assert.equal(await page.locator("#selectItems").innerText(), "Selecionar títulos");
   assert.equal(await page.locator("#bulkBar").isHidden(), true);
   assert.equal(await page.locator(".card-select").count(), 0);
+  await page.evaluate(()=>window.progressPending=true);
   await page.locator('[data-detail="1"]').click();
   await page.locator("#editInformation").waitFor();
+  await page.waitForFunction(()=>document.querySelector('.progress-sync-status')?.textContent.includes('envio pendente'));
+  await page.locator('.progress-sync-status button').click();
+  await page.waitForFunction(()=>document.querySelector('.progress-sync-status')?.textContent.includes('Horas sincronizadas em'));
+
   assert.equal(
     await page.locator(".reference-detail [data-detail-tab]").count(),
     6,
