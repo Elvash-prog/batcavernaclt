@@ -132,7 +132,7 @@ test('desktop 0.17.38 integra RetroAchievements, IGDB e perfis de amigos', () =>
   const shell=read('src/main.tsx'),retro=read('src/retro.js'),rust=read('src-tauri/src/main.rs'),edge=read('../supabase/functions/bright-api/index.ts'),sql=read('../supabase/patch-1.47-retro-social.sql');
   assert.match(shell,/Integração RetroAchievements/);
   assert.match(retro,/dataset\.discoverKind='retro'/);
-  assert.match(retro,/dataset\.discoverKind='free'/);
+  assert.match(retro,/dataset\.discoverKind='steam'/);
   assert.match(retro,/dataset\.discoverKind='steam'/);
   assert.match(retro,/dataset\.discoverKind='retro'/);
   assert.match(retro,/nav\?\.querySelector\('\[data-view="discover"\]'\)/);
@@ -183,7 +183,7 @@ test('layout conceitual separa mídias, remove atalhos redundantes e usa capas v
   assert.match(css,/0\.17\.35 — linguagem visual unificada/);
   assert.match(css,/\.steam-portrait-library \.steam-library-grid/);
   assert.match(css,/\.library-toolbar:has\(\.media-kind-tabs\)/);
-  assert.match(shell,/setPage\('Jogos grátis','OFERTAS PARA RESGATAR'\)/);
+  assert.doesNotMatch(extraNavigation,/Jogos grátis/);
   assert.match(css,/> main > \.topbar \{ display: none/);
 });
 
@@ -337,7 +337,7 @@ test('feed renderiza mídia e catálogo usa Supabase', () => {
   const script=read('src/app.js'),rust=read('src-tauri/src/main.rs');
   assert.match(script,/Foto ou vídeo/);
   assert.match(script,/data-private-src/);
-  assert.match(script,/op:'gratis'/);
+  assert.doesNotMatch(script,/op:'gratis'/);
   assert.match(rust,/functions\/v1\/media-upload/);
   assert.match(rust,/functions\/v1\/bright-api/);
 });

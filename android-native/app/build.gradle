@@ -13,8 +13,8 @@ android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         minSdk 23
         targetSdk 36
-        versionCode 83
-        versionName '1.7.36'
+        versionCode 84
+        versionName '1.7.37'
         buildConfigField 'String', 'SUPABASE_URL', '"https://luoqlhgfmixvfqbfcdoc.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', groovy.json.JsonOutput.toJson(publicSupabaseKey)
     }

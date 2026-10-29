@@ -1,0 +1,3 @@
+Catálogo de jogos pelo IGDB, sem a seção de jogos grátis, ofertas, preços ou seleção de loja.
+
+Nome, descrição, capa, gêneros e lançamento usam o catálogo IGDB. O Steam App ID pode ser associado pelo vínculo encontrado no IGDB ou informado manualmente. Biblioteca Steam, presença, conquistas locais/oficiais e a escolha de capas verticais e horizontais no SteamGridDB continuam disponíveis.

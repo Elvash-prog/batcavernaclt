@@ -1,7 +1,7 @@
 import {useEffect} from 'react';
 
 const nav=[
- ['home','⌂','Início'],['library','▦','Biblioteca'],['discover','◈','Grátis & Steam'],
+ ['home','⌂','Início'],['library','▦','Biblioteca'],['discover','◈','Minha Steam'],
  ['social','◉','Social'],['chat','✦','Chat'],['friends','♙','Amigos'],
  ['notifications','●','Notificações'],['profile','◎','Meu perfil'],['settings','⚙','Configurações']
 ] as const;
