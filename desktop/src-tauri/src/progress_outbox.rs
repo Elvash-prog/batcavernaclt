@@ -50,7 +50,9 @@ pub async fn progress_sync(input:Value,app:AppHandle,state:tauri::State<'_,AppSt
  }
  let error=if input["op"]!="status"{flush(&state,&who,&root,&mut data).await.err()}else{None};
  let pending:Vec<Value>=data.plays.values().cloned().collect();
- Ok(json!({"plays":pending,"synced":data.synced,"achievements":data.achievements,"pending":!data.plays.is_empty()||data.achievements.values().any(|v|v["pending"]==true),"error":error}))
+ // Status heartbeats carry summaries, not every cached achievement icon/description.
+ let summaries:BTreeMap<String,Value>=data.achievements.iter().map(|(id,v)|(id.clone(),json!({"pending":v["pending"],"observed_at":v["observed_at"],"unlocked":v["unlocked"],"total":v["total"]}))).collect();
+ Ok(json!({"plays":pending,"synced":data.synced,"achievements":summaries,"pending":!data.plays.is_empty()||data.achievements.values().any(|v|v["pending"]==true),"error":error}))
 }
 #[tauri::command]
 pub async fn steam_local_achievements(appid:u32,steam_id:Option<String>,owner_id:String,app:AppHandle,state:tauri::State<'_,AppState>)->Result<Value,String>{
