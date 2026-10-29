@@ -1,6 +1,6 @@
 # Segunda cópia gratuita no Backblaze B2
 
-Decisão do responsável em 29/10/2026: manter o Google Drive e acrescentar o Backblaze B2. A AWS permanece opcional/desativada. **A integração está preparada; ainda não há cópia real B2 confirmada nesta etapa.** Criar e configurar a conta e validar o primeiro envio continuam necessários.
+Decisão do responsável em 29/10/2026: manter o Google Drive e acrescentar o Backblaze B2. A AWS permanece opcional/desativada. **Primeiro envio real confirmado em 29/10/2026:** bucket privado na região `us-east-005` (Estados Unidos), chave restrita, 67.015.394 bytes e checksum/download completo conferidos na [execução 40971128660](https://github.com/Elvash-prog/batcavernaclt/actions/runs/40971128660). O Drive também concluiu nessa execução. A descriptografia e a restauração desta cópia continuam pendentes.
 
 ## Espaço e custos
 
@@ -23,13 +23,15 @@ Referências: [preços](https://www.backblaze.com/cloud-storage/pricing), [trans
 
 1. Crie uma conta de **Backblaze B2 Cloud Storage** em https://www.backblaze.com/cloud-storage. O produto de backup ilimitado de computadores é outro serviço. Ative autenticação em duas etapas.
 2. Na criação da conta, escolha conscientemente a região. Como opção documentável, **EU Central** fica em Amsterdã, Países Baixos; há também regiões nos EUA e Canadá. Não existe região Brasil na documentação consultada. A região da conta não pode ser simplesmente alterada depois; confirme a escolha antes de concluir. Consulte [Data Regions](https://www.backblaze.com/docs/cloud-storage-data-regions).
-3. Abra **B2 Cloud Storage → Caps & Alerts → Edit Caps**. Retire `No Cap` e configure os limites diários de gastos em **US$ 0,00**, para armazenamento, downloads e categorias disponíveis de transações. Confira que foram salvos. As alterações podem levar até dez minutos. Um alerta isolado não é um bloqueio de gastos; configure os caps, não apenas o e-mail de aviso. Se a interface ou seu plano não permitir zero, mantenha a integração desativada e revise as condições antes de seguir.
+3. Abra **B2 Cloud Storage → Caps & Alerts → Edit Caps**. Retire `No Cap` e configure os limites diários de gastos em **US$ 0,00**, para armazenamento, downloads e categorias disponíveis de transações. Confira que foram salvos. As alterações podem levar até dez minutos. Um alerta isolado não é um bloqueio de gastos; configure os caps, não apenas o e-mail de aviso. Em conta gratuita sem cartão, a edição pode ficar indisponível: confira se os limites já aparecem como US$ 0,00, como na configuração informada pelo responsável. Se não for possível confirmar os limites, mantenha a integração desativada e revise as condições antes de seguir.
 4. Crie um bucket exclusivo, por exemplo `batcaverna-backups-SEU-SUFIXO-UNICO`, escolhendo **Private**. Mantenha as versões disponíveis para a rotação do programa. Não acrescente Object Lock/retention ou uma regra que remova os arquivos antes da rotina: isso pode impedir a rotação ou remover pontos de recuperação. O controle de sete datas será feito pelo uploader.
 5. Anote o **nome**, **Bucket ID** e o **S3 Endpoint** mostrado pelo B2. Um endpoint `s3.eu-central-003.backblazeb2.com` corresponde à configuração `eu-central-003`. O uso da API nativa pelo script não muda a região da conta.
 
 ## 2. Chave restrita e GitHub
 
 Em **Application Keys**, crie uma chave de aplicação restrita **somente a esse bucket**, com leitura/gravação, listagem e remoção de versões de arquivos. Permita listar o bucket. Deixe o prefixo de arquivo em branco para o programa conseguir contabilizar todo o bucket; ele só escreve no namespace `batcaverna/` e só remove versões próprias reconhecidas nesse namespace. Não use a chave mestre ou uma chave que administre outros buckets, chaves ou contorne retenção.
+
+A opção genérica `Read and Write` da interface pode incluir `writeBuckets`, que a rotina recusa por permitir alterar o bucket. Nesse caso, use a ferramenta oficial B2 para criar uma chave com capacidades explícitas: `b2 key create --bucket NOME_EXATO batcaverna-backup-restrita "listBuckets,listFiles,readFiles,writeFiles,deleteFiles"`. A autenticação para criar essa chave exige credenciais com permissão de criação; não cadastrar a chave mestre no GitHub. Tanto a saída da autenticação quanto a da criação podem conter credenciais: não compartilhar capturas ou logs.
 
 O script verifica o escopo real retornado pela autorização antes de operar. As capacidades necessárias são `listBuckets`, `listFiles`, `readFiles`, `writeFiles` e `deleteFiles`. Também recusa capacidades administrativas de chaves/buckets e bypass de Governance. A conta precisa permitir a rotação de versões antigas; um problema de permissão deixa a execução com erro, preservando as demais cópias.
 
@@ -73,3 +75,25 @@ A contagem consulta `b2_list_file_versions` com paginação, incluindo versões 
 Drive e B2 têm resultados separados. Quando há outro destino habilitado, falhas na autenticação do Drive não impedem tentar exportar e enviar para ele. O workflow ainda fica com erro se um destino habilitado falhar: não apresenta falha parcial como sucesso integral. Cada destino usa suas próprias credenciais e verificações.
 
 O agendamento ainda depende do GitHub Actions: quotas, atrasos e indisponibilidade podem impedir uma execução. Conferir a data da última cópia e as notificações de falha. Mudar de armazenamento não remove essa dependência. Para suspender novos envios B2, altere `BACKUP_B2_ENABLED` para `false`; isso não apaga arquivos existentes.
+
+## Conferência local da primeira cópia — Windows
+
+No console privado B2, abra o bucket, entre em `batcaverna/2026-10-29/` e baixe o arquivo `43560df9d919fc71d1185a25e3b96644b27ebf5f4b1daaf79906e6b02c8f3cb9.tar.gz.gpg`. Guarde em uma pasta local privada fora do repositório e, para os comandos abaixo, renomeie para `BatCaverna-2026-10-29.tar.gz.gpg`. Não torne o bucket público nem envie o pacote ao chat. O arquivo contém dados pessoais, mesmo criptografado.
+
+No PowerShell, dentro dessa pasta:
+
+```powershell
+Get-FileHash ".\BatCaverna-2026-10-29.tar.gz.gpg" -Algorithm SHA256
+```
+
+O resultado deve ser `43560DF9D919FC71D1185A25E3B96644B27EBF5F4B1DAAF79906E6B02C8F3CB9`. Se não coincidir, pare e confira a versão baixada. Maiúsculas/minúsculas não alteram o hash. Esse valor corresponde somente à primeira cópia indicada acima.
+
+Com GnuPG/Gpg4win instalado e a chave privada de backup já disponível no chaveiro local:
+
+```powershell
+gpg --output ".\BatCaverna-2026-10-29.tar.gz" --decrypt ".\BatCaverna-2026-10-29.tar.gz.gpg"
+```
+
+A senha é informada somente na janela local do GnuPG. Não coloque senha em argumentos nem envie a chave privada, o TAR ou capturas com dados ao chat. Se aparecer `No secret key`, localize a chave privada de backup guardada pelo responsável e importe-a localmente; a chave pública do GitHub não descriptografa o arquivo. Não gere outra chave esperando recuperar um arquivo antigo.
+
+Depois, com Python e uma cópia do repositório disponíveis, execute `py tools/operations/backup.py --verify CAMINHO_PRIVADO/BatCaverna-2026-10-29.tar.gz`. Só avance se a verificação concluir sem erros. Siga o [ensaio de recuperação](RECOVERY.md#ensaio-de-recuperação) em um destino isolado, sem vínculo com produção. Não restaure SQL diretamente no projeto principal. Mantenha o pacote descriptografado fora de pastas compartilhadas e remova-o depois do ensaio conforme a política de retenção.

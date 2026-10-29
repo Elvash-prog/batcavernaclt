@@ -100,7 +100,7 @@ O exportador só roda na branch principal. O workflow começa com testes sintét
 
 ## Pendente
 
-Integrar o workflow revisado, validar a primeira execução real, baixar e descriptografar o resultado, confirmar notificações e só então habilitar a agenda. Monitorar validade da chave pública (23/10/2028), permissões, espaço e disponibilidade das cópias. Não há backup automático ativo confirmado nesta etapa.
+A automação diária do Drive já teve execuções reais concluídas. A segunda cópia B2 foi habilitada e o primeiro envio foi confirmado em 29/10/2026, conforme o registro abaixo. Falta descriptografar e restaurar esta nova cópia em destino isolado, conferir notificações e acompanhar as próximas execuções agendadas e a rotação real. Monitorar validade da chave pública (23/10/2028), permissões, espaço e disponibilidade das cópias.
 
 ## Diagnóstico seguro de exportação
 
@@ -124,4 +124,4 @@ O guia [BACKUP-SAO-PAULO.md](BACKUP-SAO-PAULO.md) e o template CloudFormation pr
 
 ## Decisão atual: Drive + Backblaze B2 — 29/10/2026
 
-O responsável escolheu manter o Drive e preparar o B2, aproveitando a faixa gratuita e a rotação de sete datas. O guia atual é [BACKUP-B2.md](BACKUP-B2.md). A opção AWS permanece preparada, sem ativação confirmada, e não é necessária para o plano escolhido. Ainda falta configurar a conta B2, os limites de gastos e a chave restrita, executar o primeiro envio e conferir descriptografia/restauração antes de declarar o destino validado.
+O responsável escolheu manter o Drive e preparar o B2, aproveitando a faixa gratuita e a rotação de sete datas. O guia atual é [BACKUP-B2.md](BACKUP-B2.md). A opção AWS permanece preparada, sem ativação confirmada, e não é necessária para o plano escolhido. O primeiro envio B2 foi confirmado na [execução 40971128660](https://github.com/Elvash-prog/batcavernaclt/actions/runs/40971128660): região `us-east-005` (Estados Unidos), bucket privado, 67.015.394 bytes, checksum e download completo válidos. O Drive também concluiu. A chave aceita tem somente `listBuckets,listFiles,readFiles,writeFiles,deleteFiles` no bucket dedicado; a chave mestre não é usada pelo workflow. A descriptografia e a restauração desta cópia continuam pendentes; o ensaio de 24/10 não as substitui.
