@@ -17,7 +17,7 @@ final class SteamAchievementProgress {
   for(int i=0;localRows!=null&&i<localRows.length();i++){
    JSONObject saved=localRows.optJSONObject(i);String key=key(saved);if(saved==null||key.isEmpty())continue;
    JSONObject row=merged.containsKey(key)?merged.get(key):new JSONObject();
-   for(Iterator<String> keys=saved.keys();keys.hasNext();){String field=keys.next();Object value=saved.opt(field);if(value==null||value==JSONObject.NULL||value instanceof String&&((String)value).trim().isEmpty())continue;row.put(field,value);}
+   for(Iterator<String> keys=saved.keys();keys.hasNext();){String field=keys.next();Object value=saved.opt(field);if(value==null||value==JSONObject.NULL||value instanceof String&&((String)value).trim().isEmpty())continue;if(field.equals("icon")&&!row.optString("icon").trim().isEmpty()){row.put("icon_fallback",value);continue;}row.put(field,value);}
    row.put("got",true).put("source","steam_local");
    if(row.optString("nome").trim().isEmpty())row.put("nome",row.optString("id","Conquista"));
    merged.put(key,row);

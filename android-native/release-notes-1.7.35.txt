@@ -1,0 +1,4 @@
+BatCaverna Android 1.7.35
+
+- Preserva ícones oficiais ao combinar conquistas locais.
+- Tenta endereços alternativos oficiais da Steam quando um ícone não carrega.

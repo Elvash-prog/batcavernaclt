@@ -17,6 +17,7 @@ final class AccountImageLoader {
  static void load(ImageView view,String source,String appid){
   loadCandidates(view,CoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid));
  }
+ static void loadAchievement(ImageView view,String source,String fallback){loadCandidates(view,SteamAchievementIcons.candidates(source,fallback));}
  static void loadMobile(ImageView view,String source,String appid,boolean vertical){loadCandidates(view,MobileCoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid,vertical));}
  static void loadArtwork(ImageView view,String preferred,String fallback){java.util.LinkedHashSet<String> candidates=new java.util.LinkedHashSet<>();for(String source:new String[]{preferred,fallback})for(String candidate:CoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),""))candidates.add(candidate);loadCandidates(view,candidates.toArray(new String[0]));}
  static void loadMobile(ImageView view,String source,String appid,boolean vertical,Runnable onFailure){loadCandidates(view,MobileCoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid,vertical),onFailure);}
