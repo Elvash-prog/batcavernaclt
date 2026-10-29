@@ -120,3 +120,8 @@ Se a execução falhar antes da etapa de upload, nenhum arquivo do Drive terá s
 ## Destino adicional em São Paulo — preparado em 29/10/2026
 
 O guia [BACKUP-SAO-PAULO.md](BACKUP-SAO-PAULO.md) e o template CloudFormation preparam um bucket S3 privado com versionamento, proteção Governance por sete dias e acesso temporário pelo GitHub. Essa integração é opcional e fica desativada sem `BACKUP_S3_ENABLED=true`. O responsável ainda precisa criar a conta AWS, revisar/provisionar o destino, cadastrar as variáveis e validar upload, descriptografia e restauração. Não há confirmação de backup real no S3 nesta etapa. O backup atual do Drive não é removido.
+
+
+## Decisão atual: Drive + Backblaze B2 — 29/10/2026
+
+O responsável escolheu manter o Drive e preparar o B2, aproveitando a faixa gratuita e a rotação de sete datas. O guia atual é [BACKUP-B2.md](BACKUP-B2.md). A opção AWS permanece preparada, sem ativação confirmada, e não é necessária para o plano escolhido. Ainda falta configurar a conta B2, os limites de gastos e a chave restrita, executar o primeiro envio e conferir descriptografia/restauração antes de declarar o destino validado.
