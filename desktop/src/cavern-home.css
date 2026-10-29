@@ -114,23 +114,6 @@
   font-weight: 650;
 }
 
-.reference-ui .cavern-home .journey-progress i {
-  grid-column: 1 / -1;
-  height: 5px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #ffffff1c;
-}
-
-.reference-ui .cavern-home .journey-progress u {
-  display: block;
-  width: 62%;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 58%, white));
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
 .reference-ui .cavern-home .resume-info .primary,
 .reference-ui .cavern-home .resume-details {
   display: inline-flex;
@@ -280,3 +263,5 @@ body.reference-ui[data-card-format="landscape"] .cavern-home .cover-wrap {
 }
 
 .highlight-picker select{display:block;width:100%;margin:12px 0 20px;padding:12px}.highlight-picker p{line-height:1.6;color:var(--muted)}
+
+.reference-ui .cavern-home .journey-progress progress{grid-column:1/-1;width:100%;height:6px;border:0;border-radius:999px;overflow:hidden;background:#ffffff1c;appearance:none}.journey-progress progress::-webkit-progress-bar{background:#ffffff1c}.journey-progress progress::-webkit-progress-value{background:var(--accent)}.cover-picker-grid[data-format="landscape"]{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}.cover-picker-grid[data-format="landscape"] img{aspect-ratio:16/9!important;object-fit:contain!important;width:100%;height:auto!important}.cover-picker-grid button:disabled{opacity:.55;cursor:wait}.cover-picker-grid img:not([src]){visibility:hidden}.playtime-editor{display:flex;gap:12px}.playtime-editor label{flex:1}

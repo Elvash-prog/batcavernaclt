@@ -99,6 +99,7 @@ try {
         nome: "Jogo em progresso",
         categoria: "jogos",
         status: "🎮 Em Progresso",
+        conquistas:25,horas:3.775,
       },
       { id: 4, nome: "Jogo backlog", categoria: "jogos", status: "📌 Backlog" },
       {
@@ -433,6 +434,7 @@ try {
                 },
               ],
             };
+          if(c==='bright_api'&&p.input.op==='capaOpcoes'&&p.input.format==='landscape')return {opcoes:[{url:'https://cdn2.steamgriddb.com/grid/landscape-one.png',width:920,height:430}]};
           if(c==='bright_api'&&p.input.op==='capaOpcoes')return {opcoes:[{url:'https://cdn2.steamgriddb.com/grid/portrait-one.png',width:600,height:900,score:10},{url:'https://cdn2.steamgriddb.com/grid/portrait-two.png',width:600,height:900,score:8}]};
           if (c === "bright_api")
             return {
@@ -766,6 +768,8 @@ try {
   });
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
+  assert.equal(await page.locator('.journey-progress progress').getAttribute('value'),'25');
+  assert.match(await page.locator('.journey-progress').innerText(),/25%/);
   await page.locator(".friend-activity").waitFor();
   await page.locator(".recommendation-row .cover-wrap").first().waitFor();
   const formatCover = page.locator(".recommendation-row .cover-wrap").first();
@@ -853,6 +857,16 @@ try {
   await page.locator('[data-save-highlight]').click();
   await page.locator('.continuity-card').filter({hasText:'Jogo em progresso'}).getByRole('button',{name:'Ver detalhes',exact:true}).click();
   await page.locator('.detail-title-row h2').filter({hasText:'Jogo em progresso'}).waitFor();
+  await page.getByRole('button',{name:'Editar informações',exact:false}).click();
+  assert.equal(await page.locator('[data-play-hours]').inputValue(),'3');
+  assert.equal(await page.locator('[data-play-minutes]').inputValue(),'47');
+  assert.equal(await page.locator('[name="horas"]').inputValue(),'3.775');
+  await page.locator('[data-play-minutes]').fill('30');
+  assert.equal(await page.locator('[name="horas"]').inputValue(),'3.5');
+  await page.locator('.editor-overlay [data-close]').first().click();
+  await page.locator('.continuity-card').filter({hasText:'Jogo em progresso'}).getByRole('button',{name:'Ver detalhes',exact:true}).click();
+  await page.locator('.detail-title-row h2').filter({hasText:'Jogo em progresso'}).waitFor();
+
   await page.locator('.reference-detail [data-close]').click();
   for (const [width, height, name] of [
     [1920, 1080, "home-check.png"],
@@ -1026,7 +1040,7 @@ try {
   await page.evaluate(() => (window.missingJourney = true));
   await page.evaluate(async()=>await navigate('statistics'));
   await page.locator(".statistics-summary").waitFor();
-  assert.match(await page.locator(".statistics-summary").innerText(), /30h/);
+  assert.match(await page.locator(".statistics-summary").innerText(), /33,8h/);
   assert.equal(await page.locator(".bar-chart>div").count(), 12);
   await page.evaluate(() => (window.missingJourney = false));
   await page.locator('#mainNav [data-view="settings"]').click();
@@ -1862,6 +1876,13 @@ try {
   await page.getByRole('button',{name:'SteamGridDB',exact:true}).click();
   await page.locator('.cover-picker').waitFor();
   assert.equal(await page.locator('.cover-picker [data-cover-option]').count(),2);
+  await page.locator('[data-picker-format="landscape"]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.cover-picker [data-cover-option]').length===1);
+  await page.locator('.cover-picker [data-cover-option]').first().click();
+  await page.waitForFunction(()=>document.querySelector('[name="capa"]').value.includes('landscape-one.png'));
+  await page.getByRole('button',{name:'SteamGridDB',exact:true}).click();
+  await page.locator('[data-picker-format="poster"]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.cover-picker [data-cover-option]').length===2);
   await page.locator('.cover-picker [data-cover-option]').first().click();
   await page.waitForFunction(()=>document.querySelector('[name="capa"]').value.includes('portrait-one.png'));
   await page.locator('.editor-overlay [data-close]').first().click();
