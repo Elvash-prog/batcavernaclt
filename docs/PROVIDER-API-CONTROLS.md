@@ -37,3 +37,7 @@ O deploy tenta consultar apenas a região do projeto Supabase na API de gerencia
 `tests/provider-budgets-db.mjs` executa SQL real em PGlite, aplica a migração duas vezes e verifica teto diário, teto por minuto, pausa compartilhada, concessões de cache, expiração e negação a `anon`/`authenticated`. O workflow instala a dependência de teste em `/tmp`.
 
 Os testes do handler verificam descarte de campos de lógica RA, pausas de metadados sem interromper a biblioteca Steam oficial e formatos públicos usados pelos clientes.
+
+## Verificação da implantação de 29/10/2026
+
+O workflow `40881503143` aplicou a migração revisada e publicou `bright-api` e `native-api` com sucesso. A API de gerenciamento retornou `sa-east-1` para o projeto principal, confirmando São Paulo, Brasil. A verificação pública de saúde retornou HTTP 200 e o catálogo IGDB conectado. A configuração de metadados JSON da loja permaneceu `true`; ela não foi pausada durante esta atualização. A confirmação de uso desses endpoints pela Valve continua pendente.
