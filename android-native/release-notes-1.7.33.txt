@@ -1,0 +1,5 @@
+BatCaverna CLT Android 1.7.33
+
+- Carrega o catálogo completo de conquistas usando a conta Steam vinculada.
+- Exibe também as conquistas ainda bloqueadas.
+- Recupera nomes, descrições e ícones oficiais para os desbloqueios salvos pelo desktop.
