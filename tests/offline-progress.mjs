@@ -1,0 +1,15 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const {PGlite}=await import(process.env.PROVIDER_TEST_MODULE||'@electric-sql/pglite');
+const db=new PGlite(),a='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',s='cccccccc-cccc-4ccc-cccc-cccccccccccc';
+await db.exec(`create role authenticated;create role anon;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;create table public.itens(id bigint primary key,user_id uuid references auth.users(id),categoria text,steam_appid bigint,horas numeric,conquistas numeric);insert into auth.users values('${a}'),('${b}');insert into itens values(1,'${a}','jogos',123,10,null),(2,'${a}','jogos',456,0,null),(3,'${b}','jogos',123,0,null);`);
+await db.exec(fs.readFileSync('supabase/migrations/20261028130000_steam_local_achievements.sql','utf8'));
+const sql=fs.readFileSync('supabase/migrations/20261029160000_offline_progress.sql','utf8');await db.exec(sql);await db.exec(sql);
+await db.exec(`select set_config('request.jwt.claim.sub','${a}',false);set role authenticated`);
+const tick=async(id,seconds,session=s)=>Number((await db.query('select clt_record_offline_play($1,$2,$3) hours',[id,session,seconds])).rows[0].hours);
+assert.equal(await tick(1,3600),11,'first offline batch retains a full hour');assert.equal(await tick(1,3600),11,'lost response retry');assert.equal(await tick(1,120),11,'stale snapshot');assert.equal(await tick(1,5400),11.5);await assert.rejects(tick(2,3600),'session cannot move to another game');await assert.rejects(tick(3,30));await assert.rejects(tick(1,-1));await assert.rejects(tick(1,604801));
+await assert.rejects(db.exec(`update clt_pc_play_sessions set elapsed_seconds=0`));
+const merge=async lista=>(await db.query('select clt_merge_local_achievements(123,$1::jsonb) result',[JSON.stringify({lista,unlocked:lista.length,total:29})])).rows[0].result;
+const unlock=id=>({id,nome:id,got:true});
+await merge([unlock('one')]);let result=await merge([unlock('two')]);assert.equal(result.unlocked,2);assert.equal(result.achievements.length,2);result=await merge([unlock('one')]);assert.equal(result.unlocked,2,'retry never loses another desktop unlock');
+await db.exec(`reset role;select set_config('request.jwt.claim.sub','${b}',false);set role authenticated`);assert.equal((await db.query('select * from steam_local_progress')).rows.length,0);assert.equal(await tick(3,3600),1,'same UUID isolated by account');
+await db.exec('reset role;set role anon');await assert.rejects(tick(1,10));await assert.rejects(merge([]));await db.close();console.log('Offline progress: backlog, replay, stale batches, ownership, isolated accounts and atomic unlock union passed.');
