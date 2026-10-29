@@ -22,7 +22,7 @@ final class SteamAchievementProgress {
    merged.put(key,row);
   }
   List<JSONObject> sorted=new ArrayList<>(merged.values());
-  sorted.sort((a,b)->{int earned=Boolean.compare(b.optBoolean("got"),a.optBoolean("got"));return earned!=0?earned:a.optString("nome").compareToIgnoreCase(b.optString("nome"));});
+  Collections.sort(sorted,(a,b)->{int earned=Boolean.compare(b.optBoolean("got"),a.optBoolean("got"));return earned!=0?earned:a.optString("nome").compareToIgnoreCase(b.optString("nome"));});
   JSONArray rows=new JSONArray();for(JSONObject row:sorted)rows.put(row);
   int officialUnlocked=0;for(int i=0;officialRows!=null&&i<officialRows.length();i++)if(officialRows.optJSONObject(i)!=null&&officialRows.optJSONObject(i).optBoolean("got"))officialUnlocked++;
   int localUnlocked=local==null?0:Math.max(0,local.optInt("unlocked"));
