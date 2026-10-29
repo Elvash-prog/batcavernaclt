@@ -1,5 +1,7 @@
 # Backup privado em São Paulo
 
+**Opção alternativa, não escolhida para ativação:** o responsável decidiu seguir com [Drive + Backblaze B2](BACKUP-B2.md). A configuração AWS abaixo continua desativada até decisão futura.
+
 Estado: configuração preparada, **S3 ainda não ativado nem validado em uma conta AWS**. O responsável informou em 29/10/2026 que ainda não tem conta AWS. O backup criptografado existente no Google Drive permanece. A execução diária de 29/10/2026 terminou com sucesso; isso não substitui conferir a recuperação dos dados atuais.
 
 ## O que esta etapa faz
