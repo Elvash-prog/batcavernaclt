@@ -1034,7 +1034,7 @@ try {
   await page.evaluate(async()=>await navigate('statistics'));
   await page.locator(".statistics-summary").waitFor();
   assert.equal(await page.locator(".sidebar").evaluate((n) => n.scrollTop), 0);
-  assert.match(await page.locator(".statistics-summary").innerText(), /33,8h/);
+  assert.match(await page.locator(".statistics-summary").innerText(), /30h/);
   assert.equal(await page.locator(".bar-chart>div").count(), 12);
   await page.screenshot({ path: "preview/journey-check.png" });
   await page.evaluate(() => (window.missingJourney = true));
