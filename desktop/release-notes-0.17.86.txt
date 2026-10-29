@@ -1,0 +1,6 @@
+Integrações Steam e RetroAchievements mais eficientes
+
+- Centraliza buscas e detalhes da loja Steam no servidor, com cache e orçamento compartilhado.
+- Consulta a presença Steam em intervalos de pelo menos um minuto, mantendo a detecção local do PC.
+- Remove a busca redundante de ofertas e a repetição imediata de requisições limitadas.
+- Mantém biblioteca, conquistas, capas e os dados já salvos.

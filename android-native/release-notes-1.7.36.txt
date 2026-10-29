@@ -1,0 +1,5 @@
+BatCaverna Android 1.7.36
+
+- Carrega Epic, Steam e outras lojas em uma única consulta ao serviço compartilhado de ofertas.
+- Remove a segunda busca redundante de jogos grátis.
+- Preserva os avisos de indisponibilidade de cada loja.

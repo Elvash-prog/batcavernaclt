@@ -165,7 +165,7 @@ async fn get(client: &reqwest::Client, path: &str, token: &str) -> Result<Value,
     let mut last=None;
     for attempt in 0..2 {
         match rest(client,path,token).send().await {
-            Ok(response)=>{let status=response.status();if attempt==0&&(status.as_u16()==429||status.is_server_error()){tokio::time::sleep(Duration::from_millis(500)).await;continue;}return value(response).await;},
+            Ok(response)=>{let status=response.status();if attempt==0&&status.is_server_error(){tokio::time::sleep(Duration::from_millis(500)).await;continue;}return value(response).await;},
             Err(error)=>{last=Some(if error.is_timeout(){"A consulta demorou demais. Tente novamente."}else{"Não foi possível conectar ao Supabase. Verifique sua conexão."});if attempt==0{tokio::time::sleep(Duration::from_millis(400)).await;}}
         }
     }
@@ -669,7 +669,7 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     let request=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if matches!(provider,"igdb"|"rawg"){"search"}else{"query"},query),("language","pt-BR"),("page_size","40"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,100).to_string()),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]);
     let request=if recommend{request.query(&[("ordering","-added"),("sort_by","popularity.desc")])}else{request};
     let retry=request.try_clone();
-    let response=match request.send().await{Ok(r) if r.status().as_u16()!=429&&!r.status().is_server_error()=>r,Ok(_)|Err(_)=>{tokio::time::sleep(Duration::from_millis(400)).await;retry.ok_or_else(||"Não foi possível consultar o catálogo.".to_string())?.send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?}};
+    let response=match request.send().await{Ok(r) if !r.status().is_server_error()=>r,Ok(_)|Err(_)=>{tokio::time::sleep(Duration::from_millis(400)).await;retry.ok_or_else(||"Não foi possível consultar o catálogo.".to_string())?.send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?}};
     value(response).await
 }
 fn image_host(host: &str)->bool {
@@ -703,12 +703,7 @@ async fn upload_profile_image(input: UploadInput, state: tauri::State<'_,AppStat
 async fn bright_api(input: Value, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session=current(&state).await?;
     let response=state.client.post(format!("{SUPABASE_URL}/functions/v1/bright-api")).timeout(Duration::from_secs(if input["op"].as_str()==Some("gratis"){50}else{25})).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&input).send().await.map_err(|_|"Não foi possível consultar a Steam.".to_string())?;
-    let mut result=value(response).await?;
-    if input["op"].as_str()==Some("gratis")&&result.get("steam").and_then(Value::as_array).is_none_or(|rows|rows.is_empty()){
-        if let Ok(response)=state.client.get(format!("{CATALOG_ORIGIN}/api/steam-free")).timeout(Duration::from_secs(25)).bearer_auth(&session.access_token).send().await{
-            if let Ok(fallback)=value(response).await{if let Some(rows)=fallback.get("steam").and_then(Value::as_array){result["steam"]=json!(rows);}}
-        }
-    }
+    let result=value(response).await?;
     Ok(result)
 }
 
