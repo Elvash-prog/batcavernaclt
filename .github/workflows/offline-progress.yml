@@ -1,0 +1,31 @@
+name: Offline progress database
+on:
+  pull_request:
+    paths: ['tests/offline-progress.mjs', 'supabase/migrations/20261029160000_offline_progress.sql', '.github/workflows/offline-progress.yml', 'tools/operations/deploy_offline_progress.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  playtime-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --prefix tests --ignore-scripts --no-package-lock --no-audit --no-fund
+      - run: node tests/offline-progress.mjs
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: playtime-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
+        with:
+          version: latest
+      - name: Apply reviewed playtime migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: python3 tools/operations/deploy_offline_progress.py
