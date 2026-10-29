@@ -20,7 +20,7 @@ async function loadHomeHero(image,item){
 }
 function homeAchievementProgress(item,official,local){
  const rows=official?.lista||[],total=Math.max(rows.length,Number(local?.total)||0),unlocked=Math.min(total,Math.max(rows.filter(a=>a.got===true).length,Number(local?.unlocked)||0));
- if(total>0)return {percent:unlocked/total*100,label:`${unlocked} de ${total} · ${Math.round(unlocked/total*100)}%`};
+ if(total>0&&(rows.some(a=>typeof a.got==='boolean')||Number(local?.total)>0&&local?.unlocked!=null))return {percent:unlocked/total*100,label:`${unlocked} de ${total} · ${Math.round(unlocked/total*100)}%`};
  const percent=item.conquistas==null||item.conquistas===''?NaN:Number(item.conquistas);
  return Number.isFinite(percent)&&percent>=0&&percent<=100?{percent,label:percent.toLocaleString('pt-BR',{maximumFractionDigits:1})+'%'}:null;
 }
