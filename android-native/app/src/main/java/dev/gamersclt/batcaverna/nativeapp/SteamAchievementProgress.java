@@ -5,6 +5,7 @@ import java.util.*;
 
 /** Combines the official Steam catalogue with the user's permanent desktop snapshot. */
 final class SteamAchievementProgress {
+ static JSONObject request(long appid,String steamid)throws JSONException{JSONObject request=new JSONObject().put("op","conquistas").put("appid",appid);if(steamid!=null&&steamid.matches("[0-9]{17}"))request.put("steamid",steamid);return request;}
  static JSONObject merge(JSONObject official,JSONObject local)throws JSONException{
   LinkedHashMap<String,JSONObject> merged=new LinkedHashMap<>();
   JSONArray officialRows=official==null?null:official.optJSONArray("lista");
