@@ -1,0 +1,6 @@
+BatCaverna CLT Android 1.7.32
+
+- Exibe no celular as conquistas da Steam salvas pelo BatCaverna no PC.
+- Combina os desbloqueios locais com nomes, descrições e ícones do catálogo oficial.
+- Mostra progresso, data da última sincronização e estado de cada conquista.
+- Mantém os dados protegidos pela conta: cada usuário acessa somente o próprio progresso.
