@@ -165,7 +165,6 @@ function raMedia(v: unknown, prefix = "", suffix = ""): string {
 const STEAMGRID = Deno.env.get("STEAMGRIDDB_KEY") || Deno.env.get("STEAMGRIDDB_API_KEY") || Deno.env.get("SGDB_KEY") || Deno.env.get("STEAMGRID_KEY") || "";
 const gridCache = new Map<string,{until:number,url:string|null}>();
 const STEAM = Deno.env.get("STEAM_KEY") ?? "";
-const STORE_METADATA_ENABLED=Deno.env.get("STEAM_STORE_METADATA_ENABLED")!=="false";
 const RA = Deno.env.get("RETROACHIEVEMENTS_KEY") ?? "";
 
 const providerRequests=createProviderRequests({url:SB_URL,key:SB_SERVICE});
@@ -197,124 +196,7 @@ async function resolver(entrada: string): Promise<string> {
   if (r.response?.success !== 1) throw new Error("Perfil da Steam não encontrado");
   return steamid(r.response.steamid);
 }
-// Jogos 100% grátis para resgatar (Epic: promoção semanal; Steam: ofertas com 100% de desconto)
-async function epicGratis() {
-  const j = await getJson("https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=pt-BR&country=BR&allowCountries=BR");
-  const out: any[] = [];
-  for (const e of j.data?.Catalog?.searchStore?.elements ?? []) {
-    const atual = e.promotions?.promotionalOffers?.[0]?.promotionalOffers?.[0];
-    const prox = e.promotions?.upcomingPromotionalOffers?.[0]?.promotionalOffers?.[0];
-    const p = atual ?? prox;
-    if (!p || p.discountSetting?.discountPercentage !== 0 || adultTitle(e.title)) continue;
-    const slug = e.offerMappings?.[0]?.pageSlug || e.productSlug || e.urlSlug;
-    const imgs = e.keyImages ?? [];
-    out.push({
-      nome: e.title, agora: !!atual, inicio: p.startDate, fim: p.endDate,
-      capa: (imgs.find((k: any) => k.type === "OfferImageTall") ?? imgs[0])?.url ?? "",
-      url: slug ? "https://store.epicgames.com/pt-BR/p/" + String(slug).replace(/\/home$/, "") : "https://store.epicgames.com/pt-BR/free-games",
-    });
-  }
-  return out;
-}
-async function steamStoreSearch(term:string,country='br',language='portuguese'){
- return providerRequests.cached('steam-store-search:'+country+':'+term.toLowerCase(),3600,async()=>{const q=await getJson(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(term)}&cc=${country}&l=${language}`);if(!Array.isArray(q?.items))throw new ApiError(502,'Busca indisponível.');return {items:q.items.filter((g:any)=>g&&typeof g.name==='string').map((g:any)=>({id:g.id,name:g.name,tiny_image:g.tiny_image}))};},{publicMetadata:true});
-}
-async function steamStoreApp(id:number){
- return providerRequests.cached('steam-store-app:'+id,3600,async()=>{const j=await getJson(`https://store.steampowered.com/api/appdetails?appids=${id}&cc=br&l=brazilian`);if(!j?.[String(id)]?.success||!j[String(id)].data)throw new ApiError(404,'Título indisponível.');return j;},{publicMetadata:true});
-}
-async function steamAppInfo(appid: number) {
-  if(!STORE_METADATA_ENABLED)return null;
-  const j = await steamStoreApp(appid);
-  const z = j?.[String(appid)];
-  if (!z?.success || !z.data) return null;
-  const d = z.data;
-  if (adultTitle(d.name) || adultTitle(d.content_descriptors?.notes)) return null;
-  const p = d.price_overview;
-  return {
-    steamAppid: Number(appid),
-    nome: d.name ?? "",
-    generos:d.genres||[], descricao:d.short_description||"",ano:String(d.release_date?.date||"").match(/\d{4}/)?.[0]||"",
-    capa: safeImage(d.header_image) || "",
-    preco: p ? Number(p.final) / 100 : (d.is_free ? 0 : null),
-    precoInicial: p ? Number(p.initial) / 100 : (d.is_free ? 0 : null),
-    desconto: p?.discount_percent ?? (d.is_free ? 100 : 0),
-    isFree: !!d.is_free,
-    tipo: d.type === "dlc" ? "DLC" : "Jogo",
-    loja: "🟦 Steam",
-    url: `https://store.steampowered.com/app/${appid}`,
-  };
-}
-async function steamInfo(appids: number[] = [], nomes: string[] = []) {
-  if(!STORE_METADATA_ENABLED)return [];
-  const out: any[] = [];
-  const seen = new Set<number>();
-  for (const a of appids.slice(0, 50)) {
-    const id = Number(a);
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    try { const z = await steamAppInfo(id); if (z) out.push(z); } catch(error){if(error instanceof ProviderError&&error.status===429)throw error;}
-  }
-  for (const nome of nomes.slice(0, 20)) {
-    try {
-      const q = await steamStoreSearch(nome);
-      const canonical=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
-      const hit=(q?.items||[]).find((g:any)=>canonical(g.name||"")===canonical(nome));
-      const id = Number(hit?.id);
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      const z = await steamAppInfo(id);
-      if (z) out.push(z);
-    } catch(error){if(error instanceof ProviderError&&error.status===429)throw error;}
-  }
-  return out;
-}
-async function steamGratis(requestSignal: AbortSignal) {
-  if(!STORE_METADATA_ENABLED)return [];
-  const seen = new Set<number>();
-  const out: any[] = [];
-  const add = (g: any) => {
-    const id = Number(g?.id ?? g?.appid);
-    if (!id || seen.has(id) || adultTitle(g.name)) return;
-    const discount = Number(g?.discount_percent ?? 0);
-    const finalPrice = Number(g?.final_price ?? -1);
-    if (discount !== 100 || finalPrice !== 0 || Number(g.original_price ?? 0)<=0) return;
-    seen.add(id);
-    out.push({
-      appid: id,
-      nome: g.name,
-      capa: g.large_capsule_image || g.header_image || `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/header.jpg`,
-      url: `https://store.steampowered.com/app/${id}`,
-      fim: g.discount_expiration ? new Date(Number(g.discount_expiration) * 1000).toISOString() : "",
-      preco: 0,
-      precoInicial: Number(g.original_price ?? 0) / 100,
-      desconto: 100,
-    });
-  };
-  try {
-    const j = await providerRequests.cached("steam-featured-br",300,async()=>{const value=await getJson("https://store.steampowered.com/api/featuredcategories?cc=br&l=portuguese");if(!["specials","featured_win","featured_mac","featured_linux","large_capsules"].some(k=>Array.isArray(value?.[k]?.items)))throw new ApiError(502,"Ofertas indisponíveis.");return value;},{publicMetadata:true});
-    if(!["specials","featured_win","featured_mac","featured_linux","large_capsules"].some(k=>Array.isArray(j?.[k]?.items)))throw new ApiError(502,"Ofertas indisponíveis.");
-    for (const key of ["specials", "featured_win", "featured_mac", "featured_linux", "large_capsules"]) {
-      for (const g of j?.[key]?.items ?? []) add(g);
-    }
-  } catch(error){throw error;}
-  return out;
-}
-async function comunidadeGratis(requestSignal: AbortSignal) {
-  const text=await fetch("https://www.reddit.com/r/FreeGameFindings/new/.rss",{headers:{"User-Agent":"BatCavernaCLT/1.0"},signal:AbortSignal.any([requestSignal,AbortSignal.timeout(8000)]),redirect:"error"}).then(async r=>{if(!r.ok)throw Error("feed");return readText(r,1024*1024)});
-  const official=["store.steampowered.com","store.epicgames.com","store.ubisoft.com","www.gog.com","gog.com","itch.io","www.microsoft.com","www.xbox.com","www.ea.com","us.shop.battle.net"],rows:any[]=[],seen=new Set<string>();
-  const decode=(value:string)=>value.replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">");
-  for(const entry of text.matchAll(/<entry\b[\s\S]*?<\/entry>/g)){
-    const block=decode(entry[0]),title=decode((block.match(/<title[^>]*>([\s\S]*?)<\/title>/)||[])[1]||"").replace(/<[^>]+>/g,"").trim();
-    if(!title||adultTitle(title))continue;
-    const links=[...block.matchAll(/https:\/\/[^\s"'<>]+/g)].map(x=>x[0].replace(/[),.]+$/,""));
-    const url=links.find(raw=>{try{return official.includes(new URL(raw).hostname.toLowerCase())}catch{return false}});if(!url||seen.has(url))continue;
-    const steam=url.match(/store\.steampowered\.com\/app\/(\d+)/);if(steam){const info=await steamAppInfo(Number(steam[1])).catch(()=>null);if(!info||info.preco!==0||Number(info.precoInicial||0)<=0)continue;rows.push({nome:info.nome,capa:info.capa,url:info.url,appid:info.steamAppid,tipo:info.tipo||"Jogo"});}
-    else rows.push({nome:title.replace(/^\[[^\]]+\]\s*/,"").slice(0,160),capa:"",url,tipo:"Jogo"});
-    seen.add(url);if(rows.length>=20)break;
-  }
-  return rows;
-}
-    let out: unknown;
+    let out:any;
     switch (b.op) {
       case "capas": {
         const nomes: string[] = b.nomes ?? [], appids: number[] = b.appids ?? [];
@@ -329,23 +211,9 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
         out={opcoes:opcoes||[]};
         break;
       }
-      case "steamStoreSearch": {
-        if(!STORE_METADATA_ENABLED)throw new ApiError(503,'Metadados da loja pausados. Use o catálogo ou o App ID.');
-        const terms=[b.query],base=b.query.replace(/\s*(special|complete|definitive|deluxe|ultimate|game of the year|goty) edition.*$/i,'').trim();if(base.length>1&&base!==b.query)terms.push(base);
-        const roman=b.query.replace(/\bIII\b/gi,'3').replace(/\bII\b/gi,'2');if(roman!==b.query&&!terms.includes(roman))terms.push(roman);
-        const found:any[]=[],seen=new Set<number>();
-        for(const term of terms.slice(0,3))for(const [country,language] of [['br','portuguese'],['us','english']]){
-          const q=await steamStoreSearch(term,country,language);
-          for(const g of q.items||[]){const id=Number(g.id);if(!id||typeof g.name!=='string'||!g.name.trim()||seen.has(id)||adultTitle(g.name))continue;seen.add(id);found.push({appid:id,nome:g.name,capa:safeImage(g.tiny_image)||''});}
-        }
-        const norm=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]/g,''),queryKey=norm(b.query);out={results:found.sort((a,b)=>Number(norm(b.nome)===queryKey)-Number(norm(a.nome)===queryKey)).slice(0,50)};break;
-      }
-      case "steamStoreDetails": {
-        if(!STORE_METADATA_ENABLED)throw new ApiError(503,'Metadados da loja pausados. Use o catálogo.');
-        const id=Number(b.appid),r=await steamStoreApp(id);
-        const d=r[String(id)]?.data;if(!d||adultTitle(d.name)||adultTitle(d.content_descriptors?.notes)||(d.genres||[]).some((g:any)=>String(g.id)==='71'))throw new ApiError(404,'Título indisponível.');
-        out={steam_appid:id,nome:d.name,generos:d.genres||[],capa:safeImage(d.header_image)||'',descricao:d.short_description||'',preco:d.price_overview?.final_formatted||'',desenvolvedores:d.developers||[],lancamento:d.release_date?.date||'',screenshots:d.screenshots||[],movies:d.movies||[],metacritic:d.metacritic,recommendations:d.recommendations,platforms:d.platforms};break;
-      }
+      // Compatibility responses for installed versions. No storefront requests.
+      case "steamStoreSearch": out={results:[],retired:true};break;
+      case "steamStoreDetails": throw new ApiError(410,"Use o catálogo IGDB para os dados do jogo.");
       case "perfil": {
         if (!STEAM) throw new ApiError(503, "Integração Steam indisponível.");
         const id = await resolver(b.entrada ?? b.steamid);
@@ -413,7 +281,7 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
         const profiles=await getJson(SB_URL+"/rest/v1/perfis?select=steam_id&id=eq."+uid+"&limit=1",headers);
         const id=profiles[0]?.steam_id;if(!id){out={updated:0,connected:false};break;}
         const filter=b.appids.length?"&steam_appid=in.("+b.appids.join(",")+")":"";
-        const rows=await getJson(SB_URL+"/rest/v1/itens?select=id,steam_appid,horas,conquistas&categoria=eq.jogos&user_id=eq."+uid+"&steam_appid=not.is.null&loja=ilike.*steam*"+filter+"&order=id.asc&limit=5",headers);
+        const rows=await getJson(SB_URL+"/rest/v1/itens?select=id,steam_appid,horas,conquistas&categoria=eq.jogos&user_id=eq."+uid+"&steam_appid=not.is.null"+filter+"&order=id.asc&limit=5",headers);
         if(!rows.length){out={updated:0,connected:true};break;}
         const owned=(await st(`/IPlayerService/GetOwnedGames/v1/?steamid=${steamid(id)}&include_played_free_games=1`)).response?.games;
         if(!Array.isArray(owned)){out={updated:0,connected:true,private:true};break;}
@@ -436,7 +304,7 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
         break;
       }
       case "steamInfo": {
-        out = { lista: await steamInfo(b.appids ?? [], b.nomes ?? []) };
+        out = { lista: [], retired:true };
         break;
       }
       case "raCollection": case "raSaveCollection": {
@@ -486,11 +354,7 @@ async function comunidadeGratis(requestSignal: AbortSignal) {
         out={gameId:b.gameId,nome:raText(g?.Title),console:raText(g?.ConsoleName),capa:raMedia(g?.ImageIcon,"Images/"),lista:achievements};
         break;
       }
-      case "gratis": {
-        const [ep, sd, community] = await Promise.allSettled([providerRequests.cached("offers-epic",300,epicGratis,{publicMetadata:true}),providerRequests.cached("offers-steam",300,()=>steamGratis(signal),{publicMetadata:true}),providerRequests.cached("offers-community",300,()=>comunidadeGratis(signal),{publicMetadata:true})]);
-        out = { epic: ep.status === "fulfilled" ? ep.value : [], steam: sd.status === "fulfilled" ? sd.value : [], community: community.status === "fulfilled" ? community.value : [], ...(ep.status==='rejected'?{epicError:'Ofertas Epic temporariamente indisponíveis.'}:{}),...(sd.status==='rejected'?{steamError:'Ofertas Steam temporariamente indisponíveis.'}:{}) };
-        break;
-      }
+      case "gratis": out={epic:[],steam:[],community:[],retired:true};break;
       default:
         throw new ApiError(400, "Operação inválida.");
     }

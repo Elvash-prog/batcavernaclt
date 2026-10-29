@@ -41,3 +41,11 @@ Os testes do handler verificam descarte de campos de lógica RA, pausas de metad
 ## Verificação da implantação de 29/10/2026
 
 O workflow `40881503143` aplicou a migração revisada e publicou `bright-api` e `native-api` com sucesso. A API de gerenciamento retornou `sa-east-1` para o projeto principal, confirmando São Paulo, Brasil. A verificação pública de saúde retornou HTTP 200 e o catálogo IGDB conectado. A configuração de metadados JSON da loja permaneceu `true`; ela não foi pausada durante esta atualização. A confirmação de uso desses endpoints pela Valve continua pendente.
+
+## Substituição dos metadados da loja — 29/10/2026
+
+Por decisão do responsável, a descoberta de jogos grátis e ofertas foi retirada, assim como preços e seleção de loja nas versões novas. Os endpoints JSON da Steam Store foram removidos do backend; a variável antiga não os reativa. Chamadas antigas de ofertas retornam listas vazias e `retired:true`; detalhes antigos da loja orientam atualizar para o catálogo IGDB.
+
+Nome, descrição, gêneros, imagens e lançamento vêm do IGDB. O App ID pode vir de um vínculo Steam inequívoco fornecido pelo IGDB, da biblioteca oficial ou de associação manual. Steam Web API continua atendendo biblioteca, presença e conquistas; SteamGridDB continua sendo uma fonte separada de capas escolhidas pelo usuário. O banco não precisa apagar valores históricos de preço ou loja para retirar essas funções das interfaces.
+
+A confirmação sobre endpoints JSON da loja deixa de ser uma dependência dessas funções. Permanecem as condições dos fornecedores em uso e as pendências de inventário de armazenamento.

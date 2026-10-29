@@ -109,7 +109,10 @@ await check('provider outage returns an empty cover for client fallback',async()
 
 await check('Steam library preserves minute precision instead of rounding to tenths',async()=>{mode='precisetime';const r=await handler(req({op:'jogos',steamid:'76561198000000000'}));assert.equal(r.status,200);const data=await r.json();assert.equal(data.jogos[0].horas,223/60);assert.equal(data.recentes[0].horasRecentes,1/60);});
 
-await check('desktop storefront search uses budgeted JSON requests',async()=>{const r=await handler(req({op:'steamStoreSearch',query:'Safe Game'}));assert.equal(r.status,200);assert.equal((await r.json()).results[0].appid,42);assert.ok(calls.some(c=>c.u.pathname.endsWith('clt_provider_reserve')));assert.ok(!calls.some(c=>c.u.pathname.includes('/search/results')));});
-await check('desktop details preserve their existing public shape',async()=>{const r=await handler(req({op:'steamStoreDetails',appid:42}));assert.equal(r.status,200);assert.equal((await r.json()).steam_appid,42);});
-env.STEAM_STORE_METADATA_ENABLED='false';await import('data:text/javascript;base64,'+Buffer.from(source+'\n// paused-config').toString('base64'));
-await check('storefront pause does not affect official Steam library',async()=>{const paused=await handler(req({op:'steamStoreDetails',appid:42}));assert.equal(paused.status,503);assert.ok(!calls.some(c=>c.u.hostname==='store.steampowered.com'));const library=await handler(req({op:'jogos',steamid:'76561198000000000'}));assert.equal(library.status,200);});
+await check('retired storefront operations never contact the store or offers feeds',async()=>{
+ for(const input of [{op:'steamStoreSearch',query:'Safe Game'},{op:'steamStoreDetails',appid:42},{op:'steamInfo',appids:[42],nomes:['Safe Game']},{op:'gratis'}]){
+  const r=await handler(req(input));assert.equal(r.status,input.op==='steamStoreDetails'?410:200);
+ }
+ assert.ok(!calls.some(c=>['store.steampowered.com','store-site-backend-static.ak.epicgames.com','www.reddit.com'].includes(c.u.hostname)));
+});
+await check('official library remains available without storefront metadata',async()=>{assert.equal((await handler(req({op:'jogos',steamid:'76561198000000000'}))).status,200)});
