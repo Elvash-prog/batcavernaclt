@@ -620,6 +620,7 @@ try {
             }
             if(i.op==='steam_search'&&i.query==='Jogo zerado')return {results:[{appid:10,nome:'Jogo zerado'}]};
             if(i.op==='steam_search')return {results:[{appid:601150,nome:'Devil May Cry 5',capa:'https://shared.cloudflare.steamstatic.com/header.jpg'},{appid:220440,nome:'DmC: Devil May Cry',capa:'https://shared.cloudflare.steamstatic.com/header.jpg'}]};
+            if(i.op==='steam_details'&&window.missingIgdbDetails)throw Error('Catálogo indisponível');
             if (i.op === "steam_details")
               return {
                 nome: i.query || "Resultado Steam",
@@ -1454,6 +1455,13 @@ try {
   assert.equal(await steamTime.evaluate(n=>{const b=n.getBoundingClientRect(),t=n.querySelector('strong').getBoundingClientRect();return b.width>0&&t.width>0&&t.left>=b.left&&t.right<=b.right+1&&t.bottom<=b.bottom}),true,'Tempo Steam deve caber no indicador sem corte ou sobreposição');
   await page.waitForFunction(()=>[...document.querySelectorAll('.steam-library-grid .cover-wrap img')].every(img=>img.complete&&img.naturalWidth>1));
   await page.screenshot({path:'preview/steam-playtime-check.png',animations:'disabled'});
+  await page.evaluate(()=>window.missingIgdbDetails=true);
+  await page.locator('[data-steam-add="steam-123"]').click();
+  await page.waitForFunction(()=>window.saved.some(s=>s.c==='save_item'&&s.p.item.steam_appid===123));
+  const importedSteam=await page.evaluate(()=>window.saved.find(s=>s.c==='save_item'&&s.p.item.steam_appid===123).p.item);
+  assert.equal(importedSteam.nome,'Jogo Steam com muitas horas');assert.equal(importedSteam.loja,undefined);assert.equal(importedSteam.preco,undefined);
+  await page.evaluate(()=>window.missingIgdbDetails=false);
+
   await page.locator('#mainNav [data-discover-kind="retro"]').click();
   await page.locator(".retro-game-card").waitFor();
   await page.waitForFunction(() =>
