@@ -32,3 +32,7 @@ assert.equal(gameSearchScore({name:'Horizon Forbidden West'},'Horizon Zero Dawn'
 const failed={IGDB_CLIENT_ID:'x',IGDB_CLIENT_SECRET:'y'};globalThis.fetch=async()=>Response.json({error:'do not disclose y'}, {status:400});
 r=await igdbCatalog(failed,url,'games');assert.equal(r.status,503);assert.doesNotMatch(await r.text(),/disclose/);
 console.log('IGDB: token renewal, cache, query escaping, image formats, ratings, adult filtering and secret redaction passed');
+// Steam IDs are read from IGDB links, never by querying the storefront.
+assert.equal(normalizeGame({id:1,name:'Game',websites:[{url:'https://store.steampowered.com/app/1174180/Red_Dead_Redemption_2/'}]}).steam_appid,1174180);
+assert.equal(normalizeGame({id:1,name:'Game',websites:[{url:'https://store.steampowered.com.evil.test/app/42/'}]}).steam_appid,null);
+assert.equal(normalizeGame({id:1,name:'Game',websites:[{url:'https://store.steampowered.com/app/42/'},{url:'https://store.steampowered.com/app/43/'}]}).steam_appid,null,'ambiguous edition requires manual selection');

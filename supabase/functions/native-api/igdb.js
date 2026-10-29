@@ -17,11 +17,12 @@ export function blockedGame(g){
  return adultContent({...g,tags:[...(g.themes||[]),...(g.alternative_names||[])]});
 }
 export function normalizeGame(g){
+ const steamIds=[...new Set((g.websites||[]).map(x=>{try{const u=new URL(x.url);if(u.protocol!=='https:'||u.hostname!=='store.steampowered.com'||u.username||u.password)return null;const id=Number(u.pathname.match(/^\/app\/([1-9][0-9]*)(?:\/|$)/)?.[1]);return Number.isSafeInteger(id)&&id<=4294967295?id:null;}catch{return null}}).filter(Boolean))];
  const poster=igdbImage(g.cover?.image_id),landscape=igdbImage(g.artworks?.[0]?.image_id||g.screenshots?.[0]?.image_id,'screenshot_huge');
  const images=[...(g.artworks||[]),...(g.screenshots||[])].map(x=>igdbImage(x.image_id,'screenshot_huge')).filter(Boolean);
  const companies=g.involved_companies||[];
  const rating=Number(g.total_rating),count=Number(g.total_rating_count)||0;
- return {id:g.id,igdb_id:g.id,source:'igdb',name:g.name,slug:g.slug||'',adult:false,
+ return {id:g.id,igdb_id:g.id,steam_appid:steamIds.length===1?steamIds[0]:null,source:'igdb',name:g.name,slug:g.slug||'',adult:false,
   released:Number.isFinite(g.first_release_date)?new Date(g.first_release_date*1000).toISOString().slice(0,10):'',
   description_raw:[g.summary,g.storyline].filter(Boolean).join('\n\n'),overview:g.summary||'',
   background_image:landscape||poster,background_image_additional:images[1]||poster,cover_image:poster||landscape,

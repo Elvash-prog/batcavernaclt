@@ -54,5 +54,5 @@ mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.j
 mode='denied';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:other+'/image.jpg'}));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.pathname.startsWith('/storage/v1/object/sign')),false);
 mode='ok';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:uid+'/image.jpg'}));assert.equal(r.status,200);assert.ok((await r.json()).signedUrl.startsWith('https://test.supabase.co/storage/v1/object/sign/'));
 r=await request('/api/catalog/rawg/games','DELETE');assert.equal(r.status,405);
-mode='ok';r=await request('/api/steam-free');assert.equal(r.status,200);assert.equal((await r.json()).steam[0].appid,42);assert.equal(calls.some(c=>c.u.hostname==='store.steampowered.com'),false);
+mode='ok';r=await request('/api/steam-free');assert.equal(r.status,200);assert.deepEqual((await r.json()).steam,[]);assert.equal(calls.some(c=>c.u.pathname==='/functions/v1/bright-api'),false);assert.equal(calls.some(c=>c.u.hostname==='store.steampowered.com'),false);
 console.log('native-api: Auth, shared limit, catalog filtering, key redaction, media ownership, group admin, blocking and signed URLs passed');

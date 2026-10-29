@@ -47,16 +47,14 @@ async function catalog(request,env,url){
 }
 async function steamFree(request,env){
  if(request.method!=='GET')return json({error:'Método não permitido'},405);
- const r=await fetch(env.SUPABASE_URL+'/functions/v1/bright-api',{method:'POST',headers:{Authorization:request.headers.get('Authorization'),apikey:env.SUPABASE_ANON_KEY,'content-type':'application/json'},body:JSON.stringify({op:'gratis'}),redirect:'error',signal:AbortSignal.timeout(35000)});
- if(!r.ok){const headers={'content-type':'application/json','cache-control':'no-store'};if(r.status===429)headers['retry-after']=r.headers.get('retry-after')||'60';return new Response(JSON.stringify({error:r.status===429?'Aguarde antes de atualizar as ofertas.':'Ofertas indisponíveis.'}),{status:r.status===429?429:503,headers});}
- const data=await r.json();if(data.steamError)return json({error:'Ofertas Steam temporariamente indisponíveis.'},503);return json({steam:data.steam||[],updatedAt:new Date().toISOString()});
+ return json({steam:[],retired:true});
 }
 async function steamCover(request,env,id){
  if(request.method!=='GET')return json({error:'Método não permitido'},405);
  if(!/^[1-9][0-9]{0,9}$/.test(id))return json({error:'Jogo inválido'},400);
- const r=await fetch(env.SUPABASE_URL+'/functions/v1/bright-api',{method:'POST',headers:{Authorization:request.headers.get('Authorization'),apikey:env.SUPABASE_ANON_KEY,'content-type':'application/json'},body:JSON.stringify({op:'steamInfo',appids:[Number(id)]}),redirect:'error',signal:AbortSignal.timeout(15000)});
+ const r=await fetch(env.SUPABASE_URL+'/functions/v1/bright-api',{method:'POST',headers:{Authorization:request.headers.get('Authorization'),apikey:env.SUPABASE_ANON_KEY,'content-type':'application/json'},body:JSON.stringify({op:'capas',appids:[Number(id)],format:'poster'}),redirect:'error',signal:AbortSignal.timeout(15000)});
  if(!r.ok)return new Response(JSON.stringify({error:'Capa temporariamente indisponível.'}),{status:r.status===429?429:503,headers:{'content-type':'application/json',...(r.status===429?{'retry-after':r.headers.get('retry-after')||'60'}:{})}});
- const result=await r.json();return json({capa:result.lista?.[0]?.capa||''});
+ const result=await r.json();return json({capa:result.capas?.[0]||''});
 }
 
 export {catalog,steamFree,steamCover};
