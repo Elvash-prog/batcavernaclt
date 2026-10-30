@@ -48,7 +48,7 @@ class RecoveryTests(unittest.TestCase):
      self.assertNotIn('synthetic-administrative-key',str(error.exception));self.assertNotIn(target,str(error.exception))
  def fixture(self,root):
   folder=root/'fixture';folder.mkdir()
-  for name in ['roles.sql','schema.sql','data.sql','history_schema.sql','history_data.sql','managed_schema.sql']:(folder/name).write_text('-- synthetic fixture only\n')
+  for name in ['roles.sql','schema.sql','data.sql','history_schema.sql','history_data.sql','managed_schema.sql','functions_schema.sql']:(folder/name).write_text('-- synthetic fixture only\n')
   (folder/'storage-index.json').write_text(json.dumps({'buckets':[],'objects':[]}));backup.manifest(folder,0)
   return folder
  def pack(self,folder,target):
@@ -56,13 +56,24 @@ class RecoveryTests(unittest.TestCase):
    for p in folder.iterdir():tar.add(p,arcname=p.name)
  def test_integrity_and_tampering(self):
   with tempfile.TemporaryDirectory()as t:
-   root=pathlib.Path(t);folder=self.fixture(root);archive=root/'snapshot.tar.gz';self.pack(folder,archive);self.assertEqual(backup.verify(archive)['verified_files'],7)
+   root=pathlib.Path(t);folder=self.fixture(root);archive=root/'snapshot.tar.gz';self.pack(folder,archive);self.assertEqual(backup.verify(archive)['verified_files'],8)
    (folder/'data.sql').write_text('corruption');self.pack(folder,archive)
    with self.assertRaises(ValueError):backup.verify(archive)
  def test_missing_file_rejected(self):
   with tempfile.TemporaryDirectory()as t:
    root=pathlib.Path(t);folder=self.fixture(root);(folder/'data.sql').unlink();archive=root/'snapshot.tar.gz';self.pack(folder,archive)
    with self.assertRaises((KeyError,ValueError)):backup.verify(archive)
+ def test_missing_functions_schema_rejected_for_new_backups(self):
+  with tempfile.TemporaryDirectory()as t:
+   root=pathlib.Path(t);folder=self.fixture(root);(folder/'functions_schema.sql').unlink()
+   backup.manifest(folder,0);archive=root/'snapshot.tar.gz';self.pack(folder,archive)
+   with self.assertRaisesRegex(ValueError,'incompleto'):backup.verify(archive)
+ def test_legacy_backup_remains_verifiable_without_claiming_functions_schema(self):
+  with tempfile.TemporaryDirectory()as t:
+   root=pathlib.Path(t);folder=self.fixture(root);(folder/'functions_schema.sql').unlink();backup.manifest(folder,0)
+   meta=json.loads((folder/'snapshot.json').read_text());meta['format']=1;(folder/'snapshot.json').write_text(json.dumps(meta))
+   archive=root/'snapshot.tar.gz';self.pack(folder,archive)
+   result=backup.verify(archive);self.assertEqual(result['format'],1);self.assertFalse(result['functions_schema_included'])
  def test_duplicate_manifest_entry_rejected(self):
   with tempfile.TemporaryDirectory()as t:
    root=pathlib.Path(t);folder=self.fixture(root);meta=json.loads((folder/'snapshot.json').read_text());meta['files'].append(meta['files'][0]);(folder/'snapshot.json').write_text(json.dumps(meta));archive=root/'snapshot.tar.gz';self.pack(folder,archive)
@@ -103,7 +114,7 @@ class RecoveryTests(unittest.TestCase):
    encrypted=root/'snapshot.gpg';restored=root/'restored.tar.gz'
    backup.encrypt_public(archive,encrypted,public,root/'ci-public-only')
    subprocess.run(common+['--output',str(restored),'--decrypt',str(encrypted)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
-   self.assertEqual(backup.verify(restored)['verified_files'],7)
+   self.assertEqual(backup.verify(restored)['verified_files'],8)
    self.assertEqual(archive.read_bytes(),restored.read_bytes())
    listing=subprocess.run(['gpg','--homedir',str(root/'ci-public-only'),'--batch','--list-secret-keys','--with-colons'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
    self.assertNotIn(b'sec:',listing.stdout)
@@ -122,5 +133,5 @@ class RecoveryTests(unittest.TestCase):
    self.assertEqual(encrypted_result.returncode,0,encrypted_result.stderr.decode())
    decrypted_result=subprocess.run(common+['--output',str(restored),'--decrypt',str(encrypted)],input=b'synthetic-test-passphrase\n',env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=False)
    self.assertEqual(decrypted_result.returncode,0,decrypted_result.stderr.decode())
-   self.assertEqual(backup.verify(restored)['verified_files'],7)
+   self.assertEqual(backup.verify(restored)['verified_files'],8)
 if __name__=='__main__':unittest.main()
