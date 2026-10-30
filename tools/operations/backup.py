@@ -5,6 +5,15 @@ Never uploads a backup. Never prints keys, SQL data or remote error bodies.
 import argparse,datetime,getpass,hashlib,json,os,pathlib,shutil,subprocess,tarfile,tempfile,urllib.request,urllib.parse,sys
 PROJECT='luoqlhgfmixvfqbfcdoc'
 ROOT=pathlib.Path(__file__).resolve().parents[2]
+# The CLI omits platform schemas from its default schema dump, but includes
+# hooks in data.sql. Capture the source definitions, never reconstruct them.
+DUMP_JOBS=[('roles.sql',['--role-only']),('schema.sql',[]),('managed_schema.sql',['--schema','auth,storage']),('functions_schema.sql',['--schema','supabase_functions']),('data.sql',['--data-only','--use-copy','-x','storage.buckets_vectors,storage.vector_indexes']),('history_schema.sql',['--schema','supabase_migrations']),('history_data.sql',['--schema','supabase_migrations','--data-only','--use-copy'])]
+
+def export_database(folder):
+ for filename,flags in DUMP_JOBS:
+  print('Exportando '+filename+'...',flush=True)
+  call(['supabase','db','dump','--linked','--file',str(folder/filename),*flags])
+
 
 class RejectStorageRedirects(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,request,response,code,message,headers,new_url):
@@ -87,7 +96,7 @@ def storage_export(folder,key,max_bytes):
 
 def manifest(folder,objects):
  files=[{'path':p.relative_to(folder).as_posix(),'bytes':p.stat().st_size,'sha256':digest(p)}for p in sorted(folder.rglob('*'))if p.is_file() and p.name!='snapshot.json']
- result={'format':1,'project':PROJECT,'completed':True,'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'storage_objects':objects,'files':files,'scope':'Supabase CLI roles/schema/data/history + Storage objects; custom auth/storage configuration and external secrets require the recovery runbook.'}
+ result={'format':2,'project':PROJECT,'completed':True,'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'storage_objects':objects,'files':files,'scope':'Supabase CLI roles/schema/data/history + source supabase_functions definitions + Storage objects; custom auth/storage configuration and external secrets require the recovery runbook.'}
  (folder/'snapshot.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
  return result
 
@@ -103,7 +112,7 @@ def verify(archive):
    if name in members:raise ValueError('Arquivo duplicado')
    members[name]=member
   with tar.extractfile(members['snapshot.json'])as source:meta=json.load(source)
-  if meta.get('format')!=1 or meta.get('completed') is not True or meta.get('project')!=PROJECT:raise ValueError('Manifesto inválido')
+  if meta.get('format') not in (1,2) or meta.get('completed') is not True or meta.get('project')!=PROJECT:raise ValueError('Manifesto inválido')
   expected={'snapshot.json'}
   for item in meta['files']:
    name=item['path']
@@ -116,6 +125,7 @@ def verify(archive):
    if h.hexdigest()!=item['sha256']:raise ValueError('Backup corrompido')
   if set(members)!=expected:raise ValueError('Arquivo não inventariado')
   required={'roles.sql','schema.sql','data.sql','history_schema.sql','history_data.sql','managed_schema.sql','storage-index.json'}
+  if meta['format']==2:required.add('functions_schema.sql')
   if not required.issubset(members):raise ValueError('Backup incompleto')
   with tar.extractfile(members['storage-index.json'])as source:index=json.load(source)
   if len(index['objects'])!=meta['storage_objects']:raise ValueError('Contagem Storage inválida')
@@ -129,7 +139,7 @@ def verify(archive):
    saved=recorded[item['file']]
    if saved['sha256']!=item['sha256'] or saved['bytes']!=item['bytes']:raise ValueError('Objeto Storage inconsistente')
   if object_files!={name for name in recorded if name.startswith('objects/')}:raise ValueError('Objeto Storage não inventariado')
- return {'verified_files':len(meta['files']),'storage_objects':meta['storage_objects']}
+ return {'verified_files':len(meta['files']),'storage_objects':meta['storage_objects'],'format':meta['format'],'functions_schema_included':'functions_schema.sql' in members}
 
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--output',type=pathlib.Path);parser.add_argument('--verify',type=pathlib.Path);parser.add_argument('--max-storage-mib',type=int,default=256);parser.add_argument('--recipient-file',type=pathlib.Path,help='Chave pública ASCII para criptografia desassistida; a recuperação será verificada separadamente.');args=parser.parse_args()
@@ -148,10 +158,7 @@ def main():
  with tempfile.TemporaryDirectory(prefix='batcaverna-backup-')as temp:
   private=pathlib.Path(temp);os.chmod(private,0o700);folder=private/'snapshot';folder.mkdir();os.chmod(folder,0o700)
   # No passwords are placed in argv: credentials come from the authenticated CLI session.
-  jobs=[('roles.sql',['--role-only']),('schema.sql',[]),('managed_schema.sql',['--schema','auth,storage']),('data.sql',['--data-only','--use-copy','-x','storage.buckets_vectors,storage.vector_indexes']),('history_schema.sql',['--schema','supabase_migrations']),('history_data.sql',['--schema','supabase_migrations','--data-only','--use-copy'])]
-  for filename,flags in jobs:
-   print('Exportando '+filename+'...',flush=True)
-   call(['supabase','db','dump','--linked','--file',str(folder/filename),*flags])
+  export_database(folder)
   print('Exportando objetos do Storage...',flush=True)
   count=storage_export(folder,key,args.max_storage_mib*1024*1024);key='';manifest(folder,count)
   archive=private/'snapshot.tar.gz'

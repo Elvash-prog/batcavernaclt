@@ -6,7 +6,7 @@ O teste em dois computadores foi concluído com sucesso pelo responsável em 18/
 
 No Free, não presumir disponibilidade dos backups diários dos planos pagos. O procedimento abaixo faz uma exportação própria, somente de leitura, sem pausar o projeto e sem restaurar nada em produção. Acesso autenticado ao CLI e ao Storage precisa ser configurado pelo responsável. Nenhuma senha ou chave deve ser enviada em chat, issue, commit ou log.
 
-`tools/operations/backup.py` exporta roles, esquema, dados, histórico de migrações, uma referência dos esquemas gerenciados auth/storage e os objetos do Storage. Faz inventário com hashes, criptografa com GnuPG (AES-256 no modo manual por senha) e pede uma verificação de descriptografia nesse modo. A cópia final é salva fora do repositório. O limite inicial de download de mídias é 256 MiB e uma exportação incompleta falha; ele pode ser ajustado explicitamente. O inventário conferido nesta revisão tinha 65 objetos, aproximadamente 63 MiB, mas o tamanho muda com o uso.
+`tools/operations/backup.py` exporta roles, esquema, dados, histórico de migrações, uma referência dos esquemas gerenciados auth/storage, as definições de origem de `supabase_functions` e os objetos do Storage. Faz inventário com hashes, criptografa com GnuPG (AES-256 no modo manual por senha) e pede uma verificação de descriptografia nesse modo. A cópia final é salva fora do repositório. O limite inicial de download de mídias é 256 MiB e uma exportação incompleta falha; ele pode ser ajustado explicitamente. O inventário conferido nesta revisão tinha 65 objetos, aproximadamente 63 MiB, mas o tamanho muda com o uso.
 
 Arquivos SQL do banco não contêm os bytes das imagens e vídeos. Por isso o script também copia o Storage. Segredos das Edge Functions, SMTP, Firebase, chaves de assinatura dos clientes e a chave raiz de criptografia do Supabase Vault precisam de guarda separada e segura. As exportações do banco e das mídias não formam um snapshot atômico entre serviços. Planejar uma janela com pouca escrita e conferir os vínculos entre registros e objetos no ensaio. Não confundir esse pacote com um clone integral e automaticamente restaurável de toda a infraestrutura Supabase.
 
@@ -36,18 +36,20 @@ O workflow `Segurança e recuperação beta` usa PostgreSQL 17 em um contêiner 
 
 A verificação do pacote também rejeita entradas duplicadas no manifesto, arquivos especiais no TAR, objetos repetidos no índice, dois objetos apontando para o mesmo arquivo, referências a SQL como mídia e arquivos de mídia ausentes do índice. Isso evita aceitar como completo um inventário internamente inconsistente. Hashes conferem integridade interna; não comprovam a origem de um pacote obtido de terceiros. Use o arquivo criptografado guardado no destino privado e confira seu hash registrado na exportação.
 
-Isso valida o mecanismo e as migrações cobertas pelas fixtures. O ensaio real de 24/10/2026 está registrado abaixo e tem escopo limitado. Não fazer ensaios em produção. Não criar um projeto ou uma branch com cobrança sem decisão do responsável.
+A regressão de hooks usa os filtros reais do CLI 2.122.0 e um PostgreSQL 17 descartável: a restauração antiga falha sem a função, e a nova restaura tabela, sequência, restrição, função, permissões e gatilho a partir dos SQLs exportados, sem SQL oficial complementar. O gatilho sintético não faz HTTP. Isso valida o mecanismo e as migrações cobertas pelas fixtures. O ensaio real de 24/10/2026 está registrado abaixo e tem escopo limitado. Não fazer ensaios em produção. Não criar um projeto ou uma branch com cobrança sem decisão do responsável.
 
 Para uma recuperação real:
 
 1. Registrar o incidente, identificar o último backup íntegro e preservar a produção para investigação. Desabilitar escritas, se necessário, por procedimento controlado.
 2. Descriptografar em um diretório privado fora do repositório e verificar os hashes com `python tools/operations/backup.py --verify ARQUIVO_DESCRIPTOGRAFADO.tar.gz`.
 3. Preparar um destino Supabase separado, compatível com PostgreSQL 17, extensões e serviços usados. Conferir previamente a configuração de Auth, SMTP, Storage, Realtime e Edge Functions.
-4. Seguir o procedimento oficial de restauração para `roles.sql`, `schema.sql` e `data.sql`, com parada em erro e transação. Revisar `managed_schema.sql` para identificar as customizações próprias; não sobrescrever cegamente os esquemas gerenciados de uma instalação nova. Restaurar o histórico de migrações separadamente.
-5. Se houver Vault ou colunas cifradas, seguir a instrução oficial de preservação da chave raiz antes de pausar ou excluir o projeto de origem. Não colocar essa chave no pacote compartilhado.
-6. Recriar buckets com as configurações do inventário e reenviar os objetos para os nomes originais constantes em `storage-index.json`. As chaves `.bin` do pacote são nomes locais de segurança, não os nomes finais no Storage. Conferir contagem e hashes. Não tornar buckets privados públicos.
-7. Reaplicar segredos pelo armazenamento seguro, conferir publicações Realtime, Auth/SMTP, políticas e regiões. Testar login, recuperação de senha, busca de pessoas, bloqueios, biblioteca, mensagens, uploads e atualizações em contas de teste.
-8. Só alterar o destino dos clientes após a validação. Não restaurar sessões antigas indiscriminadamente: pedidos de exclusão e revogação posteriores ao backup precisam ser respeitados antes de reabrir acesso.
+4. Revisar `roles.sql` e preparar as extensões, `extensions`, Vault e a publicação `supabase_realtime` exigidos pelo destino antes de aplicar os SQLs. O CLI pode omitir a criação da publicação e de objetos gerenciados. Revisar `managed_schema.sql` para identificar as customizações próprias; não sobrescrever cegamente os esquemas gerenciados de uma instalação nova. Restaurar o histórico de migrações separadamente.
+5. Nos novos pacotes (manifesto formato 2), `functions_schema.sql` contém as definições exportadas da origem de `supabase_functions`, incluindo `hooks`, sua sequência e `http_request()`. Aplicar as definições necessárias antes dos gatilhos que as referenciam em `schema.sql`. Em destino Supabase que já tenha esses objetos, comparar as definições e revisar conflitos, em vez de recriar tabelas ou restrições cegamente. Não reconstruir a função de memória nem baixar SQL externo para completar um pacote novo.
+6. Para a restauração de banco vazio, separar com um parser SQL os gatilhos, políticas e chaves estrangeiras de `schema.sql`, `managed_schema.sql` e `functions_schema.sql`: aplicar primeiro as definições, depois `data.sql`, e só então os objetos separados. Manter a ordem das demais definições e executar com `ON_ERROR_STOP` e transação, sem dividir SQL por ponto e vírgula. Conferir todas as contagens e validar cada FK; não basta desabilitar gatilhos e presumir integridade. O ensaio real usou `sqlparse` para essa separação. Esse procedimento precisa ser adaptado às dependências e objetos já existentes no destino.
+7. Se houver Vault ou colunas cifradas, seguir a instrução oficial de preservação da chave raiz antes de pausar ou excluir o projeto de origem. Não colocar essa chave no pacote compartilhado.
+8. Recriar buckets com as configurações do inventário e reenviar os objetos para os nomes originais constantes em `storage-index.json`. As chaves `.bin` do pacote são nomes locais de segurança, não os nomes finais no Storage. Conferir contagem e hashes. Não tornar buckets privados públicos.
+9. Reaplicar segredos pelo armazenamento seguro, conferir publicações Realtime, Auth/SMTP, políticas e regiões. Testar login, recuperação de senha, busca de pessoas, bloqueios, biblioteca, mensagens, uploads e atualizações em contas de teste.
+10. Só alterar o destino dos clientes após a validação. Não restaurar sessões antigas indiscriminadamente: pedidos de exclusão e revogação posteriores ao backup precisam ser respeitados antes de reabrir acesso.
 
 ## Referências oficiais
 
@@ -100,7 +102,7 @@ O exportador só roda na branch principal. O workflow começa com testes sintét
 
 ## Pendente
 
-A automação diária do Drive já teve execuções reais concluídas. A segunda cópia B2 foi habilitada e o primeiro envio foi confirmado em 29/10/2026, conforme o registro abaixo. Falta descriptografar e restaurar esta nova cópia em destino isolado, conferir notificações e acompanhar as próximas execuções agendadas e a rotação real. Monitorar validade da chave pública (23/10/2028), permissões, espaço e disponibilidade das cópias.
+A automação diária do Drive já teve execuções reais concluídas. A segunda cópia B2 foi habilitada e o primeiro envio foi confirmado em 29/10/2026, conforme o registro abaixo. A descriptografia e a restauração do banco desta cópia foram concluídas pelo responsável no ensaio descrito abaixo. Faltam login e acesso às mídias pelos serviços para esta cópia, além de conferir notificações e acompanhar as próximas execuções agendadas e a rotação real. Monitorar validade da chave pública (23/10/2028), permissões, espaço e disponibilidade das cópias.
 
 ## Diagnóstico seguro de exportação
 
@@ -124,4 +126,34 @@ O guia [BACKUP-SAO-PAULO.md](BACKUP-SAO-PAULO.md) e o template CloudFormation pr
 
 ## Decisão atual: Drive + Backblaze B2 — 29/10/2026
 
-O responsável escolheu manter o Drive e preparar o B2, aproveitando a faixa gratuita e a rotação de sete datas. O guia atual é [BACKUP-B2.md](BACKUP-B2.md). A opção AWS permanece preparada, sem ativação confirmada, e não é necessária para o plano escolhido. O primeiro envio B2 foi confirmado na [execução 40971128660](https://github.com/Elvash-prog/batcavernaclt/actions/runs/40971128660): região `us-east-005` (Estados Unidos), bucket privado, 67.015.394 bytes, checksum e download completo válidos. O Drive também concluiu. A chave aceita tem somente `listBuckets,listFiles,readFiles,writeFiles,deleteFiles` no bucket dedicado; a chave mestre não é usada pelo workflow. A descriptografia e a restauração desta cópia continuam pendentes; o ensaio de 24/10 não as substitui.
+O responsável escolheu manter o Drive e preparar o B2, aproveitando a faixa gratuita e a rotação de sete datas. O guia atual é [BACKUP-B2.md](BACKUP-B2.md). A opção AWS permanece preparada, sem ativação confirmada, e não é necessária para o plano escolhido. O primeiro envio B2 foi confirmado na [execução 40971128660](https://github.com/Elvash-prog/batcavernaclt/actions/runs/40971128660): região `us-east-005` (Estados Unidos), bucket privado, 67.015.394 bytes, checksum e download completo válidos. O Drive também concluiu. A chave aceita tem somente `listBuckets,listFiles,readFiles,writeFiles,deleteFiles` no bucket dedicado; a chave mestre não é usada pelo workflow. A descriptografia e a restauração local do banco desta cópia foram concluídas, conforme o registro abaixo. O teste pelos serviços continua pendente para esta cópia; o ensaio de 24/10 não o substitui.
+
+
+## Ensaio B2 retomado — pasta 20261030
+
+Resultados confirmados pelo responsável nesta retomada (não reexecutados sobre seus dados nesta sessão):
+
+- Origem: execução `40971128660`, Drive e B2 ativos; B2 `us-east-005`, Estados Unidos.
+- SHA-256 do arquivo criptografado testado: `43560df9d919fc71d1185a25e3b96644b27ebf5f4b1daaf79906e6b02c8f3cb9`.
+- Descriptografia local concluída, chave privada localizada e preservada. Pacote verificado com 72 arquivos, incluindo 65 objetos de mídia.
+- Windows, Docker Desktop Linux; contêiner `batcaverna-supabase-restauracao`, imagem `supabase/postgres:17.11.0.011`, rede `none`, sem portas; banco `batcaverna_ensaio`.
+- Pasta privada `%USERPROFILE%\BatCaverna-Restauracao-20261030`; pacote em `%USERPROFILE%\Downloads\BatCaverna-recuperado.tar.gz`. Não versionar esses arquivos ou dados, repetir importações nesse banco nem apagar o ambiente.
+- Restauradas 78 tabelas, 3.186 registros, nenhuma divergência de contagem e 85 chaves estrangeiras validadas.
+- Gatilhos, políticas e FKs separados com `sqlparse` e reaplicados depois dos dados, em transação. Também foram preparados `extensions`, Vault e a publicação `supabase_realtime`.
+- A lacuna do exportador exigiu reconstruir `supabase_functions.hooks` e `http_request()` usando referência oficial. Isso **não comprova equivalência exata à produção**. Contagens e FKs aprovadas também não comprovam identidade de todo o conteúdo.
+- Login e acesso às mídias pelos serviços **ainda não testados nesta cópia**. O contêiner sem rede é um ensaio do banco, não uma instalação completa de Auth/Storage.
+
+A correção passa a exportar `functions_schema.sql` diretamente da origem, sem substituir esse arquivo por uma definição oficial genérica. O manifesto formato 2 exige esse arquivo; `--verify` continua aceitando formato 1 e informa `functions_schema_included: false` quando ausente. Um pacote antigo íntegro continua incompleto para essa dependência. Não declarar o ensaio antigo como prova da nova correção: é necessário gerar uma nova cópia e conferir seu resultado.
+
+## Próximo ensaio de login e mídias
+
+Preservar o contêiner/banco atual sem rede e sem nova importação. Preparar **outro** destino local com serviços Supabase compatíveis, dados persistentes separados, nenhuma conexão à produção e portas vinculadas exclusivamente a `127.0.0.1`. Não conectar Auth/Storage ao contêiner preservado nem mudar sua rede. Sem esse segundo destino, os testes abaixo permanecem pendentes.
+
+1. Conferir versões, migrações internas, extensões e configuração local de Auth/Storage antes de importar no novo destino. Desativar envio de e-mail, provedores externos, webhooks HTTP e integrações que possam produzir efeitos fora do ensaio. Preservar as definições originais exportadas para comparação antes de qualquer adaptação exclusivamente local.
+2. Restaurar no novo destino conforme o procedimento acima, comparar contagens/FKs e diferenças de definição; não substituir os esquemas internos atuais do Auth/Storage cegamente.
+3. Recriar os buckets com a privacidade do índice e enviar os 65 arquivos aos nomes originais. Não usar o nome local `.bin` como nome remoto. Conferir proprietários e metadados necessários às políticas.
+4. Com credenciais fornecidas apenas no terminal local, testar login, consulta autenticada e logout; registrar somente status HTTP e contagens. Não registrar senha, JWT, refresh token, e-mail, nomes de objetos ou respostas com dados pessoais. O teste de recuperação de senha exige um coletor de e-mail local.
+5. Conferir download administrativo de todos os objetos por tamanho e SHA-256; depois testar uma conta comum: arquivo próprio aprovado, pendente/quarentena, arquivo de outra conta e requisição anônima. O acesso administrativo não comprova RLS. Não alterar políticas para fazer o teste passar: investigar bloqueios esperados e divergências.
+6. Após logout, conferir que renovar a sessão encerrada falha; um access token já emitido pode continuar válido até expirar. Registrar as limitações e os resultados separadamente do ensaio puramente SQL.
+
+Nunca enviar chaves privadas, senhas ou arquivos pessoais ao chat. Não restaurar nada em produção e não trocar os endpoints dos clientes durante o ensaio.
