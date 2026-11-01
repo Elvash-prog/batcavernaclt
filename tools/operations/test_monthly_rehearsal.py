@@ -54,7 +54,15 @@ class ArchiveTests(unittest.TestCase):
                         if case=='huge': entry.size=monthly.MAX_MEMBER+1
                         # A large header with no payload is sufficient to reject
                         # before the tar reader tries to advance to another item.
-                        writer.addfile(entry,None)
+                        if case=='huge':
+                            # Python 3.14 refuses addfile without a fileobj for
+                            # nonempty entries. Deliberately write only the
+                            # header: the size guard must reject it before any
+                            # attempt to read a 512 MiB payload.
+                            writer.fileobj.write(entry.tobuf())
+                            writer.offset += len(entry.tobuf())
+                        else:
+                            writer.addfile(entry,None)
                 with self.assertRaises(monthly.Failed): monthly.extract_verified(archive,root/'output',7)
                 self.assertFalse((root/'output').exists())
 
