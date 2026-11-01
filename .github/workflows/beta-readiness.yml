@@ -25,6 +25,8 @@ jobs:
         run: npm install --prefix tests --ignore-scripts --no-package-lock --no-audit --no-fund
       - name: Validar entradas de perfil em PostgreSQL isolado
         run: node tests/profile-validation.mjs
+      - name: Instalar parser SQL do plano local
+        run: python3 -m pip install --disable-pip-version-check -r tools/operations/requirements-recovery.txt
       - name: Verificar criptografia e integridade com dados sintéticos
         run: python3 -m unittest discover -s tools/operations -p 'test_*.py' -v
       - name: Aplicar esquema isolado e validar permissões

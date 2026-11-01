@@ -45,6 +45,8 @@ jobs:
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: 2.122.0
+      - name: Instalar parser SQL do plano local
+        run: python3 -m pip install --disable-pip-version-check -r tools/operations/requirements-recovery.txt
       - name: Testar integridade, criptografia e destinos com dados sinteticos
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
