@@ -209,7 +209,7 @@ Exemplo no computador do responsável, com scripts disponíveis localmente:
 py prepare_service_restore.py --backup CAMINHO_PRIVADO/backup-v2 --output CAMINHO_PRIVADO/plano-restauracao
 ```
 
-O plano e seus SQLs contêm dados privados e não devem ser enviados ao chat, artifacts ou repositório. Somente o resumo de contagens pode ser compartilhado. A importação precisa de uma etapa separada com transação, parada em erro, conferência das contagens e varredura de FKs existentes: `VALIDATE CONSTRAINT` sozinho não reexamina uma FK que já estava marcada válida e recebeu dados com gatilhos desabilitados. Os testes reais de login e mídias continuam pendentes.
+O plano e seus SQLs contêm dados privados e não devem ser enviados ao chat, artifacts ou repositório. Somente o resumo de contagens pode ser compartilhado. A importação precisa de uma etapa separada com transação, parada em erro, conferência das contagens e varredura de FKs existentes: `VALIDATE CONSTRAINT` sozinho não reexamina uma FK que já estava marcada válida e recebeu dados com gatilhos desabilitados. Os testes reais de login e mídias foram concluídos nas etapas registradas abaixo.
 
 
 ### Execução transacional do plano local
@@ -258,7 +258,7 @@ Uma interrupção pode deixar parte dos novos blobs restaurados; repetir confere
 
 ## Resultado da recuperação de mídias e teste de permissões — 01/11/2026
 
-O responsável confirmou a execução de `restore_local_media.py` na cópia real: `status: verified`, 65 objetos, 65 arquivos escritos e 65 downloads administrativos aprovados por tamanho/SHA-256, com `metadata_preserved: true` e `bucket_privacy_preserved: true`. Não houve reimportação de SQL nem alteração dos proprietários ou das regras dos buckets. O acesso com conta autenticada e as negativas anônimas ainda precisam da etapa abaixo.
+O responsável confirmou a execução de `restore_local_media.py` na cópia real: `status: verified`, 65 objetos, 65 arquivos escritos e 65 downloads administrativos aprovados por tamanho/SHA-256, com `metadata_preserved: true` e `bucket_privacy_preserved: true`. Não houve reimportação de SQL nem alteração dos proprietários ou das regras dos buckets. O acesso com conta autenticada e as negativas anônimas foram confirmados na etapa abaixo.
 
 `verify_local_media_access.py` pede e-mail e senha somente no terminal local, com entrada oculta. Reconfere o pacote, os metadados originais e os serviços isolados; usa a chave pública local, recusando chave HTTP com papel service_role. Após login e verificação de identidade por `/auth/v1/user`, exige JWT com papel authenticated. Contas com fatores MFA verificados recebem resultado limitado e exigem fluxo próprio de MFA, sem desabilitar fatores.
 
@@ -272,4 +272,17 @@ py verify_local_media_access.py --backup CAMINHO_PRIVADO/backup-v2
 
 A sessão local de teste é encerrada ao final, inclusive nos caminhos de falha. Não modifica políticas, aprovações ou senhas. Recusa endpoints HTTP diferentes de `http://127.0.0.1:54321`, não usa proxy nem segue redirecionamentos com credenciais. Se não houver nenhuma mídia autorizada para a conta, o resultado é limitado, sem declarar aprovação completa. Os metadados/privacidade são comparados novamente depois do teste, com as mesmas exclusões de timestamps de acesso descritas acima.
 
-Esse teste compara o comportamento da API às políticas atuais no contexto da conta escolhida; não comprova que todas as regras de negócio são corretas nem substitui uma auditoria entre contas independentes ou testes dos aplicativos nativos. A execução desta etapa na cópia real continua pendente.
+Esse teste compara o comportamento da API às políticas atuais no contexto da conta escolhida; não comprova que todas as regras de negócio são corretas nem substitui uma auditoria entre contas independentes ou testes dos aplicativos nativos. A execução desta etapa na cópia real foi confirmada no resultado abaixo.
+
+
+### Resultado confirmado do acesso pela conta comum
+
+Em 01/11/2026, o responsável executou a ferramenta publicada no [PR 153](https://github.com/Elvash-prog/batcavernaclt/pull/153) nos serviços locais restaurados. O resumo retornou:
+
+```json
+{"status":"passed","login_status":200,"user_status":200,"verified_mfa_factors":0,"objects":65,"user_expected_allowed":48,"user_downloads_verified":48,"user_expected_denied":17,"user_denials_verified":17,"anonymous_private_expected":64,"anonymous_private_denials_verified":64,"anonymous_public_downloads_verified":1,"policy_mismatches":0,"logout_status":204,"metadata_preserved":true}
+```
+
+Todos os 65 objetos foram exercitados pela conta escolhida e pela rota pública sem Authorization. Os 48 downloads autorizados coincidiram com o conteúdo do backup; as 17 recusas corresponderam às políticas existentes no contexto dessa conta. As 64 mídias privadas recusaram a rota pública, e a mídia pública serviu os bytes esperados. Não houve divergências de política nem alteração dos metadados comparados; o logout retornou 204. Esses totais não identificam, por si só, a distribuição dos casos por proprietário ou estado de moderação.
+
+O ensaio concluiu a validação da cópia v2: integridade do pacote, SQL restaurado em transação (54 tabelas, 2.596 registros e 89 FKs examinadas), login/identidade/perfil e invalidação de refresh após logout, 65 downloads administrativos e acesso autenticado/anônimo conforme as políticas atuais. As definições de supabase_functions vieram do próprio pacote corrigido, sem reconstrução por SQL externo. Nenhuma restauração foi feita em produção; os ambientes anteriores foram preservados. Permanecem fora deste resultado a auditoria com contas independentes, os fluxos MFA e os aplicativos nativos.
