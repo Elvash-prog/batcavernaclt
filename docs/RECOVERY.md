@@ -210,3 +210,23 @@ py prepare_service_restore.py --backup CAMINHO_PRIVADO/backup-v2 --output CAMINH
 ```
 
 O plano e seus SQLs contêm dados privados e não devem ser enviados ao chat, artifacts ou repositório. Somente o resumo de contagens pode ser compartilhado. A importação precisa de uma etapa separada com transação, parada em erro, conferência das contagens e varredura de FKs existentes: `VALIDATE CONSTRAINT` sozinho não reexamina uma FK que já estava marcada válida e recebeu dados com gatilhos desabilitados. Os testes reais de login e mídias continuam pendentes.
+
+
+### Execução transacional do plano local
+
+O plano preparado pelo responsável para a cópia v2 contém 54 tabelas e 2.596 registros a importar; 669 registros de outras tabelas Auth foram omitidos. Sete gatilhos nativos e 29 FKs nativas foram preservados. Esses números descrevem o plano, não uma importação já concluída.
+
+`tools/operations/apply_service_restore.py` reconfere o pacote e regenera o plano usando o catálogo atual do mesmo contêiner dedicado. Recusa SQL alterado mesmo que alguém tenha atualizado os hashes no JSON do plano. Sem `--apply`, apenas valida. Com `--apply`, usa uma única transação explícita, trava as tabelas básicas do destino e recusa um banco preenchido. A ferramenta não permite selecionar outro contêiner ou banco.
+
+Executa as definições exportadas, os dados filtrados com gatilhos desabilitados e os objetos posteriores. Antes do COMMIT, confere a contagem de cada tabela importada e procura órfãos em todas as FKs não pertencentes aos catálogos do PostgreSQL, inclusive as já marcadas válidas. A varredura usa os operadores da própria FK, suporta relações compostas e diferencia MATCH SIMPLE de MATCH FULL. Não imprime as linhas encontradas. Um erro SQL anterior ao COMMIT impede a confirmação de toda a transação. A confirmação impressa é emitida somente após o COMMIT; uma entrada interrompida antes dele não recebe confirmação nem é confirmada automaticamente no EOF.
+
+Exemplos, no computador do responsável:
+
+```text
+py apply_service_restore.py --backup CAMINHO_PRIVADO/backup-v2 --plan CAMINHO_PRIVADO/plano-restauracao
+py apply_service_restore.py --backup CAMINHO_PRIVADO/backup-v2 --plan CAMINHO_PRIVADO/plano-restauracao --apply
+```
+
+Os logs completos ficam em uma subpasta privada `execucao-*` do plano, pois erros de COPY podem conter dados pessoais. A saída compartilhável contém somente status, código SQLSTATE e contagens. Se houver erro ou falta de confirmação, **não repetir a importação antes de conferir o estado do banco**: uma falha de conexão depois do COMMIT pode impedir a confirmação ao cliente. A ferramenta recusa nova importação quando encontra dados da aplicação.
+
+A execução e a auditoria de FKs foram testadas em PostgreSQL sintético, incluindo rollback após falha tardia, detecção de órfão em FK previamente válida, MATCH FULL com NULL parcial e interrupção do fluxo antes do COMMIT. A importação de SQL não restaura os bytes das mídias nem comprova login ou autorização entre contas.
