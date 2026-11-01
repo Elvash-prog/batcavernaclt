@@ -147,6 +147,18 @@ CREATE TRIGGER native_guard BEFORE INSERT ON storage.objects FOR EACH ROW EXECUT
         self.assertEqual(self.sql("SELECT count(*) FROM pg_tables WHERE schemaname='public'"), '0')
         self.assertEqual(self.sql("SELECT to_regprocedure('storage.custom_guard()') IS NULL"), 't')
 
+    def test_read_only_recheck_never_creates_tables_and_still_detects_counts_and_native_fk_orphans(self):
+        counts={('auth','users'):0,('storage','objects'):0}
+        query='BEGIN READ ONLY;\n'+apply.validation_sql(counts,read_only=True)+'\nROLLBACK;'
+        self.sql(query)
+        self.assertNotIn('CREATE TEMP',query)
+        self.assertEqual(self.sql("SELECT count(*) FROM auth.users"),'0')
+        with self.assertRaisesRegex(AssertionError,'RECOVERY_COUNT_MISMATCH'):
+            self.sql('BEGIN READ ONLY;\n'+apply.validation_sql({('auth','users'):1},read_only=True)+'\nROLLBACK;')
+        self.sql("SET session_replication_role=replica; INSERT INTO storage.objects VALUES('11111111-1111-1111-1111-111111111111'); SET session_replication_role=origin;")
+        with self.assertRaisesRegex(AssertionError,'RECOVERY_FK_ORPHANS'):
+            self.sql('BEGIN READ ONLY;\n'+apply.validation_sql({('storage','objects'):1},read_only=True)+'\nROLLBACK;')
+
     def test_import_commits_only_after_counts_and_native_fk_scans(self):
         report = self.apply_payload(self.payload())
         self.assertEqual(report, {'status': 'committed', 'tables_checked': 4, 'rows_checked': 3, 'foreign_keys_scanned': 2})

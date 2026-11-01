@@ -6,6 +6,20 @@ on:
 permissions:
   contents: read
 jobs:
+  windows-rehearsal:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Instalar parser SQL fixado
+        run: python -m pip install --disable-pip-version-check -r tools/operations/requirements-recovery.txt
+      - name: Validar coordenador e sintaxe PowerShell sem restaurar dados
+        run: python -m unittest discover -s tools/operations -p 'test_monthly_rehearsal.py' -v
   recovery:
     runs-on: ubuntu-latest
     services:
@@ -30,6 +44,7 @@ jobs:
       - name: Verificar criptografia e integridade com dados sintéticos
         env:
           STORAGE_TEST_IMAGE: public.ecr.aws/supabase/storage-api:v1.84.19
+          GOTRUE_TEST_IMAGE: public.ecr.aws/supabase/gotrue:v2.185.0
         run: python3 -m unittest discover -s tools/operations -p 'test_*.py' -v
       - name: Aplicar esquema isolado e validar permissões
         env:

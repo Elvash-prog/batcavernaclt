@@ -78,15 +78,18 @@ $guard$;
 '''
 
 
-def validation_sql(counts):
+def validation_sql(counts, read_only=False):
     rows = ',\n'.join('(' + literal(schema) + ',' + literal(table) + ',' + str(count) + '::bigint)' for (schema, table), count in sorted(counts.items()))
     if not rows:
         raise ValueError('Plano sem contagens de dados.')
     # Scan actual rows even when native FKs are already convalidated=true.
-    return r'''
-CREATE TEMP TABLE __batcaverna_validation(
+    header = '' if read_only else '''CREATE TEMP TABLE __batcaverna_validation(
   tables_checked integer, rows_checked bigint, foreign_keys_scanned integer
 ) ON COMMIT DROP;
+'''
+    summary = '  PERFORM checked_tables,checked_rows,scanned;' if read_only else '  INSERT INTO __batcaverna_validation VALUES(checked_tables,checked_rows,scanned);'
+    footer = '' if read_only else 'SELECT tables_checked, rows_checked, foreign_keys_scanned\nFROM __batcaverna_validation\n\\gset recovery_\n'
+    return header + r'''
 DO $validate$
 DECLARE
   expected record;
@@ -141,14 +144,10 @@ BEGIN
     END IF;
     scanned := scanned + 1;
   END LOOP;
-  INSERT INTO __batcaverna_validation VALUES(checked_tables,checked_rows,scanned);
+''' + summary + r'''
 END
 $validate$;
-SELECT tables_checked, rows_checked, foreign_keys_scanned
-FROM __batcaverna_validation
-\gset recovery_
-
-'''
+''' + footer
 
 
 def transaction_sql(files, counts):

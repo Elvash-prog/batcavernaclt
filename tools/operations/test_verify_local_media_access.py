@@ -68,6 +68,15 @@ class LocalMediaAccessTests(unittest.TestCase):
             for secret in ('allowed.txt','denied.txt','private-name-canary','synthetic-private-media',client.token):
                 self.assertNotIn(secret,json.dumps(report))
 
+    def test_login_failure_reports_only_an_allowlisted_code_without_private_body(self):
+        for code in ('email_provider_disabled','private-canary-code'):
+            client=FakeClient()
+            client.json_request=lambda *a,**kw:(422,{'error_code':code,'msg':'private-canary-email-or-message'})
+            report=access.run_test(items(),self.state(),'public','email','password',client)
+            self.assertEqual(report['status'],'failed')
+            self.assertEqual(report.get('auth_error_code'),'email_provider_disabled' if code=='email_provider_disabled' else None)
+            self.assertNotIn('private-canary',json.dumps(report))
+
     def test_service_role_cannot_be_used_for_the_user_test(self):
         client=FakeClient(role='service_role')
         with patch.object(access,'visible_keys') as visibility:
