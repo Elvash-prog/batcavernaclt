@@ -28,14 +28,19 @@ if ($InstallMonthlyReminder) {
     }
     $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     $first = (Get-Date -Day 1 -Hour 19 -Minute 0 -Second 0).AddMonths(1).ToString('yyyy-MM-ddTHH:mm:ss')
-    $script = [System.Security.SecurityElement]::Escape($PSCommandPath)
+    $taskArgs = '-NoProfile -ExecutionPolicy RemoteSigned -File "' + $PSCommandPath + '" -Reminder'
+    if ($B2Config) {
+        if (!(Test-Path -LiteralPath $B2Config -PathType Leaf)) { throw 'Configuracao B2 nao encontrada.' }
+        $taskArgs += ' -B2Config "' + (Resolve-Path -LiteralPath $B2Config).Path + '"'
+    }
+    $taskArgs = [System.Security.SecurityElement]::Escape($taskArgs)
     $xml = @"
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo><Description>Ensaio assistido; nao guarda senhas e nao restaura producao.</Description></RegistrationInfo>
   <Triggers><CalendarTrigger><StartBoundary>$first</StartBoundary><Enabled>true</Enabled><ScheduleByMonth><DaysOfMonth><Day>1</Day></DaysOfMonth><Months><January/><February/><March/><April/><May/><June/><July/><August/><September/><October/><November/><December/></Months></ScheduleByMonth></CalendarTrigger></Triggers>
   <Principals><Principal id="Author"><UserId>$sid</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
   <Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries><StartWhenAvailable>true</StartWhenAvailable><ExecutionTimeLimit>PT2H</ExecutionTimeLimit><Enabled>true</Enabled></Settings>
-  <Actions Context="Author"><Exec><Command>powershell.exe</Command><Arguments>-NoProfile -ExecutionPolicy RemoteSigned -File &quot;$script&quot; -Reminder</Arguments><WorkingDirectory>$([System.Security.SecurityElement]::Escape($PSScriptRoot))</WorkingDirectory></Exec></Actions>
+  <Actions Context="Author"><Exec><Command>powershell.exe</Command><Arguments>$taskArgs</Arguments><WorkingDirectory>$([System.Security.SecurityElement]::Escape($PSScriptRoot))</WorkingDirectory></Exec></Actions>
 </Task>
 "@
     Register-ScheduledTask -TaskName $taskName -Xml $xml | Out-Null
