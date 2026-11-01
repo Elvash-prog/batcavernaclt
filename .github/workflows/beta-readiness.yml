@@ -44,6 +44,7 @@ jobs:
       - name: Verificar criptografia e integridade com dados sintéticos
         env:
           STORAGE_TEST_IMAGE: public.ecr.aws/supabase/storage-api:v1.84.19
+          GOTRUE_TEST_IMAGE: public.ecr.aws/supabase/gotrue:v2.185.0
         run: python3 -m unittest discover -s tools/operations -p 'test_*.py' -v
       - name: Aplicar esquema isolado e validar permissões
         env:

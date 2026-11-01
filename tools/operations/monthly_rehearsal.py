@@ -14,6 +14,7 @@ import os
 import pathlib
 import re
 import shutil
+import shlex
 import socket
 import subprocess
 import sys
@@ -192,7 +193,7 @@ site_url = "http://127.0.0.1:55321"
 additional_redirect_urls = []
 enable_signup = false
 [auth.email]
-enable_signup = false
+enable_signup = true
 '''
 
 
@@ -400,6 +401,160 @@ class Rehearsal:
         if failed: self.report['status']='failed';self.report['stop_error']=True
 
 
+def auth_replacement_args(attempt, info, envfile):
+    """Recreate only the stateless Auth service; its stopped predecessor stays."""
+    host,config=info['HostConfig'],info['Config']
+    if info.get('Mounts') or host.get('Binds') or host.get('Privileged') or host.get('VolumesFrom') or host.get('Tmpfs'):
+        raise Failed('AUTH_CONTAINER_UNSUPPORTED')
+    image=config['Image']
+    if not re.fullmatch(r'public\.ecr\.aws/supabase/gotrue:v[0-9]+\.[0-9]+\.[0-9]+',image):
+        raise Failed('AUTH_IMAGE_UNSUPPORTED')
+    entry=config.get('Entrypoint') or []
+    if len(entry)>1: raise Failed('AUTH_ENTRYPOINT_UNSUPPORTED')
+    args=['docker','create','--name','supabase_auth_'+attempt.project,'--network',attempt.network,
+          '--network-alias','auth','--restart',host.get('RestartPolicy',{}).get('Name') or 'no',
+          '--env-file',str(envfile)]
+    for key,value in (config.get('Labels') or {}).items():args += ['--label',key+'='+value]
+    for port in (config.get('ExposedPorts') or {}):args += ['--expose',port]
+    for option,key in (('--security-opt','SecurityOpt'),('--cap-add','CapAdd'),('--cap-drop','CapDrop'),
+                       ('--add-host','ExtraHosts'),('--dns','Dns'),('--dns-search','DnsSearch')):
+        for value in host.get(key) or []:args += [option,value]
+    if host.get('ReadonlyRootfs'):args += ['--read-only']
+    if host.get('Init'):args += ['--init']
+    if host.get('Memory') or host.get('NanoCpus') or host.get('Ulimits'):
+        raise Failed('AUTH_RESOURCE_CONFIG_UNSUPPORTED')
+    log=host.get('LogConfig') or {}
+    if log.get('Type'):args += ['--log-driver',log['Type']]
+    for key,value in (log.get('Config') or {}).items():args += ['--log-opt',key+'='+value]
+    if config.get('User'):args += ['--user',config['User']]
+    if config.get('WorkingDir'):args += ['--workdir',config['WorkingDir']]
+    if entry:args += ['--entrypoint',entry[0]]
+    health=config.get('Healthcheck') or {}
+    test=health.get('Test') or []
+    if test and test[0] in {'CMD','CMD-SHELL'}:
+        cmd=shlex.join(test[1:]) if test[0]=='CMD' else test[1]
+        args += ['--health-cmd',cmd]
+        for key,flag in (('Interval','--health-interval'),('Timeout','--health-timeout'),('StartPeriod','--health-start-period')):
+            if health.get(key):args += [flag,str(health[key])+'ns']
+        if health.get('Retries'):args += ['--health-retries',str(health['Retries'])]
+    elif test not in ([],['NONE']):raise Failed('AUTH_HEALTHCHECK_UNSUPPORTED')
+    return args+[image,*(config.get('Cmd') or [])]
+
+
+def enable_email_login(attempt, info):
+    env=info['Config'].get('Env') or []
+    settings=dict(value.split('=',1) for value in env)
+    if settings.get('GOTRUE_DISABLE_SIGNUP')!='true':raise Failed('AUTH_SIGNUPS_MUST_STAY_DISABLED')
+    enabled=settings.get('GOTRUE_EXTERNAL_EMAIL_ENABLED')
+    if enabled=='true':return
+    if enabled!='false':raise Failed('AUTH_EMAIL_CONFIG_UNEXPECTED')
+    if any(any(c in value for c in '\r\n\0') for value in env):raise Failed('AUTH_ENV_FORMAT_UNSUPPORTED')
+    envfile=attempt.root/('auth-env-'+uuid.uuid4().hex+'.tmp')
+    args=auth_replacement_args(attempt,info,envfile)  # Validate before renaming.
+    name='supabase_auth_'+attempt.project
+    prior=name+'-email-desativado-'+uuid.uuid4().hex[:8]
+    apply.private_write(envfile,('\n'.join('GOTRUE_EXTERNAL_EMAIL_ENABLED=true' if value.startswith('GOTRUE_EXTERNAL_EMAIL_ENABLED=') else value for value in env)+'\n').encode())
+    try:
+        attempt.command(['docker','rename',name,prior])
+        attempt.command(args)
+    finally:envfile.unlink()
+    attempt.report['auth_email_provider_corrected']=True
+    cfg=attempt.root/'ensaio'/'supabase'/'config.toml'
+    source=cfg.read_text(encoding='utf-8')
+    fixed,n=re.subn(r'(\[auth\.email\]\s*\n)enable_signup = false',r'\1enable_signup = true',source,count=1)
+    if n:cfg.write_text(fixed,encoding='utf-8')
+
+
+def resume_services(attempt):
+    net=json.loads(attempt.command(['docker','network','inspect',attempt.network]))[0]
+    if not net['Internal'] or net.get('Labels',{}).get('batcaverna.rehearsal')!=attempt.run_id:
+        raise Failed('INTERNAL_NETWORK_REQUIRED')
+    names=['supabase_'+s+'_'+attempt.project for s in SERVICES]
+    infos=json.loads(attempt.command(['docker','inspect',*names,attempt.entry]))
+    if len(infos)!=len(names)+1:raise Failed('SERVICES_MISSING')
+    auth=None
+    wanted={'5432/tcp':[{'HostIp':'127.0.0.1','HostPort':'55322'}],
+            '8000/tcp':[{'HostIp':'127.0.0.1','HostPort':'55321'}],
+            '8025/tcp':[{'HostIp':'127.0.0.1','HostPort':'55324'}]}
+    for info in infos:
+        name=info['Name'].lstrip('/')
+        if info['State']['Running']:raise Failed('RETRY_REQUIRES_STOPPED_SERVICES')
+        networks=set(info['NetworkSettings']['Networks'])
+        if name==attempt.entry:
+            if networks!={attempt.network,attempt.entry} or info['Config']['Image']!=HAPROXY or info['HostConfig'].get('PortBindings')!=wanted:
+                raise Failed('GATEWAY_UNSAFE')
+        else:
+            if name not in names or networks!={attempt.network} or any((info['HostConfig'].get('PortBindings') or {}).values()):
+                raise Failed('SERVICE_NETWORK_UNSAFE')
+            if name=='supabase_db_'+attempt.project and info['Config']['Image']!=PG_IMAGE:raise Failed('POSTGRES_IMAGE_MISMATCH')
+            if name=='supabase_storage_'+attempt.project and info['Config']['Image']!=media.IMAGE:raise Failed('STORAGE_IMAGE_MISMATCH')
+            if name=='supabase_auth_'+attempt.project:auth=info
+    if auth is None:raise Failed('AUTH_SERVICE_MISSING')
+    enable_email_login(attempt,auth)
+    attempt.start_attempted=attempt.gateway_created=True
+    attempt.command(['docker','start',*names,attempt.entry])
+    import time
+    for _ in range(90):
+        states=json.loads(attempt.command(['docker','inspect',*names]))
+        if all(info['State']['Running'] and info['State'].get('Health',{}).get('Status','healthy')=='healthy' for info in states):break
+        time.sleep(2)
+    else:raise Failed('SERVICE_HEALTH_TIMEOUT')
+    attempt.assert_isolated()
+
+
+def retry_access(args):
+    attempt=Rehearsal(args.root.resolve(),args.cli.resolve(),args.retry_access)
+    original=json.loads((attempt.root/'relatorio.json').read_text(encoding='utf-8'))
+    if original.get('run_id')!=attempt.run_id or original.get('stage')!='user_access' or original.get('status')!='failed' or original.get('services_stopped') is not True or original.get('sql',{}).get('status')!='committed':
+        raise Failed('RETRY_REPORT_NOT_ELIGIBLE')
+    if original.get('media',{}).get('admin_downloads_verified')!=original.get('package',{}).get('storage_objects') or original.get('media',{}).get('metadata_preserved') is not True:
+        raise Failed('RETRY_MEDIA_NOT_VERIFIED')
+    lock=args.root/'.ensaio-em-andamento'
+    try:handle=lock.open('x',encoding='utf-8')
+    except FileExistsError:raise Failed('REHEARSAL_ALREADY_RUNNING') from None
+    attempt.report={**original,'status':'failed','stage':'resume_services','retry_access_only':True}
+    for key in ('failure','access','finished_at','stop_error'):attempt.report.pop(key,None)
+    handle.close()
+    try:
+        folder=attempt.root/'backup'
+        manifest=prepare.verify_folder(folder)
+        fresh_date(manifest['created_at'],getattr(args,'max_age_days',7))
+        with attempt.target():
+            resume_services(attempt)
+            # Re-examine rows/FKs in a read-only transaction; no import SQL.
+            _,counts,_,_=prepare.filter_data((folder/'data.sql').read_text(encoding='utf-8-sig'))
+            validation='BEGIN READ ONLY;\n'+apply.validation_sql(counts,read_only=True)+'\nROLLBACK;\n'
+            attempt.command(['docker','exec','-i',prepare.CONTAINER,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres'],validation.encode())
+            attempt.report['sql_rechecked_read_only']=True
+            admin,public=attempt.local_keys()
+            state=media.read_state()
+            items=media.inventory(folder,prepare.verify_folder(folder),state)
+            media.node_call({'action':'preflight','objects':[media.public_item(item) for item in items]})
+            media.verify_buckets_api(state,admin)
+            media.verify_api(items,admin)
+            admin=None
+            attempt.stage('user_access')
+            email=hidden('E-mail da conta BatCaverna (oculto): ').strip()
+            password=hidden('Senha da conta (oculta): ')
+            result=access.run_test(items,state,public,email,password,client=access.LocalClient(public,api=API),lifecycle=True)
+            email=password=None
+            attempt.report['access']=result
+            if media.state_digest(state)!=media.state_digest(media.read_state()):raise Failed('MEDIA_METADATA_CHANGED')
+            if result['status']!='passed':raise Failed('USER_ACCESS_NOT_PASSED')
+            attempt.report.update(status='passed',stage='complete')
+    except KeyboardInterrupt:attempt.report.update(status='failed',failure='CANCELLED')
+    except Exception as error:attempt.report.update(status='failed',failure=error.code if isinstance(error,Failed) else 'LOCAL_STAGE_FAILED')
+    finally:
+        attempt.stop_own_services()
+        attempt.report['finished_at']=dt.datetime.now(dt.timezone.utc).isoformat()
+        report_path=attempt.root/('retomada-'+uuid.uuid4().hex+'.json')
+        try:
+            apply.private_write(report_path,json.dumps(attempt.report,indent=2).encode())
+            print(json.dumps(attempt.report),flush=True)
+        finally:lock.unlink()
+    return 0 if attempt.report['status']=='passed' else 1
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive',type=pathlib.Path)
@@ -410,6 +565,7 @@ def main():
     parser.add_argument('--cli',type=pathlib.Path,required=True)
     parser.add_argument('--max-age-days',type=int,default=7,choices=range(1,61),metavar='1..60')
     parser.add_argument('--check-only',action='store_true')
+    parser.add_argument('--retry-access',metavar='RUN_ID')
     args=parser.parse_args()
     if os.name!='nt': parser.error('O comando assistido e destinado ao Windows com Docker Desktop Linux.')
     # The PowerShell entry point grants a private Windows ACL to this parent.
@@ -419,6 +575,9 @@ def main():
         print(json.dumps({'status':'prerequisites_verified','cli_version':'2.122.0','docker_mode':'linux',
                           'ports_available':list(PORTS),'restore_started':False}))
         return 0
+    if args.retry_access:
+        if args.archive or args.b2_config: parser.error('Retomada nao recebe outro backup.')
+        return retry_access(args)
     if bool(args.archive)==bool(args.b2_config) or args.archive and not args.sha256:
         parser.error('Escolha --archive com --sha256, ou --b2-config.')
     return execute(args)

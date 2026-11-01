@@ -8,6 +8,7 @@ param(
     [ValidateRange(1,60)][int]$MaxAgeDays = 7,
     [switch]$InstallMonthlyReminder,
     [switch]$CheckOnly,
+    [ValidatePattern('^[a-f0-9]{32}$')][string]$RetryAccess,
     [switch]$Reminder
 )
 
@@ -76,8 +77,9 @@ if ($InstallMonthlyReminder) {
     return
 }
 
+if ($RetryAccess -and ($Archive -or $B2Config)) { throw 'Retomada nao recebe outro backup.' }
 if ($Archive -and $B2Config) { throw 'Escolha arquivo local ou B2, sem combinar os dois.' }
-if (!$CheckOnly -and !$Archive -and !$B2Config) {
+if (!$CheckOnly -and !$RetryAccess -and !$Archive -and !$B2Config) {
     $dialog = New-Object System.Windows.Forms.OpenFileDialog
     $dialog.Title = 'Selecione a copia criptografada mais recente da BatCaverna'
     $dialog.InitialDirectory = "$env:USERPROFILE\Downloads"
@@ -85,7 +87,7 @@ if (!$CheckOnly -and !$Archive -and !$B2Config) {
     if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { return }
     $Archive = $dialog.FileName
 }
-if (!$CheckOnly -and $Archive) {
+if (!$CheckOnly -and !$RetryAccess -and $Archive) {
     if (!(Test-Path -LiteralPath $Archive -PathType Leaf)) { throw 'Backup nao encontrado.' }
     if (!$Sha256) { $Sha256 = Read-Host 'Cole o SHA-256 confirmado no resumo do backup' }
     if ($Sha256 -notmatch '^[a-fA-F0-9]{64}$') { throw 'SHA-256 invalido.' }
@@ -93,7 +95,7 @@ if (!$CheckOnly -and $Archive) {
         throw 'Hash divergente. Nenhuma restauracao foi iniciada.'
     }
 }
-if (!$CheckOnly -and !(Test-Path -LiteralPath $Keyring -PathType Container)) {
+if (!$CheckOnly -and !$RetryAccess -and !(Test-Path -LiteralPath $Keyring -PathType Container)) {
     $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
     $dialog.Description = 'Selecione o chaveiro GPG v2 preservado (pasta gnupg)'
     if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { return }
@@ -125,6 +127,7 @@ if (!(Test-Path -LiteralPath $python -PathType Leaf)) {
 }
 $argsPython = @($runner, '--root', $root, '--cli', $cli, '--keyring', $Keyring, '--max-age-days', "$MaxAgeDays")
 if ($CheckOnly) { $argsPython += '--check-only' }
+elseif ($RetryAccess) { $argsPython += @('--retry-access', $RetryAccess) }
 elseif ($B2Config) { $argsPython += @('--b2-config', $B2Config) }
 else { $argsPython += @('--archive', $Archive, '--sha256', $Sha256) }
 & $python @argsPython

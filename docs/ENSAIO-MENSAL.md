@@ -1,6 +1,6 @@
 # Ensaio mensal assistido no Windows
 
-**Estado: implementação candidata, ainda sem execução integral no Windows/Docker.** O ensaio manual de 01/11/2026 foi aprovado; isso não valida automaticamente o novo coordenador. Antes de instalar o lembrete, validar o iniciador PowerShell e executar um ensaio completo com esta versão em um destino novo. A publicação e os testes com Docker desta implementação ficaram bloqueados na sessão de desenvolvimento pelo limite da revisão automática.
+**Estado: versão candidata, com testes de Windows, PostgreSQL e imagens reais de Auth/Storage.** O primeiro ensaio automatizado real aprovou SQL e mídias; a etapa de login retornou 422 por uma configuração do provedor de e-mail, corrigida nesta versão. A retomada de acesso está descrita ao final e ainda depende de confirmação na cópia real. Não instalar o lembrete antes de aprovar esse resultado. O ensaio manual anterior de 01/11/2026 não substitui a validação do novo coordenador.
 
 O backup diário no GitHub Actions continua independente deste comando. O agendamento diário gera cópias criptografadas no Drive/B2. O ensaio mensal testa se uma cópia recente pode ser recuperada e usada. Não depende de manter o computador ligado para gerar o backup diário.
 
@@ -91,3 +91,20 @@ A ausência de relatório mensal precisa ser acompanhada pelo responsável; o le
 A primeira execução de `-CheckOnly` foi confirmada no Windows: CLI 2.122.0, Docker Linux e portas livres, sem restauração iniciada. Na tentativa seguinte, o iniciador original falhou no `Set-Acl` por `SeSecurityPrivilege`, antes de chamar o coordenador Python. Não é necessário repetir importações nem elevar o PowerShell.
 
 A correção lê e persiste apenas a seção Access (DACL) pela API .NET, preservando owner/group/auditoria. Remove regras explícitas anteriores e mantém somente usuário atual/SYSTEM, com herança para os arquivos do ensaio. O teste Windows chama essa função duas vezes no mesmo diretório e confere as duas permissões resultantes, tanto no Windows PowerShell quanto no PowerShell Core disponível. Não substitui a validação integral do novo ensaio.
+
+
+## Retomar somente o acesso após SQL/mídias aprovados
+
+O primeiro ensaio automatizado real confirmou 73 arquivos, 65 mídias, formato 2 e definições de functions incluídas, SQL em COMMIT (54 tabelas, 2.596 registros, 88 FKs examinadas) e 65 downloads administrativos com metadados preservados. A etapa de login retornou 422; os serviços foram parados e o ambiente preservado. Isso ainda não aprova o ensaio completo.
+
+O coordenador inicial gerava `[auth.email].enable_signup=false`. No [CLI 2.122.0](https://github.com/supabase/cli/blob/v2.122.0/apps/cli/src/commands/start/services/gotrue.service.ts), essa opção determina `GOTRUE_EXTERNAL_EMAIL_ENABLED`, desabilitando também o login. A configuração corrigida mantém `[auth].enable_signup=false` (`GOTRUE_DISABLE_SIGNUP=true`) e usa `[auth.email].enable_signup=true`: login por e-mail habilitado e novos cadastros globalmente bloqueados.
+
+```powershell
+.\Start-RecoveryRehearsal.ps1 -RetryAccess 'IDENTIFICADOR_DO_ENSAIO'
+```
+
+Essa opção só aceita um relatório inicial com SQL confirmado, downloads administrativos aprovados e serviços parados, na pasta gerada para o próprio identificador hexadecimal. Não pede pacote/GPG nem recebe outro backup. Verifica novamente o pacote e sua data, a rede e os nomes/imagens/portas dos contêineres. Uma configuração inesperada impede a correção.
+
+Quando o Auth ainda está com o provedor de e-mail desativado, preserva o contêiner anterior parado com outro nome e recria somente o Auth sem volumes, na mesma rede interna, copiando ambiente, imagem e configurações compatíveis e alterando o flag de e-mail. O ambiente temporário que contém os segredos do serviço fica na pasta privada e é apagado depois da criação; nunca é impresso. Não habilita novos cadastros. Contêiner com mounts, privilégios elevados ou configurações não suportadas é recusado antes dessa alteração.
+
+Depois, inicia os serviços existentes, reexamina contagens e FKs em transação READ ONLY sem CREATE/INSERT de tabelas de validação, confere os blobs já presentes e seus downloads e pede a conta local para repetir acesso/perfil/logout/refresh. Não executa os SQLs de importação nem copia novamente as mídias. O relatório inicial é preservado; cada retomada grava outro `retomada-<identificador>.json`. Para novamente os serviços gerados ao terminar. Os códigos de erro Auth compartilháveis vêm de uma lista fixa; mensagens/corpos remotos continuam privados.

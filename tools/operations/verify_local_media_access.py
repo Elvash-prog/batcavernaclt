@@ -203,7 +203,12 @@ def run_test(items,state,key,email,password,client=None,visibility=None,lifecycl
     try:
         status,session = client.json_request('POST','/auth/v1/token?grant_type=password',body={'email':email,'password':password})
         report['login_status'] = status
-        if status != 200: raise CheckFailed('LOGIN_REJECTED')
+        if status != 200:
+            code = session.get('error_code') if isinstance(session,dict) else None
+            if code in {'email_provider_disabled','invalid_credentials','validation_failed','bad_json',
+                        'over_request_rate_limit','request_timeout','unexpected_failure'}:
+                report['auth_error_code'] = code
+            raise CheckFailed('LOGIN_REJECTED')
         phase = 'user'
         status,user = client.json_request('GET','/auth/v1/user',token=session['access_token'])
         report['user_status'] = status

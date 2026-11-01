@@ -313,6 +313,132 @@ Write-Output 'PRIVATE_ACL_REPEATABLE'
                 self.assertIn(b'PRIVATE_ACL_REPEATABLE',result.stdout)
 
 
+class RetryTests(unittest.TestCase):
+    def test_email_logins_are_enabled_while_global_signups_remain_disabled(self):
+        import tomllib
+        cfg=tomllib.loads(monthly.project_config('synthetic'))
+        self.assertFalse(cfg['auth']['enable_signup'])
+        self.assertTrue(cfg['auth']['email']['enable_signup'])
+
+    def auth_info(self,attempt):
+        return {'Name':'/supabase_auth_'+attempt.project,'Mounts':[],
+                'HostConfig':{'RestartPolicy':{'Name':'unless-stopped'}},
+                'Config':{'Image':'public.ecr.aws/supabase/gotrue:v2.185.0',
+                          'Env':['GOTRUE_DISABLE_SIGNUP=true','GOTRUE_EXTERNAL_EMAIL_ENABLED=false','GOTRUE_JWT_SECRET=synthetic-private-secret'],
+                          'ExposedPorts':{'9999/tcp':{}},'Entrypoint':['auth'],'Cmd':[],
+                          'Labels':{'com.supabase.cli.project':attempt.project},
+                          'Healthcheck':{'Test':['CMD','wget','--spider','http://127.0.0.1:9999/health'],'Interval':10000000000,'Timeout':2000000000,'Retries':3}}}
+
+    def test_only_auth_is_recreated_and_old_container_and_global_signup_setting_are_preserved(self):
+        with tempfile.TemporaryDirectory() as temp:
+            attempt=monthly.Rehearsal(pathlib.Path(temp),'cli')
+            attempt.root.mkdir();cfg=attempt.root/'ensaio'/'supabase';cfg.mkdir(parents=True)
+            (cfg/'config.toml').write_text('[auth]\nenable_signup = false\n[auth.email]\nenable_signup = false\n')
+            info=self.auth_info(attempt);calls=[];captured=[]
+            def command(args,**kw):
+                calls.append(args)
+                if args[:2]==['docker','create']:
+                    env=pathlib.Path(args[args.index('--env-file')+1]);captured.append(env.read_text())
+                    self.assertNotIn('synthetic-private-secret',' '.join(args))
+                return b''
+            attempt.command=command
+            monthly.enable_email_login(attempt,info)
+            self.assertEqual([args[1] for args in calls],['rename','create'])
+            self.assertTrue(calls[0][3].startswith(calls[0][2]+'-email-desativado-'))
+            self.assertIn('GOTRUE_EXTERNAL_EMAIL_ENABLED=true',captured[0])
+            self.assertIn('GOTRUE_DISABLE_SIGNUP=true',captured[0])
+            self.assertIn('GOTRUE_JWT_SECRET=synthetic-private-secret',captured[0])
+            self.assertFalse(list(attempt.root.glob('auth-env-*')))
+            self.assertIn('[auth]\nenable_signup = false',(cfg/'config.toml').read_text())
+            self.assertIn('[auth.email]\nenable_signup = true',(cfg/'config.toml').read_text())
+            self.assertNotIn('synthetic-private-secret',json.dumps(attempt.report))
+
+    def test_auth_with_external_mounts_or_enabled_signups_is_refused_before_any_mutation(self):
+        for case in ('mount','signup','multiline'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as temp:
+                attempt=monthly.Rehearsal(pathlib.Path(temp),'cli');info=self.auth_info(attempt)
+                if case=='mount':info['Mounts']=[{'Source':'private'}]
+                if case=='signup':info['Config']['Env'][0]='GOTRUE_DISABLE_SIGNUP=false'
+                if case=='multiline':info['Config']['Env'].append('PRIVATE=canary\nunsafe')
+                with patch.object(attempt,'command',side_effect=AssertionError('must not mutate')):
+                    with self.assertRaises(monthly.Failed):monthly.enable_email_login(attempt,info)
+
+    def test_access_retry_uses_read_only_validation_and_never_imports_or_copies_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp);attempt=monthly.Rehearsal(root,'cli','a'*32);attempt.root.mkdir()
+            folder=attempt.root/'backup';folder.mkdir();(folder/'data.sql').write_text('COPY "auth"."users" ("id") FROM stdin;\n\\.\n')
+            original={'run_id':attempt.run_id,'status':'failed','stage':'user_access','services_stopped':True,
+                      'sql':{'status':'committed'},'media':{'admin_downloads_verified':1,'metadata_preserved':True},'package':{'storage_objects':1}}
+            (attempt.root/'relatorio.json').write_text(json.dumps(original))
+            args=argparse.Namespace(root=root,cli=root/'cli',retry_access=attempt.run_id)
+            commands=[];attempt.command=lambda args,data=None,**kw:commands.append((args,data)) or b''
+            def stop():attempt.report['services_stopped']=True
+            with contextlib.ExitStack() as stack:
+                for obj,name,kw in ((monthly,'Rehearsal',{'return_value':attempt}),
+                                    (monthly,'resume_services',{}),(monthly.prepare,'verify_folder',{'return_value':{'created_at':dt.datetime.now(dt.timezone.utc).isoformat()}}),
+                                    (attempt,'local_keys',{'return_value':('admin','public')}),
+                                    (monthly.media,'read_state',{'return_value':{'objects':[],'buckets':[]}}),
+                                    (monthly.media,'inventory',{'return_value':[]}),
+                                    (monthly.media,'node_call',{}),(monthly.media,'verify_buckets_api',{}),(monthly.media,'verify_api',{}),
+                                    (monthly,'hidden',{'return_value':'private-credential'}),
+                                    (monthly.access,'run_test',{'return_value':{'status':'passed'}}),
+                                    (attempt,'stop_own_services',{'side_effect':stop})):
+                    stack.enter_context(patch.object(obj,name,**kw))
+                imports=stack.enter_context(patch.object(attempt,'restore_sql',side_effect=AssertionError('no import')))
+                copies=stack.enter_context(patch.object(attempt,'restore_media',side_effect=AssertionError('no copy')))
+                with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(monthly.retry_access(args),0)
+                imports.assert_not_called();copies.assert_not_called()
+            self.assertEqual(len(commands),1)
+            sql=commands[0][1].decode()
+            self.assertTrue(sql.startswith('BEGIN READ ONLY;'))
+            self.assertNotIn('CREATE TEMP',sql);self.assertNotIn('INSERT INTO',sql)
+            self.assertEqual(json.loads((attempt.root/'relatorio.json').read_text()),original)
+            self.assertEqual(len(list(attempt.root.glob('retomada-*.json'))),1)
+            self.assertFalse((root/'.ensaio-em-andamento').exists())
+
+
+@unittest.skipUnless(os.environ.get('GOTRUE_TEST_IMAGE'),'disposable Docker Auth image required')
+class NativeAuthRetryTests(unittest.TestCase):
+    def test_recreation_changes_only_email_flag_keeps_prior_container_and_copies_no_database(self):
+        image=os.environ['GOTRUE_TEST_IMAGE']
+        with tempfile.TemporaryDirectory() as temp:
+            attempt=monthly.Rehearsal(pathlib.Path(temp),'cli');attempt.root.mkdir()
+            cfg=attempt.root/'ensaio'/'supabase';cfg.mkdir(parents=True)
+            (cfg/'config.toml').write_text(monthly.project_config(attempt.project).replace('[auth.email]\nenable_signup = true','[auth.email]\nenable_signup = false'))
+            name='supabase_auth_'+attempt.project
+            attempt.command(['docker','network','create','--internal',attempt.network])
+            try:
+                attempt.command(['docker','create','--name',name,'--network',attempt.network,'--network-alias','auth',
+                                 '--restart','unless-stopped','--expose','9999/tcp',
+                                 '--env','GOTRUE_DISABLE_SIGNUP=true','--env','GOTRUE_EXTERNAL_EMAIL_ENABLED=false',
+                                 '--env','GOTRUE_JWT_SECRET=synthetic-secret',
+                                 '--health-cmd','wget --spider http://127.0.0.1:9999/health',image])
+                before=json.loads(attempt.command(['docker','inspect',name]))[0]
+                monthly.enable_email_login(attempt,before)
+                after=json.loads(attempt.command(['docker','inspect',name]))[0]
+                oldenv=dict(value.split('=',1) for value in before['Config']['Env'])
+                newenv=dict(value.split('=',1) for value in after['Config']['Env'])
+                expected={**oldenv,'GOTRUE_EXTERNAL_EMAIL_ENABLED':'true'}
+                self.assertEqual(newenv,expected)
+                self.assertEqual(after['Config']['Image'],before['Config']['Image'])
+                self.assertEqual(after['Config']['Entrypoint'],before['Config']['Entrypoint'])
+                self.assertEqual(after['Config']['Cmd'],before['Config']['Cmd'])
+                self.assertEqual(set(after['NetworkSettings']['Networks']),{attempt.network})
+                self.assertFalse(after['State']['Running'])
+                self.assertFalse(after['Mounts'])
+                names=attempt.command(['docker','ps','-a','--filter','name='+name,'--format','{{.Names}}']).decode().splitlines()
+                self.assertEqual(len(names),2)
+                self.assertTrue(any(item.startswith(name+'-email-desativado-') for item in names))
+                self.assertFalse(list(attempt.root.glob('auth-env-*')))
+            finally:
+                # Only synthetic fixture containers generated by this test.
+                names=attempt.command(['docker','ps','-a','--filter','name='+name,'--format','{{.Names}}']).decode().splitlines()
+                for owned in names:
+                    if owned==name or owned.startswith(name+'-email-desativado-'):
+                        attempt.command(['docker','rm','-f',owned])
+                attempt.command(['docker','network','rm',attempt.network])
+
+
 class LifecycleClient(access_tests.FakeClient):
     def __init__(self,profile=True,blocked=True):
         super().__init__();self.profile=profile;self.blocked=blocked
