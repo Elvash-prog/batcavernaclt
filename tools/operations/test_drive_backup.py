@@ -46,6 +46,13 @@ class DriveBackupTests(unittest.TestCase):
         slots[2] = self.slot(3, '2026-10-24')
         self.assertIsNone(db.select_slot(slots, '2026-10-24'))
 
+    def test_explicit_key_rotation_replaces_today_without_consuming_another_slot(self):
+        slots = [self.slot(i, f'2026-10-{i:02d}') for i in range(1, 8)]
+        slots[3] = self.slot(4, '2026-10-24')
+        self.assertEqual(db.select_slot(slots, '2026-10-24', True)['id'], db.SLOTS[3])
+        self.assertIsNone(db.select_slot(slots, '2026-10-24'))
+        self.assertEqual(db.select_slot(slots, '2026-10-25', True)['id'], db.SLOTS[0])
+
     def test_upload_location_rejects_credential_forwarding(self):
         drive = db.Drive('synthetic-token')
         drive.opener = Mock()
