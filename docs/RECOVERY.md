@@ -253,4 +253,23 @@ py restore_local_media.py --backup CAMINHO_PRIVADO/backup-v2
 py restore_local_media.py --backup CAMINHO_PRIVADO/backup-v2 --apply
 ```
 
-Uma interrupção pode deixar parte dos novos blobs restaurados; repetir confere e reutiliza arquivos que já coincidam, sem sobrescrita. Não apagar nem alterar registros para contornar erros. Os resultados compartilháveis contêm apenas contagens. **A ferramenta ainda precisa ser executada na cópia real.** Downloads administrativos aprovados não comprovam acesso de conta comum: a etapa seguinte deve testar as regras existentes com usuário autenticado e requisições anônimas, sem mudar políticas ou tornar buckets públicos.
+Uma interrupção pode deixar parte dos novos blobs restaurados; repetir confere e reutiliza arquivos que já coincidam, sem sobrescrita. Não apagar nem alterar registros para contornar erros. Os resultados compartilháveis contêm apenas contagens. **A execução na cópia real foi confirmada abaixo.** Downloads administrativos aprovados não comprovam acesso de conta comum: a etapa seguinte deve testar as regras existentes com usuário autenticado e requisições anônimas, sem mudar políticas ou tornar buckets públicos.
+
+
+## Resultado da recuperação de mídias e teste de permissões — 01/11/2026
+
+O responsável confirmou a execução de `restore_local_media.py` na cópia real: `status: verified`, 65 objetos, 65 arquivos escritos e 65 downloads administrativos aprovados por tamanho/SHA-256, com `metadata_preserved: true` e `bucket_privacy_preserved: true`. Não houve reimportação de SQL nem alteração dos proprietários ou das regras dos buckets. O acesso com conta autenticada e as negativas anônimas ainda precisam da etapa abaixo.
+
+`verify_local_media_access.py` pede e-mail e senha somente no terminal local, com entrada oculta. Reconfere o pacote, os metadados originais e os serviços isolados; usa a chave pública local, recusando chave HTTP com papel service_role. Após login e verificação de identidade por `/auth/v1/user`, exige JWT com papel authenticated. Contas com fatores MFA verificados recebem resultado limitado e exigem fluxo próprio de MFA, sem desabilitar fatores.
+
+As expectativas são obtidas em transação READ ONLY, sob SET LOCAL ROLE authenticated, com RLS habilitada e os claims da sessão verificada. A ferramenta recusa papel superuser/bypassrls e não coloca conteúdo de claims dentro de blocos SQL com delimitador fixo. Valores de claims são literais escapados e os resultados de set_config são reduzidos a booleanos, sem imprimir JWT ou e-mail.
+
+Para cada mídia do índice, compara a leitura HTTP autenticada às linhas visíveis sob esse contexto e à privacidade do bucket. Downloads permitidos precisam coincidir nos bytes/hashes; erros de autenticação, servidor ou conteúdo divergente não contam como negativas corretas de política. Também tenta a rota pública sem Authorization para todos os objetos: buckets privados devem recusar, e eventuais públicos devem servir os bytes esperados. Retorna apenas contagens e, se necessário, índices numéricos de divergências, sem nomes de objetos ou conteúdo de erros.
+
+```text
+py verify_local_media_access.py --backup CAMINHO_PRIVADO/backup-v2
+```
+
+A sessão local de teste é encerrada ao final, inclusive nos caminhos de falha. Não modifica políticas, aprovações ou senhas. Recusa endpoints HTTP diferentes de `http://127.0.0.1:54321`, não usa proxy nem segue redirecionamentos com credenciais. Se não houver nenhuma mídia autorizada para a conta, o resultado é limitado, sem declarar aprovação completa. Os metadados/privacidade são comparados novamente depois do teste, com as mesmas exclusões de timestamps de acesso descritas acima.
+
+Esse teste compara o comportamento da API às políticas atuais no contexto da conta escolhida; não comprova que todas as regras de negócio são corretas nem substitui uma auditoria entre contas independentes ou testes dos aplicativos nativos. A execução desta etapa na cópia real continua pendente.
