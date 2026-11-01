@@ -183,3 +183,30 @@ Somente depois do teste, atualizar `BACKUP_GPG_PUBLIC_KEY` no GitHub com a **par
 A rotação normal mantém a primeira cópia por dia UTC. Depois de uma troca de chave, executar manualmente `Backup privado Supabase`, modo `backup`, com `replace_today=true`: a opção substitui a reserva do Drive de hoje e permite um novo envio B2 na mesma data, forçando download completo antes da limpeza normal das versões B2. Sem essa opção, uma execução pode exportar com a nova chave e manter nos destinos a cópia anterior do dia. A agenda permanece com o comportamento padrão, sem substituição forçada. A opção não altera o destino AWS opcional.
 
 Conferir o SHA-256 retornado por cada destino contra o da exportação e baixar a nova cópia para testar a recuperação real no computador do responsável. Sucesso de upload não comprova que a nova chave privada consegue descriptografar o pacote.
+
+
+## Ensaio da chave v2 e serviços locais — 01/11/2026
+
+O responsável confirmou a perda da frase secreta da chave anterior, que foi preservada. Criou uma chave v2 em chaveiro separado, exportou as partes pública e privada e confirmou a recuperação de um texto sintético usando as exportações em dois chaveiros novos. Somente a parte pública foi atualizada em `BACKUP_GPG_PUBLIC_KEY`.
+
+Após o [PR 149](https://github.com/Elvash-prog/batcavernaclt/pull/149), a [execução 41313336774](https://github.com/Elvash-prog/batcavernaclt/actions/runs/41313336774) substituiu explicitamente a cópia do dia: Drive e B2 confirmaram por download o mesmo SHA-256 `c0e9b036fb69cc2f52ced3965f83494861be9f11f4d495df65cb6734f674f806`, e o B2 informou `already_present_today: false`. O responsável confirmou no Windows a descriptografia com a chave v2 e a verificação interna: 73 arquivos, 65 mídias, formato 2 e `functions_schema_included: true`. Isso ainda não é uma restauração real desta cópia.
+
+Foi criado outro projeto local, `batcaverna-ensaio-v2`, pelo CLI 2.122.0. Os dois contêineres anteriores permaneceram preservados. Auth, Storage, PostgREST, Kong, Mailpit e PostgreSQL iniciaram saudáveis. O banco novo usa `public.ecr.aws/supabase/postgres:17.11.0.006`; as 320 colunas em 31 tabelas Auth/Storage presentes nos cabeçalhos COPY do backup existem com os mesmos tipos, sem colunas extras obrigatórias sem padrão. O destino foi conferido sem usuários, buckets, objetos e tabelas da aplicação em public; Vault, hooks, http_request() e a publicação Realtime estão presentes.
+
+Uma rede Docker `--internal` pode não publicar portas, mesmo com `-p`, impedindo o bootstrap do CLI em 127.0.0.1:54322. O comportamento foi reproduzido com PostgreSQL sintético. No Windows, os serviços ficaram somente em `batcaverna-ensaio-v2-interna`; um encaminhador TCP separado conecta essa rede a uma rede de entrada e publica exclusivamente `127.0.0.1:54321`, `127.0.0.1:54322` e `127.0.0.1:54324`. As redes dos contêineres com dados devem continuar exclusivamente internas. Não remover o encaminhador enquanto os serviços dependerem dessas portas; não publicar portas em 0.0.0.0.
+
+### Preparação do plano, sem importação
+
+`tools/operations/prepare_service_restore.py` usa `sqlparse==0.6.0` (fixado em `requirements-recovery.txt`) e somente aceita o contêiner `supabase_db_batcaverna-ensaio-v2`, em execução exclusivamente na rede interna acima. Reconfere os hashes da pasta extraída e recusa um banco já preenchido. Não executa SQL de restauração: apenas SELECTs de catálogo e geração de quatro arquivos locais, com hashes em `plan.json`.
+
+O plano separa funções de webhooks exportadas da origem, definições da aplicação, dados e objetos posteriores (gatilhos, políticas e FKs). Mantém tabelas e funções nativas já existentes de Auth/Storage; conflitos de políticas/FKs ou gatilhos da aplicação em tabelas gerenciadas interrompem a preparação para revisão. Isso não comprova equivalência de todas as definições internas da plataforma entre versões. Não aplicar os esquemas gerenciados completos cegamente.
+
+Para Auth, mantém apenas `users`, `identities` e `mfa_factors`; sessões, refresh tokens e demais tabelas Auth são omitidos e suas contagens são registradas no plano. Não desabilita MFA. As contagens da restauração devem ser comparadas ao escopo filtrado em `expected_counts`, sem declarar igualdade com o total bruto do backup.
+
+Exemplo no computador do responsável, com scripts disponíveis localmente:
+
+```text
+py prepare_service_restore.py --backup CAMINHO_PRIVADO/backup-v2 --output CAMINHO_PRIVADO/plano-restauracao
+```
+
+O plano e seus SQLs contêm dados privados e não devem ser enviados ao chat, artifacts ou repositório. Somente o resumo de contagens pode ser compartilhado. A importação precisa de uma etapa separada com transação, parada em erro, conferência das contagens e varredura de FKs existentes: `VALIDATE CONSTRAINT` sozinho não reexamina uma FK que já estava marcada válida e recebeu dados com gatilhos desabilitados. Os testes reais de login e mídias continuam pendentes.
