@@ -465,10 +465,32 @@ def enable_email_login(attempt, info):
     if n:cfg.write_text(fixed,encoding='utf-8')
 
 
+def validate_stopped_service(attempt, info, loopback_default=False):
+    name=info['Name'].lstrip('/')
+    slots={'supabase_'+service+'_'+attempt.project:service for service in SERVICES}
+    if name not in slots or set(info['NetworkSettings']['Networks'])!={attempt.network}:
+        raise Failed('SERVICE_NETWORK_MEMBERSHIP_UNSAFE')
+    if info['State']['Running']:raise Failed('RETRY_REQUIRES_STOPPED_SERVICES')
+    if any((info['NetworkSettings'].get('Ports') or {}).values()):raise Failed('SERVICE_PORT_ACTIVE')
+    # Docker retains CLI PortBindings while an internal bridge suppresses
+    # publication. Accept only these exact declarations, with loopback/default
+    # binding; assert_isolated still requires zero active publications later.
+    allowed={'db':{'5432/tcp':'55322'},'kong':{'8000/tcp':'55321'},'inbucket':{'8025/tcp':'55324'}}.get(slots[name],{})
+    for port,bindings in (info['HostConfig'].get('PortBindings') or {}).items():
+        if port not in allowed:raise Failed('SERVICE_PORT_DECLARATION_UNEXPECTED')
+        if not bindings:continue
+        if len(bindings)!=1:raise Failed('SERVICE_PORT_DECLARATION_UNEXPECTED')
+        binding=bindings[0]
+        if binding.get('HostPort')!=allowed[port] or binding.get('HostIp') not in ('','127.0.0.1'):
+            raise Failed('SERVICE_PORT_DECLARATION_UNEXPECTED')
+        if binding.get('HostIp')=='' and not loopback_default:raise Failed('NETWORK_LOOPBACK_DEFAULT_REQUIRED')
+
+
 def resume_services(attempt):
     net=json.loads(attempt.command(['docker','network','inspect',attempt.network]))[0]
     if not net['Internal'] or net.get('Labels',{}).get('batcaverna.rehearsal')!=attempt.run_id:
         raise Failed('INTERNAL_NETWORK_REQUIRED')
+    loopback_default=(net.get('Options') or {}).get('com.docker.network.bridge.host_binding_ipv4')=='127.0.0.1'
     names=['supabase_'+s+'_'+attempt.project for s in SERVICES]
     infos=json.loads(attempt.command(['docker','inspect',*names,attempt.entry]))
     if len(infos)!=len(names)+1:raise Failed('SERVICES_MISSING')
@@ -484,8 +506,7 @@ def resume_services(attempt):
             if networks!={attempt.network,attempt.entry} or info['Config']['Image']!=HAPROXY or info['HostConfig'].get('PortBindings')!=wanted:
                 raise Failed('GATEWAY_UNSAFE')
         else:
-            if name not in names or networks!={attempt.network} or any((info['HostConfig'].get('PortBindings') or {}).values()):
-                raise Failed('SERVICE_NETWORK_UNSAFE')
+            validate_stopped_service(attempt,info,loopback_default)
             if name=='supabase_db_'+attempt.project and info['Config']['Image']!=PG_IMAGE:raise Failed('POSTGRES_IMAGE_MISMATCH')
             if name=='supabase_storage_'+attempt.project and info['Config']['Image']!=media.IMAGE:raise Failed('STORAGE_IMAGE_MISMATCH')
             if name=='supabase_auth_'+attempt.project:auth=info

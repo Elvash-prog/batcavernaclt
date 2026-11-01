@@ -314,6 +314,52 @@ Write-Output 'PRIVATE_ACL_REPEATABLE'
 
 
 class RetryTests(unittest.TestCase):
+    def test_resume_accepts_only_expected_dormant_bindings_and_checks_active_ports_after_start(self):
+        for case in ('valid','wildcard','wrong-port','foreign-network','no-loopback-default','active-after-start'):
+            with self.subTest(case=case):
+                attempt=monthly.Rehearsal(pathlib.Path('/synthetic'),'cli','b'*32)
+                net,infos,gateway,_=CoordinatorTests().isolation(attempt)
+                net['Options']={'com.docker.network.bridge.host_binding_ipv4':'127.0.0.1'}
+                gateway['State']={'Running':False}
+                gateway['Name']='/'+attempt.entry
+                gateway['HostConfig']={'PortBindings':copy.deepcopy(gateway['NetworkSettings']['Ports'])}
+                ports={'db':('5432/tcp','55322'),'kong':('8000/tcp','55321'),'inbucket':('8025/tcp','55324')}
+                db=None
+                for info in infos:
+                    service=next(k for k in monthly.SERVICES if info['Name']=='/supabase_'+k+'_'+attempt.project)
+                    info['State']['Running']=False
+                    info['HostConfig']={'PortBindings':{}}
+                    if service in ports:
+                        port,host=ports[service]
+                        info['HostConfig']['PortBindings']={port:[{'HostIp':'','HostPort':host}]}
+                    if service=='db':db=info
+                    if service=='storage':info['Config']['Image']=monthly.media.IMAGE
+                if case=='wildcard':db['HostConfig']['PortBindings']['5432/tcp'][0]['HostIp']='0.0.0.0'
+                if case=='wrong-port':db['HostConfig']['PortBindings']['5432/tcp'][0]['HostPort']='59999'
+                if case=='foreign-network':db['NetworkSettings']['Networks']['internet']={}
+                if case=='no-loopback-default':net['Options']={}
+                calls=[]
+                def command(args,**kw):
+                    calls.append(args)
+                    if args[:3]==['docker','network','inspect']:return json.dumps([net]).encode()
+                    if args[:2]==['docker','start']:
+                        for info in infos:info['State']['Running']=True
+                        gateway['State']['Running']=True
+                        if case=='active-after-start':db['NetworkSettings']['Ports']={'5432/tcp':[{'HostIp':'127.0.0.1','HostPort':'55322'}]}
+                        return b''
+                    if args[:2]==['docker','inspect']:
+                        if len(args)==3:return json.dumps([gateway]).encode()
+                        return json.dumps(infos+([gateway] if attempt.entry in args else [])).encode()
+                    raise AssertionError(args)
+                attempt.command=command
+                with attempt.target(),patch.object(monthly,'enable_email_login') as repair,patch.object(monthly.media,'inspect_local'):
+                    if case=='valid':monthly.resume_services(attempt)
+                    else:
+                        with self.assertRaises(monthly.Failed):monthly.resume_services(attempt)
+                    if case not in ('valid','active-after-start'):
+                        repair.assert_not_called()
+                        self.assertFalse(any(args[:2]==['docker','start'] for args in calls))
+
     def test_email_logins_are_enabled_while_global_signups_remain_disabled(self):
         import tomllib
         cfg=tomllib.loads(monthly.project_config('synthetic'))
@@ -436,6 +482,34 @@ class NativeAuthRetryTests(unittest.TestCase):
                 for owned in names:
                     if owned==name or owned.startswith(name+'-email-desativado-'):
                         attempt.command(['docker','rm','-f',owned])
+                attempt.command(['docker','network','rm',attempt.network])
+
+    def test_internal_bridge_retains_declarations_without_publishing_before_and_after_restart(self):
+        image=os.environ['GOTRUE_TEST_IMAGE']
+        with tempfile.TemporaryDirectory() as temp:
+            attempt=monthly.Rehearsal(pathlib.Path(temp),'cli')
+            attempt.command(['docker','network','create','--internal','--opt',
+                             'com.docker.network.bridge.host_binding_ipv4=127.0.0.1',attempt.network])
+            created=[]
+            try:
+                for service,port,host in (('db','5432','55322'),('kong','8000','55321'),('inbucket','8025','55324')):
+                    name='supabase_'+service+'_'+attempt.project
+                    attempt.command(['docker','create','--name',name,'--network',attempt.network,
+                                     '--publish',host+':'+port,'--entrypoint','/bin/sh',image,'-c','sleep 120'])
+                    created.append(name)
+                    stopped=json.loads(attempt.command(['docker','inspect',name]))[0]
+                    self.assertTrue(stopped['HostConfig']['PortBindings'])
+                    monthly.validate_stopped_service(attempt,stopped,loopback_default=True)
+                    attempt.command(['docker','start',name])
+                    active=json.loads(attempt.command(['docker','inspect',name]))[0]
+                    self.assertTrue(active['State']['Running'])
+                    self.assertFalse(any(active['NetworkSettings']['Ports'].values()))
+                    self.assertEqual(set(active['NetworkSettings']['Networks']),{attempt.network})
+                    attempt.command(['docker','stop','--time','1',name])
+                    after=json.loads(attempt.command(['docker','inspect',name]))[0]
+                    monthly.validate_stopped_service(attempt,after,loopback_default=True)
+            finally:
+                for name in created:attempt.command(['docker','rm','-f',name])
                 attempt.command(['docker','network','rm',attempt.network])
 
 
