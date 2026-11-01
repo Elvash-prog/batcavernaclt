@@ -157,3 +157,18 @@ Preservar o contêiner/banco atual sem rede e sem nova importação. Preparar **
 6. Após logout, conferir que renovar a sessão encerrada falha; um access token já emitido pode continuar válido até expirar. Registrar as limitações e os resultados separadamente do ensaio puramente SQL.
 
 Nunca enviar chaves privadas, senhas ou arquivos pessoais ao chat. Não restaurar nada em produção e não trocar os endpoints dos clientes durante o ensaio.
+
+
+## Nova cópia após a correção — 01/11/2026
+
+A correção foi integrada pelo [PR 147](https://github.com/Elvash-prog/batcavernaclt/pull/147), commit `8844ea2b91ebbff11a91cca95584a0228ebf8153`, após as verificações do CI e 37 testes locais aprovados, incluindo a recuperação sintética sem SQL complementar.
+
+A [execução 41309372776](https://github.com/Elvash-prog/batcavernaclt/actions/runs/41309372776) gerou uma nova cópia com esse commit e terminou com sucesso:
+
+- Manifesto formato 2; `functions_schema_included: true`.
+- 73 arquivos inventariados, incluindo 65 objetos de mídia. O arquivo adicional é `functions_schema.sql`.
+- Drive e Backblaze B2 concluídos com `download_verified: true` em ambos; o B2 foi executado com download completo habilitado.
+- SHA-256 do arquivo criptografado: `f67668355d96ceecfd5ccbddd141c2c89ad07ca7f9e2bb417fb17a722b51188b`.
+- `decryption_verified: false`, esperado no runner que só possui a chave pública. A integridade do pacote em claro foi verificada antes da criptografia; os downloads conferiram a cópia criptografada.
+
+Isso confirma a nova exportação e os destinos, além da regressão sintética de recuperação. **Não confirma a descriptografia nem a restauração real desta nova cópia.** Esses passos exigem a chave privada preservada no computador do responsável e outro destino isolado, sem repetir a importação no contêiner `batcaverna-supabase-restauracao`. Os testes locais de login e mídias continuam preparados no roteiro acima, sem execução sobre esta cópia.
