@@ -84,3 +84,10 @@ Cria `BatCaverna-Ensaio-Mensal-Assistido` no Agendador de Tarefas: dia 1, às 19
 Uma tarefa existente não é substituída. Manter a pasta das ferramentas no mesmo caminho. Por padrão, o lembrete usa o modo de seleção de arquivo. Para instalar o lembrete com download B2, informar também `-B2Config 'CAMINHO_PRIVADO\b2-leitura.json'` na instalação: somente o caminho do arquivo de configuração é gravado na tarefa; as duas credenciais B2 continuam sendo pedidas localmente a cada ensaio. Para desativar/remover o lembrete, usar o Agendador de Tarefas. Isso não altera a agenda do backup diário.
 
 A ausência de relatório mensal precisa ser acompanhada pelo responsável; o lembrete não é um monitor externo. As notificações de falha do GitHub e a data da última cópia diária válida também precisam de acompanhamento. Este ensaio continua limitado às políticas da conta escolhida e não cobre auditoria entre contas independentes, aplicativos nativos ou recuperação de toda a infraestrutura/segredos externos do Supabase.
+
+
+## Correção das permissões da pasta no Windows
+
+A primeira execução de `-CheckOnly` foi confirmada no Windows: CLI 2.122.0, Docker Linux e portas livres, sem restauração iniciada. Na tentativa seguinte, o iniciador original falhou no `Set-Acl` por `SeSecurityPrivilege`, antes de chamar o coordenador Python. Não é necessário repetir importações nem elevar o PowerShell.
+
+A correção lê e persiste apenas a seção Access (DACL) pela API .NET, preservando owner/group/auditoria. Remove regras explícitas anteriores e mantém somente usuário atual/SYSTEM, com herança para os arquivos do ensaio. O teste Windows chama essa função duas vezes no mesmo diretório e confere as duas permissões resultantes, tanto no Windows PowerShell quanto no PowerShell Core disponível. Não substitui a validação integral do novo ensaio.

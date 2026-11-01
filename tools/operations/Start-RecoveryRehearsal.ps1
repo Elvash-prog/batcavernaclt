@@ -12,6 +12,34 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Set-RehearsalPrivateAccess {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $directory = New-Object System.IO.DirectoryInfo($Path)
+    $section = [System.Security.AccessControl.AccessControlSections]::Access
+    # Read and persist only the DACL. Set-Acl can request an audit/SACL update
+    # on a reused directory and require SeSecurityPrivilege unnecessarily.
+    if ($PSVersionTable.PSEdition -eq 'Core') {
+        $acl = [System.IO.FileSystemAclExtensions]::GetAccessControl($directory, $section)
+    } else { $acl = $directory.GetAccessControl($section) }
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($existing in @($acl.GetAccessRules($true, $false, [System.Security.Principal.SecurityIdentifier]))) {
+        $acl.RemoveAccessRuleSpecific($existing)
+    }
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+    $inherit = [System.Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
+    $propagate = [System.Security.AccessControl.PropagationFlags]::None
+    $allow = [System.Security.AccessControl.AccessControlType]::Allow
+    foreach ($principal in @($identity, (New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')))) {
+        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($principal, 'FullControl', $inherit, $propagate, $allow)
+        $acl.AddAccessRule($rule)
+    }
+    if ($PSVersionTable.PSEdition -eq 'Core') {
+        [System.IO.FileSystemAclExtensions]::SetAccessControl($directory, $acl)
+    } else { $directory.SetAccessControl($acl) }
+}
+
 Add-Type -AssemblyName System.Windows.Forms
 if ($Reminder) {
     $answer = [System.Windows.Forms.MessageBox]::Show(
@@ -81,17 +109,7 @@ if (Test-Path -LiteralPath $root) {
         throw 'A pasta de ensaios nao pode ser arquivo, link ou juncao.'
     }
 } else { New-Item -ItemType Directory -Path $root | Out-Null }
-$acl = New-Object System.Security.AccessControl.DirectorySecurity
-$acl.SetAccessRuleProtection($true, $false)
-$identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-$inherit = [System.Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
-$propagate = [System.Security.AccessControl.PropagationFlags]::None
-$allow = [System.Security.AccessControl.AccessControlType]::Allow
-foreach ($principal in @($identity, (New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')))) {
-    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule($principal, 'FullControl', $inherit, $propagate, $allow)
-    $acl.AddAccessRule($rule)
-}
-Set-Acl -LiteralPath $root -AclObject $acl
+Set-RehearsalPrivateAccess -Path $root
 
 $cli = "$env:USERPROFILE\BatCaverna-Servicos-v2\ferramentas\supabase-2.122.0\supabase.exe"
 if (!(Test-Path -LiteralPath $cli -PathType Leaf)) { throw 'CLI 2.122.0 do ensaio anterior nao encontrado.' }

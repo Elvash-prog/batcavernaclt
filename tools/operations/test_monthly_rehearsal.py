@@ -7,6 +7,7 @@ import datetime as dt
 import hashlib
 import io
 import json
+import os
 import pathlib
 import subprocess
 import tarfile
@@ -259,6 +260,49 @@ class WorkflowTests(unittest.TestCase):
         parser="param($p) $tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile($p,[ref]$tokens,[ref]$errors) | Out-Null; if ($errors.Count) { $errors | ForEach-Object { $_.Message }; exit 1 }"
         result=subprocess.run(['pwsh','-NoProfile','-NonInteractive','-Command','& {'+parser+'} '+"'"+str(script).replace("'","''")+"'"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         self.assertEqual(result.returncode,0,result.stdout.decode()+result.stderr.decode())
+
+
+@unittest.skipUnless(os.name=='nt','Windows DACL requires Windows')
+class WindowsAccessTests(unittest.TestCase):
+    def test_private_acl_is_repeatable_without_touching_owner_or_audit_sections(self):
+        launcher=pathlib.Path(monthly.__file__).with_name('Start-RecoveryRehearsal.ps1')
+        source=r"""
+param($script,$directory)
+$ErrorActionPreference='Stop'
+$tokens=$null; $errors=$null
+$ast=[System.Management.Automation.Language.Parser]::ParseFile($script,[ref]$tokens,[ref]$errors)
+if ($errors.Count) { throw 'INVALID_POWERSHELL_SYNTAX' }
+$fn=$ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Set-RehearsalPrivateAccess' },$true)
+if (!$fn) { throw 'ACL_HELPER_MISSING' }
+$body=$fn.Body.GetScriptBlock()
+# Run twice against the same existing directory: the reported failure was on
+# the second launcher invocation after CheckOnly had already created the ACL.
+& $body $directory
+& $body $directory
+$item=New-Object System.IO.DirectoryInfo($directory)
+$section=[System.Security.AccessControl.AccessControlSections]::Access
+if ($PSVersionTable.PSEdition -eq 'Core') {
+  $acl=[System.IO.FileSystemAclExtensions]::GetAccessControl($item,$section)
+} else { $acl=$item.GetAccessControl($section) }
+$rules=@($acl.GetAccessRules($true,$true,[System.Security.Principal.SecurityIdentifier]))
+$ids=@([System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value,'S-1-5-18')
+if (!$acl.AreAccessRulesProtected -or $rules.Count -ne 2) { throw 'ACL_NOT_PRIVATE' }
+foreach ($rule in $rules) {
+  if ($rule.IdentityReference.Value -notin $ids -or $rule.IsInherited -or
+      $rule.AccessControlType -ne 'Allow' -or $rule.FileSystemRights -ne 'FullControl' -or
+      [int]$rule.InheritanceFlags -ne 3) { throw 'ACL_RULE_UNEXPECTED' }
+}
+Write-Output 'PRIVATE_ACL_REPEATABLE'
+"""
+        for executable in ('powershell.exe','pwsh'):
+            binary=shutil.which(executable)
+            if not binary:continue
+            with self.subTest(executable=executable),tempfile.TemporaryDirectory() as temp:
+                quote=lambda text: "'"+str(text).replace("'","''")+"'"
+                command='& {'+source+'} '+quote(launcher)+' '+quote(temp)
+                result=subprocess.run([binary,'-NoProfile','-NonInteractive','-Command',command],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                self.assertEqual(result.returncode,0,result.stdout.decode(errors='replace')+result.stderr.decode(errors='replace'))
+                self.assertIn(b'PRIVATE_ACL_REPEATABLE',result.stdout)
 
 
 class LifecycleClient(access_tests.FakeClient):
