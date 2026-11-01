@@ -1,6 +1,6 @@
 # Ensaio mensal assistido no Windows
 
-**Estado: versão candidata, com testes de Windows, PostgreSQL e imagens reais de Auth/Storage.** O primeiro ensaio automatizado real aprovou SQL e mídias; a etapa de login retornou 422 por uma configuração do provedor de e-mail, corrigida nesta versão. A retomada de acesso está descrita ao final e ainda depende de confirmação na cópia real. Não instalar o lembrete antes de aprovar esse resultado. O ensaio manual anterior de 01/11/2026 não substitui a validação do novo coordenador.
+**Estado: ensaio real aprovado em 01/11/2026, após correções e retomada sem nova importação.** A primeira fase validou pacote, SQL e mídias; a retomada corrigida confirmou login/perfil, acesso autenticado e anônimo, logout/refresh e parada dos serviços. O resultado detalhado está ao final. Os testes automatizados cobrem Windows, PostgreSQL e imagens reais de Auth/Storage. O lembrete mensal ainda precisa ser instalado no computador do responsável; não foi ativado remotamente.
 
 O backup diário no GitHub Actions continua independente deste comando. O agendamento diário gera cópias criptografadas no Drive/B2. O ensaio mensal testa se uma cópia recente pode ser recuperada e usada. Não depende de manter o computador ligado para gerar o backup diário.
 
@@ -73,7 +73,7 @@ O ID e a chave de aplicação são solicitados com entrada oculta a cada ensaio 
 
 ## Lembrete mensal
 
-**Instalar somente depois da validação integral desta versão.** Na pasta permanente das ferramentas:
+**O resultado real foi aprovado nas condições registradas abaixo.** Na pasta permanente das ferramentas:
 
 ```powershell
 .\Start-RecoveryRehearsal.ps1 -InstallMonthlyReminder
@@ -114,3 +114,16 @@ Depois, inicia os serviços existentes, reexamina contagens e FKs em transação
 O diagnóstico do ambiente real confirmou os seis serviços parados, somente na rede interna e com `NetworkSettings.Ports={}`. O Docker conserva declarações em `HostConfig.PortBindings` para db (`5432/tcp → 55322`), kong (`8000/tcp → 55321`) e inbucket (`8025/tcp → 55324`), mesmo quando a rede interna impede publicação. A checagem inicial da retomada tratava essa configuração como exposição e interrompia antes da correção do Auth.
 
 A checagem corrigida aceita somente essas três declarações, nas portas exatas, com endereço explícito loopback ou vazio apenas quando o padrão da rede é `127.0.0.1`. Continua exigindo rede interna exclusiva com o identificador do ensaio; depois da partida, todos os serviços de dados precisam permanecer sem portas efetivamente publicadas. Rede adicional, endereço wildcard, porta diferente ou publicação efetiva impedem prosseguir. Os testes criam contêineres descartáveis em Docker real e conferem as declarações/publicações antes, durante e depois da execução; também cobrem recusas antes de qualquer partida e exposição detectada depois dela. Nenhum SQL de importação precisa ser repetido.
+
+
+## Resultado real aprovado — 01/11/2026
+
+O responsável confirmou a retomada com `status: passed`, `stage: complete`, `retry_access_only: true`, `auth_email_provider_corrected: true`, `sql_rechecked_read_only: true` e `services_stopped: true`. A cópia permaneceu com SHA-256 `c0e9b036fb69cc2f52ced3965f83494861be9f11f4d495df65cb6734f674f806`, formato 2, 73 arquivos, 65 mídias e definições de supabase_functions incluídas.
+
+O COMMIT original continha 54 tabelas, 2.596 registros e 88 FKs examinadas neste projeto de serviços. A retomada reexaminou contagens/FKs em modo somente leitura e conferiu os blobs existentes e downloads sem nova importação nem cópia de mídias. Os 65 downloads administrativos e a preservação dos metadados haviam sido confirmados na primeira fase.
+
+```json
+{"status":"passed","login_status":200,"user_status":200,"profile_status":200,"profile_rows":1,"verified_mfa_factors":0,"objects":65,"user_expected_allowed":48,"user_downloads_verified":48,"user_expected_denied":17,"user_denials_verified":17,"anonymous_private_expected":64,"anonymous_private_denials_verified":64,"anonymous_public_downloads_verified":1,"policy_mismatches":0,"logout_status":204,"refresh_after_logout_status":400,"refresh_blocked":true}
+```
+
+Não houve divergência entre os acessos e as políticas no contexto da conta escolhida. O refresh token foi recusado após logout. Os serviços foram parados, o relatório inicial e os relatórios de retomada foram preservados e não houve restauração em produção. Este resultado foi obtido em duas fases, não em uma nova importação completa após as correções. O download B2 opcional e a instalação/execução do lembrete mensal ainda dependem de configuração/confirmação local; a validação do ensaio não os ativa automaticamente.

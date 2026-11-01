@@ -312,6 +312,45 @@ Write-Output 'PRIVATE_ACL_REPEATABLE'
                 self.assertEqual(result.returncode,0,result.stdout.decode(errors='replace')+result.stderr.decode(errors='replace'))
                 self.assertIn(b'PRIVATE_ACL_REPEATABLE',result.stdout)
 
+    def test_monthly_reminder_xml_validates_without_registering_a_task_or_storing_passwords(self):
+        shell=shutil.which('powershell.exe')
+        if not shell:self.skipTest('Windows PowerShell unavailable')
+        launcher=pathlib.Path(monthly.__file__).with_name('Start-RecoveryRehearsal.ps1')
+        source=r"""
+param($script,$cfg)
+$ErrorActionPreference='Stop'
+function Get-ScheduledTask { param($TaskName,$ErrorAction) return $null }
+function Register-ScheduledTask {
+  param($TaskName,$Xml)
+  $service=New-Object -ComObject 'Schedule.Service'
+  $service.Connect()
+  $definition=$service.NewTask(0)
+  $definition.XmlText=$Xml
+  [xml]$doc=$Xml
+  $ns=New-Object System.Xml.XmlNamespaceManager($doc.NameTable)
+  $ns.AddNamespace('t','http://schemas.microsoft.com/windows/2004/02/mit/task')
+  function value($path) { return $doc.SelectSingleNode($path,$ns).InnerText }
+  if ((value '//t:LogonType') -ne 'InteractiveToken' -or (value '//t:RunLevel') -ne 'LeastPrivilege') { throw 'TASK_PRIVILEGES_UNSAFE' }
+  if ((value '//t:Day') -ne '1') { throw 'TASK_DAY_UNEXPECTED' }
+  $date=[DateTime]::Parse((value '//t:StartBoundary'))
+  if ($date.Hour -ne 19 -or $date.Minute -ne 0) { throw 'TASK_TIME_UNEXPECTED' }
+  $arguments=value '//t:Arguments'
+  if ($arguments -notmatch '-Reminder' -or $arguments -notmatch '-B2Config' -or $arguments -notmatch 'synthetic-config') { throw 'TASK_ARGUMENTS_UNEXPECTED' }
+  if ($Xml -match '(?i:password|passphrase)') { throw 'TASK_CREDENTIAL_FIELD_PRESENT' }
+  $global:TaskWasValidated=$true
+}
+& $script -InstallMonthlyReminder -B2Config $cfg
+if (!$global:TaskWasValidated) { throw 'TASK_VALIDATION_NOT_CALLED' }
+Write-Output 'MONTHLY_TASK_XML_VALIDATED_WITHOUT_REGISTRATION'
+"""
+        with tempfile.TemporaryDirectory() as temp:
+            config=pathlib.Path(temp)/'synthetic-config & test.json';config.write_text('{}')
+            quote=lambda text:"'"+str(text).replace("'","''")+"'"
+            command='& {'+source+'} '+quote(launcher)+' '+quote(config)
+            result=subprocess.run([shell,'-NoProfile','-NonInteractive','-ExecutionPolicy','RemoteSigned','-Command',command],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            self.assertEqual(result.returncode,0,result.stdout.decode(errors='replace')+result.stderr.decode(errors='replace'))
+            self.assertIn(b'MONTHLY_TASK_XML_VALIDATED_WITHOUT_REGISTRATION',result.stdout)
+
 
 class RetryTests(unittest.TestCase):
     def test_resume_accepts_only_expected_dormant_bindings_and_checks_active_ports_after_start(self):
