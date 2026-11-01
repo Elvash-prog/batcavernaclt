@@ -1,6 +1,6 @@
 # Segunda cópia gratuita no Backblaze B2
 
-Decisão do responsável em 29/10/2026: manter o Google Drive e acrescentar o Backblaze B2. A AWS permanece opcional/desativada. **Primeiro envio real confirmado em 29/10/2026:** bucket privado na região `us-east-005` (Estados Unidos), chave restrita, 67.015.394 bytes e checksum/download completo conferidos na [execução 40971128660](https://github.com/Elvash-prog/batcavernaclt/actions/runs/40971128660). O Drive também concluiu nessa execução. A descriptografia e a restauração desta cópia continuam pendentes.
+Decisão do responsável em 29/10/2026: manter o Google Drive e acrescentar o Backblaze B2. A AWS permanece opcional/desativada. **Primeiro envio real confirmado em 29/10/2026:** bucket privado na região `us-east-005` (Estados Unidos), chave restrita, 67.015.394 bytes e checksum/download completo conferidos na [execução 40971128660](https://github.com/Elvash-prog/batcavernaclt/actions/runs/40971128660). O Drive também concluiu nessa execução. A descriptografia e a restauração SQL desta cópia foram confirmadas pelo responsável; login e acesso às mídias pelos serviços continuam pendentes (registro ao final).
 
 ## Espaço e custos
 
@@ -97,3 +97,8 @@ gpg --output ".\BatCaverna-2026-10-29.tar.gz" --decrypt ".\BatCaverna-2026-10-29
 A senha é informada somente na janela local do GnuPG. Não coloque senha em argumentos nem envie a chave privada, o TAR ou capturas com dados ao chat. Se aparecer `No secret key`, localize a chave privada de backup guardada pelo responsável e importe-a localmente; a chave pública do GitHub não descriptografa o arquivo. Não gere outra chave esperando recuperar um arquivo antigo.
 
 Depois, com Python e uma cópia do repositório disponíveis, execute `py tools/operations/backup.py --verify CAMINHO_PRIVADO/BatCaverna-2026-10-29.tar.gz`. Só avance se a verificação concluir sem erros. Siga o [ensaio de recuperação](RECOVERY.md#ensaio-de-recuperação) em um destino isolado, sem vínculo com produção. Não restaure SQL diretamente no projeto principal. Mantenha o pacote descriptografado fora de pastas compartilhadas e remova-o depois do ensaio conforme a política de retenção.
+
+
+### Recuperação local da primeira cópia
+
+O responsável confirmou a descriptografia e a restauração SQL da cópia da execução `40971128660`: 72 arquivos, 65 mídias, 78 tabelas, 3.186 registros e 85 FKs validadas. Foi necessário reconstruir `supabase_functions` com referência oficial; isso não comprova equivalência exata à origem. Login e mídias pelos serviços ainda estão pendentes para essa cópia. Ver o [registro completo e os limites](RECOVERY.md#ensaio-b2-retomado--pasta-20261030). Novos pacotes exportam as definições de origem em `functions_schema.sql` (formato 2).
