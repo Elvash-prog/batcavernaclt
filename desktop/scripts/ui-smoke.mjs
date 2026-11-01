@@ -1783,7 +1783,8 @@ try {
   assert.equal(await page.locator('.profile-highlights .picks-search input').count(), 1);
   const pick = page.locator('[data-pick-game]').first();
   if (await pick.count()) {
-    await pick.setChecked(true);
+    if (!(await pick.isChecked())) await pick.locator("..").click();
+    assert.equal(await pick.isChecked(), true);
     const selected = await page.locator('[data-picks-values] [name="games"]:checked').count();
     await page.locator('.picks-search input').fill('no-result-profile-regression');
     assert.equal(await page.locator('[data-pick-game]').count(), 0);
