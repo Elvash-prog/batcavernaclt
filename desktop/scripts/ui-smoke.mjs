@@ -1778,6 +1778,23 @@ try {
     await page.locator('.profile-editor [name="steamId"]').getAttribute("type"),
     "hidden",
   );
+  await page.locator('[data-profile-tab="highlights"]').click();
+  await page.locator('.picks-game-grid').waitFor();
+  assert.equal(await page.locator('.profile-highlights .picks-search input').count(), 1);
+  const pick = page.locator('[data-pick-game]').first();
+  if (await pick.count()) {
+    await pick.setChecked(true);
+    const selected = await page.locator('[data-picks-values] [name="games"]:checked').count();
+    await page.locator('.picks-search input').fill('no-result-profile-regression');
+    assert.equal(await page.locator('[data-pick-game]').count(), 0);
+    assert.equal(await page.locator('[data-picks-values] [name="games"]:checked').count(), selected);
+    await page.locator('.picks-search input').fill('');
+  }
+  await page.locator('[data-picks-tab="achievements"]').click();
+  assert.equal(await page.locator('[data-picks-page="games"]').isVisible(), false);
+  assert.equal(await page.locator('[data-picks-page="achievements"]').isVisible(), true);
+  assert.equal(await page.locator('[data-save-profile]').isVisible(), true);
+  await page.screenshot({ path: "preview/profile-editor-highlights-check.png" });
   await page.locator(".profile-editor [data-close]").first().click();
   await page.locator(".mission-period").first().waitFor();
   assert.match(

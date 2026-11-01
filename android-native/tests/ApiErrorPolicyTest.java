@@ -13,6 +13,9 @@ public final class ApiErrorPolicyTest {
         if(!ApiErrorPolicy.message("email_not_confirmed",400).equals("Confirme seu e-mail antes de entrar."))throw new AssertionError("Email confirmation feedback lost");
         if(!ApiErrorPolicy.message("23514",400).equals("Confira o formato e os limites dos dados informados."))throw new AssertionError("Validation feedback lost");
         if(!ApiErrorPolicy.message("",429).contains("Aguarde"))throw new AssertionError("Rate limit feedback lost");
+        if(!ApiErrorPolicy.message("media_invalid_format",422).contains("JPG, PNG ou WebP"))throw new AssertionError("Image format guidance lost");
+        if(!ApiErrorPolicy.message("media_dimensions_exceeded",422).contains("8192"))throw new AssertionError("Image dimension guidance lost");
+        if(!ApiErrorPolicy.message("media_storage_unavailable",503).contains("armazenar"))throw new AssertionError("Storage feedback lost");
         System.out.println("Safe API errors: hostile codes, status mapping and useful feedback passed");
     }
 }
