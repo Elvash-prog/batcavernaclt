@@ -1,0 +1,3 @@
+Fotos de perfil e capas deixam de depender do Sightengine. O envio continua exigindo login, permissão e uma imagem JPG, PNG ou WebP válida dentro dos limites de tamanho e dimensões.
+
+Editor de destaques redesenhado com capas dos jogos, busca, contadores e seleção de conquistas desbloqueadas. As escolhas são preservadas ao pesquisar e filtrar a biblioteca.

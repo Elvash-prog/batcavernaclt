@@ -12,6 +12,18 @@ final class ApiErrorPolicy {
             case "reauthentication_needed":case "reauthentication_not_valid":return "Confirme novamente sua identidade antes de continuar.";
             case "otp_expired":return "O código expirou ou já foi utilizado. Solicite outro.";
             case "over_request_rate_limit":case "over_email_send_rate_limit":return "Muitas tentativas. Aguarde antes de tentar novamente.";
+            case "media_moderation_configuration":return "A análise de imagens precisa de um ajuste no serviço. Tente novamente mais tarde.";
+            case "media_moderation_limit":return "O serviço de análise atingiu seu limite de uso. Tente enviar a imagem mais tarde.";
+            case "media_moderation_unavailable":return "A análise da imagem não está disponível agora. Tente novamente mais tarde.";
+            case "media_dimensions_exceeded":return "Reduza as dimensões da imagem: até 8192 pixels por lado e 32 megapixels.";
+            case "media_unavailable":return "Não foi possível concluir o envio da imagem. Tente novamente mais tarde.";
+            case "media_invalid_format":return "Escolha uma imagem JPG, PNG ou WebP válida.";
+            case "media_content_blocked":return "Esta imagem está bloqueada. Escolha outra imagem.";
+            case "media_too_large":return "A imagem ultrapassa o tamanho permitido.";
+            case "media_not_allowed":return "Sua sessão ou permissão não permite enviar esta imagem. Entre novamente.";
+            case "media_storage_unavailable":return "Não foi possível armazenar a imagem. Tente novamente mais tarde.";
+            case "media_database_unavailable":return "Não foi possível confirmar o envio da imagem. Tente novamente mais tarde.";
+            case "media_auth_unavailable":return "Não foi possível verificar sua sessão para enviar a imagem. Tente novamente.";
             case "23505":return "Este registro já existe. Atualize os dados antes de tentar novamente.";
             case "23514":case "22001":case "22023":return "Confira o formato e os limites dos dados informados.";
             default:

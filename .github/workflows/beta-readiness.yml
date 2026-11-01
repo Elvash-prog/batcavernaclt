@@ -1,7 +1,7 @@
 name: Segurança e recuperação beta
 on:
   pull_request:
-    paths: ['tools/operations/**', 'tests/operations/**', 'tests/operational-metrics.mjs', 'supabase/migrations/**', 'supabase/functions/_shared/**', '.github/workflows/beta-readiness.yml']
+    paths: ['tools/operations/**', 'tests/operations/**', 'tests/operational-metrics.mjs', 'supabase/migrations/**', 'supabase/functions/_shared/**', 'supabase/functions/native-api/**', 'tests/media-errors.mjs', 'tests/image-validation.mjs', 'tests/profile-highlights.mjs', '.github/workflows/beta-readiness.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,9 +34,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --test tests/api-keys.mjs tests/operational-metrics.mjs tests/security-events.mjs tests/catalog-cache.mjs tests/igdb.mjs tests/native-api.mjs tests/bright-api-security.mjs tests/native-dependencies.mjs
+      - run: node --test tests/api-keys.mjs tests/operational-metrics.mjs tests/security-events.mjs tests/catalog-cache.mjs tests/igdb.mjs tests/native-api.mjs tests/bright-api-security.mjs tests/native-dependencies.mjs tests/media-errors.mjs tests/image-validation.mjs
       - name: Instalar dependências do banco de teste isolado
         run: npm install --prefix tests --ignore-scripts --no-package-lock --no-audit --no-fund
+      - name: Validar seleção de destaques e preservação do rascunho
+        run: node tests/profile-highlights.mjs
       - name: Validar entradas de perfil em PostgreSQL isolado
         run: node tests/profile-validation.mjs
       - name: Instalar parser SQL do plano local
