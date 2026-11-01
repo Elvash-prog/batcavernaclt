@@ -67,6 +67,25 @@ class B2Tests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as folder:
    path=self.archive(folder);client.upload(path);result=client.upload(path)
   self.assertTrue(result['already_present_today']);self.assertEqual(sum(op=='upload' for op,body in client.calls),1);self.assertEqual(result['daily_copies'],1)
+ def test_key_rotation_replaces_today_only_after_full_download(self):
+  for corrupt in [False,True]:
+   old=fixture(TODAY,1);client=Fake([old]);client.bad_download=corrupt
+   with tempfile.TemporaryDirectory() as folder:
+    if corrupt:
+     with self.assertRaises(ValueError):client.upload(self.archive(folder),True,True)
+     self.assertIn(old['fileId'],[f['fileId'] for f in client.files])
+     self.assertFalse(any(op=='b2_delete_file_version' for op,body in client.calls))
+    else:
+     result=client.upload(self.archive(folder),True,True)
+     self.assertFalse(result['already_present_today']);self.assertTrue(result['download_verified'])
+     self.assertEqual(result['sha256'],hashlib.sha256(self.archive(folder).read_bytes()).hexdigest())
+     ops=[op for op,body in client.calls]
+     self.assertLess(ops.index('download'),ops.index('b2_delete_file_version'))
+ def test_key_rotation_without_download_refused_before_any_remote_operation(self):
+  client=Fake([fixture(TODAY)])
+  with tempfile.TemporaryDirectory() as folder:
+   with self.assertRaisesRegex(ValueError,'verify-download'):client.upload(self.archive(folder),False,True)
+  self.assertFalse(client.calls)
  def test_failure_or_checksum_mismatch_never_prunes_old_copies(self):
   for case in ['upload','checksum']:
    client=Fake([fixture('2026-10-'+str(day)) for day in range(22,29)])

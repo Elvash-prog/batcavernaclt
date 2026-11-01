@@ -48,11 +48,11 @@ def validate_slot(meta, number):
         raise RuntimeError('Arquivo de reserva inesperado; nenhuma permissao foi alterada.')
 
 
-def select_slot(slots, today):
+def select_slot(slots, today, replace_today=False):
     for meta in slots:
         p = meta.get('appProperties', {})
         if p.get('batcaverna_verified') == 'true' and p.get('batcaverna_date') == today:
-            return None
+            return meta if replace_today else None
     return min(slots, key=lambda m: (
         m.get('appProperties', {}).get('batcaverna_verified') == 'true',
         m.get('appProperties', {}).get('batcaverna_date', ''), SLOTS.index(m['id'])
@@ -152,6 +152,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--archive', type=pathlib.Path)
     parser.add_argument('--check-only', action='store_true')
+    parser.add_argument('--replace-today', action='store_true', help='Substituir explicitamente a reserva de hoje, por exemplo após troca da chave.')
     args = parser.parse_args()
     token = os.environ.get('GDRIVE_ACCESS_TOKEN', '').strip()
     if not token:
@@ -171,7 +172,7 @@ def main():
     if not first & 128:
         raise ValueError('Cabecalho de pacote OpenPGP ausente.')
     today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
-    slot = select_slot(slots, today)
+    slot = select_slot(slots, today, args.replace_today)
     if slot is None:
         print('Ja existe uma copia verificada hoje; nenhum arquivo substituido.')
         return

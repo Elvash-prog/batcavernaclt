@@ -172,3 +172,14 @@ A [execução 41309372776](https://github.com/Elvash-prog/batcavernaclt/actions/
 - `decryption_verified: false`, esperado no runner que só possui a chave pública. A integridade do pacote em claro foi verificada antes da criptografia; os downloads conferiram a cópia criptografada.
 
 Isso confirma a nova exportação e os destinos, além da regressão sintética de recuperação. **Não confirma a descriptografia nem a restauração real desta nova cópia.** Esses passos exigem a chave privada preservada no computador do responsável e outro destino isolado, sem repetir a importação no contêiner `batcaverna-supabase-restauracao`. Os testes locais de login e mídias continuam preparados no roteiro acima, sem execução sobre esta cópia.
+
+
+## Troca da chave de backup
+
+Se a frase secreta for perdida, uma chave nova não abre os backups antigos. Preservar a chave antiga, as cópias e qualquer pacote já descriptografado. Criar a nova chave em chaveiro separado, guardar a senha em gerenciador seguro, exportar a parte pública e a privada e testar criptografia/descriptografia de um texto sintético em dois chaveiros novos usando apenas os arquivos exportados. Manter uma cópia privada independente e a senha separada dos arquivos de backup.
+
+Somente depois do teste, atualizar `BACKUP_GPG_PUBLIC_KEY` no GitHub com a **parte pública**. Nunca cadastrar a parte privada ou sua senha no runner.
+
+A rotação normal mantém a primeira cópia por dia UTC. Depois de uma troca de chave, executar manualmente `Backup privado Supabase`, modo `backup`, com `replace_today=true`: a opção substitui a reserva do Drive de hoje e permite um novo envio B2 na mesma data, forçando download completo antes da limpeza normal das versões B2. Sem essa opção, uma execução pode exportar com a nova chave e manter nos destinos a cópia anterior do dia. A agenda permanece com o comportamento padrão, sem substituição forçada. A opção não altera o destino AWS opcional.
+
+Conferir o SHA-256 retornado por cada destino contra o da exportação e baixar a nova cópia para testar a recuperação real no computador do responsável. Sucesso de upload não comprova que a nova chave privada consegue descriptografar o pacote.

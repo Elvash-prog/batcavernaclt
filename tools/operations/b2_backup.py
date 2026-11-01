@@ -123,7 +123,8 @@ class B2:
     if count>self.size(row):raise ValueError('Download B2 excedeu o tamanho esperado.')
     sha.update(chunk)
   if count!=self.size(row) or sha.hexdigest()!=row['fileInfo']['backup-sha256']:raise ValueError('O download B2 não corresponde ao hash do backup.')
- def upload(self,path,verify_download=False):
+ def upload(self,path,verify_download=False,replace_today=False):
+  if replace_today and not verify_download:raise ValueError('A substituição de hoje exige --verify-download antes da rotação.')
   path=pathlib.Path(path)
   if not path.name.endswith('.tar.gz.gpg') or not path.is_file() or not 32<path.stat().st_size<=MAX_ARCHIVE_BYTES:raise ValueError('Use somente o pacote .tar.gz.gpg do exportador, até 512 MiB.')
   with path.open('rb') as source:first=source.read(1)[0]
@@ -135,8 +136,8 @@ class B2:
   files=self.inventory();days=self.daily(files)
   # One copy per UTC day, even if a manual rerun creates a different GPG envelope.
   existing=days.get(today)
-  skipped=existing is not None
-  if existing:
+  skipped=existing is not None and not replace_today
+  if skipped:
    row=self.api_call('b2_get_file_info',{'fileId':existing['fileId']});self.validate_file(row,existing['fileInfo']['backup-sha256'],existing['contentSha1'],self.size(existing),existing['fileName'])
   else:
    if sum(self.size(f) for f in files)+size>MAX_BYTES:raise ValueError('O bucket B2 atingiria o limite local de 2 GB. Nenhum upload novo foi iniciado; o backup do Drive permanece separado.')
@@ -156,11 +157,11 @@ class B2:
   except (ValueError,UnicodeError):raise ValueError('Resposta de upload B2 inválida.') from None
 
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--archive',type=pathlib.Path);parser.add_argument('--check-only',action='store_true');parser.add_argument('--verify-download',action='store_true');args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('--archive',type=pathlib.Path);parser.add_argument('--check-only',action='store_true');parser.add_argument('--verify-download',action='store_true');parser.add_argument('--replace-today',action='store_true');args=parser.parse_args()
  client=B2(os.environ.get('B2_BACKUP_KEY_ID',''),os.environ.get('B2_BACKUP_APPLICATION_KEY',''),os.environ.get('BACKUP_B2_BUCKET_ID',''),os.environ.get('BACKUP_B2_BUCKET_NAME',''),os.environ.get('BACKUP_B2_REGION',''),os.environ.get('BACKUP_B2_CAPS_CONFIRMED')=='true');checked=client.check()
  if args.check_only:print(json.dumps(checked));return
  if not args.archive:parser.error('Escolha --archive ou --check-only.')
- print(json.dumps(client.upload(args.archive,args.verify_download)))
+ print(json.dumps(client.upload(args.archive,args.verify_download,args.replace_today)))
 if __name__=='__main__':
  try:main()
  except KeyboardInterrupt:sys.exit('Cancelado sem exibir credenciais.')

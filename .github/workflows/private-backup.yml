@@ -13,6 +13,10 @@ on:
         description: Conferir download completo do B2 (consome transferencia)
         type: boolean
         default: false
+      replace_today:
+        description: Substituir a copia de hoje apos troca de chave (forca download B2)
+        type: boolean
+        default: false
   schedule:
     - cron: '17 6 * * *'
 permissions:
@@ -147,9 +151,11 @@ jobs:
           steps.drive-auth.outcome == 'success' && steps.drive-check.outcome == 'success'
         env:
           GDRIVE_ACCESS_TOKEN: ${{ steps.drive-auth.outputs.access_token }}
-        run: >-
-          python3 tools/operations/drive_backup.py
-          --archive "$RUNNER_TEMP/batcaverna-backup/BatCaverna.tar.gz.gpg"
+          REPLACE_TODAY: ${{ github.event_name == 'workflow_dispatch' && inputs.replace_today && 'true' || 'false' }}
+        run: |
+          args=(--archive "$RUNNER_TEMP/batcaverna-backup/BatCaverna.tar.gz.gpg")
+          if [ "$REPLACE_TODAY" = 'true' ]; then args+=(--replace-today); fi
+          python3 tools/operations/drive_backup.py "${args[@]}"
       - name: Conferir e atualizar a segunda copia privada no Backblaze B2
         id: b2-backup
         if: >-
@@ -163,12 +169,14 @@ jobs:
           BACKUP_B2_REGION: ${{ vars.BACKUP_B2_REGION }}
           BACKUP_B2_CAPS_CONFIRMED: ${{ vars.BACKUP_B2_CAPS_CONFIRMED }}
           BACKUP_MODE: ${{ inputs.mode || 'backup' }}
-          VERIFY_DOWNLOAD: ${{ inputs.verify_b2_download && 'true' || 'false' }}
+          VERIFY_DOWNLOAD: ${{ (inputs.verify_b2_download || inputs.replace_today) && 'true' || 'false' }}
+          REPLACE_TODAY: ${{ github.event_name == 'workflow_dispatch' && inputs.replace_today && 'true' || 'false' }}
         run: |
           if [ "$BACKUP_MODE" = 'check' ]; then
             python3 tools/operations/b2_backup.py --check-only
           else
             args=(--archive "$RUNNER_TEMP/batcaverna-backup/BatCaverna.tar.gz.gpg")
+            if [ "$REPLACE_TODAY" = 'true' ]; then args+=(--replace-today); fi
             if [ "$VERIFY_DOWNLOAD" = 'true' ]; then args+=(--verify-download); fi
             python3 tools/operations/b2_backup.py "${args[@]}"
           fi
