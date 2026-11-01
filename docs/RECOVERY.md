@@ -230,3 +230,27 @@ py apply_service_restore.py --backup CAMINHO_PRIVADO/backup-v2 --plan CAMINHO_PR
 Os logs completos ficam em uma subpasta privada `execucao-*` do plano, pois erros de COPY podem conter dados pessoais. A saída compartilhável contém somente status, código SQLSTATE e contagens. Se houver erro ou falta de confirmação, **não repetir a importação antes de conferir o estado do banco**: uma falha de conexão depois do COMMIT pode impedir a confirmação ao cliente. A ferramenta recusa nova importação quando encontra dados da aplicação.
 
 A execução e a auditoria de FKs foram testadas em PostgreSQL sintético, incluindo rollback após falha tardia, detecção de órfão em FK previamente válida, MATCH FULL com NULL parcial e interrupção do fluxo antes do COMMIT. A importação de SQL não restaura os bytes das mídias nem comprova login ou autorização entre contas.
+
+
+## Resultado SQL e autenticação da cópia v2 — 01/11/2026
+
+O responsável executou o plano no contêiner novo `supabase_db_batcaverna-ensaio-v2`. Resultado confirmado: `status: committed`, 54 tabelas, 2.596 registros conferidos e 89 FKs varridas. A diferença para o total bruto corresponde ao escopo Auth filtrado descrito acima; não se trata de nova importação nos dois contêineres anteriores.
+
+Pelos endpoints exclusivamente em 127.0.0.1, confirmou login 200, consulta de usuário 200 e identidade coincidente, consulta autenticada do próprio perfil 200 com uma linha, logout da sessão local 204 e renovação posterior recusada com 400. A conta usada tinha zero fatores MFA verificados; MFA não foi avaliado nesta rodada. Nenhuma senha ou token foi incluído nos resultados compartilhados.
+
+### Restauração dos bytes no backend local de arquivos
+
+O Storage local foi identificado como `public.ecr.aws/supabase/storage-api:v1.84.19`, backend `file`, tenant/bucket interno `stub` e volume Docker em `/mnt`. `restore_local_media.py` suporta somente essa imagem, configuração e os dois contêineres dedicados, ambos exclusivamente na rede interna do ensaio. Não seleciona outros destinos.
+
+A ferramenta reconfere o manifesto, hashes, tamanhos, nomes/versões de objetos e a privacidade dos buckets no banco. Também compara ids, versões, proprietários e metadados atuais com os registros COPY de storage.objects no SQL original, recusando alterações posteriores antes de copiar bytes. Sem `--apply`, apenas verifica. Com `--apply`, confere primeiro a leitura administrativa dos buckets e escreve somente os blobs ausentes no volume. Não faz INSERT/UPDATE nem reenvia objetos por uma API de upload que pudesse alterar seus proprietários ou disparar moderação. Arquivos existentes precisam coincidir nos bytes e atributos; divergências interrompem a operação, sem sobrescrevê-los. Novos arquivos são publicados completos, com atributos MIME/cache/encoding, por ligação atômica que recusa substituição de destino existente.
+
+O layout e os atributos seguem o [FileBackend da versão exata](https://github.com/supabase/storage/blob/v1.84.19/src/storage/backend/file.ts), o [TenantLocation](https://github.com/supabase/storage/blob/v1.84.19/src/storage/locator.ts) e o [separador de versão](https://github.com/supabase/storage/blob/v1.84.19/src/storage/backend/adapter.ts). Respeita `TUS_USE_FILE_VERSION_SEPARATOR`. Os testes usam o FileBackend original da imagem para ler os arquivos escritos, nos dois formatos de versão; também cobrem hashes incorretos, repetição sem sobrescrita, links, travessia e colisões de caminhos.
+
+Depois da cópia, baixa cada objeto pela API administrativa local, comparando tamanho e SHA-256 com o índice. Reconfere identidades, versões, proprietários, metadados e configurações/privacidade dos buckets; timestamps de acesso/atualização são excluídos da comparação porque leituras podem atualizá-los. O ETag produzido pelo backend local pode diferir do S3; o teste de conteúdo usa SHA-256. As chaves são lidas do CLI local em memória e nunca são exibidas. Requisições HTTP usam apenas 127.0.0.1, sem proxy nem redirecionamento de credenciais.
+
+```text
+py restore_local_media.py --backup CAMINHO_PRIVADO/backup-v2
+py restore_local_media.py --backup CAMINHO_PRIVADO/backup-v2 --apply
+```
+
+Uma interrupção pode deixar parte dos novos blobs restaurados; repetir confere e reutiliza arquivos que já coincidam, sem sobrescrita. Não apagar nem alterar registros para contornar erros. Os resultados compartilháveis contêm apenas contagens. **A ferramenta ainda precisa ser executada na cópia real.** Downloads administrativos aprovados não comprovam acesso de conta comum: a etapa seguinte deve testar as regras existentes com usuário autenticado e requisições anônimas, sem mudar políticas ou tornar buckets públicos.

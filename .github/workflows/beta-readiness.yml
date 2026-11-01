@@ -28,6 +28,8 @@ jobs:
       - name: Instalar parser SQL do plano local
         run: python3 -m pip install --disable-pip-version-check -r tools/operations/requirements-recovery.txt
       - name: Verificar criptografia e integridade com dados sintéticos
+        env:
+          STORAGE_TEST_IMAGE: public.ecr.aws/supabase/storage-api:v1.84.19
         run: python3 -m unittest discover -s tools/operations -p 'test_*.py' -v
       - name: Aplicar esquema isolado e validar permissões
         env:
