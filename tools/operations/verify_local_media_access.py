@@ -48,12 +48,14 @@ def policy_denial(status, body):
 
 
 class LocalClient:
-    def __init__(self, key, opener=None):
+    def __init__(self, key, opener=None, api=None):
         self.key = key
+        self.api = api
         self.opener = opener or urllib.request.build_opener(urllib.request.ProxyHandler({}),backup.RejectStorageRedirects())
 
     def open(self, method, route, token=None, body=None):
-        if media.API != 'http://127.0.0.1:54321':
+        api = self.api if self.api is not None else media.API
+        if api not in {'http://127.0.0.1:54321', 'http://127.0.0.1:55321'}:
             raise CheckFailed('LOCAL_URL_REQUIRED')
         if not route.startswith('/') or route.startswith('//'):
             raise CheckFailed('INVALID_LOCAL_ROUTE')
@@ -63,7 +65,7 @@ class LocalClient:
         if body is not None:
             headers['Content-Type'] = 'application/json'
             data = json.dumps(body).encode()
-        request = urllib.request.Request(media.API+route,data=data,headers=headers,method=method)
+        request = urllib.request.Request(api+route,data=data,headers=headers,method=method)
         try:
             return self.opener.open(request,timeout=60)
         except urllib.error.HTTPError as error:
@@ -104,6 +106,10 @@ def public_key(base):
     cli = base/'ferramentas'/'supabase-2.122.0'/'supabase.exe'
     raw = media.local_command([str(cli),'status','--workdir',str(base/'ensaio'),'-o','json'],env={**os.environ,'DO_NOT_TRACK':'1'})
     key = json.loads(raw).get('ANON_KEY')
+    return validate_public_key(key)
+
+
+def validate_public_key(key):
     if not isinstance(key,str) or not key: raise CheckFailed('LOCAL_PUBLIC_KEY_UNAVAILABLE')
     if not key.startswith('sb_publishable_'):
         try:
@@ -190,7 +196,7 @@ def check_matrix(items, state, client, token, visible):
     return report
 
 
-def run_test(items,state,key,email,password,client=None,visibility=None):
+def run_test(items,state,key,email,password,client=None,visibility=None,lifecycle=False):
     client = client or LocalClient(key)
     visibility = visibility or visible_keys
     report,session,phase = {'status':'failed'},None,'login'
@@ -203,6 +209,13 @@ def run_test(items,state,key,email,password,client=None,visibility=None):
         report['user_status'] = status
         if status != 200: raise CheckFailed('USER_VERIFICATION_FAILED')
         claims = verified_claims(session,user)
+        if lifecycle:
+            phase = 'profile'
+            status,rows = client.json_request('GET','/rest/v1/perfis?select=id&id=eq.'+str(uuid.UUID(claims['sub'])),token=session['access_token'])
+            report['profile_status'] = status
+            report['profile_rows'] = len(rows) if isinstance(rows,list) else 0
+            if status != 200 or not isinstance(rows,list) or len(rows)!=1 or rows[0].get('id')!=str(uuid.UUID(claims['sub'])):
+                raise CheckFailed('OWN_PROFILE_VERIFICATION_FAILED')
         factors = user.get('factors') or []
         if not isinstance(factors,list): raise CheckFailed('MFA_STATE_UNEXPECTED')
         report['verified_mfa_factors'] = sum(factor.get('status')=='verified' for factor in factors)
@@ -223,6 +236,19 @@ def run_test(items,state,key,email,password,client=None,visibility=None):
                 status,_ = client.json_request('POST','/auth/v1/logout?scope=local',token=session['access_token'])
                 report['logout_status'] = status
                 if status != 204: report.update(status='failed',cleanup_error=True)
+                elif lifecycle:
+                    refresh = session.get('refresh_token')
+                    if not isinstance(refresh,str) or not refresh:
+                        report.update(status='failed',error='REFRESH_TOKEN_MISSING')
+                    else:
+                        refresh_status,refreshed = client.json_request('POST','/auth/v1/token?grant_type=refresh_token',body={'refresh_token':refresh})
+                        report['refresh_after_logout_status'] = refresh_status
+                        report['refresh_blocked'] = refresh_status in (400,401) and isinstance(refreshed,dict) and refreshed.get('error_code') in {'refresh_token_not_found','refresh_token_already_used','session_not_found'}
+                        if not report['refresh_blocked']:
+                            report.update(status='failed',error='REFRESH_INVALIDATION_NOT_CONFIRMED')
+                            if isinstance(refreshed,dict) and refreshed.get('access_token'):
+                                cleanup_status,_ = client.json_request('POST','/auth/v1/logout?scope=local',token=refreshed['access_token'])
+                                if cleanup_status!=204: report['cleanup_error']=True
             except Exception:
                 report.update(status='failed',cleanup_error=True)
     return report
