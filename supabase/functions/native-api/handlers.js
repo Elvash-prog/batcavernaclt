@@ -1,3 +1,4 @@
+import {mediaFailure,moderationFailure} from './media-errors.js';
 // Native API: same ownership, blocking, moderation and quarantine rules as the former Worker.
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(status===429?{'Retry-After':'60'}:{})}});
 const SAFE_BUCKETS=new Set(['avatars','group-avatars','feed-media','chat-media','group-chat-media']);
@@ -38,10 +39,11 @@ async function allowTarget(env,user,bucket,path){
 export function imageType(bytes){if(bytes.length>=12&&bytes[0]===0x89&&new TextDecoder().decode(bytes.slice(1,4))==='PNG'&&bytes[4]===13&&bytes[5]===10&&bytes[6]===26&&bytes[7]===10)return 'image/png';if(bytes.length>=3&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return 'image/jpeg';if(new TextDecoder().decode(bytes.slice(0,4))==='RIFF'&&new TextDecoder().decode(bytes.slice(8,12))==='WEBP')return 'image/webp';return '';}
 export function safeNudity(n){const fields=['sexual_activity','sexual_display','erotica','very_suggestive'];return n&&fields.every(k=>typeof n[k]==='number'&&Number.isFinite(n[k])&&n[k]>=0&&n[k]<=1&&n[k]<0.25);}
 async function moderate(env,fileOrUrl,video=false){
- const body=new FormData();body.set('models','nudity-2.1');body.set('api_user',env.SIGHTENGINE_API_USER);body.set('api_secret',env.SIGHTENGINE_API_SECRET);if(video)body.set('interval','0.5');
+ const body=new FormData();body.set('models','nudity-2.1');body.set('api_user',env.SIGHTENGINE_API_USER.trim());body.set('api_secret',env.SIGHTENGINE_API_SECRET.trim());if(video)body.set('interval','0.5');
  if(typeof fileOrUrl==='string')body.set(video?'stream_url':'url',fileOrUrl);else body.set('media',fileOrUrl,'upload.'+(fileOrUrl.type==='image/png'?'png':fileOrUrl.type==='image/jpeg'?'jpg':'webp'));
  const r=await fetch('https://api.sightengine.com/1.0/'+(video?'video/check-sync.json':'check.json'),{method:'POST',body,redirect:'manual',signal:AbortSignal.timeout(video?90000:30000)});
- if(!r.ok)throw new Error('MODERATION_UNAVAILABLE');const data=await r.json();if(data.status!=='success')throw new Error('MODERATION_UNAVAILABLE');
+ let data;try{data=await r.json()}catch{throw new Error('MODERATION_UNAVAILABLE')}
+ if(!r.ok||data?.status!=='success')throw new Error(moderationFailure(data,r.status));
  if(video){if(!Array.isArray(data.data?.frames)||!data.data.frames.length)throw new Error('MODERATION_UNAVAILABLE');if(!data.data.frames.every(f=>safeNudity(f.nudity)))throw new Error('ADULT_CONTENT')}
  else if(!safeNudity(data.nudity))throw new Error('ADULT_CONTENT');
 }
@@ -50,9 +52,9 @@ async function record(env,bucket,path,owner,status){return service(env,'/rest/v1
 async function uploadApproved(env,bucket,path,blob,type,owner){
  const r=await fetch(new URL('/storage/v1/object/'+bucket+'/'+path,env.SUPABASE_URL),{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':type,'x-upsert':'false','Cache-Control':'max-age=300'},body:blob,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('UPLOAD');await record(env,bucket,path,owner,'approved');
 }
-function mediaError(e){const code=e.message;return response({error:code==='UNAUTHORIZED'?'Sua sessão ou permissão não permite esta operação.':code==='ADULT_CONTENT'?'O arquivo foi bloqueado por conter nudez ou conteúdo sexual.':code==='RATE_LIMIT'?'Muitas solicitações. Aguarde um minuto.':code==='TARGET'?'Destino de upload inválido.':code==='SIZE'?'O arquivo ultrapassa o limite permitido.':code==='FORMAT'?'Formato de arquivo inválido.':'A análise ou o armazenamento não foi concluído. O arquivo não foi liberado.'},code==='UNAUTHORIZED'?401:code==='RATE_LIMIT'?429:code==='ADULT_CONTENT'||code==='TARGET'||code==='FORMAT'?422:code==='SIZE'?413:503);}
+function mediaError(e){const failure=mediaFailure(e);return response({code:failure.code,error:failure.message},failure.status);}
 export async function mediaUpload(request,env){
- if(request.method!=='POST')return response({error:'Método não permitido.'},405);if(!moderationReady(env))return response({error:'Envios de arquivos aguardam a ativação da moderação automática pelo administrador.'},503);
+ if(request.method!=='POST')return response({error:'Método não permitido.'},405);if(!moderationReady(env))return mediaError(new Error('MODERATION_CONFIGURATION'));
  try{
   const user=await authenticate(request,env),url=new URL(request.url),bucket=url.searchParams.get('bucket')||'',path=url.searchParams.get('path')||'';await allowTarget(env,user,bucket,path);
   const declared=Number(request.headers.get('Content-Length')||0);if(declared>10*1024*1024)throw new Error('SIZE');

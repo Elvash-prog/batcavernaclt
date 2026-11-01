@@ -16,6 +16,7 @@ globalThis.fetch=async(url,options={})=>{const u=new URL(url);calls.push({u,opti
  if(u.pathname==='/rest/v1/bloqueios_clt')return json([{bloqueador_id:uid}]);
  if(u.pathname==='/rest/v1/clt_media_reviews')return json(options.method==='POST'?{}:[{status:'approved'}]);
  if(u.pathname.startsWith('/storage/v1/object/sign/'))return json({signedURL:'/object/sign/avatars/'+uid+'/image.jpg?token=transient'});
+ if(u.hostname==='api.sightengine.com'&&mode.startsWith('provider_'))return json({status:'failure',error:{type:mode.slice(9),message:'private-provider-account-url-and-secret'}},400);
  if(u.hostname==='api.sightengine.com')return json({status:'success',nudity:{sexual_activity:mode==='adult'?1:0,sexual_display:0,erotica:0,very_suggestive:0}});
  if(u.pathname.startsWith('/storage/v1/object/'))return json({});
  throw Error('Unexpected request '+u.href);
@@ -51,6 +52,9 @@ mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+other+'/image
 r=await request('/api/media/upload?bucket=group-avatars&path='+other+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.hostname==='api.sightengine.com'),false);
 mode='adult';r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,422);assert.equal(calls.some(x=>x.u.pathname.startsWith('/storage/')),false);
 mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,200);assert.equal((await r.json()).data.path,uid+'/image.jpg');assert.ok(calls.some(x=>x.u.pathname==='/rest/v1/clt_media_reviews'&&x.options.method==='POST'));
+for(const [type,code,status] of [['credentials_error','media_moderation_configuration',503],['plan_error','media_moderation_configuration',503],['usage_limit','media_moderation_limit',503],['media_error','media_invalid_format',422],['api_error','media_moderation_unavailable',503]]){
+ mode='provider_'+type;r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,status);const failure=await r.json();assert.equal(failure.code,code);assert.doesNotMatch(JSON.stringify(failure),/private-provider/);assert.equal(calls.some(c=>c.u.pathname.startsWith('/storage/')),false);
+}
 mode='denied';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:other+'/image.jpg'}));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.pathname.startsWith('/storage/v1/object/sign')),false);
 mode='ok';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:uid+'/image.jpg'}));assert.equal(r.status,200);assert.ok((await r.json()).signedUrl.startsWith('https://test.supabase.co/storage/v1/object/sign/'));
 r=await request('/api/catalog/rawg/games','DELETE');assert.equal(r.status,405);
