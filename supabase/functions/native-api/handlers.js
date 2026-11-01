@@ -1,5 +1,6 @@
-import {mediaFailure,moderationFailure} from './media-errors.js';
-// Native API: same ownership, blocking, moderation and quarantine rules as the former Worker.
+import {mediaFailure} from './media-errors.js';
+import {validateImage} from './image-validation.js';
+// Native API: ownership/blocking stay enforced; images use server validation without a third-party classifier.
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(status===429?{'Retry-After':'60'}:{})}});
 const SAFE_BUCKETS=new Set(['avatars','group-avatars','feed-media','chat-media','group-chat-media']);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,43 +38,42 @@ async function allowTarget(env,user,bucket,path){
  }else if(owner!==user.id)throw new Error('UNAUTHORIZED');
 }
 export function imageType(bytes){if(bytes.length>=12&&bytes[0]===0x89&&new TextDecoder().decode(bytes.slice(1,4))==='PNG'&&bytes[4]===13&&bytes[5]===10&&bytes[6]===26&&bytes[7]===10)return 'image/png';if(bytes.length>=3&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return 'image/jpeg';if(new TextDecoder().decode(bytes.slice(0,4))==='RIFF'&&new TextDecoder().decode(bytes.slice(8,12))==='WEBP')return 'image/webp';return '';}
-export function safeNudity(n){const fields=['sexual_activity','sexual_display','erotica','very_suggestive'];return n&&fields.every(k=>typeof n[k]==='number'&&Number.isFinite(n[k])&&n[k]>=0&&n[k]<=1&&n[k]<0.25);}
-async function moderate(env,fileOrUrl,video=false){
- const body=new FormData();body.set('models','nudity-2.1');body.set('api_user',env.SIGHTENGINE_API_USER.trim());body.set('api_secret',env.SIGHTENGINE_API_SECRET.trim());if(video)body.set('interval','0.5');
- if(typeof fileOrUrl==='string')body.set(video?'stream_url':'url',fileOrUrl);else body.set('media',fileOrUrl,'upload.'+(fileOrUrl.type==='image/png'?'png':fileOrUrl.type==='image/jpeg'?'jpg':'webp'));
- const r=await fetch('https://api.sightengine.com/1.0/'+(video?'video/check-sync.json':'check.json'),{method:'POST',body,redirect:'manual',signal:AbortSignal.timeout(video?90000:30000)});
- let data;try{data=await r.json()}catch{throw new Error('MODERATION_UNAVAILABLE')}
- if(!r.ok||data?.status!=='success')throw new Error(moderationFailure(data,r.status));
- if(video){if(!Array.isArray(data.data?.frames)||!data.data.frames.length)throw new Error('MODERATION_UNAVAILABLE');if(!data.data.frames.every(f=>safeNudity(f.nudity)))throw new Error('ADULT_CONTENT')}
- else if(!safeNudity(data.nudity))throw new Error('ADULT_CONTENT');
-}
-function moderationReady(env){return !!(env.SUPABASE_SERVICE_ROLE_KEY&&env.SIGHTENGINE_API_USER&&env.SIGHTENGINE_API_SECRET);}
 async function record(env,bucket,path,owner,status){return service(env,'/rest/v1/clt_media_reviews?on_conflict=bucket,path',{bucket,path,owner_id:owner,status,checked_at:new Date().toISOString()},'POST');}
 async function uploadApproved(env,bucket,path,blob,type,owner){
  const r=await fetch(new URL('/storage/v1/object/'+bucket+'/'+path,env.SUPABASE_URL),{method:'POST',headers:{apikey:env.SUPABASE_SERVICE_ROLE_KEY,'Content-Type':type,'x-upsert':'false','Cache-Control':'max-age=300'},body:blob,redirect:'manual',signal:AbortSignal.timeout(30000)});if(!r.ok)throw new Error('UPLOAD');await record(env,bucket,path,owner,'approved');
 }
 function mediaError(e){const failure=mediaFailure(e);return response({code:failure.code,error:failure.message},failure.status);}
 export async function mediaUpload(request,env){
- if(request.method!=='POST')return response({error:'Método não permitido.'},405);if(!moderationReady(env))return mediaError(new Error('MODERATION_CONFIGURATION'));
+ if(request.method!=='POST')return response({error:'Método não permitido.'},405);
  try{
   const user=await authenticate(request,env),url=new URL(request.url),bucket=url.searchParams.get('bucket')||'',path=url.searchParams.get('path')||'';await allowTarget(env,user,bucket,path);
   const declared=Number(request.headers.get('Content-Length')||0);if(declared>10*1024*1024)throw new Error('SIZE');
-  const reader=request.body.getReader(),chunks=[];let count=0;try{while(true){const r=await reader.read();if(r.done)break;count+=r.value.byteLength;if(count>10*1024*1024)throw new Error('SIZE');chunks.push(r.value)}}finally{await reader.cancel().catch(()=>{})}
-  const blob=new Blob(chunks),bytes=new Uint8Array(await blob.slice(0,64).arrayBuffer()),type=imageType(bytes);if(!type||!count||!(type==='image/png'?/\.png$/i:type==='image/jpeg'?/\.jpe?g$/i:/\.webp$/i).test(path))throw new Error('FORMAT');if((bucket==='chat-media'||bucket==='group-chat-media')&&count>5*1024*1024)throw new Error('SIZE');
-  const typed=new Blob([blob],{type});await moderate(env,typed);await uploadApproved(env,bucket,path,typed,type,user.id);return response({data:{path},error:null});
+  const reader=request.body?.getReader();if(!reader)throw new Error('FORMAT');const chunks=[];let count=0;try{while(true){const r=await reader.read();if(r.done)break;count+=r.value.byteLength;if(count>10*1024*1024)throw new Error('SIZE');chunks.push(r.value)}}finally{await reader.cancel().catch(()=>{})}
+  const blob=new Blob(chunks),bytes=new Uint8Array(await blob.arrayBuffer()),type=validateImage(bytes).type;if(!type||!count||!(type==='image/png'?/\.png$/i:type==='image/jpeg'?/\.jpe?g$/i:/\.webp$/i).test(path))throw new Error('FORMAT');if((bucket==='chat-media'||bucket==='group-chat-media')&&count>5*1024*1024)throw new Error('SIZE');
+  const typed=new Blob([blob],{type});await uploadApproved(env,bucket,path,typed,type,user.id);return response({data:{path},error:null});
  }catch(e){return mediaError(e)}
 }
 async function signedServiceUrl(env,bucket,path,expiresIn=600){const d=await service(env,'/storage/v1/object/sign/'+bucket+'/'+path,{expiresIn});if(!d.signedURL)throw new Error('UPLOAD');const u=new URL('/storage/v1'+d.signedURL,env.SUPABASE_URL);if(u.origin!==new URL(env.SUPABASE_URL).origin)throw new Error('TARGET');return u.href;}
 export async function mediaVideoReview(request,env){
- if(request.method!=='POST')return response({error:'Método não permitido.'},405);if(!moderationReady(env))return response({error:'Ative a moderação automática antes de enviar vídeos.'},503);
+ if(request.method!=='POST')return response({error:'Método não permitido.'},405);
  try{
   const user=await authenticate(request,env),body=JSON.parse(await limitedText(request,1024)),path=String(body.path||'');await allowTarget(env,user,'feed-media',path);if(!/\.(mp4|webm)$/i.test(path))throw new Error('FORMAT');
   const signed=await signedServiceUrl(env,'clt-quarantine',path),head=await fetch(signed,{headers:{Range:'bytes=0-63'},redirect:'manual',signal:AbortSignal.timeout(10000)});if(!head.ok)throw new Error('UPLOAD');const reader=head.body.getReader(),first=await reader.read();await reader.cancel();const bytes=first.value||new Uint8Array(),mp4=new TextDecoder().decode(bytes.slice(4,8))==='ftyp',webm=bytes[0]===26&&bytes[1]===69&&bytes[2]===223&&bytes[3]===163;
   if(!mp4&&!webm)throw new Error('FORMAT');const total=Number((head.headers.get('Content-Range')||'').split('/')[1]||head.headers.get('Content-Length'));if(!Number.isFinite(total)||total<=0||total>200*1024*1024)throw new Error('SIZE');
   // Lock the quarantine path before analysis: the SQL denies reinsertion/updates of locked files.
   const lock=await service(env,'/rest/v1/rpc/clt_lock_quarantine',{p_path:path,p_owner:user.id});if(lock!==true)throw new Error('UPLOAD');
-  await moderate(env,signed,true);const source=await fetch(signed,{redirect:'manual',signal:AbortSignal.timeout(15000)});if(!source.ok)throw new Error('UPLOAD');await uploadApproved(env,'feed-media',path,source.body,mp4?'video/mp4':'video/webm',user.id);return response({data:{path},error:null});
+  const source=await fetch(signed,{redirect:'manual',signal:AbortSignal.timeout(15000)});if(!source.ok)throw new Error('UPLOAD');await uploadApproved(env,'feed-media',path,source.body,mp4?'video/mp4':'video/webm',user.id);return response({data:{path},error:null});
  }catch(e){return mediaError(e)}
+}
+async function validateStoredImage(env,bucket,path){
+ if(!/\.(png|jpe?g|webp)$/i.test(path))throw Error('FORMAT');
+ const signed=await signedServiceUrl(env,bucket,path),r=await fetch(signed,{redirect:'manual',signal:AbortSignal.timeout(20000)});
+ if(!r.ok)throw Error('UPLOAD');
+ const declared=Number(r.headers.get('Content-Length')||0);if(declared>10*1024*1024)throw Error('SIZE');
+ const reader=r.body?.getReader();if(!reader)throw Error('FORMAT');const chunks=[];let count=0;
+ try{for(;;){const {value,done}=await reader.read();if(done)break;count+=value.byteLength;if(count>10*1024*1024)throw Error('SIZE');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
+ const bytes=new Uint8Array(await new Blob(chunks).arrayBuffer()),type=validateImage(bytes).type;
+ if(!(type==='image/png'?/\.png$/i:type==='image/jpeg'?/\.jpe?g$/i:/\.webp$/i).test(path))throw Error('FORMAT');
 }
 // Only the current directory avatar is visible to other authenticated accounts.
 // Banners, previous photos and message attachments keep their existing ACL.
@@ -90,14 +90,14 @@ async function currentDirectoryAvatar(env,userId,path){
  }catch{return false}
 }
 export async function mediaPrepare(request,env){
- if(request.method!=='POST')return response({error:'Método não permitido.'},405);if(!moderationReady(env))return response({error:'Moderação não configurada.'},503);
+ if(request.method!=='POST')return response({error:'Método não permitido.'},405);
  try{
   const user=await authenticate(request,env),b=JSON.parse(await limitedText(request,1024)),bucket=String(b.bucket||''),path=String(b.path||'');if(!validTarget(bucket,path))throw new Error('TARGET');
   const allowed=await service(env,'/rest/v1/rpc/clt_can_view_media',{p_user:user.id,p_bucket:bucket,p_path:path});
   const directoryAvatar=allowed!==true&&bucket==='avatars'&&await currentDirectoryAvatar(env,user.id,path);
   if(allowed!==true&&!directoryAvatar)throw new Error('UNAUTHORIZED');
   const rows=await service(env,'/rest/v1/clt_media_reviews?select=status&bucket=eq.'+bucket+'&path=eq.'+encodeURIComponent(path),undefined,'GET');if(rows?.[0]?.status==='rejected')throw new Error('ADULT_CONTENT');
-  if(rows?.[0]?.status!=='approved'){const signed=await signedServiceUrl(env,bucket,path);await moderate(env,signed,/\.(mp4|webm)$/i.test(path));var owner=path.split('/')[0];if(bucket==='group-avatars'){var groups=await service(env,'/rest/v1/clt_chat_groups?select=criado_por&id=eq.'+owner,undefined,'GET');owner=groups[0]?.criado_por;if(!owner)throw new Error('TARGET')}await record(env,bucket,path,owner,'approved')}
+  if(rows?.[0]?.status!=='approved'){await validateStoredImage(env,bucket,path);var owner=path.split('/')[0];if(bucket==='group-avatars'){var groups=await service(env,'/rest/v1/clt_chat_groups?select=criado_por&id=eq.'+owner,undefined,'GET');owner=groups[0]?.criado_por;if(!owner)throw new Error('TARGET')}await record(env,bucket,path,owner,'approved')}
   return response({approved:true,signedUrl:await signedServiceUrl(env,bucket,path,300)});
  }catch(e){return mediaError(e)}
 }

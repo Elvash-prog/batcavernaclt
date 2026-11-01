@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createHandler} from '../supabase/functions/native-api/router.js';
 const uid='2d3268d1-4993-46d6-abba-340a2ffdd0fa',other='2d3268d1-4993-46d6-abba-340a2ffdd0fb';
 const token='eyJtest.payload.signature';
-const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'private-service',IGDB_CLIENT_ID:'private-client',IGDB_CLIENT_SECRET:'private-secret',TMDB_KEY:'private-tmdb',SIGHTENGINE_API_USER:'private-user',SIGHTENGINE_API_SECRET:'private-moderation',USER_RATE_LIMITER:{limit:async()=>({success:mode!=='limited'})}};
+const image=new Uint8Array(readFileSync(new URL('./fixtures/profile-images/valid.jpg',import.meta.url)));
+const env={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'private-service',IGDB_CLIENT_ID:'private-client',IGDB_CLIENT_SECRET:'private-secret',TMDB_KEY:'private-tmdb',USER_RATE_LIMITER:{limit:async()=>({success:mode!=='limited'})}};
 let mode='ok',calls=[];const json=(d,status=200)=>new Response(JSON.stringify(d),{status});
 globalThis.fetch=async(url,options={})=>{const u=new URL(url);calls.push({u,options});
  if(u.pathname==='/functions/v1/bright-api'){assert.equal(options.headers.Authorization,'Bearer '+token);assert.equal(JSON.parse(options.body).op,'gratis');return json({steam:[{appid:42,nome:'Offer'}]});}
@@ -14,10 +16,9 @@ globalThis.fetch=async(url,options={})=>{const u=new URL(url);calls.push({u,opti
  if(u.pathname.includes('clt_chat_group_members'))return json([]);
  if(u.pathname==='/rest/v1/perfis')return json([{avatar_url:env.SUPABASE_URL+'/storage/v1/object/public/avatars/'+other+'/image.jpg'}]);
  if(u.pathname==='/rest/v1/bloqueios_clt')return json([{bloqueador_id:uid}]);
- if(u.pathname==='/rest/v1/clt_media_reviews')return json(options.method==='POST'?{}:[{status:'approved'}]);
- if(u.pathname.startsWith('/storage/v1/object/sign/'))return json({signedURL:'/object/sign/avatars/'+uid+'/image.jpg?token=transient'});
- if(u.hostname==='api.sightengine.com'&&mode.startsWith('provider_'))return json({status:'failure',error:{type:mode.slice(9),message:'private-provider-account-url-and-secret'}},400);
- if(u.hostname==='api.sightengine.com')return json({status:'success',nudity:{sexual_activity:mode==='adult'?1:0,sexual_display:0,erotica:0,very_suggestive:0}});
+ if(u.pathname==='/rest/v1/clt_media_reviews')return json(options.method==='POST'?{}:mode==='legacy'?[]:[{status:mode==='rejected'?'rejected':'approved'}]);
+ if(u.pathname.startsWith('/storage/v1/object/sign/')&&options.method==='POST')return json({signedURL:'/object/sign/avatars/'+uid+'/image.jpg?token=transient'});
+ if(u.pathname.startsWith('/storage/v1/object/sign/')&&options.method!=='POST')return new Response(image,{headers:{'content-type':'image/jpeg'}});
  if(u.pathname.startsWith('/storage/v1/object/'))return json({});
  throw Error('Unexpected request '+u.href);
 };
@@ -48,15 +49,17 @@ for(const path of ['/api/catalog/rawg/games','/api/catalog/tmdb/movie/1','/api/s
  r=await request(path,path.includes('/media/')?'POST':'GET',path.includes('/media/')?'{}':null);assert.equal(r.status,429);assert.equal(r.headers.get('retry-after'),'60');assert.equal(calls.length,1);
 }
 mode='upstreamfail';r=await request('/api/catalog/rawg/games');assert.equal(r.status,502);assert.doesNotMatch(await r.text(),/private-/);
-mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+other+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.hostname==='api.sightengine.com'),false);
-r=await request('/api/media/upload?bucket=group-avatars&path='+other+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.hostname==='api.sightengine.com'),false);
-mode='adult';r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,422);assert.equal(calls.some(x=>x.u.pathname.startsWith('/storage/')),false);
-mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,200);assert.equal((await r.json()).data.path,uid+'/image.jpg');assert.ok(calls.some(x=>x.u.pathname==='/rest/v1/clt_media_reviews'&&x.options.method==='POST'));
-for(const [type,code,status] of [['credentials_error','media_moderation_configuration',503],['plan_error','media_moderation_configuration',503],['usage_limit','media_moderation_limit',503],['media_error','media_invalid_format',422],['api_error','media_moderation_unavailable',503]]){
- mode='provider_'+type;r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,status);const failure=await r.json();assert.equal(failure.code,code);assert.doesNotMatch(JSON.stringify(failure),/private-provider/);assert.equal(calls.some(c=>c.u.pathname.startsWith('/storage/')),false);
-}
+mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+other+'/image.jpg','POST',image);assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.hostname==='api.sightengine.com'),false);
+r=await request('/api/media/upload?bucket=group-avatars&path='+other+'/image.jpg','POST',image);assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.hostname==='api.sightengine.com'),false);
+mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.jpg','POST',image);assert.equal(r.status,200);assert.equal((await r.json()).data.path,uid+'/image.jpg');assert.ok(calls.some(x=>x.u.pathname==='/rest/v1/clt_media_reviews'&&x.options.method==='POST'));
+assert.equal(calls.some(c=>c.u.hostname==='api.sightengine.com'),false);
+mode='ok';r=await request('/api/media/upload?bucket=avatars&path='+uid+'/image.jpg','POST',new Uint8Array([255,216,255]));assert.equal(r.status,422);assert.equal((await r.json()).code,'media_invalid_format');assert.equal(calls.some(c=>c.u.pathname.startsWith('/storage/')),false);
+r=await request('/api/media/video-review','POST','{}');assert.equal(r.status,422);assert.equal(calls.some(c=>c.u.pathname.startsWith('/storage/')),false);
 mode='denied';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:other+'/image.jpg'}));assert.equal(r.status,401);assert.equal(calls.some(x=>x.u.pathname.startsWith('/storage/v1/object/sign')),false);
 mode='ok';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:uid+'/image.jpg'}));assert.equal(r.status,200);assert.ok((await r.json()).signedUrl.startsWith('https://test.supabase.co/storage/v1/object/sign/'));
+mode='rejected';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:uid+'/image.jpg'}));assert.equal(r.status,422);assert.equal(calls.some(c=>c.u.pathname.startsWith('/storage/v1/object/sign/')),false);
+mode='legacy';r=await request('/api/media/prepare','POST',JSON.stringify({bucket:'avatars',path:uid+'/image.jpg'}));assert.equal(r.status,200);assert.equal(calls.some(c=>c.u.hostname==='api.sightengine.com'),false);assert.ok(calls.some(c=>c.u.pathname==='/rest/v1/clt_media_reviews'&&c.options.method==='POST'));
+mode='ok';
 r=await request('/api/catalog/rawg/games','DELETE');assert.equal(r.status,405);
 mode='ok';r=await request('/api/steam-free');assert.equal(r.status,200);assert.deepEqual((await r.json()).steam,[]);assert.equal(calls.some(c=>c.u.pathname==='/functions/v1/bright-api'),false);assert.equal(calls.some(c=>c.u.hostname==='store.steampowered.com'),false);
-console.log('native-api: Auth, shared limit, catalog filtering, key redaction, media ownership, group admin, blocking and signed URLs passed');
+console.log('native-api: Auth, shared limit, catalog filtering, key redaction, server image validation, media ownership, group admin, blocking and signed URLs passed');
