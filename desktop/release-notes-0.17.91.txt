@@ -1,0 +1,3 @@
+Chat redesenhado com lista de conversas mais clara, mensagens em uma coluna confortável, imagens sem recorte e identificação de autores nos grupos. Busca, respostas, reações, figurinhas e envio continuam disponíveis.
+
+A atividade da Steam ou de jogos fora dela aparece diretamente no amigo online. A seção duplicada Jogando na Steam foi removida; o modo invisível continua ocultando a atividade.

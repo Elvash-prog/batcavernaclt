@@ -41,7 +41,7 @@
 
  const bell=$('#notificationBell');if(bell&&logo)logo.after(bell);
  const rail=document.createElement('aside');
- rail.className='cavern-rail';rail.setAttribute('aria-label','Amigos online e jogando na Steam');
+ rail.className='cavern-rail';rail.setAttribute('aria-label','Amigos e atividade nos jogos');
  const community=$('#sidebarCommunity');
  if(community)rail.append(community);
  shell.append(rail);

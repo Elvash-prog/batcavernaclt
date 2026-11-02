@@ -553,7 +553,7 @@ test('leituras de catálogo/Steam usam cache e navegação marca só a aba ativa
 test('presença tolera saída transitória, expira offline e cancela por nova sessão',()=>{
  const source=read('src/redesign.js'),start=source.indexOf('const presenceDepartures=new Map();'),end=source.indexOf('\nfunction renderSidebarFriends()',start),timers=new Map();let seq=0;
  const context={ui:{presence:{},presenceReady:false},state:{userId:'owner'},setTimeout:fn=>{timers.set(++seq,fn);return seq},clearTimeout:id=>timers.delete(id),renderSidebarFriends:()=>{}};
- vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+ context.window={};vm.createContext(context);vm.runInContext(read('src/friend-presence.js'),context);vm.runInContext(source.slice(start,end),context);
  const send=(event,data)=>context.receivePresence({event,data}),meta=(ref,status='online')=>({phx_ref:ref,status,jogo:'Hades'});
  send('presence_state',{friend:{metas:[meta('a')]}});
  send('presence_diff',{leaves:{friend:{metas:[meta('a')]}}});assert.equal(context.ui.presence.friend.status,'online');assert.equal(timers.size,1);
