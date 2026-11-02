@@ -1,0 +1,11 @@
+(() => {
+ 'use strict';
+ const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const paths={search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',plus:'<path d="M12 5v14M5 12h14"/>',chat:'<path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 4V6a2 2 0 0 1 2-2Z"/>',send:'<path d="m3 3 18 9-18 9 4-9-4-9Zm4 9h14"/>',smile:'<circle cx="12" cy="12" r="9"/><path d="M8 14s1 3 4 3 4-3 4-3M8 8h.01M16 8h.01"/>',attach:'<path d="m8 13 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.9M16 3a4 4 0 0 1 0 8"/><circle cx="9" cy="7" r="4"/>',back:'<path d="m14 6-6 6 6 6"/>'};
+ const icon=name=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.chat}</svg>`;
+ const initials=name=>String(name||'?').trim().split(/\s+/).slice(0,2).map(s=>[...s][0]).join('').toLocaleUpperCase('pt-BR');
+ function contact(friend,presence,active){return `<button type="button" data-chat-user="${escape(friend.id)}" class="chat-contact ${active?'active':''} ${presence.online?'is-online':''}" ${active?'aria-current="true"':''}><span class="chat-contact-avatar"><img src="brand.jpg" data-private-src="${escape(friend.avatar_url||'')}" alt=""><i></i></span><span class="chat-contact-copy"><strong>${escape(friend.nome||friend.slug||'Amigo')}</strong><small>${escape(presence.text)}</small></span></button>`;}
+ function group(group,active){return `<button type="button" data-group="${escape(group.id)}" class="chat-contact chat-group ${active?'active':''}" ${active?'aria-current="true"':''}><span class="chat-group-avatar" aria-hidden="true">${escape(initials(group.nome))}</span><span class="chat-contact-copy"><strong>${escape(group.nome||'Grupo')}</strong><small>Conversa em grupo</small></span></button>`;}
+ function sender(message,{userId,members=[],friends=[]}){if(String(message.remetente_id)===String(userId))return 'Você';return members.find(m=>String(m.user_id)===String(message.remetente_id))?.nome||friends.find(f=>String(f.id)===String(message.remetente_id))?.nome||'Participante';}
+ window.BatChatPresentation={icon,contact,group,sender,escape,initials};
+})();

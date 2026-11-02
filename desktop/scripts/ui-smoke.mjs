@@ -593,8 +593,10 @@ try {
                 ["weekly-hours", "semana:2026-10-12", "play_hours", "Tempo de jogo", "Registre 8 novas horas jogadas.", 8, 4, 85],
               ].map(([id, periodo, missao_id, nome, objetivo, meta, progresso, xp]) => ({ id, periodo, missao_id, nome, objetivo, meta, progresso, xp, reivindicada: false }));
             if (i.op === "groups") return window.testGroups||[];
-            if (i.op === 'group_messages') return [];
-            if (i.op === 'group_manage') { window.saved.push({c:'group_manage',p:i});if(i.action==='members')return [{user_id:'test',admin:true},{user_id:'member-2',admin:false}];return []; }
+            if (i.op === 'group_messages') return window.testGroupMessages||[];
+            if(i.op==='group_send'){window.saved.push({c:'group_send',p:i});await new Promise(r=>setTimeout(r,100));(window.testGroupMessages||=[]).push({id:'g-sent',remetente_id:'test',texto:i.text,created_at:new Date().toISOString()});return {};}
+
+            if (i.op === 'group_manage') { window.saved.push({c:'group_manage',p:i});if(i.action==='members')return window.testGroupMembers||[{user_id:'test',admin:true},{user_id:'member-2',admin:false}];return []; }
             if (i.op === "reactions") return reactions;
             if (i.op === "react") {
               reactions = i.remove
@@ -1675,6 +1677,14 @@ try {
   );
   const stablePresence=await page.evaluate(()=>{const emit=(event,data)=>window.listeners['desktop-presence']({payload:{userId:'test',event,data}});emit('presence_state',{friend:{metas:[{phx_ref:'first',status:'online',jogo:'Hades'}]}});const row=document.querySelector('#sidebarCommunity [data-sidebar-chat="friend"]'),image=row?.querySelector('img');emit('presence_diff',{joins:{friend:{metas:[{phx_ref:'second',phx_ref_prev:'first',status:'online',jogo:'Hades'}]}},leaves:{friend:{metas:[{phx_ref:'first'}]}}});const unchanged=row===document.querySelector('#sidebarCommunity [data-sidebar-chat="friend"]')&&image===row?.querySelector('img');emit('presence_diff',{leaves:{friend:{metas:[{phx_ref:'second'}]}}});const retained=window.batcavernaFriendPresence({id:'friend'}).online;emit('presence_diff',{joins:{friend:{metas:[{phx_ref:'third',status:'online',jogo:'Hades'}]}}});emit('presence_state',{});const reconnect=window.batcavernaFriendPresence({id:'friend'}).online;emit('presence_state',{friend:{metas:[{phx_ref:'hidden',status:'invisivel'}]}});const invisible=!window.batcavernaFriendPresence({id:'friend'}).online;return {unchanged,retained,reconnect,invisible}});
   assert.deepEqual(stablePresence,{unchanged:true,retained:true,reconnect:true,invisible:true});
+  const unifiedActivity=await page.evaluate(()=>{window.listeners['desktop-presence']({payload:{userId:'test',event:'presence_state',data:{friend:{metas:[{phx_ref:'mobile',status:'online'},{phx_ref:'pc',status:'online',jogo:'Minecraft',jogo_fonte:'pc'}]}}}});const rows=[...document.querySelectorAll('#sidebarCommunity [data-sidebar-chat="friend"]')];return {rows:rows.length,text:rows[0]?.textContent,steamSection:document.querySelector('#sidebarCommunity').textContent.includes('Jogando na Steam')};});
+  assert.equal(unifiedActivity.rows,1);assert.match(unifiedActivity.text,/Minecraft/);assert.equal(unifiedActivity.steamSection,false);
+  await page.locator('#conversationSearch').fill('nenhum-contato-regressao');
+  assert.equal(await page.locator('.chat-search-empty').isVisible(),true);
+  await page.locator('#conversationSearch').fill('Amigo');
+  assert.equal(await page.locator('[data-chat-user="friend"]').isVisible(),true);
+  await page.locator('#conversationSearch').fill('');
+
   assert.equal(await page.locator(".community-tabs").count(), 0);
   await page.evaluate(() => window.emitIncoming());
   await page.locator('[data-message="incoming"]').waitFor();
@@ -1969,9 +1979,17 @@ try {
   await page.evaluate(()=>{window.batcavernaConfirm('Excluir teste?').then(value=>window.confirmResult=value)});
   await page.locator('.app-confirm-dialog [data-cancel]').click();
   await page.waitForFunction(()=>window.confirmResult===false);
-  await page.evaluate(async()=>{window.testGroups=[{id:'group-test',nome:'Grupo de teste',criado_por:'test'}];await navigate('friends')});
+  await page.evaluate(async()=>{window.testGroups=[{id:'group-test',nome:'Grupo de teste',criado_por:'test'}];window.testGroupMembers=[{user_id:'test',admin:true},{user_id:'member-2',nome:'Luna',admin:false}];window.testGroupMessages=[{id:'g-author',remetente_id:'member-2',texto:'Vamos jogar?',created_at:new Date().toISOString()}];await navigate('friends')});
   await page.locator('.community-split-tabs [data-pane="groups"]').click();
   await page.locator('[data-group="group-test"]').click();
+  await page.locator('[data-message="g-author"] .message-author').waitFor();
+  assert.equal(await page.locator('[data-message="g-author"] .message-author').innerText(),'Luna');
+  await page.locator('#liveChatText').fill('Mensagem de grupo sem duplicação');
+  await page.evaluate(()=>{const form=document.querySelector('#liveMessageForm');form.requestSubmit();form.requestSubmit();});
+  await page.waitForFunction(()=>document.querySelector('#liveChatText').value==='');
+  assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='group_send'&&x.p.text==='Mensagem de grupo sem duplicação').length),1);
+  for(const size of [{width:980,height:760},{width:1920,height:1080}]){await page.setViewportSize(size);const composer=await page.locator('#liveMessageForm').boundingBox(),content=await page.locator('#content').boundingBox();assert.ok(composer.x>=content.x&&composer.x+composer.width<=content.x+content.width+1);assert.ok(composer.y+composer.height<=size.height);}
+
   await page.getByRole('button',{name:'⚙ Configurações do grupo'}).click();
   await page.locator('.group-settings-dialog [data-photo]').waitFor();
   assert.equal(await page.locator('.group-settings-dialog [data-remove="member-2"]').count(),1);
