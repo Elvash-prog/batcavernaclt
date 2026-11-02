@@ -10,4 +10,8 @@ final class ProfileImages {
   if(android.os.Build.VERSION.SDK_INT>=24){try{android.media.ExifInterface exif=new android.media.ExifInterface(new ByteArrayInputStream(source));int orientation=exif.getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION,1);Matrix m=new Matrix();switch(orientation){case 2:m.setScale(-1,1);break;case 3:m.setRotate(180);break;case 4:m.setScale(1,-1);break;case 5:m.setRotate(90);m.postScale(-1,1);break;case 6:m.setRotate(90);break;case 7:m.setRotate(-90);m.postScale(-1,1);break;case 8:m.setRotate(-90);break;}if(!m.isIdentity()){Bitmap upright=Bitmap.createBitmap(bitmap,0,0,bitmap.getWidth(),bitmap.getHeight(),m,true);if(upright!=bitmap)bitmap.recycle();bitmap=upright;}}catch(IOException ignored){}}
   return bitmap;
  }
+ static Bitmap crop(Bitmap bitmap,int width,int height,float x,float y,float zoom){
+  CropGeometry crop=new CropGeometry();crop.position(x,y,zoom);float scale=crop.scale(width,height,bitmap.getWidth(),bitmap.getHeight());Matrix transform=new Matrix();transform.setScale(scale,scale);transform.postTranslate(crop.left(width,bitmap.getWidth(),scale),crop.top(height,bitmap.getHeight(),scale));Bitmap output=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);Canvas canvas=new Canvas(output);canvas.drawColor(0xff151c27);canvas.drawBitmap(bitmap,transform,new Paint(Paint.FILTER_BITMAP_FLAG));return output;
+ }
+
 }

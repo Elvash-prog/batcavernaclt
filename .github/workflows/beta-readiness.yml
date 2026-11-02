@@ -1,7 +1,7 @@
 name: Segurança e recuperação beta
 on:
   pull_request:
-    paths: ['tools/operations/**', 'tests/operations/**', 'tests/operational-metrics.mjs', 'supabase/migrations/**', 'supabase/functions/_shared/**', 'supabase/functions/native-api/**', 'tests/media-errors.mjs', 'tests/image-validation.mjs', 'tests/profile-highlights.mjs', '.github/workflows/beta-readiness.yml']
+    paths: ['tools/operations/**', 'tests/operations/**', 'tests/operational-metrics.mjs', 'supabase/migrations/**', 'supabase/functions/_shared/**', 'supabase/functions/native-api/**', 'tests/media-errors.mjs', 'tests/image-validation.mjs', 'tests/profile-highlights.mjs', 'tests/profile-image-geometry.mjs', '.github/workflows/beta-readiness.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,7 +38,7 @@ jobs:
       - name: Instalar dependências do banco de teste isolado
         run: npm install --prefix tests --ignore-scripts --no-package-lock --no-audit --no-fund
       - name: Validar seleção de destaques e preservação do rascunho
-        run: node tests/profile-highlights.mjs
+        run: node tests/profile-highlights.mjs && node tests/profile-image-geometry.mjs
       - name: Validar entradas de perfil em PostgreSQL isolado
         run: node tests/profile-validation.mjs
       - name: Instalar parser SQL do plano local

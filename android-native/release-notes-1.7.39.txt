@@ -1,0 +1,3 @@
+Novo editor de fotos e capas: arraste a imagem diretamente na prévia para enquadrar. Amplie com a roda do mouse no Windows ou com dois dedos no Android. Botões discretos permitem ajustar o zoom e centralizar.
+
+Campos de links e barras de posição/zoom foram retirados dessa área. Envie a imagem pelo botão Trocar imagem e confira o recorte antes de salvar. O Android também permite reenquadrar a foto atual.

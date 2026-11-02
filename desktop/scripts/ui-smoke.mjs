@@ -373,6 +373,11 @@ try {
             window.mediaResolved++;
             return image;
           }
+          if(c === "upload_profile_image"){
+            window.saved.push({c,p});
+            if(window.failProfileUpload)throw Error("Falha simulada ao enviar imagem");
+            return {url:"https://example.invalid/avatars/demo/"+p.input.name+".webp"};
+          }
           if (c === "save_item" || c === "update_profile") {
             window.saved.push({ c, p });
             return {};
@@ -1774,6 +1779,28 @@ try {
   await page.locator(".profile-editor").waitFor();
   await page.locator('[data-profile-tab="appearance"]').click();
   assert.equal(await page.locator("#desktopProfileBackground").count(), 1);
+  assert.equal(await page.locator('.profile-image-studio input[type="range"], .profile-editor input[type="url"]').count(), 0);
+  const imageFixture=path.resolve('../tests/fixtures/profile-images/valid.png');
+  await page.locator('[name="bannerFile"]').setInputFiles(imageFixture);
+  await page.locator('[data-image-crop="cover"].has-image').waitFor();
+  const cropCover=page.locator('[data-image-crop="cover"]');
+  await page.locator('[data-image-plus="cover"]').click();
+  await page.locator('[data-image-plus="cover"]').click();
+  const cb=await cropCover.boundingBox(),oldY=Number(await page.locator('[name="coverY"]').inputValue());
+  await page.mouse.move(cb.x+cb.width/2,cb.y+cb.height/2);await page.mouse.down();await page.mouse.move(cb.x+cb.width/2+24,cb.y+cb.height/2+30,{steps:6});await page.mouse.up();
+  assert.ok(Number(await page.locator('[name="coverY"]').inputValue())<oldY,'Arrastar a capa para baixo deve mover o recorte');
+  const beforeWheel=Number(await page.locator('[name="coverZoom"]').inputValue());
+  await page.mouse.wheel(0,-100);await page.waitForFunction(z=>Number(document.querySelector('[name="coverZoom"]').value)>z,beforeWheel);
+  const savedCoverPosition=await page.locator('[name="coverY"]').inputValue();
+  await page.locator('[name="avatarFile"]').setInputFiles(imageFixture);
+  await page.locator('[data-image-crop="avatar"].has-image').waitFor();
+  await page.locator('[data-image-plus="avatar"]').click();
+  const cropAvatar=page.locator('[data-image-crop="avatar"]');await cropAvatar.focus();await page.keyboard.press('ArrowRight');
+  assert.ok(Number(await page.locator('[name="avatarX"]').inputValue())<50);
+  await page.locator('[data-profile-tab="info"]').click();await page.locator('[data-profile-tab="appearance"]').click();
+  assert.equal(await page.locator('[name="coverY"]').inputValue(),savedCoverPosition,'Trocar de aba não perde o enquadramento');
+  await page.screenshot({path:'preview/profile-image-studio.png'});
+
   assert.equal(
     await page.locator('.profile-editor [name="steamId"]').getAttribute("type"),
     "hidden",
@@ -1796,7 +1823,24 @@ try {
   assert.equal(await page.locator('[data-picks-page="achievements"]').isVisible(), true);
   assert.equal(await page.locator('[data-save-profile]').isVisible(), true);
   await page.screenshot({ path: "preview/profile-editor-highlights-check.png" });
-  await page.locator(".profile-editor [data-close]").first().click();
+  await page.locator('[data-save-profile]').click();
+  await page.waitForFunction(()=>!document.querySelector('.profile-editor'));
+  const imageSave=await page.evaluate(()=>({uploads:window.saved.filter(s=>s.c==='upload_profile_image'),profile:window.saved.filter(s=>s.c==='update_profile').at(-1)}));
+  assert.deepEqual(imageSave.uploads.map(s=>s.p.input.name),['banner','avatar']);
+  assert.match(imageSave.profile.p.input.banner,/#bc-cover=/);
+  assert.equal(imageSave.uploads[1].p.input.mime,'image/webp');
+  const exportedAvatar=await page.evaluate(async b64=>{const image=new Image();image.src='data:image/webp;base64,'+b64;await image.decode();return [image.naturalWidth,image.naturalHeight];},imageSave.uploads[1].p.input.base64);
+  assert.deepEqual(exportedAvatar,[512,512]);
+  const writesBeforeCancel=await page.evaluate(()=>window.saved.length);
+  await page.locator('#profileAction').click();await page.locator('[data-profile-tab="appearance"]').click();
+  await page.locator('[name="avatarFile"]').setInputFiles(imageFixture);await page.locator('[data-image-crop="avatar"].has-image').waitFor();
+  await page.locator('[data-image-plus="avatar"]').click();await page.locator('[data-image-reset="avatar"]').click();
+  assert.equal(await page.locator('[name="avatarZoom"]').inputValue(),'100');
+  await page.locator('[data-image-remove="avatar"]').click();await page.waitForFunction(()=>!document.querySelector('[data-image-crop="avatar"]').classList.contains('has-image'));
+  assert.equal(await page.locator('[name="avatar"]').inputValue(),'');
+  await page.locator('.profile-editor [data-close]').first().click();
+  assert.equal(await page.evaluate(()=>window.saved.length),writesBeforeCancel,'Cancelar o recorte não envia nem remove imagens');
+
   await page.locator(".mission-period").first().waitFor();
   assert.match(
     await page
