@@ -5,6 +5,7 @@ import AppShell from './AppShell';
 import './styles.css';import './visibility.css';import './phase03.css';import './redesign.css';import './reference.css';import './refinement.css';import './polish.css';import './catalog-library.css';import './journey.css';import './alignment.css';import './desktop-fixes.css';import './react-motion.css';import './professional.css';import './cavern-home.css';import './cavern-library.css';import './cavern-profile.css';import './cavern-social.css';import './cavern-community.css';import './cavern-shell.css';import './continuity.css';import './profile-editor.css';
 import coverPicker from './cover-picker.js?url';
 import libraryQuery from './library-query.js?url';
+import './library-query.css';
 import friendPresence from './friend-presence.js?url';
 import chatPresentation from './chat-presentation.js?url';
 import './chat-studio.css';

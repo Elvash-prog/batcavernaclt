@@ -2007,8 +2007,10 @@ try {
 
   await page.evaluate(()=>{state.librarySort='recent';document.querySelector('#librarySort').value='recent';drawLibrary();});
   await page.locator('[data-status-group="backlog"] .cinema-card').nth(10).scrollIntoViewIfNeeded();
+  await page.evaluate(()=>{window.beforeLibraryScale=document.documentElement.style.getPropertyValue('--ui-scale');document.documentElement.style.setProperty('--ui-scale','1.2');});
   const keptPosition=await page.evaluate(()=>{const root=document.querySelector('#content'),box=document.querySelector('#libraryGroups'),before=window.BatLibraryQuery.capture(root,box),row=state.libraryRows.find(r=>String(r.id)===before.id);if(!row)throw Error('Visible library title not found');window.batcavernaRefreshLibraryItem({...row,updated_at:'2099-01-01T00:00:00Z'});const item=[...box.querySelectorAll('[data-detail]')].find(n=>n.dataset.detail===before.id);return {offset:before.offset,after:item.getBoundingClientRect().top-root.getBoundingClientRect().top,scroll:root.scrollTop};});
   assert.ok(Math.abs(keptPosition.offset-keptPosition.after)<2,'Editar um título deve manter o ponto da biblioteca');
+  await page.evaluate(()=>{if(window.beforeLibraryScale)document.documentElement.style.setProperty('--ui-scale',window.beforeLibraryScale);else document.documentElement.style.removeProperty('--ui-scale');});
   await page.locator('#librarySearch').fill('Coleção 0999');
   await page.waitForFunction(()=>document.querySelectorAll('#libraryGroups .cinema-card').length===1);
   assert.equal(await page.locator('#libraryGroups [data-detail="large-999"]').count(),1,'Search includes unloaded titles');
