@@ -380,6 +380,7 @@ try {
             return {url:"https://example.invalid/avatars/demo/"+p.input.name+".webp"};
           }
           if (c === "save_item" || c === "update_profile") {
+            if(c==='save_item'&&window.libraryQueryRows){const row=window.libraryQueryRows.find(row=>String(row.id)===String(p.item.id));if(row)Object.assign(row,p.item,{updated_at:new Date().toISOString()});}
             window.saved.push({ c, p });
             return {};
           }
@@ -2010,6 +2011,9 @@ try {
   await page.evaluate(()=>{window.beforeLibraryScale=document.documentElement.style.getPropertyValue('--ui-scale');document.documentElement.style.setProperty('--ui-scale','1.2');});
   const keptPosition=await page.evaluate(()=>{const root=document.querySelector('#content'),box=document.querySelector('#libraryGroups'),before=window.BatLibraryQuery.capture(root,box),row=state.libraryRows.find(r=>String(r.id)===before.id);if(!row)throw Error('Visible library title not found');window.batcavernaRefreshLibraryItem({...row,updated_at:'2099-01-01T00:00:00Z'});const item=[...box.querySelectorAll('[data-detail]')].find(n=>n.dataset.detail===before.id);return {offset:before.offset,after:item.getBoundingClientRect().top-root.getBoundingClientRect().top,scroll:root.scrollTop};});
   assert.ok(Math.abs(keptPosition.offset-keptPosition.after)<2,'Editar um título deve manter o ponto da biblioteca');
+  const reloadedPosition=await page.evaluate(async()=>{const root=document.querySelector('#content'),before=window.BatLibraryQuery.capture(root,document.querySelector('#libraryGroups'));await renderLibrary();const box=document.querySelector('#libraryGroups'),item=[...box.querySelectorAll('[data-detail]')].find(n=>n.dataset.detail===before.id);return {before:before.offset,after:item.getBoundingClientRect().top-root.getBoundingClientRect().top};});
+  assert.ok(Math.abs(reloadedPosition.before-reloadedPosition.after)<2,'Recarregar após a edição deve manter o título visível');
+
   await page.evaluate(()=>{if(window.beforeLibraryScale)document.documentElement.style.setProperty('--ui-scale',window.beforeLibraryScale);else document.documentElement.style.removeProperty('--ui-scale');});
   await page.locator('#librarySearch').fill('Coleção 0999');
   await page.waitForFunction(()=>document.querySelectorAll('#libraryGroups .cinema-card').length===1);
@@ -2026,7 +2030,13 @@ try {
   await page.locator('#libraryGenre').selectOption('Ação');await page.locator('#libraryPlatform').selectOption('PC');
   await page.evaluate(()=>renderLibrary());
   assert.equal(await page.locator('#libraryGenre').inputValue(),'Ação');assert.equal(await page.locator('#libraryPlatform').inputValue(),'PC');assert.equal(await page.locator('#librarySort').inputValue(),'rating');
-  await page.locator('#libraryGroups [data-detail="1"]').click();await page.locator('#editInformation').waitFor();await page.locator('.reference-detail .detail-close').click();
+
+  await page.locator('#libraryGroups [data-detail="1"]').click();await page.locator('#editInformation').waitFor();await page.locator('#editInformation').click();
+  await page.locator('.item-editor-modern [name="nome"]').fill('Pokémon Écarlate — Edição teste');
+  await page.locator('.item-editor-modern footer button.primary').click();
+  await page.waitForFunction(()=>!document.querySelector('.item-editor-modern'));
+  await page.waitForFunction(()=>document.querySelector('#libraryGroups [data-detail="1"]')?.textContent.includes('Edição teste'));
+
   assert.equal(await page.locator('#librarySearch').inputValue(),'ecarlate POKEMON');assert.equal(await page.locator('#libraryPlatform').inputValue(),'PC');
   await page.screenshot({path:'preview/library-filters-check.png'});
   await page.locator('[data-clear-library-filters]').click();
