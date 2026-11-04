@@ -8,7 +8,7 @@ final class LibraryQuery {
  static String clean(Object value){return value==null||value==JSONObject.NULL||"null".equals(String.valueOf(value))?"":String.valueOf(value).trim();}
  static String fold(Object value){return SPACES.matcher(ACCENTS.matcher(Normalizer.normalize(clean(value),Normalizer.Form.NFD)).replaceAll("").toLowerCase(new Locale("pt","BR"))).replaceAll(" ");}
  static List<String> tags(Object value){List<String> out=new ArrayList<>();if(value instanceof JSONArray){JSONArray array=(JSONArray)value;for(int i=0;i<array.length();i++){String tag=clean(array.opt(i));if(!tag.isEmpty())out.add(tag);}}else for(String part:clean(value).split("[•,|]")){String tag=clean(part);if(!tag.isEmpty())out.add(tag);}return out;}
- static List<String> platforms(JSONObject row){String value=clean(row.opt("plataforma"));return tags(value.isEmpty()?row.opt("onde"):value);}
+ static List<String> platforms(JSONObject row){if(!row.optString("categoria").isEmpty()&&!row.optString("categoria").equals("jogos"))return tags(row.opt("onde"));String value=clean(row.opt("plataforma"));return tags(value.isEmpty()?row.opt("onde"):value);}
  static boolean matches(String title,String query){String name=fold(title);for(String word:fold(query).split(" "))if(!word.isEmpty()&&!name.contains(word))return false;return true;}
  private static boolean contains(List<String> values,String selected){if(selected.isEmpty())return true;for(String value:values)if(fold(value).equals(fold(selected)))return true;return false;}
  static boolean matches(JSONObject row,String query,String genre,String platform){return matches(row.optString("nome"),query)&&contains(tags(row.opt("generos")),genre)&&contains(platforms(row),platform);}

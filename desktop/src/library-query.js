@@ -4,7 +4,7 @@
  const clean=value=>value==null||String(value)==='null'?'':String(value).trim();
  const fold=value=>clean(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/\s+/g,' ');
  const tags=value=>(Array.isArray(value)?value:String(value??'').split(/[•,|]/)).map(clean).filter(Boolean);
- const platforms=row=>tags(clean(row.plataforma)||row.onde);
+ const platforms=row=>tags(row.categoria&&row.categoria!=='jogos'?row.onde:clean(row.plataforma)||row.onde);
  const matches=(name,query)=>{const title=fold(name);return fold(query).split(' ').filter(Boolean).every(word=>title.includes(word));};
  const numeric=value=>{const n=typeof value==='number'?value:Number(clean(value).match(/[-+]?\d+(?:[.,]\d+)?/)?.[0]?.replace(',','.'));return Number.isFinite(n)?n:0;};
  function rating(value){const s=fold(value);if(!s||/sem avaliacao|a considerar/.test(s))return -1;for(const [label,rank] of [['goty',11],['lenda',11],['obra-prima',10],['obra prima',10],['excelente',9],['muito bom',8],['bom',7],['ok',6],['fraco',4],['ruim',2]])if(s.includes(label))return rank;const stars=(s.match(/⭐/g)||[]).length;if(stars)return stars*2+(s.includes('½')?1:0);return /\d/.test(s)?numeric(s)*(/\/\s*5\b/.test(s)?2:1):-1;}

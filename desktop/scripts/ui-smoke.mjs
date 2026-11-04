@@ -2031,6 +2031,13 @@ try {
   await page.screenshot({path:'preview/library-filters-check.png'});
   await page.locator('[data-clear-library-filters]').click();
   assert.equal(await page.locator('#librarySearch').inputValue(),'');assert.equal(await page.locator('#libraryGenre').inputValue(),'');assert.equal(await page.locator('#libraryPlatform').inputValue(),'');assert.equal(await page.locator('#librarySort').inputValue(),'rating');assert.equal(await page.locator('#libraryGroups [data-detail]').count(),4);
+
+  await page.evaluate(async()=>{state.libraryCategory='series';await renderLibrary();});
+  assert.equal(await page.locator('#libraryPlatform').getAttribute('aria-label'),'Onde assistir');
+  assert.equal(await page.locator('#libraryPlatform option[value="PC"]').count(),0);
+  await page.locator('#libraryPlatform').selectOption('Prime Video');
+  assert.equal(await page.locator('#libraryGroups [data-detail="4"]').count(),1);
+  await page.screenshot({path:'preview/library-media-filters-check.png'});
   await page.evaluate(()=>{window.libraryQueryRows=null;});
   const cleanDescription=await page.evaluate(()=>{const node=document.createElement('p');document.body.append(node);window.batcavernaRenderDescription(node,'<p>&amp;quot;How to Fish&amp;quot;</p><p>Pesca &amp; amigos</p>&lt;script&gt;window.descriptionExecuted=true&lt;/script&gt;');const result={text:node.textContent,scripts:node.querySelectorAll('script').length,executed:!!window.descriptionExecuted};node.remove();return result});
   assert.equal(cleanDescription.text,'"How to Fish"\nPesca & amigos');assert.equal(cleanDescription.scripts,0);assert.equal(cleanDescription.executed,false);
