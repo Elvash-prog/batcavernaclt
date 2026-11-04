@@ -48,8 +48,18 @@ public final class MobileAppearanceTest {
     studio.addView(NativeSheet.text(activity,"Foto de perfil",15,0xfff4effb));ProfileCoverView avatar=new ProfileCoverView(activity,"");avatar.setImageBitmap(artwork);avatar.setBackground(AppStyle.shape(avatar,0xff111722,76));avatar.setClipToOutline(true);LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(NativeSheet.dp(activity,152),NativeSheet.dp(activity,152));ap.gravity=android.view.Gravity.CENTER_HORIZONTAL;studio.addView(avatar,ap);ProfileImageControls.add(activity,studio,avatar);avatar.position(65,35,150);Button save=new Button(activity);save.setText("Salvar imagem");AppStyle.button(save,true);studio.addView(save);activity.setContentView(studio);
    });
    getInstrumentation().waitForIdleSync();capture(activity,"perfil-enquadramento-android");
+   final AccountDataView[] collection=new AccountDataView[1];
+   getInstrumentation().runOnMainSync(()->{try{
+    collection[0]=new AccountDataView(activity,false,0);activity.setContentView(collection[0]);org.json.JSONArray rows=new org.json.JSONArray("[{\"id\":\"1\",\"nome\":\"Pokémon Écarlate\",\"categoria\":\"jogos\",\"status\":\"📌 Backlog\",\"generos\":[\"RPG\",\"Ação\"],\"plataforma\":\"Switch • PC\",\"nota\":\"💎 Lenda (GOTY)\",\"horas\":12.5},{\"id\":\"2\",\"nome\":\"Celeste\",\"categoria\":\"jogos\",\"status\":\"📌 Backlog\",\"generos\":\"Plataforma • Ação\",\"plataforma\":\"PC\",\"nota\":\"⭐⭐⭐⭐½ Excelente\",\"horas\":20.5}]");
+    java.lang.reflect.Field data=AccountDataView.class.getDeclaredField("all");data.setAccessible(true);data.set(collection[0],rows);java.lang.reflect.Field error=AccountDataView.class.getDeclaredField("loadError");error.setAccessible(true);error.set(collection[0],"");java.lang.reflect.Field steam=AccountDataView.class.getDeclaredField("currentSteam");steam.setAccessible(true);((View)steam.get(collection[0])).setVisibility(View.GONE);
+    for(String method:new String[]{"rebuildFilters","render"}){java.lang.reflect.Method m=AccountDataView.class.getDeclaredMethod(method);m.setAccessible(true);m.invoke(collection[0]);}
+    Button filters=findButton(collection[0],"Filtrar ▾");assertNotNull(filters);filters.performClick();
+   }catch(Exception e){throw new AssertionError(e);}});
+   getInstrumentation().waitForIdleSync();capture(activity,"biblioteca-filtros-android");
+
   } finally { getInstrumentation().runOnMainSync(activity::finish); }
  }
+ private Button findButton(View view,String label){if(view instanceof Button&&label.contentEquals(((Button)view).getText()))return (Button)view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){Button found=findButton(group.getChildAt(i),label);if(found!=null)return found;}}return null;}
  private View findDescription(View view,String description){
   if(description.contentEquals(view.getContentDescription()==null?"":view.getContentDescription()))return view;
   if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){View found=findDescription(group.getChildAt(i),description);if(found!=null)return found;}}

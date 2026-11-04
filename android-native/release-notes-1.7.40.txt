@@ -1,0 +1,5 @@
+Biblioteca com busca sem depender de acentos ou da ordem das palavras. Combine gênero e plataforma ou serviço de streaming e limpe a busca e os filtros com uma ação.
+
+Ordenação por atualização, nome, avaliação ou horas disponível nas duas plataformas. Avaliações como Excelente e Obra-prima agora entram na ordem correta.
+
+Os filtros e a ordenação continuam ao voltar dos detalhes, e a edição preserva o título visível na lista. No Android, o ranking é reaproveitado durante a edição e atualizado ao recarregar a biblioteca.

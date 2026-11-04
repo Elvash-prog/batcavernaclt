@@ -1,0 +1,62 @@
+[
+  {
+    "id": "1",
+    "nome": "Pokémon Écarlate",
+    "categoria": "jogos",
+    "generos": [
+      "RPG",
+      "Ação"
+    ],
+    "plataforma": "Switch • PC",
+    "nota": "💎 Lenda (GOTY)",
+    "horas": 12.5,
+    "updated_at": "2026-11-01T13:00:00.001Z",
+    "status": "📌 Backlog"
+  },
+  {
+    "id": "2",
+    "nome": "Celeste",
+    "categoria": "jogos",
+    "generos": "Plataforma • Ação",
+    "plataforma": "PC",
+    "nota": "⭐⭐⭐⭐½ Excelente",
+    "horas": "20,5 h",
+    "updated_at": "2026-11-01T10:00:00.002-03:00",
+    "status": "📌 Backlog"
+  },
+  {
+    "id": "3",
+    "nome": "Zelda",
+    "categoria": "jogos",
+    "generos": "Aventura",
+    "plataforma": "Switch",
+    "nota": "⭐⭐⭐⭐⭐ Obra-prima",
+    "horas": 80,
+    "updated_at": "2026-10-01T10:00:00Z",
+    "status": "📌 Backlog"
+  },
+  {
+    "id": "4",
+    "nome": "Série de ação",
+    "categoria": "filmes",
+    "generos": "Ação, Drama",
+    "tipo": "📺 Série",
+    "onde": "Netflix • Prime Video",
+    "nota": "9,5/10",
+    "horas": 0,
+    "updated_at": "2026-11-02T10:00:00Z",
+    "status": "📺 Assistindo",
+    "plataforma": "PC"
+  },
+  {
+    "id": "5",
+    "nome": "Ainda sem nota",
+    "categoria": "jogos",
+    "generos": null,
+    "plataforma": null,
+    "nota": "Sem avaliação",
+    "horas": null,
+    "updated_at": null,
+    "status": "📌 Backlog"
+  }
+]
