@@ -129,7 +129,7 @@
   (content.querySelector('.library-controls')||box).after(bar);
   bar.querySelectorAll('[data-lib-filter]').forEach(b=>b.onclick=()=>{state.cavernFilter=b.dataset.libFilter;drawLibrary()});
   bar.querySelectorAll('[data-lib-view]').forEach(b=>b.onclick=()=>{localStorage.setItem('cavern-lib-view',b.dataset.libView);drawLibrary()});
-  const featured=games&&key==='all'&&!state.libraryQuery?[...state.libraryRows].filter(r=>hoursOf(r.horas)>0).sort((a,b)=>hoursOf(b.horas)-hoursOf(a.horas)).slice(0,2):[];
+  const featured=games&&key==='all'&&state.libraryStatus==='all'&&!state.libraryQuery&&!($('#libraryGenre')?.value)&&!($('#libraryPlatform')?.value)?[...state.libraryRows].filter(r=>hoursOf(r.horas)>0).sort((a,b)=>hoursOf(b.horas)-hoursOf(a.horas)).slice(0,2):[];
   if(!featured.length)return;
   const section=document.createElement('section');
   section.className='cavern-featured';

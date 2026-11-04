@@ -314,6 +314,7 @@ try {
               setTimeout(r, window.libraryDelay || 120),
             );
           if(c==='library'&&p.category==='jogos'&&window.largeLibrary)return Array.from({length:1200},(_,i)=>({id:'large-'+i,nome:'Coleção '+String(i).padStart(4,'0'),categoria:'jogos',status:i<1000?'📌 Backlog':'✅ Zerado',capa:image}));
+          if(c==='library'&&window.libraryQueryRows)return window.libraryQueryRows.filter(row=>p.category==='jogos'?row.categoria==='jogos':row.categoria!=='jogos');
           if (c === "library")
             return p.category === "jogos"
               ? rows
@@ -2003,11 +2004,32 @@ try {
   await page.waitForFunction(()=>document.querySelectorAll('#libraryGroups .cinema-card').length===72);
   assert.equal(await page.locator('#libraryGroups .cinema-card').count(),72);
   assert.equal(await page.evaluate(()=>window.firstLibraryCard===document.querySelector('#libraryGroups [data-detail="large-0"]')),true,'Expanding keeps original cards and image state');
+
+  await page.evaluate(()=>{state.librarySort='recent';document.querySelector('#librarySort').value='recent';drawLibrary();});
+  await page.locator('[data-status-group="backlog"] .cinema-card').nth(10).scrollIntoViewIfNeeded();
+  const keptPosition=await page.evaluate(()=>{const root=document.querySelector('#content'),box=document.querySelector('#libraryGroups'),before=window.BatLibraryQuery.capture(root,box),row=state.libraryRows.find(r=>String(r.id)===before.id);if(!row)throw Error('Visible library title not found');window.batcavernaRefreshLibraryItem({...row,updated_at:'2099-01-01T00:00:00Z'});const item=[...box.querySelectorAll('[data-detail]')].find(n=>n.dataset.detail===before.id);return {offset:before.offset,after:item.getBoundingClientRect().top-root.getBoundingClientRect().top,scroll:root.scrollTop};});
+  assert.ok(Math.abs(keptPosition.offset-keptPosition.after)<2,'Editar um título deve manter o ponto da biblioteca');
   await page.locator('#librarySearch').fill('Coleção 0999');
   await page.waitForFunction(()=>document.querySelectorAll('#libraryGroups .cinema-card').length===1);
   assert.equal(await page.locator('#libraryGroups [data-detail="large-999"]').count(),1,'Search includes unloaded titles');
   await page.screenshot({path:'preview/large-library-check.png'});
   await page.evaluate(()=>{window.largeLibrary=false;state.libraryQuery=''});
+
+  const libraryFixture=JSON.parse(fs.readFileSync(path.resolve('../tests/fixtures/library-query.json'),'utf8'));
+  await page.evaluate(async rows=>{window.libraryQueryRows=rows;state.libraryCategory='jogos';state.libraryStatus='all';state.libraryQuery='';state.cavernFilter='all';state.librarySort='recent';await navigate('library');},libraryFixture);
+  await page.locator('#librarySort').selectOption('rating');
+  assert.deepEqual(await page.locator('#libraryGroups [data-detail]').evaluateAll(nodes=>nodes.map(n=>n.dataset.detail)),['1','3','2','5']);
+  await page.locator('#librarySearch').fill('ecarlate POKEMON');
+  await page.waitForFunction(()=>document.querySelectorAll('#libraryGroups [data-detail]').length===1);
+  await page.locator('#libraryGenre').selectOption('Ação');await page.locator('#libraryPlatform').selectOption('PC');
+  await page.evaluate(()=>renderLibrary());
+  assert.equal(await page.locator('#libraryGenre').inputValue(),'Ação');assert.equal(await page.locator('#libraryPlatform').inputValue(),'PC');assert.equal(await page.locator('#librarySort').inputValue(),'rating');
+  await page.locator('#libraryGroups [data-detail="1"]').click();await page.locator('#editInformation').waitFor();await page.locator('.reference-detail .detail-close').click();
+  assert.equal(await page.locator('#librarySearch').inputValue(),'ecarlate POKEMON');assert.equal(await page.locator('#libraryPlatform').inputValue(),'PC');
+  await page.screenshot({path:'preview/library-filters-check.png'});
+  await page.locator('[data-clear-library-filters]').click();
+  assert.equal(await page.locator('#librarySearch').inputValue(),'');assert.equal(await page.locator('#libraryGenre').inputValue(),'');assert.equal(await page.locator('#libraryPlatform').inputValue(),'');assert.equal(await page.locator('#librarySort').inputValue(),'rating');assert.equal(await page.locator('#libraryGroups [data-detail]').count(),4);
+  await page.evaluate(()=>{window.libraryQueryRows=null;});
   const cleanDescription=await page.evaluate(()=>{const node=document.createElement('p');document.body.append(node);window.batcavernaRenderDescription(node,'<p>&amp;quot;How to Fish&amp;quot;</p><p>Pesca &amp; amigos</p>&lt;script&gt;window.descriptionExecuted=true&lt;/script&gt;');const result={text:node.textContent,scripts:node.querySelectorAll('script').length,executed:!!window.descriptionExecuted};node.remove();return result});
   assert.equal(cleanDescription.text,'"How to Fish"\nPesca & amigos');assert.equal(cleanDescription.scripts,0);assert.equal(cleanDescription.executed,false);
   await page.evaluate(() => showLogin());
