@@ -381,7 +381,7 @@ public final class AccountRepository {
     }
     private JSONArray sendOnce(String table,String targetKey,String target,String user,String text,String id,String token,String[] config)throws Exception{
         if(!id.matches("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"))throw new IOException("Identificador de envio inválido.");
-        String path="/rest/v1/"+table+"?select=*&id=eq."+id+"&remetente_id=eq."+user+"&"+targetKey+"=eq."+target+"&limit=1";JSONObject fields=new JSONObject().put("id",id).put("remetente_id",user).put(targetKey,target).put("texto",text);
+        String path="/rest/v1/"+table+"?select=*&id=eq."+id+"&remetente_id=eq."+user+"&"+targetKey+"=eq."+target+"&limit=1";JSONObject fields=new JSONObject().put("id",id).put("remetente_id",user).put(targetKey,target).put("texto",text).put(table.equals("clt_chat_group_messages")?"midia_path":"midia_url",JSONObject.NULL);
         JSONArray existing=get(path,token,config);if(existing.length()>0){if(!sameMessage(existing.optJSONObject(0),fields))throw new IOException("Este envio já foi usado para outra mensagem.");return existing;}
         try{JSONArray result=write("/rest/v1/"+table+"?select=*","POST",fields,token,config);if(result.length()==0||!sameMessage(result.optJSONObject(0),fields))throw new IOException("Envio sem confirmação.");return result;}catch(Exception error){try{existing=get(path,token,config);if(existing.length()>0&&sameMessage(existing.optJSONObject(0),fields))return existing;}catch(Exception ignored){}throw error;}
     }
