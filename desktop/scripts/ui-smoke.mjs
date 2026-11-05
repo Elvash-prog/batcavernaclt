@@ -217,7 +217,7 @@ try {
       core: {
         invoke: async (c, p) => {
         if (c === "progress_sync") {
-          if(p.input.op==='flush')window.progressPending=false;
+          if(p.input.op==='flush'&&!window.holdProgressPending)window.progressPending=false;
           return {plays:window.progressPending?[{item_id:1,seconds:3600}]:[],synced:window.progressPending?{}:{'1':{hours:11,at:'2026-10-29T12:00:00Z'}},achievements:{}};
         }
         if (c === "running_processes") return ["Control_DX12","game_executable","explorer"];
@@ -1311,10 +1311,11 @@ try {
   assert.equal(await page.locator("#selectItems").innerText(), "Selecionar títulos");
   assert.equal(await page.locator("#bulkBar").isHidden(), true);
   assert.equal(await page.locator(".card-select").count(), 0);
-  await page.evaluate(()=>window.progressPending=true);
+  await page.evaluate(()=>{window.progressPending=true;window.holdProgressPending=true});
   await page.locator('[data-detail="1"]').click();
   await page.locator("#editInformation").waitFor();
   await page.waitForFunction(()=>document.querySelector('.progress-sync-status')?.textContent.includes('envio pendente'));
+  await page.evaluate(()=>window.holdProgressPending=false);
   await page.locator('.progress-sync-status button').click();
   await page.waitForFunction(()=>document.querySelector('.progress-sync-status')?.textContent.includes('Horas sincronizadas em'));
 
@@ -1372,8 +1373,12 @@ try {
   await page.locator('.description-toggle').click();
   await page.evaluate(()=>document.querySelector('#detailDescription').textContent='Descrição do jogo');
   assert.ok(closeBounds.x>=dialogBounds.x&&closeBounds.x+closeBounds.width<=dialogBounds.x+dialogBounds.width&&closeBounds.y>=dialogBounds.y,'Fechar deve permanecer dentro da janela');
+  assert.equal(await page.locator('.detail-personal-metrics [data-detail-edit]').count(),2);
   await page.screenshot({ path: "preview/details-check.png" });
-  await page.locator("#editInformation").click();
+  await page.locator('[data-detail-edit="horas"]').click();
+  assert.equal(await page.locator('[data-item-panel="collection"]').isVisible(),true);
+  assert.equal(await page.locator('[data-play-hours]').evaluate(el=>el===document.activeElement),true);
+  await page.locator('[data-item-tab="collection"]').click();
   await page
     .getByRole("button", { name: "Associar Steam App ID", exact: true })
     .click();

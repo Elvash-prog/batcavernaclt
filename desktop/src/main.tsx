@@ -7,6 +7,7 @@ import coverPicker from './cover-picker.js?url';
 import libraryQuery from './library-query.js?url';
 import libraryNavigation from './library-navigation.js?url';
 import './library-query.css';
+import './title-details.css';
 import friendPresence from './friend-presence.js?url';
 import chatPresentation from './chat-presentation.js?url';
 import './chat-studio.css';

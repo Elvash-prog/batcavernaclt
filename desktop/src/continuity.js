@@ -32,7 +32,15 @@
   const {item}=event.detail||{};const overlay=document.querySelector('.editor-overlay:last-of-type'),summary=overlay?.querySelector('.reference-detail-summary');if(!summary||!item)return;
   overlay.querySelector('.reference-detail').classList.add('detail-focused');
   const progress=summary.querySelector('.detail-progress');if(progress)summary.querySelector('.detail-title-row').after(progress);
-  const rating=document.createElement('p');rating.className='detail-own-rating';rating.textContent=`Sua avaliação · ${item.nota||'Ainda não avaliado'}`;progress?.after(rating);
+  const game=item.categoria==='jogos'||!item.categoria,readOnly=Boolean(event.detail.readOnly);
+  const metrics=document.createElement('div');metrics.className='detail-personal-metrics';metrics.setAttribute('aria-label','Seu progresso');
+  for(const [key,label,value] of [...(game?[['horas','Horas jogadas',formatPlaytime(item.horas)+' h']]:[]),['nota','Sua avaliação',item.nota||'Ainda não avaliado']]){
+   const card=document.createElement(readOnly?'article':'button');if(!readOnly){card.type='button';card.dataset.detailEdit=key;card.setAttribute('aria-label','Editar '+label.toLowerCase());card.onclick=()=>{overlay.querySelector('#editInformation')?.click();const form=document.querySelector('.item-editor-modern'),field=key==='horas'?form?.querySelector('[data-play-hours]'):form?.elements[key];if(!field)return;const panel=field.closest('[data-item-panel]');form.querySelector(`[data-item-tab="${panel?.dataset.itemPanel}"]`)?.click();field.focus();field.scrollIntoView({block:'center'});};}
+   const heading=document.createElement('small');heading.textContent=label;const valueNode=document.createElement('strong');valueNode.textContent=String(value);card.append(heading,valueNode);if(!readOnly){const hint=document.createElement('span');hint.textContent='Editar ↗';card.append(hint);}metrics.append(card);
+  }
+  progress?.after(metrics);if(game)progress?.querySelector(':scope>div:first-child>span:last-child:not(:first-child)')?.remove();
+  const meter=progress?.querySelector('progress');if(meter){meter.setAttribute('aria-label','Conquistas concluídas');const caption=document.createElement('small');caption.className='detail-progress-caption';caption.textContent='Conquistas concluídas';progress.querySelector('.detail-progress-meter').before(caption);}
+
   const actions=summary.querySelector('.detail-primary-actions');if(actions)overlay.querySelector('.detail-poster').append(actions);
   const description=summary.querySelector('#detailDescription');if(description){
    const wrap=document.createElement('details');wrap.className='detail-synopsis';wrap.open=true;const heading=document.createElement('summary');heading.textContent='Sobre o título';wrap.append(heading);description.before(wrap);wrap.append(description);
