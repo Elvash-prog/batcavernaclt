@@ -1,0 +1,5 @@
+Busca de títulos com ano, tipo, edição e plataformas disponíveis. Resultados identificam cadastros existentes e sinalizam correspondências incertas sem confundir remakes com edições distintas.
+
+Nomes com anos diferentes podem ser diferenciados antes de salvar para respeitar a organização da biblioteca. No Android, a seleção permite escolher status e plataforma sem abrir a revisão completa.
+
+Falhas mantêm os campos preenchidos. Android permite conferir a biblioteca após uma resposta incerta, preservando os rascunhos e evitando reenvios de títulos já encontrados. No PC, o erro oferece acesso ao cadastro existente quando encontrado.

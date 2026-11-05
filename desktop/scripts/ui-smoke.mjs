@@ -318,6 +318,7 @@ try {
             );
           if(c==='library'&&p.category==='jogos'&&window.largeLibrary)return Array.from({length:1200},(_,i)=>({id:'large-'+i,nome:'Coleção '+String(i).padStart(4,'0'),categoria:'jogos',status:i<1000?'📌 Backlog':'✅ Zerado',capa:image}));
           if(c==='library'&&window.libraryQueryRows)return window.libraryQueryRows.filter(row=>p.category==='jogos'?row.categoria==='jogos':row.categoria!=='jogos');
+          if(c==='library'&&window.catalogLibraryRows)return window.catalogLibraryRows;
           if (c === "library")
             return p.category === "jogos"
               ? rows
@@ -384,6 +385,7 @@ try {
           }
           if(c==='set_home_status'){window.saved.push({c,p});if(window.failHomeStatus)throw Error('O título mudou em outra tela. Atualize o início.');return [{id:p.id,status:p.status,updated_at:new Date().toISOString()}];}
           if (c === "save_item" || c === "update_profile") {
+            if(c==='save_item'&&window.failCatalogSave)throw Error('Falha simulada de conexão');
             if(c==='update_profile'&&p.input.status)profile.status_personalizado=p.input.status;
             if(c==='save_item'&&window.libraryQueryRows){const row=window.libraryQueryRows.find(row=>String(row.id)===String(p.item.id));if(row)Object.assign(row,p.item,{updated_at:new Date().toISOString()});}
             window.saved.push({ c, p });
@@ -663,6 +665,11 @@ try {
           if (c === "realtime_start") return {};
           if (c === "catalog") {
             const i = p.input;
+            if(i.provider==='igdb'&&i.query==='Teste')return {results:[{id:210,name:'Novo resultado IGDB',steam_appid:210,released:'2025-01-01'}]};
+            if(i.provider==='igdb'&&i.id===210)return {id:210,name:'Novo resultado IGDB',steam_appid:210,released:'2025-01-01',genres:[{name:'Action'}]};
+            if(i.provider==='igdb'&&i.query==='Edições de teste')return {results:[{id:201,name:'Control',steam_appid:10,released:'2019-08-27',platforms:[{platform:{name:'PC (Microsoft Windows)'}}]},{id:202,name:'Control Ultimate Edition',steam_appid:11,released:'2020-08-27',platforms:[{platform:{name:'PlayStation 5'}}]},{id:203,name:'Duna',released:'2021-01-01',platforms:[{platform:{name:'PC (Microsoft Windows)'}}]}]};
+            if(i.provider==='igdb'&&i.id===203)return {id:203,name:'Duna',released:'2021-01-01',genres:[{name:'Action'}]};
+
             if(i.provider==='igdb'&&i.query==='Red Dead Redemption')return {results:[{id:1,name:'Red Dead Redemption',released:'2010-05-18',cover_image:'https://images.igdb.com/rdr-portrait.jpg',background_image:'https://images.igdb.com/rdr-landscape.jpg'},{id:2,name:'Red Dead Redemption 2',cover_image:'https://images.igdb.com/wrong-sequel.jpg'}]};
             if (i.provider === "igdb" && i.recommend)
               return {
@@ -1434,11 +1441,30 @@ try {
   );
   await page.locator("#addItem").waitFor();
   await page.locator("#addItem").click();
+  await page.evaluate(()=>window.catalogLibraryRows=[{id:301,nome:'Control',ano:2019,categoria:'jogos',steam_appid:10},{id:302,nome:'Duna',ano:1984,categoria:'jogos'}]);
+  await page.locator('#catalogQuery').fill('Edições de teste');
+  await page.locator('#catalogSearch').click();
+  await page.locator('[data-result="0"]').filter({hasText:'Já na biblioteca'}).waitFor();
+  assert.match(await page.locator('[data-result="1"]').innerText(),/2020.*Jogo.*Edição especial.*PlayStation 5/s);
+  assert.match(await page.locator('[data-result="2"]').innerText(),/Outra versão/);
+  await page.locator('.catalog-search').screenshot({path:'preview/catalog-selection-check.png'});
+  await page.locator('[data-result="0"]').click();
+  await page.locator('.detail-title-row h2').filter({hasText:'Control'}).waitFor();
+  await page.locator('.editor-overlay').last().locator('[data-close]').first().click();
+  await page.locator('[data-result="2"]').click();
+  await page.waitForFunction(()=>document.querySelector('[name="nome"]').value==='Duna (2021)');
+  await page.locator('[name="status"]').selectOption({label:'🎮 Em Progresso'});
+  await page.evaluate(()=>window.failCatalogSave=true);
+  await page.locator('.item-editor-modern button.primary').click();
+  await page.locator('.form-error').filter({hasText:'campos foram mantidos'}).waitFor();
+  assert.equal(await page.locator('[name="nome"]').inputValue(),'Duna (2021)');
+  assert.equal(await page.locator('[name="status"]').inputValue(),'🎮 Em Progresso');
+  await page.evaluate(()=>{window.failCatalogSave=false;window.catalogLibraryRows=null;});
   await page.locator("#catalogQuery").fill("Teste");
   await page.locator("#catalogSearch").click();
   await page.locator("[data-result]").click();
   await page.waitForFunction(
-    () => document.querySelector('[name="generos"]').value === "Action",
+    () => document.querySelector('[name="generos"]').value === "Action"&&document.querySelector('[name="nome"]').value==='Novo resultado IGDB',
   );
   await page.locator('[data-item-tab="cover"]').click();
   await page.screenshot({ path: "preview/add-check.png" });
