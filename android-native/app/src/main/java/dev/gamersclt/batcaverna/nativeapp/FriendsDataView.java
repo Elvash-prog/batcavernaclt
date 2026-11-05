@@ -21,7 +21,8 @@ public final class FriendsDataView extends LinearLayout {
     private JSONArray records=new JSONArray();
     private JSONObject unreadCounts=new JSONObject();private String readThrough="";
     void unread(JSONObject counts){unreadCounts=counts==null?new JSONObject():counts;if(activeId==null)render();}
-    private void markRead(){if(!foreground||!attached||activeId==null||records.length()==0)return;String through=records.optJSONObject(0).optString("created_at");if(!UnreadPolicy.advance(MessageTime.epoch(through),MessageTime.epoch(readThrough),true))return;String target=activeId;repository.chatRead(target,through,(r,e)->{if(e==null){if(target.equals(activeId))readThrough=through;if(getContext() instanceof MainActivity)((MainActivity)getContext()).refreshChatCounts();}});}
+    private void markRead(){if(!foreground||!attached||activeId==null||records.length()==0||markingRead||!ChatReadPosition.atEnd(scroll,list))return;String through=records.optJSONObject(0).optString("created_at");if(!UnreadPolicy.advance(MessageTime.epoch(through),MessageTime.epoch(readThrough),true))return;String target=activeId;int ticket=generation;markingRead=true;repository.chatRead(target,through,(r,e)->{if(ticket!=generation)return;markingRead=false;if(e==null){if(target.equals(activeId))readThrough=through;for(int i=0;i<records.length();i++){JSONObject m=records.optJSONObject(i);if(!SessionPreferences.get(getContext()).getString("user_id","").equals(m.optString("remetente_id"))&&MessageTime.epoch(m.optString("created_at"))<=MessageTime.epoch(through))try{m.put("lida",true);}catch(org.json.JSONException ignored){}}if(unreadJump!=null)unreadJump.setVisibility(GONE);if(getContext() instanceof MainActivity)((MainActivity)getContext()).refreshChatCounts();}});}
+    private final ChatSendAttempt attempt=new ChatSendAttempt();private ChatDeliveryStatus delivery;private Button unreadJump;private String unreadBoundary="";private boolean opening,markingRead;
     private String activeId=null,activeName="";
     private int offset=0,generation=0;
     private boolean busy=false,sending=false,scrollAfterSend=false;
@@ -38,6 +39,8 @@ public final class FriendsDataView extends LinearLayout {
         scroll=new ScrollView(c);scroll.setVerticalScrollBarEnabled(false);list=new LinearLayout(c);list.setOrientation(VERTICAL);scroll.addView(list);addView(scroll,new LayoutParams(-1,0,1));
         more=new Button(c);more.setAllCaps(false);more.setText("Carregar mais amigos");more.setVisibility(GONE);more.setOnClickListener(v->load());AppStyle.button(more,false);addView(more);
         refresh=new Button(c);refresh.setAllCaps(false);refresh.setText("Atualizar");refresh.setOnClickListener(v->{if(!busy&&!sending)reset();});AppStyle.button(refresh,false);refresh.setText("↻");refresh.setContentDescription("Atualizar conversas");header.addView(refresh,new LayoutParams(dp(44),dp(40)));
+        unreadJump=new Button(c);unreadJump.setText("Novas mensagens ↓");AppStyle.button(unreadJump,false);unreadJump.setVisibility(GONE);addView(unreadJump);unreadJump.setOnClickListener(v->{scroll.fullScroll(FOCUS_DOWN);scroll.post(this::markRead);});scroll.getViewTreeObserver().addOnScrollChangedListener(()->{if(activeId!=null){updateUnreadJump();markRead();}});
+        delivery=new ChatDeliveryStatus(c,this::send);addView(delivery);
         composer=new LinearLayout(c);composer.setGravity(Gravity.CENTER_VERTICAL);
         draft=new EditText(c);draft.setHint("Mensagem");draft.setHintTextColor(0xff9ca9b8);draft.setTextColor(0xfff3f4f8);draft.setTextSize(14);draft.setMaxLines(4);draft.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE|android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);draft.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(4000)});
         AppStyle.input(draft);composer.addView(draft,new LayoutParams(0,-2,1));Button sticker=new Button(c);sticker.setText("");sticker.setContentDescription("Figurinhas");sticker.setOnClickListener(v->chooseSticker());AppStyle.button(sticker,false);AppStyle.icon(sticker,ActionIcon.STICKER,0xffffce7d);sticker.setPadding(dp(12),dp(8),dp(12),dp(8));composer.addView(sticker,new LayoutParams(dp(48),dp(48)));send=new Button(c);send.setAllCaps(false);send.setText("Enviar");send.setOnClickListener(v->send());AppStyle.button(send,true);send.setText("");send.setContentDescription("Enviar mensagem");AppStyle.icon(send,ActionIcon.SEND,0xffffffff);send.setPadding(dp(12),dp(8),dp(12),dp(8));LayoutParams sendParams=new LayoutParams(dp(48),dp(48));sendParams.setMargins(dp(8),0,0,0);composer.addView(send,sendParams);composer.setVisibility(GONE);addView(composer);reset();
@@ -51,7 +54,7 @@ public final class FriendsDataView extends LinearLayout {
     private boolean foreground=false,attached=false,syncing=false;
     private int syncEpoch=0;
     private final Runnable syncTick=()->synchronize();
-    public void setForeground(boolean value){foreground=value;if(!value){syncHandler.removeCallbacks(liveDrain);liveDirty=false;}syncEpoch++;syncing=false;syncHandler.removeCallbacks(syncTick);scheduleSync();if(value)markRead();}
+    public void setForeground(boolean value){foreground=value;if(!value){syncHandler.removeCallbacks(liveDrain);liveDirty=false;}syncEpoch++;syncing=false;syncHandler.removeCallbacks(syncTick);scheduleSync();if(value)scroll.post(this::markRead);}
     @Override protected void onAttachedToWindow(){super.onAttachedToWindow();attached=true;scheduleSync();}
     @Override protected void onDetachedFromWindow(){attached=false;syncHandler.removeCallbacks(liveDrain);liveDirty=false;syncEpoch++;syncing=false;syncHandler.removeCallbacks(syncTick);super.onDetachedFromWindow();}
     private void scheduleSync(){
@@ -79,30 +82,31 @@ public final class FriendsDataView extends LinearLayout {
                 String keep=anchor;int delta=relative;int route=generation;
                 scroll.post(()->{if(route!=generation||!target.equals(activeId))return;if(atBottom){scroll.fullScroll(FOCUS_DOWN);return;}for(int i=0;i<list.getChildCount();i++){android.view.View v=list.getChildAt(i);if(keep!=null&&keep.equals(v.getTag())){scroll.scrollTo(0,v.getTop()-delta);return;}}scroll.scrollTo(0,y);});
             }else state.setText("Conversa privada");
-            if(rows.length()<50)more.setVisibility(GONE);markRead();
+            if(rows.length()<50)more.setVisibility(GONE);scroll.post(this::markRead);
             scheduleSync();
         });
     }
-    public boolean back(){if(sending){state.setText("Aguarde a confirmação do envio.");return true;}if(activeId==null)return false;activeId=null;activeName="";reset();return true;}
-    private void reset(){readThrough="";syncEpoch++;syncing=false;syncPolicy.success();scheduleSync();generation++;busy=false;offset=0;records=new JSONArray();seen.clear();list.removeAllViews();composer.setVisibility(activeId==null?GONE:VISIBLE);friendActions.setVisibility(activeId==null?VISIBLE:GONE);search.setVisibility(activeId==null?VISIBLE:GONE);refresh.setVisibility(activeId==null?VISIBLE:GONE);headerAvatar.setVisibility(activeId==null?GONE:VISIBLE);headerAvatar.setTag(new Object());headerAvatar.setImageResource(R.drawable.app_logo);if(activeId!=null)AccountImageLoader.load(headerAvatar,activeAvatar);heading.setTextSize(activeId==null?17:16);back.setVisibility(activeId==null?GONE:VISIBLE);heading.setText(activeId==null?(chatTab?"Mensagens":"Meus amigos"):activeName);more.setVisibility(GONE);load();}
+    public boolean back(){if(sending){state.setText("Aguarde a confirmação do envio.");return true;}if(activeId==null)return false;unreadJump.setVisibility(GONE);delivery.clear();attempt.clear();activeId=null;activeName="";reset();return true;}
+    private void reset(){readThrough="";markingRead=false;syncEpoch++;syncing=false;syncPolicy.success();scheduleSync();generation++;busy=false;offset=0;records=new JSONArray();seen.clear();list.removeAllViews();composer.setVisibility(activeId==null?GONE:VISIBLE);friendActions.setVisibility(activeId==null?VISIBLE:GONE);search.setVisibility(activeId==null?VISIBLE:GONE);refresh.setVisibility(activeId==null?VISIBLE:GONE);headerAvatar.setVisibility(activeId==null?GONE:VISIBLE);headerAvatar.setTag(new Object());headerAvatar.setImageResource(R.drawable.app_logo);if(activeId!=null)AccountImageLoader.load(headerAvatar,activeAvatar);heading.setTextSize(activeId==null?17:16);back.setVisibility(activeId==null?GONE:VISIBLE);heading.setText(activeId==null?(chatTab?"Mensagens":"Meus amigos"):activeName);more.setVisibility(GONE);load();}
     void openNotification(String id){state.setText("Abrindo conversa…");repository.friendProfile(id,(rows,error)->{if(!isAttachedToWindow())return;if(error!=null){state.setText(error);return;}JSONObject friend=rows.optJSONObject(0);if(friend!=null)open(friend);});}
- private void open(JSONObject friend){activeId=friend.optString("id");activeName=friend.optString("nome","Amigo");activeAvatar=friend.optString("avatar_url","");draft.setText("");reset();}
+ private void open(JSONObject friend){opening=true;unreadBoundary="";attempt.clear();delivery.clear();activeId=friend.optString("id");activeName=friend.optString("nome","Amigo");activeAvatar=friend.optString("avatar_url","");draft.setText("");reset();}
     private void load(){if(busy||sending)return;busy=true;send.setEnabled(false);more.setEnabled(false);refresh.setEnabled(false);state.setText("Carregando…");int request=generation;
         AccountRepository.Callback callback=(rows,error)->{
             if(request!=generation)return;busy=false;send.setEnabled(true);more.setEnabled(true);refresh.setEnabled(true);
             if(error!=null){state.setText(error);return;}
-            for(int i=0;i<rows.length();i++){JSONObject item=rows.optJSONObject(i);if(item!=null&&seen.add(item.optString("id")))records.put(item);}offset+=rows.length();render();markRead();more.setText(activeId==null?"Carregar mais amigos":"Carregar mensagens anteriores");more.setVisibility(rows.length()==50?VISIBLE:GONE);
+            for(int i=0;i<rows.length();i++){JSONObject item=rows.optJSONObject(i);if(item!=null&&seen.add(item.optString("id")))records.put(item);}offset+=rows.length();render();scroll.post(this::markRead);more.setText(activeId==null?"Carregar mais amigos":"Carregar mensagens anteriores");more.setVisibility(rows.length()==50?VISIBLE:GONE);
         };
         if(activeId==null)repository.friends(offset,callback);else repository.messages(activeId,offset,callback);
     }
     private void send(){
         if(sending||activeId==null)return;String message=draft.getText().toString().trim();if(message.isEmpty()){state.setText("Escreva uma mensagem.");return;}
         sending=true;send.setEnabled(false);draft.setEnabled(false);refresh.setEnabled(false);more.setEnabled(false);state.setText("Enviando…");String target=activeId;int request=generation;
-        repository.sendText(target,message,(rows,error)->{
+        String messageId=attempt.begin(SessionPreferences.get(getContext()).getString("user_id",""),"private:"+target,message);delivery.sending();
+        repository.sendText(target,message,messageId,(rows,error)->{
             sending=false;send.setEnabled(true);draft.setEnabled(true);refresh.setEnabled(true);more.setEnabled(true);
             if(request!=generation||!target.equals(activeId))return;
-            if(error!=null){state.setText(error);return;}
-            draft.setText("");android.widget.Toast.makeText(getContext(),"Mensagem enviada",android.widget.Toast.LENGTH_SHORT).show();
+            if(error!=null){state.setText(error);delivery.failed();return;}
+            attempt.clear();delivery.sent();draft.setText("");android.widget.Toast.makeText(getContext(),"Mensagem enviada",android.widget.Toast.LENGTH_SHORT).show();
             scrollAfterSend=true;reset();
         });
     }
@@ -117,7 +121,10 @@ public final class FriendsDataView extends LinearLayout {
             state.setText(records.length()==0?"Você ainda não tem amigos nesta conta.":visible+" exibidos • "+records.length()+" amigos carregados");
         }else{
             state.setText(records.length()==0?"Nenhuma mensagem nesta conversa.":"Conversa privada");String day="";
+            if(opening&&unreadBoundary.isEmpty())for(int k=records.length()-1;k>=0;k--){JSONObject m=records.optJSONObject(k);if(!me.equals(m.optString("remetente_id"))&&!m.optBoolean("lida")){unreadBoundary=m.optString("id");break;}}
+
             for(int i=records.length()-1;i>=0;i--){JSONObject message=records.optJSONObject(i);if(message==null)continue;String newDay=MessageTime.day(message.optString("created_at",""));if(!newDay.equals(day)){TextView divider=text(newDay,11,0xff8f9aad);divider.setGravity(Gravity.CENTER);divider.setTag("day:"+newDay);list.addView(divider);day=newDay;}
+                if(message.optString("id").equals(unreadBoundary)){TextView divider=text("Mensagens não lidas",12,0xffc6b8ff);divider.setTag("unread-divider");divider.setGravity(Gravity.CENTER);list.addView(divider);}
                 boolean mine=me.equals(message.optString("remetente_id"));LinearLayout envelope=new LinearLayout(getContext());envelope.setGravity(mine?Gravity.RIGHT:Gravity.LEFT);envelope.setTag(message.optString("id"));LayoutParams ep=new LayoutParams(-1,-2);ep.setMargins(mine?dp(36):0,0,mine?0:dp(36),dp(8));list.addView(envelope,ep);
                 LinearLayout bubble=card(mine?0xff593795:0xff262033);bubble.setPadding(dp(14),dp(8),dp(14),dp(8));envelope.addView(bubble,new LayoutParams(-2,-2));
                 String content=message.isNull("texto")?"":message.optString("texto","");final String messageContent=content;boolean mediaOnly=content.trim().isEmpty()&&!message.optString("midia_url","").isEmpty();
@@ -125,15 +132,18 @@ public final class FriendsDataView extends LinearLayout {
                 String visibleText=content;if(content.startsWith("> ")&&content.indexOf('\n')>0){int split=content.indexOf('\n');TextView quote=text(content.substring(2,split),12,0xffd1c3ed);quote.setMaxLines(3);quote.setPadding(dp(10),dp(8),dp(10),dp(8));quote.setBackground(AppStyle.shape(quote,0x33342252,10));bubble.addView(quote);visibleText=content.substring(split+1);}
                 if(!visibleText.trim().isEmpty()){TextView messageText=text(visibleText,15,0xfff3f4f8);messageText.setMaxWidth(dp(Math.max(120,Math.min(300,getResources().getConfiguration().screenWidthDp-100))));bubble.addView(messageText);}
                 if(!message.isNull("midia_url")&&!message.optString("midia_url","").isEmpty()){String path=message.optString("midia_url");if(path.matches("[a-zA-Z0-9-]+/[a-zA-Z0-9._-]+\\.(jpg|jpeg|png|webp)")){ImageView attachment=new ImageView(getContext());attachment.setScaleType(ImageView.ScaleType.FIT_CENTER);attachment.setContentDescription("Imagem da mensagem • segure para ver opções");bubble.addView(attachment,new LayoutParams(dp(180),dp(180)));AccountImageLoader.load(attachment,BuildConfig.SUPABASE_URL+"/storage/v1/object/public/chat-media/"+path);}else bubble.addView(text("Imagem indisponível",11,0xffbdc6d5));}
-                TextView time=text(MessageTime.time(message.optString("created_at","")),10,mine?0xffd0c4eb:0xff9ca9b8);time.setGravity(Gravity.RIGHT);time.setPadding(dp(6),dp(2),dp(6),dp(2));bubble.addView(time);
+                TextView time=text(MessageTime.time(message.optString("created_at",""))+(mine?(message.optBoolean("lida")?" · Lida":" · Enviada"):""),10,mine?0xffd0c4eb:0xff9ca9b8);time.setGravity(Gravity.RIGHT);time.setPadding(dp(6),dp(2),dp(6),dp(2));bubble.addView(time);
                 JSONArray reactions=message.optJSONArray("_reactions");StringBuilder counts=new StringBuilder();if(reactions!=null)for(String emoji:new String[]{"❤️","😂","🔥","👍"}){int count=0;for(int k=0;k<reactions.length();k++){JSONObject reaction=reactions.optJSONObject(k);if(reaction!=null&&emoji.equals(reaction.optString("emoji")))count++;}if(count>0)counts.append(emoji).append(" ").append(count).append("  ");}
                 if(counts.length()>0){TextView badges=text(counts.toString().trim(),12,0xffefe2ff);badges.setPadding(dp(8),dp(4),dp(8),dp(4));badges.setBackground(AppStyle.shape(badges,0xff302340,12));bubble.addView(badges);}
                 installMessagePress(bubble,message,messageContent);bubble.setContentDescription((mine?"Sua mensagem":"Mensagem de "+activeName)+" • "+(mediaOnly?"figurinha":content)+" • segure para responder ou reagir");
 
             }
+            if(opening){opening=false;scroll.post(()->{android.view.View boundary=list.findViewWithTag("unread-divider");if(boundary!=null)scroll.scrollTo(0,boundary.getTop());else scroll.fullScroll(FOCUS_DOWN);updateUnreadJump();markRead();});}
+            scroll.post(this::updateUnreadJump);
             if(scrollAfterSend){scrollAfterSend=false;scroll.post(()->scroll.fullScroll(FOCUS_DOWN));}
         }
     }
+    private void updateUnreadJump(){if(unreadJump==null)return;int count=0;String user=SessionPreferences.get(getContext()).getString("user_id","");for(int i=0;i<records.length();i++){JSONObject m=records.optJSONObject(i);if(!user.equals(m.optString("remetente_id"))&&!m.optBoolean("lida"))count++;}unreadJump.setText("Novas mensagens ("+count+") ↓");unreadJump.setVisibility(activeId!=null&&count>0&&!ChatReadPosition.atEnd(scroll,list)?VISIBLE:GONE);}
     private LinearLayout card(int color){LinearLayout c=new LinearLayout(getContext());c.setOrientation(VERTICAL);c.setPadding(dp(14),dp(12),dp(14),dp(12));GradientDrawable bg=new GradientDrawable();bg.setColor(color);bg.setCornerRadius(dp(20));bg.setStroke(dp(1),0xff3d314e);c.setBackground(bg);LayoutParams p=new LayoutParams(-1,-2);p.setMargins(0,0,0,dp(10));c.setLayoutParams(p);return c;}
     private void installMessagePress(android.view.View view,JSONObject message,String content){view.setOnLongClickListener(v->{messageActions(message,content);return true;});if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)installMessagePress(group.getChildAt(i),message,content);}}
     private void messageActions(JSONObject message,String content){

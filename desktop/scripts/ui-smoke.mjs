@@ -452,18 +452,12 @@ try {
               capas: ["https://images.igdb.com/igdb/image/upload/t_cover_big/test.jpg"],
               amigos: [],
             };
-          if (c === "chat_messages") return messages;
+          if (c === "chat_messages") return window.testPrivateMessages||messages;
           if (c === "send_message") {
-            messages.push({
-              id: "m" + (messages.length + 1),
-              remetente_id: "test",
-              destinatario_id: "friend",
-              texto: p.input.text,
-              midia_url: p.input.media,
-              created_at: new Date().toISOString(),
-            });
-            window.saved.push({ c, p });
-            return {};
+            window.saved.push({c,p});await new Promise(r=>setTimeout(r,100));
+            if(window.sendFailure==='before'){window.sendFailure='';throw Error('Conexão interrompida');}
+            if(!messages.some(m=>m.id===p.input.messageId))messages.push({id:p.input.messageId||'m'+(messages.length+1),remetente_id:'test',destinatario_id:'friend',texto:p.input.text,midia_url:p.input.media,created_at:new Date().toISOString()});
+            if(window.sendFailure==='after'){window.sendFailure='';throw Error('Resposta perdida');}return {};
           }
           if (c === "community") {
             const i = p.input;
@@ -618,7 +612,8 @@ try {
               if (n) n.read = true;
               return {};
             }
-            if (i.op === "read_chat") return {};
+            if (i.op === "read_chat"||i.op==="read_group"){window.saved.push({c:i.op,p:i});return {};}
+            if(i.op==='group_read_state')return [{last_read_at:'2026-10-11T00:00:00Z'}];
             if (i.op === "edit_message") {
               messages.find((m) => m.id === i.id).texto = i.text;
               return {};
@@ -1658,6 +1653,13 @@ try {
   await page.screenshot({ path: "preview/friends-reference.png" });
   await page.locator('[data-dock-friend="friend"]').click();
   await page.locator('[data-message="m2"]').waitFor();
+  for(const mode of ['before','after']){
+    const message='Tentativa segura '+mode;await page.evaluate(mode=>window.sendFailure=mode,mode);await page.locator('#liveChatText').fill(message);await page.locator('#liveMessageForm').evaluate(f=>{f.requestSubmit();f.requestSubmit()});
+    await page.locator('#chatDeliveryState[data-state="failed"] button').waitFor();assert.equal(await page.locator('#liveChatText').inputValue(),message);const attempt=await page.evaluate(message=>window.saved.filter(x=>x.c==='send_message'&&x.p.input.text===message).at(-1).p.input.messageId,message);
+    assert.match(attempt,/^[0-9a-f-]{36}$/i);await page.locator('#chatDeliveryState button').click();await page.waitForFunction(()=>document.querySelector('#chatDeliveryState')?.dataset.state==='sent');
+    assert.equal(await page.evaluate(message=>new Set(window.saved.filter(x=>x.c==='send_message'&&x.p.input.text===message).map(x=>x.p.input.messageId)).size,message),1);assert.equal(await page.locator(`[data-message="${attempt}"]`).count(),1);
+  }
+
   await page.locator('[data-message="m1"] .message-menu summary').click();
   await page.locator('[data-reply="m1"]').click();
   await page.locator("#liveChatText").fill("Resposta");
@@ -1667,6 +1669,7 @@ try {
       (s) => s.c === "send_message" && s.p.input.text === "> Olá!\nResposta",
     ),
   );
+  await page.waitForFunction(()=>document.querySelector("#liveChatText").value===''&&document.querySelector("#liveMessageForm").dataset.sending!=='true');
   await page.locator('[data-message="m1"] .message-menu summary').click();
   await page.locator('[data-react="m1"][data-emoji="❤️"]').click();
   await page.locator('.message-reactions [data-react="m1"]').waitFor();
@@ -1997,6 +2000,13 @@ try {
   assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='group_send'&&x.p.text==='Mensagem de grupo sem duplicação').length),1);
   for(const size of [{width:980,height:760},{width:1920,height:1080}]){await page.setViewportSize(size);const composer=await page.locator('#liveMessageForm').boundingBox(),content=await page.locator('#content').boundingBox();assert.ok(composer.x>=content.x&&composer.x+composer.width<=content.x+content.width+1);assert.ok(composer.y+composer.height<=size.height);}
 
+
+  await page.evaluate(()=>{window.testGroupMessages=Array.from({length:80},(_,i)=>({id:'unread-'+i,remetente_id:'member-2',texto:'Mensagem de histórico '+i+' · '.repeat(30),created_at:new Date(Date.UTC(2026,9,12,10,i)).toISOString()}));window.saved=window.saved.filter(x=>x.c!=='read_group');return renderChat()});
+  await page.locator('[data-chat-unread]').waitFor();assert.equal(await page.locator('#chatUnreadJump').isVisible(),true);
+  assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='read_group').length),0);
+  await page.evaluate(()=>{window.testGroupMessages.push({id:'latest-unread',remetente_id:'member-2',texto:'Chegou enquanto você lê',created_at:'2026-10-12T13:00:00Z'});window.listeners['desktop-change']({payload:{userId:'test',data:{table:'clt_chat_group_messages'}}})});
+  await page.locator('[data-message="latest-unread"]').waitFor();assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='read_group').length),0);
+  await page.screenshot({path:'preview/chat-unread-check.png'});await page.locator('#chatUnreadJump').click();await page.waitForFunction(()=>window.saved.some(x=>x.c==='read_group'&&x.p.through==='2026-10-12T13:00:00Z'));
   await page.getByRole('button',{name:'⚙ Configurações do grupo'}).click();
   await page.locator('.group-settings-dialog [data-photo]').waitFor();
   assert.equal(await page.locator('.group-settings-dialog [data-remove="member-2"]').count(),1);

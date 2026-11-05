@@ -60,6 +60,13 @@ public final class MobileAppearanceTest {
    getInstrumentation().runOnMainSync(()->{try{org.json.JSONObject item=new org.json.JSONObject().put("nome","Celeste").put("categoria","jogos").put("status","🎮 Em Progresso").put("plataforma","PC • Switch").put("horas",12.5).put("nota","⭐⭐⭐⭐½ Excelente").put("conquistas",42.5).put("_readonly",true);details[0]=TitleDetailsDialog.show(activity,item,false,(updated,deleted)->{throw new AssertionError("Prévia somente leitura");});}catch(Exception e){throw new AssertionError(e);}});
    getInstrumentation().waitForIdleSync();capture(details[0].dialog.getWindow().getDecorView(),"detalhes-jogo-android");
    getInstrumentation().runOnMainSync(()->details[0].dialog.dismiss());
+   getInstrumentation().runOnMainSync(()->{try{
+    FriendsDataView chat=new FriendsDataView(activity,true);activity.setContentView(chat);org.json.JSONArray messages=new org.json.JSONArray();for(int i=79;i>=0;i--)messages.put(new org.json.JSONObject().put("id","preview-"+i).put("remetente_id","friend-preview").put("texto",i==0?"Novidades para a próxima partida?":"Mensagem de exemplo "+i).put("created_at",String.format(java.util.Locale.ROOT,"2026-11-05T10:%02d:%02dZ",i/60,i%60)).put("lida",false));
+    for(String name:new String[]{"activeId","activeName","records","opening"}){java.lang.reflect.Field field=FriendsDataView.class.getDeclaredField(name);field.setAccessible(true);field.set(chat,name.equals("activeId")?"friend-preview":name.equals("activeName")?"Luna":name.equals("records")?messages:true);}
+    java.lang.reflect.Method render=FriendsDataView.class.getDeclaredMethod("render");render.setAccessible(true);render.invoke(chat);java.lang.reflect.Field composer=FriendsDataView.class.getDeclaredField("composer");composer.setAccessible(true);((View)composer.get(chat)).setVisibility(View.VISIBLE);java.lang.reflect.Field draft=FriendsDataView.class.getDeclaredField("draft");draft.setAccessible(true);((EditText)draft.get(chat)).setText("Vamos jogar mais tarde?");java.lang.reflect.Field delivery=FriendsDataView.class.getDeclaredField("delivery");delivery.setAccessible(true);((ChatDeliveryStatus)delivery.get(chat)).failed();
+   }catch(Exception e){throw new AssertionError(e);}});
+   getInstrumentation().waitForIdleSync();capture(activity,"chat-envio-android");
+
 
 
   } finally { getInstrumentation().runOnMainSync(activity::finish); }
