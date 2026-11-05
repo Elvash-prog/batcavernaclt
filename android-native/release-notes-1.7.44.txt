@@ -1,0 +1,5 @@
+Presença dos amigos com o jogo atual no PC e Android, incluindo jogos da Steam e de outras lojas detectados pelo aplicativo no PC. Android passa a exibir a atividade no amigo online e na lista de amigos.
+
+Atividade limpa não volta a mostrar um título antigo do cache. Sessões substituídas e reconexões deixam de manter jogos antigos visíveis. Estados Ausente e Não incomodar continuam visíveis junto do jogo.
+
+A opção de compartilhar atividade deste PC passa a abranger também a Steam. O modo invisível continua ocultando a presença e o jogo.

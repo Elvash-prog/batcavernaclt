@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod windows_startup;
 mod chat_delivery;
+mod presence_activity;
 mod chat_images;
 mod email_change;
 mod game_detection;

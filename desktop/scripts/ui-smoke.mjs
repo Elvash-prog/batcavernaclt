@@ -221,7 +221,9 @@ try {
           return {plays:window.progressPending?[{item_id:1,seconds:3600}]:[],synced:window.progressPending?{}:{'1':{hours:11,at:'2026-10-29T12:00:00Z'}},achievements:{}};
         }
         if (c === "running_processes") return ["Control_DX12","game_executable","explorer"];
-        if (c === "detect_pc_game") return {name:null};
+        if (c === "detect_pc_game") return {name:window.detectedPcGame||null};
+        if(c==='realtime_presence'){window.saved.push({c,p});return {};}
+        if(c==='bright_api'&&p.input.op==='agora'){window.steamPresenceQueries=(window.steamPresenceQueries||0)+1;return {jogando:window.detectedSteamGame?{nome:window.detectedSteamGame}:null};}
         if (c === "check_for_updates") {
           window.updateChecks++;
           return {
@@ -350,11 +352,11 @@ try {
                         },
                       ]
                     : [];
-          if(c === "profile" && window.holdProfilePreparation)await new Promise(resolve=>{window.releaseProfilePreparation=resolve});
+          if(c === "profile" && window.holdProfilePreparation)await new Promise(resolve=>{(window.pendingProfileRequests||=[]).push(resolve);window.releaseProfilePreparation=()=>{window.pendingProfileRequests.splice(0).forEach(done=>done())};});
           if (c === "profile")
             return p.userId
               ? { ...friend, stats: { total: 5, finished: 2, hours: 30 } }
-              : profile;
+              : window.presenceTestProfile?{...profile,...window.presenceTestProfile}:profile;
           if (c === "friends" || c === "search_people") return [friend];
           if (c === "cover_image") {
             window.coverCalls++;
@@ -380,6 +382,7 @@ try {
             return {url:"https://example.invalid/avatars/demo/"+p.input.name+".webp"};
           }
           if (c === "save_item" || c === "update_profile") {
+            if(c==='update_profile'&&p.input.status)profile.status_personalizado=p.input.status;
             if(c==='save_item'&&window.libraryQueryRows){const row=window.libraryQueryRows.find(row=>String(row.id)===String(p.item.id));if(row)Object.assign(row,p.item,{updated_at:new Date().toISOString()});}
             window.saved.push({ c, p });
             return {};
@@ -1694,6 +1697,11 @@ try {
   assert.deepEqual(stablePresence,{unchanged:true,retained:true,reconnect:true,invisible:true});
   const unifiedActivity=await page.evaluate(()=>{window.listeners['desktop-presence']({payload:{userId:'test',event:'presence_state',data:{friend:{metas:[{phx_ref:'mobile',status:'online'},{phx_ref:'pc',status:'online',jogo:'Minecraft',jogo_fonte:'pc'}]}}}});const rows=[...document.querySelectorAll('#sidebarCommunity [data-sidebar-chat="friend"]')];return {rows:rows.length,text:rows[0]?.textContent,steamSection:document.querySelector('#sidebarCommunity').textContent.includes('Jogando na Steam')};});
   assert.equal(unifiedActivity.rows,1);assert.match(unifiedActivity.text,/Minecraft/);assert.equal(unifiedActivity.steamSection,false);
+  const ownTransitions=await page.evaluate(async()=>{const prefs='bc-pc-games:test';window.presenceTestProfile={steam_id:'76561198000000000'};localStorage.setItem(prefs,JSON.stringify({enabled:true,mappings:[]}));window.detectedPcGame='Control';window.detectedSteamGame='Control';await window.batcavernaRefreshPresence();const playing=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;const before=window.steamPresenceQueries||0;window.detectedPcGame=null;window.detectedSteamGame=null;await window.batcavernaRefreshPresence();const stopped=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;const refreshed=(window.steamPresenceQueries||0)>before;window.detectedPcGame='Control';window.detectedSteamGame='Hades';localStorage.setItem(prefs,JSON.stringify({enabled:false,mappings:[]}));await window.batcavernaRefreshPresence();const privateActivity=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;localStorage.removeItem(prefs);window.detectedPcGame=null;window.detectedSteamGame=null;window.presenceTestProfile=null;await window.batcavernaRefreshPresence();return {playing,stopped,refreshed,privateActivity};});
+  assert.equal(ownTransitions.playing.jogo,'Control');assert.equal(ownTransitions.playing.jogo_fonte,'pc');assert.equal(ownTransitions.stopped.jogo,'');assert.equal(ownTransitions.refreshed,true);assert.equal(ownTransitions.privateActivity.jogo,'');assert.equal(ownTransitions.privateActivity.activity_shared,false);
+  const clearedFriend=await page.evaluate(()=>{const emit=data=>window.listeners['desktop-presence']({payload:{userId:'test',event:'presence_diff',data}});emit({joins:{friend:{metas:[{phx_ref:'pc-clear',phx_ref_prev:'pc',status:'ausente',jogo:'',jogo_fonte:'',online_at:Date.now(),device:'desktop'}]}},leaves:{friend:{metas:[{phx_ref:'pc'}]}}});return document.querySelector('#sidebarCommunity [data-sidebar-chat="friend"]').textContent;});assert.doesNotMatch(clearedFriend,/Minecraft/);assert.match(clearedFriend,/Ausente/);
+  await page.screenshot({path:'preview/friend-presence-check.png',animations:'disabled'});
+
   await page.locator('#conversationSearch').fill('nenhum-contato-regressao');
   assert.equal(await page.locator('.chat-search-empty').isVisible(),true);
   await page.locator('#conversationSearch').fill('Amigo');
@@ -1856,7 +1864,7 @@ try {
   assert.equal(imageSave.uploads[1].p.input.mime,'image/webp');
   const exportedAvatar=await page.evaluate(async b64=>{const image=new Image();image.src='data:image/webp;base64,'+b64;await image.decode();return [image.naturalWidth,image.naturalHeight];},imageSave.uploads[1].p.input.base64);
   assert.deepEqual(exportedAvatar,[512,512]);
-  const writesBeforeCancel=await page.evaluate(()=>window.saved.length);
+  const writesBeforeCancel=await page.evaluate(()=>window.saved.filter(x=>['upload_profile_image','update_profile'].includes(x.c)).length);
   await page.locator('#profileAction').click();await page.locator('[data-profile-tab="appearance"]').click();
   await page.locator('[name="avatarFile"]').setInputFiles(imageFixture);await page.locator('[data-image-crop="avatar"].has-image').waitFor();
   await page.locator('[data-image-plus="avatar"]').click();await page.locator('[data-image-reset="avatar"]').click();
@@ -1864,7 +1872,7 @@ try {
   await page.locator('[data-image-remove="avatar"]').click();await page.waitForFunction(()=>!document.querySelector('[data-image-crop="avatar"]').classList.contains('has-image'));
   assert.equal(await page.locator('[name="avatar"]').inputValue(),'');
   await page.locator('.profile-editor [data-close]').first().click();
-  assert.equal(await page.evaluate(()=>window.saved.length),writesBeforeCancel,'Cancelar o recorte não envia nem remove imagens');
+  assert.equal(await page.evaluate(()=>window.saved.filter(x=>['upload_profile_image','update_profile'].includes(x.c)).length),writesBeforeCancel,'Cancelar o recorte não envia nem remove imagens');
 
   await page.locator(".mission-period").first().waitFor();
   assert.match(
