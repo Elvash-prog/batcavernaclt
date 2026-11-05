@@ -1,0 +1,5 @@
+Início com jogos, filmes, séries e animes reunidos em Continuar de onde parei. Filtros por categoria e cards ordenados pelas últimas atualizações.
+
+Atalhos para pausar ou concluir títulos sem alterar notas, horas ou anotações. O salvamento verifica se o título mudou em outra tela. Episódios e temporadas atualizados no editor aparecem no card após salvar.
+
+Estados de carregamento, coleção vazia e recuperação de erros mais claros. A data apresentada corresponde à atualização da biblioteca, sem estimar último acesso.

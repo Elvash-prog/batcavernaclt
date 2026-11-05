@@ -42,6 +42,7 @@ try {
     viewport: { width: 1920, height: 1080 },
   });
   testPage = page;
+  page.setDefaultTimeout(30000);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("https://**", (r) => r.abort());
@@ -381,6 +382,7 @@ try {
             if(window.failProfileUpload)throw Error("Falha simulada ao enviar imagem");
             return {url:"https://example.invalid/avatars/demo/"+p.input.name+".webp"};
           }
+          if(c==='set_home_status'){window.saved.push({c,p});if(window.failHomeStatus)throw Error('O título mudou em outra tela. Atualize o início.');return [{id:p.id,status:p.status,updated_at:new Date().toISOString()}];}
           if (c === "save_item" || c === "update_profile") {
             if(c==='update_profile'&&p.input.status)profile.status_personalizado=p.input.status;
             if(c==='save_item'&&window.libraryQueryRows){const row=window.libraryQueryRows.find(row=>String(row.id)===String(p.item.id));if(row)Object.assign(row,p.item,{updated_at:new Date().toISOString()});}
@@ -862,6 +864,32 @@ try {
   await page.locator('.continuity-card').filter({hasText:'Série de teste'}).waitFor();
   await page.waitForFunction(()=>document.querySelector('.continuity')?.textContent.includes('Temporada 1 · Episódio 2'));
   assert.equal(await page.locator('.continuity-card').filter({hasText:'Jogo zerado'}).count(),0);
+  await page.locator('[data-resume-filter="series"]').click();
+  assert.equal(await page.locator('.continuity-card').filter({hasText:'Jogo em progresso'}).count(),0);
+  await page.locator('.continuity-card').filter({hasText:'Série de teste'}).waitFor();
+  await page.locator('[data-resume-filter="filmes"]').click();
+  await page.getByText('Nenhum título em andamento nesta categoria.',{exact:true}).waitFor();
+  await page.locator('[data-resume-filter="all"]').click();
+  const resumeGame=page.locator('.continuity-card').filter({hasText:'Jogo em progresso'});
+  await resumeGame.getByRole('button',{name:'Alterar status',exact:true}).click();
+  await page.evaluate(()=>window.failHomeStatus=true);
+  await resumeGame.getByRole('button',{name:'Salvar status',exact:true}).click();
+  await resumeGame.locator('[role="status"]').filter({hasText:'mudou em outra tela'}).waitFor();
+  assert.equal(await resumeGame.count(),1);
+  const statusCall=await page.evaluate(()=>window.saved.find(x=>x.c==='set_home_status').p);
+  assert.deepEqual(Object.keys(statusCall).sort(),['category','expected','id','status']);
+  await page.evaluate(()=>window.failHomeStatus=false);
+  await page.locator('[data-resume-filter="all"]').click();
+  const resumeSeries=page.locator('.continuity-card').filter({hasText:'Série de teste'});
+  await resumeSeries.getByRole('button',{name:'Atualizar episódios',exact:true}).click();
+  await page.locator('.episode-progress [data-progress-action="next_episode"]').click();
+  await page.waitForFunction(()=>[...document.querySelectorAll('.continuity-meta')].some(n=>n.textContent.includes('Episódio 3')));
+  await page.locator('.episode-progress [data-close]').click();
+  await page.locator('.continuity').screenshot({path:'preview/home-resume-check.png'});
+  await resumeSeries.getByRole('button',{name:'Alterar status',exact:true}).click();
+  await resumeSeries.getByRole('button',{name:'Salvar status',exact:true}).click();
+  await resumeSeries.waitFor({state:'detached'});
+  assert.ok(await page.evaluate(()=>window.saved.filter(x=>x.c==='set_home_status').length===2));
   await page.getByRole('button',{name:'Escolher destaque',exact:true}).click();
   const highlight=page.locator('[data-highlight]');
   assert.equal(await highlight.inputValue(),'');
