@@ -1,0 +1,5 @@
+Corrige a falha de cota de armazenamento que interrompia a detecção e o registro de tempo ao aprender um executável.
+
+Associações e preferências de jogos passam a ser guardadas em arquivos do aplicativo, por conta, com migração das configurações existentes e duas gerações para recuperação de gravações interrompidas. Falhas de gravação não derrubam a detecção em andamento.
+
+O histórico recente deixa de interromper a contagem quando o armazenamento do navegador está cheio. A recuperação libera apenas dicas de imagens que podem ser reconstruídas, preservando configurações e rascunhos. A verificação manual consulta a biblioteca atual e mostra o resultado na tela.
