@@ -56,6 +56,11 @@ public final class MobileAppearanceTest {
     Button filters=findButton(collection[0],"Filtrar ▾");assertNotNull(filters);filters.performClick();
    }catch(Exception e){throw new AssertionError(e);}});
    getInstrumentation().waitForIdleSync();capture(activity,"biblioteca-filtros-android");
+   final NativeSheet[] details=new NativeSheet[1];
+   getInstrumentation().runOnMainSync(()->{try{org.json.JSONObject item=new org.json.JSONObject().put("nome","Celeste").put("categoria","jogos").put("status","🎮 Em Progresso").put("plataforma","PC • Switch").put("horas",12.5).put("nota","⭐⭐⭐⭐½ Excelente").put("conquistas",42.5).put("_readonly",true);details[0]=TitleDetailsDialog.show(activity,item,false,(updated,deleted)->{throw new AssertionError("Prévia somente leitura");});}catch(Exception e){throw new AssertionError(e);}});
+   getInstrumentation().waitForIdleSync();capture(details[0].dialog.getWindow().getDecorView(),"detalhes-jogo-android");
+   getInstrumentation().runOnMainSync(()->details[0].dialog.dismiss());
+
 
   } finally { getInstrumentation().runOnMainSync(activity::finish); }
  }
@@ -65,11 +70,11 @@ public final class MobileAppearanceTest {
   if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){View found=findDescription(group.getChildAt(i),description);if(found!=null)return found;}}
   return null;
  }
- private void capture(Activity activity,String name) throws Exception {
+ private void capture(Activity activity,String name) throws Exception {capture(activity.findViewById(android.R.id.content),name);}
+ private void capture(View content,String name) throws Exception {
   // Capture the app view itself; emulator launcher/system dialogs are separate windows.
   final Bitmap[] pixels=new Bitmap[1];
   getInstrumentation().runOnMainSync(()->{
-   View content=activity.findViewById(android.R.id.content);
    pixels[0]=Bitmap.createBitmap(content.getWidth(),content.getHeight(),Bitmap.Config.ARGB_8888);
    content.draw(new android.graphics.Canvas(pixels[0]));
   });

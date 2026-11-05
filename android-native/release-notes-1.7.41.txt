@@ -1,0 +1,5 @@
+Detalhes dos jogos com capa compacta, status em destaque e cartões de horas e avaliação. As conquistas aparecem com uma barra de progresso identificada.
+
+Toque ou clique em horas e avaliação para abrir o editor no campo correspondente. A edição completa e o salvamento existente continuam disponíveis. No Android, o status também abre diretamente o campo de edição.
+
+Layout adaptado a telas menores e fontes maiores, com acesso somente leitura respeitado.
