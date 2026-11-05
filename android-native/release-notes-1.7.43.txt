@@ -1,0 +1,5 @@
+Imagens no chat com prévia antes de enviar, legenda opcional e remoção da seleção. Android recebe o botão de anexar imagem em conversas privadas e grupos.
+
+A imagem selecionada e a legenda permanecem após falha de envio. A nova tentativa reaproveita o upload já confirmado e o identificador da mensagem.
+
+Visualização ampliada com zoom e arraste. No PC, a imagem pode ser salva em Downloads; no Android, é possível salvar uma cópia pelo seletor de arquivos do celular. São aceitos JPEG, PNG e WebP de até 5 MB.
