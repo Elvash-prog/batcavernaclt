@@ -98,6 +98,10 @@ mod tests {use super::*;
   assert_eq!(match_automatic(&["Control".into()],&["Control_DX12.exe".into()]),Some(("Control".into(),"control_dx12".into(),100)));
   assert_eq!(match_automatic(&["The Elder Scrolls Online".into()],&["eso64.exe".into()]),Some(("The Elder Scrolls Online".into(),"eso64".into(),100)));
  }
+ #[test]fn recognizes_phantom_blade_zero_without_guessing_other_titles(){
+  for process in ["PhantomBladeZero.exe","PhantomBladeZero-Win64-Shipping.exe","PBZ.exe"]{assert_eq!(match_automatic(&["Phantom Blade Zero".into()],&[process.into()]).map(|v|v.0),Some("Phantom Blade Zero".into()));}
+  assert_eq!(match_automatic(&["Phantom Blade Zero".into()],&["PhantomBladeZeroLauncher.exe".into()]),None);
+ }
  #[test]fn refuses_ambiguous_automatic_matches(){assert_eq!(match_automatic(&["Control".into(),"Control Ultimate Edition".into()],&["Control_DX12.exe".into()]),None);}
 }
 #[cfg(all(test,windows))]

@@ -217,12 +217,14 @@ try {
       },
       core: {
         invoke: async (c, p) => {
+        if(c==='pc_game_preferences'){window.nativePcPreferences=window.nativePcPreferences||{};if(p.input.preferences){if(window.failNativePcPreferences)throw Error('disk full');window.nativePcPreferences[p.input.owner]=structuredClone(p.input.preferences);window.saved.push({c,p});}return window.nativePcPreferences[p.input.owner]||null;}
         if (c === "progress_sync") {
+          if(p.input.op==='record')window.saved.push({c,p});
           if(p.input.op==='flush'&&!window.holdProgressPending)window.progressPending=false;
           return {plays:window.progressPending?[{item_id:1,seconds:3600}]:[],synced:window.progressPending?{}:{'1':{hours:11,at:'2026-10-29T12:00:00Z'}},achievements:{}};
         }
         if (c === "running_processes") return ["Control_DX12","game_executable","explorer"];
-        if (c === "detect_pc_game") return {name:window.detectedPcGame||null};
+        if (c === "detect_pc_game") return {name:window.detectedPcGame||null,source:window.detectedPcSource||"mapping",process:window.detectedPcProcess||null,confidence:100};
         if(c==='realtime_presence'){window.saved.push({c,p});return {};}
         if(c==='bright_api'&&p.input.op==='agora'){window.steamPresenceQueries=(window.steamPresenceQueries||0)+1;return {jogando:window.detectedSteamGame?{nome:window.detectedSteamGame}:null};}
         if (c === "check_for_updates") {
@@ -1578,6 +1580,15 @@ try {
   await page.locator('[data-pc-remove]').click();
   assert.equal(await page.locator('.pc-mapping-row').count(),0);
 
+  await page.evaluate(()=>{window.libraryQueryRows=[{id:909,nome:'Phantom Blade Zero',categoria:'jogos',status:'🎮 Em Progresso'}];window.detectedPcGame='Phantom Blade Zero';window.detectedPcSource='automatic';window.detectedPcProcess='PhantomBladeZero-Win64-Shipping';window.storageWrite=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('Setting the value exceeded the quota','QuotaExceededError')};});
+  await page.locator('[data-pc-detect-now]').click();
+  await page.waitForFunction(()=>window.nativePcPreferences?.test?.mappings.some(m=>m.name==='Phantom Blade Zero'));
+  await page.waitForFunction(()=>window.saved.some(s=>s.c==='progress_sync'&&s.p.input.op==='record'&&s.p.input.item_id===909));
+  await page.locator('.pc-mapping-row').filter({hasText:'Phantom Blade Zero'}).waitFor();
+  await page.locator('.pc-detection-note').filter({hasText:'Jogo detectado: Phantom Blade Zero'}).waitFor();
+  await page.waitForFunction(()=>[...document.querySelectorAll('[data-pc-detect-now]')].every(b=>!b.disabled));
+  await page.locator('.pc-game-settings').screenshot({path:'preview/pc-quota-check.png'});
+  await page.evaluate(()=>{Storage.prototype.setItem=window.storageWrite;window.libraryQueryRows=null;window.detectedPcGame=null;window.detectedPcSource=null;window.detectedPcProcess=null;});
   await page.locator("#checkUpdates").click();
   await page.getByRole("dialog", { name: "Atualização disponível" }).waitFor();
   assert.match(
@@ -1751,7 +1762,7 @@ try {
   assert.deepEqual(stablePresence,{unchanged:true,retained:true,reconnect:true,invisible:true});
   const unifiedActivity=await page.evaluate(()=>{window.listeners['desktop-presence']({payload:{userId:'test',event:'presence_state',data:{friend:{metas:[{phx_ref:'mobile',status:'online'},{phx_ref:'pc',status:'online',jogo:'Minecraft',jogo_fonte:'pc'}]}}}});const rows=[...document.querySelectorAll('#sidebarCommunity [data-sidebar-chat="friend"]')];return {rows:rows.length,text:rows[0]?.textContent,steamSection:document.querySelector('#sidebarCommunity').textContent.includes('Jogando na Steam')};});
   assert.equal(unifiedActivity.rows,1);assert.match(unifiedActivity.text,/Minecraft/);assert.equal(unifiedActivity.steamSection,false);
-  const ownTransitions=await page.evaluate(async()=>{const prefs='bc-pc-games:test';window.presenceTestProfile={steam_id:'76561198000000000'};localStorage.setItem(prefs,JSON.stringify({enabled:true,mappings:[]}));window.detectedPcGame='Control';window.detectedSteamGame='Control';await window.batcavernaRefreshPresence();const playing=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;const before=window.steamPresenceQueries||0;window.detectedPcGame=null;window.detectedSteamGame=null;await window.batcavernaRefreshPresence();const stopped=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;const refreshed=(window.steamPresenceQueries||0)>before;window.detectedPcGame='Control';window.detectedSteamGame='Hades';localStorage.setItem(prefs,JSON.stringify({enabled:false,mappings:[]}));await window.batcavernaRefreshPresence();const privateActivity=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;localStorage.removeItem(prefs);window.detectedPcGame=null;window.detectedSteamGame=null;window.presenceTestProfile=null;await window.batcavernaRefreshPresence();return {playing,stopped,refreshed,privateActivity};});
+  const ownTransitions=await page.evaluate(async()=>{const prefs='bc-pc-games:test';window.presenceTestProfile={steam_id:'76561198000000000'};await pcGamePreferences.update('test',{enabled:true,mappings:[]});window.detectedPcGame='Control';window.detectedSteamGame='Control';await window.batcavernaRefreshPresence();const playing=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;const before=window.steamPresenceQueries||0;window.detectedPcGame=null;window.detectedSteamGame=null;await window.batcavernaRefreshPresence();const stopped=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;const refreshed=(window.steamPresenceQueries||0)>before;window.detectedPcGame='Control';window.detectedSteamGame='Hades';await pcGamePreferences.update('test',{enabled:false,mappings:[]});await window.batcavernaRefreshPresence();const privateActivity=window.saved.filter(x=>x.c==='realtime_presence').at(-1).p.input;await pcGamePreferences.update('test',{enabled:true,mappings:[]});window.detectedPcGame=null;window.detectedSteamGame=null;window.presenceTestProfile=null;await window.batcavernaRefreshPresence();return {playing,stopped,refreshed,privateActivity};});
   assert.equal(ownTransitions.playing.jogo,'Control');assert.equal(ownTransitions.playing.jogo_fonte,'pc');assert.equal(ownTransitions.stopped.jogo,'');assert.equal(ownTransitions.refreshed,true);assert.equal(ownTransitions.privateActivity.jogo,'');assert.equal(ownTransitions.privateActivity.activity_shared,false);
   const clearedFriend=await page.evaluate(()=>{const emit=data=>window.listeners['desktop-presence']({payload:{userId:'test',event:'presence_diff',data}});emit({joins:{friend:{metas:[{phx_ref:'pc-clear',phx_ref_prev:'pc',status:'ausente',jogo:'',jogo_fonte:'',online_at:Date.now(),device:'desktop'}]}},leaves:{friend:{metas:[{phx_ref:'pc'}]}}});return document.querySelector('#sidebarCommunity [data-sidebar-chat="friend"]').textContent;});assert.doesNotMatch(clearedFriend,/Minecraft/);assert.match(clearedFriend,/Ausente/);
   await page.screenshot({path:'preview/friend-presence-check.png',animations:'disabled'});

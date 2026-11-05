@@ -11,7 +11,7 @@ async function resolveHomeHighlight(games){
  if(!games.some(g=>String(g.id)===String(prefs.pinned))&&state.profile?.steam_id){try{const result=await api.bright({op:'jogos',steamid:state.profile.steam_id});steam=result.recentes||[];}catch{}}
  return chooseHomeHighlight(games,prefs.pinned,prefs.recent||{},steam);
 }
-function rememberHomeGame(row){if(!row||!state.userId)return;const prefs=homeHighlightPreferences();prefs.recent={...prefs.recent,[String(row.id)]:Date.now()};localStorage.setItem('bc-home-highlight:'+state.userId,JSON.stringify(prefs));}
+function rememberHomeGame(row){if(!row||!state.userId)return;const prefs=homeHighlightPreferences();prefs.recent=Object.fromEntries(Object.entries({...prefs.recent,[String(row.id)]:Date.now()}).sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,128));writeLocalPreference(localStorage,'bc-home-highlight:'+state.userId,JSON.stringify(prefs));}
 async function loadHomeHero(image,item){
  const urls=[];if(/^[1-9][0-9]*$/.test(String(item.steam_appid||''))){for(const host of ['shared.akamai.steamstatic.com','shared.fastly.steamstatic.com'])urls.push(`https://${host}/store_item_assets/steam/apps/${item.steam_appid}/library_hero.jpg`);}
  for(const url of urls){try{const source=await api.coverImage(url);if(image.isConnected)image.src=source;return;}catch{}}
