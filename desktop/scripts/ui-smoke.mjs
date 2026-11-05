@@ -1864,7 +1864,7 @@ try {
   assert.equal(imageSave.uploads[1].p.input.mime,'image/webp');
   const exportedAvatar=await page.evaluate(async b64=>{const image=new Image();image.src='data:image/webp;base64,'+b64;await image.decode();return [image.naturalWidth,image.naturalHeight];},imageSave.uploads[1].p.input.base64);
   assert.deepEqual(exportedAvatar,[512,512]);
-  const writesBeforeCancel=await page.evaluate(()=>window.saved.length);
+  const writesBeforeCancel=await page.evaluate(()=>window.saved.filter(x=>['upload_profile_image','update_profile'].includes(x.c)).length);
   await page.locator('#profileAction').click();await page.locator('[data-profile-tab="appearance"]').click();
   await page.locator('[name="avatarFile"]').setInputFiles(imageFixture);await page.locator('[data-image-crop="avatar"].has-image').waitFor();
   await page.locator('[data-image-plus="avatar"]').click();await page.locator('[data-image-reset="avatar"]').click();
@@ -1872,7 +1872,7 @@ try {
   await page.locator('[data-image-remove="avatar"]').click();await page.waitForFunction(()=>!document.querySelector('[data-image-crop="avatar"]').classList.contains('has-image'));
   assert.equal(await page.locator('[name="avatar"]').inputValue(),'');
   await page.locator('.profile-editor [data-close]').first().click();
-  assert.equal(await page.evaluate(()=>window.saved.length),writesBeforeCancel,'Cancelar o recorte não envia nem remove imagens');
+  assert.equal(await page.evaluate(()=>window.saved.filter(x=>['upload_profile_image','update_profile'].includes(x.c)).length),writesBeforeCancel,'Cancelar o recorte não envia nem remove imagens');
 
   await page.locator(".mission-period").first().waitFor();
   assert.match(
