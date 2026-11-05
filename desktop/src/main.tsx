@@ -10,6 +10,8 @@ import './library-query.css';
 import './title-details.css';
 import friendPresence from './friend-presence.js?url';
 import chatPresentation from './chat-presentation.js?url';
+import chatDelivery from './chat-delivery.js?url';
+import './chat-delivery.css';
 import './chat-studio.css';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';
@@ -24,7 +26,7 @@ type TauriWindow=Window&{__TAURI__?:{core?:{invoke:(command:string,payload?:unkn
 function nativeLog(level:string,stage:string,message:string){const invoke=(window as TauriWindow).__TAURI__?.core?.invoke;if(!invoke)return Promise.resolve();return invoke('client_log',{input:{level,stage,message}}).then(()=>undefined).catch(()=>undefined)}
 
 const modules:BootModule[]=[
- {name:'Preferências da conta',src:layoutSync},{name:'Destaque do início',src:homeHighlight},{name:'Seletor de capas',src:coverPicker},{name:'Presença dos amigos',src:friendPresence},{name:'Apresentação das conversas',src:chatPresentation},{name:'Busca na biblioteca',src:libraryQuery},{name:'Núcleo do aplicativo',src:app},{name:'Interface da biblioteca',src:reference},
+ {name:'Preferências da conta',src:layoutSync},{name:'Destaque do início',src:homeHighlight},{name:'Seletor de capas',src:coverPicker},{name:'Presença dos amigos',src:friendPresence},{name:'Apresentação das conversas',src:chatPresentation},{name:'Envio e leitura das conversas',src:chatDelivery},{name:'Busca na biblioteca',src:libraryQuery},{name:'Núcleo do aplicativo',src:app},{name:'Interface da biblioteca',src:reference},
  {name:'Ajustes de navegação',src:refinement},{name:'Acabamento visual',src:polish},
  {name:'Comunidade e conversas',src:redesign},{name:'Jornada e indicações',src:journey},
  {name:'Alinhamento da interface',src:alignment},{name:'Correções do desktop',src:fixes},

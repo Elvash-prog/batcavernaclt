@@ -1,0 +1,5 @@
+Envio de texto com indicação de enviando, confirmação e nova tentativa após falha. O texto é mantido, e a mesma tentativa reutiliza seu identificador para não criar outra cópia quando o servidor já salvou a mensagem.
+
+Mensagens não lidas ganham um marcador e um botão para chegar às novas mensagens. Consultar o histórico não marca automaticamente as mensagens mais recentes como lidas. A leitura registra somente até a mensagem carregada e exibida no fim da conversa.
+
+Melhorias em conversas privadas e grupos, no PC e Android.

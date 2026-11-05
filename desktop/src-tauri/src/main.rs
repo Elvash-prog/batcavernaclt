@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod windows_startup;
+mod chat_delivery;
 mod email_change;
 mod game_detection;
 mod account_preferences;
@@ -69,7 +70,7 @@ struct CommentInput { post_id: String, text: String }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct MessageInput { friend_id: String, text: String, #[serde(default)] media: Option<String> }
+struct MessageInput { friend_id: String, text: String, #[serde(default)] media: Option<String>, #[serde(default)] message_id: Option<String> }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -730,9 +731,7 @@ async fn send_message(input: MessageInput, state: tauri::State<'_, AppState>) ->
     let session=current(&state).await?; let friend=safe_id(&input.friend_id)?; let text=input.text.trim();
     if (text.is_empty() && input.media.is_none()) || text.chars().count()>2000 { return Err("Escreva uma mensagem de até 2.000 caracteres.".into()); }
     if let Some(ref media)=input.media {if !media.starts_with(&format!("{}/",session.user.id))||media.contains("..")||media.contains('?')||media.contains('#'){return Err("Imagem de mensagem inválida.".into());}}
-    value(state.client.post(format!("{SUPABASE_URL}/rest/v1/clt_chat_messages?select=id,remetente_id,destinatario_id,texto,midia_url,created_at,lida"))
-        .header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").header("prefer","return=representation")
-        .json(&json!({"remetente_id":session.user.id,"destinatario_id":friend,"texto":text,"midia_url":input.media})).send().await.map_err(|_| "Não foi possível enviar a mensagem.".to_string())?).await
+    chat_delivery::send(&state,&session,false,friend,text,input.media.as_deref(),input.message_id.as_deref()).await
 }
 
 #[tauri::command]

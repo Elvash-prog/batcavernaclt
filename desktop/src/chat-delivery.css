@@ -1,0 +1,3 @@
+.chat-delivery-state{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:28px;font-size:12px;color:var(--muted);padding:4px 10px}.chat-delivery-state button{min-height:36px;font-size:12px}.chat-delivery-state[data-state="failed"]{color:#ffb6c1}.chat-unread-divider{align-self:stretch;text-align:center;color:var(--accent);font-size:12px;padding:12px;border-top:1px solid var(--line);margin:12px 0}.chat-unread-jump{align-self:center;margin:6px 12px;border-radius:999px;min-height:38px}.chat-delivery-state[hidden],.chat-unread-jump[hidden]{display:none}
+
+.reference-ui .chat-studio .conversation{grid-template-rows:auto minmax(0,1fr) auto auto}.chat-unread-jump{justify-self:center}
