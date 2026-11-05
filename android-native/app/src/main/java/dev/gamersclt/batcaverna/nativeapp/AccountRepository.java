@@ -164,10 +164,10 @@ public final class AccountRepository {
             String active="&or=(status.ilike.*progresso*,status.ilike.*jogando*)";
             int playing=count(own+active,token,config);
             int finished=count(own+"&or=(status.ilike.*zerado*,status.ilike.*platina*)",token,config);
-            JSONArray recent=get(own+active+"&select=id,nome,categoria,status,capa,horas,steam_appid,updated_at&order=updated_at.desc,id.desc&limit=4",token,config);
+            JSONArray recent=get(own+active+"&select=id,nome,categoria,status,capa,horas,steam_appid,updated_at&order=updated_at.desc.nullslast,id.desc&limit=8",token,config);
             int media=count("/rest/v1/itens?user_id=eq."+encode(user)+"&categoria=eq.filmes",token,config);
             JSONArray profile=get("/rest/v1/perfis?select=nome,avatar_url,banner_url&id=eq."+encode(user)+"&limit=1",token,config);
-            JSONArray movies=get("/rest/v1/itens?select=id,nome,categoria,capa,status,tipo,updated_at&user_id=eq."+encode(user)+"&categoria=eq.filmes&status=ilike.*assistindo*&order=updated_at.desc,id.desc&limit=4",token,config);
+            JSONArray movies=new JSONArray();for(int category=1;category<=3;category++){String filter=LibraryCategory.filter(category);int eq=filter.indexOf('=');String condition="(or(status.ilike.*assistindo*,status.ilike.*maratonando*),"+filter.substring(0,eq)+filter.substring(eq+1)+")";JSONArray page=get("/rest/v1/itens?select=id,nome,categoria,capa,status,tipo,updated_at&user_id=eq."+encode(user)+"&categoria=eq.filmes&and="+encode(condition)+"&order=updated_at.desc.nullslast,id.desc&limit=8",token,config);for(int i=0;i<page.length();i++)movies.put(page.optJSONObject(i));}
             JSONArray updates=get("/rest/v1/itens?select=nome,categoria,status,updated_at&user_id=eq."+encode(user)+"&order=updated_at.desc,id.desc&limit=5",token,config);
             return new JSONArray().put(new JSONObject().put("total",total).put("playing",playing).put("finished",finished).put("media",media).put("profile",profile.optJSONObject(0)).put("games",recent).put("movies",movies).put("updates",updates));
         },callback);
@@ -268,6 +268,11 @@ public final class AccountRepository {
     public void updateProfile(String name,String bio,String status,Callback callback){
         try{ProfileInput.validate(name,bio,status);}catch(IllegalArgumentException e){callback.done(null,e.getMessage());return;}
         execute((user,token,config)->write("/rest/v1/perfis?id=eq."+encode(user)+"&select=id,nome,bio,status_personalizado","PATCH",new JSONObject().put("nome",name.trim()).put("bio",bio.trim()).put("status_personalizado",status),token,config),callback);
+    }
+    public void updateHomeStatus(JSONObject item,String status,Callback callback){
+        boolean media=!"jogos".equals(item.optString("categoria"));
+        if(!status.equals("⏸️ Pausado")&&!status.equals(media?"✅ Assistido":"✅ Zerado")){callback.done(null,"Status inválido.");return;}
+        execute((user,token,config)->write(itemTarget(item.optString("id"),media,item.isNull("updated_at")?null:item.optString("updated_at"),user)+"&select=id,status,updated_at","PATCH",new JSONObject().put("status",status),token,config),callback);
     }
     public void updateItem(String id,boolean media,String expected,String status,String rating,Double hours,String review,Callback callback){
         try{ItemEditInput.validate(id,status,rating,hours,review);}catch(IllegalArgumentException e){callback.done(null,e.getMessage());return;}
