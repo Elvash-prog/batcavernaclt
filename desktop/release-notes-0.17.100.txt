@@ -1,0 +1,5 @@
+Barra lateral opcionalmente compacta, com ícones e nomes ao passar o mouse ou navegar pelo teclado. A preferência fica salva neste computador e pode ser alterada pelo botão abaixo do logo.
+
+Refinamentos da biblioteca e navegação: superfícies mais suaves, filtros mais confortáveis, títulos mais legíveis e indicação de foco pelo teclado.
+
+Créditos atualizados para refletir a retirada do Sightengine e identificar SteamGridDB.

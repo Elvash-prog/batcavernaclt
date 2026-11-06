@@ -1,0 +1,91 @@
+/* Optional icon rail; expanded navigation stays the default. */
+.reference-ui .sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+.reference-ui .sidebar-toggle svg { width: 20px; height: 20px; flex-shrink: 0; }
+.reference-ui .sidebar-toggle:hover { background: color-mix(in srgb, var(--accent) 10%, var(--panel)); color: var(--text); }
+.reference-ui .sidebar-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.sidebar-compact .reference-ui { --sidebar: 76px; }
+.sidebar-tooltip {
+  position: fixed;
+  z-index: 320;
+  max-width: min(250px, 70vw);
+  padding: 9px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 6px 20px #0006;
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+@media (min-width: 821px) {
+  .sidebar-compact .sidebar-toggle svg { transform: rotate(180deg); }
+}
+/* Preserve the existing automatic compact layout for small windows. */
+@media (max-width: 820px) {
+  .sidebar-compact .reference-ui { --sidebar: 68px; }
+  .reference-ui .sidebar-toggle { opacity: .5; cursor: default; }
+}
+
+
+.sidebar-compact .reference-ui .sidebar { padding-inline: 10px; }
+.sidebar-compact .reference-ui .sidebar .logo { padding: 0 0 12px; }
+.sidebar-compact .reference-ui .sidebar .logo img { width: 40px; height: 40px; margin: 0; }
+.sidebar-compact .reference-ui .sidebar .logo strong,
+.sidebar-compact .reference-ui .sidebar .logo small,
+.sidebar-compact .reference-ui .sidebar nav button > span,
+.sidebar-compact .reference-ui .sidebar .shell-nav-more > small,
+.sidebar-compact .reference-ui .sidebar-toggle > span,
+.sidebar-compact .reference-ui .sidebar-account > span,
+.sidebar-compact .reference-ui .sidebar-account > i,
+.sidebar-compact .reference-ui .sidebar-system,
+.sidebar-compact .reference-ui .sidebar-utilities { display: none; }
+.sidebar-compact .reference-ui .sidebar nav button { justify-content: center; padding: 10px 0; gap: 0; min-height: 44px; }
+.sidebar-compact .reference-ui .sidebar .shell-nav-more button { min-height: 40px; }
+.sidebar-compact .reference-ui .sidebar nav button svg { width: 22px; height: 22px; }
+.sidebar-compact .reference-ui .sidebar-toggle { justify-content: center; padding-inline: 0; }
+.sidebar-compact .reference-ui .sidebar-foot { margin-inline: -10px; padding: 10px !important; }
+.sidebar-compact .reference-ui .sidebar-account { justify-content: center; padding: 4px; width: 100%; }
+.sidebar-compact .reference-ui .sidebar-foot .update-link { font-size: 0; min-height: 40px; padding: 8px 0; }
+.sidebar-compact .reference-ui .sidebar-foot .update-link::before { content: '↑'; font-size: 20px; }
+.sidebar-compact .reference-ui .sidebar #notificationBell { position: relative; inset: auto; align-self: center; flex-shrink: 0; }
+
+@media (max-width: 820px) {
+
+.reference-ui .sidebar { padding-inline: 10px; }
+.reference-ui .sidebar .logo { padding: 0 0 12px; }
+.reference-ui .sidebar .logo img { width: 40px; height: 40px; margin: 0; }
+.reference-ui .sidebar .logo strong,
+.reference-ui .sidebar .logo small,
+.reference-ui .sidebar nav button > span,
+.reference-ui .sidebar .shell-nav-more > small,
+.reference-ui .sidebar-toggle > span,
+.reference-ui .sidebar-account > span,
+.reference-ui .sidebar-account > i,
+.reference-ui .sidebar-system,
+.reference-ui .sidebar-utilities { display: none; }
+.reference-ui .sidebar nav button { justify-content: center; padding: 10px 0; gap: 0; min-height: 44px; }
+.reference-ui .sidebar .shell-nav-more button { min-height: 40px; }
+.reference-ui .sidebar nav button svg { width: 22px; height: 22px; }
+.reference-ui .sidebar-toggle { justify-content: center; padding-inline: 0; }
+.reference-ui .sidebar-foot { margin-inline: -10px; padding: 10px !important; }
+.reference-ui .sidebar-account { justify-content: center; padding: 4px; width: 100%; }
+.reference-ui .sidebar-foot .update-link { font-size: 0; min-height: 40px; padding: 8px 0; }
+.reference-ui .sidebar-foot .update-link::before { content: '↑'; font-size: 20px; }
+.reference-ui .sidebar #notificationBell { position: relative; inset: auto; align-self: center; flex-shrink: 0; }
+}
