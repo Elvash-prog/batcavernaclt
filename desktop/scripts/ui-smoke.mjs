@@ -393,7 +393,7 @@ try {
             window.saved.push({ c, p });
             return {};
           }
-          if (c === "notifications") return notices;
+          if (c === "notifications") return window.layoutNotices || notices;
           if (c === "mark_notifications_read") {
             notices.forEach((n) => (n.read = true));
             return {};
@@ -922,6 +922,37 @@ try {
   await page.locator('.detail-title-row h2').filter({hasText:'Jogo em progresso'}).waitFor();
 
   await page.locator('.reference-detail [data-close]').click();
+  // Windowed layouts must keep actions below metrics, including compact mode and UI scaling.
+  for(const compact of [false,true]) {
+    if((await page.locator('.sidebar-toggle').getAttribute('aria-expanded')==='false')!==compact)await page.locator('.sidebar-toggle').click();
+    for(const [width,scale] of [[1100,1],[1280,1.25],[1440,1]]) {
+      await page.setViewportSize({width,height:720});
+      await page.evaluate(scale=>document.documentElement.style.setProperty('--ui-scale',String(scale)),scale);
+      for(const category of ['jogos','animes']) {
+        await page.evaluate(async category=>{state.libraryCategory=category;await navigate('library')},category);
+        const hero=await page.locator('#libraryCollectionHero').boundingBox(),add=await page.locator('#addItem').boundingBox(),metrics=await page.locator('.library-hero-metrics').boundingBox();
+        assert.ok(add.y>=hero.y+hero.height-1,`Adicionar sobrepõe resumo: ${category}, ${width}px, escala ${scale}, compacto ${compact}`);
+        assert.ok(metrics.x+metrics.width<=hero.x+hero.width+1);
+        const contentBounds=await page.locator('#content').boundingBox();
+        assert.ok(add.x+add.width<=contentBounds.x+contentBounds.width+1);
+        for(const field of await page.locator('.library-controls input,.library-controls select').all()){const bounds=await field.boundingBox();assert.ok(bounds.x+bounds.width<=contentBounds.x+contentBounds.width+1,'Filtro fora do conteúdo');}
+        const longList=width===1280&&category==='animes';
+        if(longList)await page.evaluate(()=>window.layoutNotices=Array.from({length:30},(_,i)=>({id:'layout-'+i,tipo:'mensagem',mensagem:'Mensagem com um título extenso para verificar a quebra de linha e a rolagem das notificações.',created_at:'2026-11-06T12:00:00Z',read:false})));
+        await page.locator('#notificationBell').click();
+        await page.locator('#notificationPopup header').waitFor();
+        const popup=await page.locator('#notificationPopup').boundingBox(),side=await page.locator('.sidebar').boundingBox();
+        assert.ok(popup.x>=side.x+side.width-1);
+        assert.ok(popup.x+popup.width<=width&&popup.y+popup.height<=720);
+        if(longList){const list=page.locator('#notificationPopup .notification-list');assert.ok(await list.evaluate(n=>n.scrollHeight>n.clientHeight));const close=await page.locator('#closeNotifications').boundingBox();assert.ok(close.y+close.height<=popup.y+popup.height);}
+        if(width===1280&&category==='animes')await page.screenshot({path:`preview/windowed-animes-${compact?'compact':'expanded'}.png`,animations:'disabled'});
+        await page.locator('#closeNotifications').click();
+        await page.evaluate(()=>window.layoutNotices=null);
+      }
+    }
+  }
+  await page.setViewportSize({width:1920,height:1080});
+  await page.locator('.sidebar-toggle').click();
+  await page.evaluate(async()=>{document.documentElement.style.setProperty('--ui-scale','1');state.libraryCategory='jogos';await navigate('home')});
   for (const [width, height, name] of [
     [1920, 1080, "home-check.png"],
     [2560, 1440, "home-qhd-check.png"],
@@ -1785,8 +1816,8 @@ try {
   await page.screenshot({ path: "preview/chat-check.png" });
   await page.locator("#notificationBell").click();
   const bellBox=await page.locator('#notificationBell').boundingBox(),noticeBox=await page.locator('#notificationPopup').boundingBox();
-  assert.ok(Math.abs(noticeBox.x-bellBox.x)<16,'Notificações devem abrir junto do sininho');
-  assert.ok(noticeBox.y>=bellBox.y+bellBox.height&&noticeBox.y-bellBox.y-bellBox.height<20,'Notificações devem abrir logo abaixo do sininho');
+  assert.ok(noticeBox.x >= (await page.locator('.sidebar').boundingBox()).width,'Notificações não devem cobrir o menu');
+  assert.ok(Math.abs(noticeBox.y-bellBox.y)<16,'Notificações devem acompanhar a altura do sininho');
   await page.screenshot({ path: "preview/notifications-reference.png" });
   await page.locator('[data-notice="n1"]').click();
   await page.locator("#liveMessages").waitFor();
