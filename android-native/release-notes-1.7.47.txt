@@ -1,0 +1,3 @@
+Biblioteca com painéis mais suaves e adaptados ao tema escolhido, mais espaço nos cartões e títulos de seção mais legíveis.
+
+Navegação com seleção mais discreta e melhor contraste nos rótulos. Créditos atualizados para refletir a retirada do Sightengine e identificar SteamGridDB.

@@ -16,12 +16,13 @@ import './chat-delivery.css';
 import chatImages from './chat-images.js?url';
 import './chat-images.css';
 import './chat-studio.css';
+import './sidebar-layout.css';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';
 import homeHighlight from './home-highlight.js?url';
 import layoutSync from './layout-sync.js?url';import app from './app.js?url';import reference from './reference.js?url';import refinement from './refinement.js?url';import polish from './polish.js?url';import redesign from './redesign.js?url';import journey from './journey.js?url';import alignment from './alignment.js?url';import fixes from './desktop-fixes.js?url';import retro from './retro.js?url';import shell from './cavern-shell.js?url';import continuity from './continuity.js?url';
 
-function applyBootTheme(){document.documentElement.classList.add('booting');try{const t=JSON.parse(localStorage.getItem('bc-desktop-theme-v2')||'{}'),r=document.documentElement;for(const k of ['bg','panel','accent','text'])if(/^#[0-9a-f]{6}$/i.test(t[k]||''))r.style.setProperty('--'+k,t[k]);r.style.setProperty('--workspace-width',`${Math.max(1050,Math.min(2600,Number(t.width)||1480))}px`);r.style.setProperty('--reference-card-width',`${Math.max(180,Math.min(500,Number(t.cardWidth)||300))}px`);r.style.setProperty('--ui-scale',String(Math.max(.8,Math.min(1.4,(Number(t.scale)||100)/100))));}catch{}}
+function applyBootTheme(){document.documentElement.classList.add('booting');try{document.documentElement.classList.toggle('sidebar-compact',localStorage.getItem('bc-sidebar-compact-v1')==='1');const t=JSON.parse(localStorage.getItem('bc-desktop-theme-v2')||'{}'),r=document.documentElement;for(const k of ['bg','panel','accent','text'])if(/^#[0-9a-f]{6}$/i.test(t[k]||''))r.style.setProperty('--'+k,t[k]);r.style.setProperty('--workspace-width',`${Math.max(1050,Math.min(2600,Number(t.width)||1480))}px`);r.style.setProperty('--reference-card-width',`${Math.max(180,Math.min(500,Number(t.cardWidth)||300))}px`);r.style.setProperty('--ui-scale',String(Math.max(.8,Math.min(1.4,(Number(t.scale)||100)/100))));}catch{}}
 type BootModule={name:string;src:string};
 type BootFailure={stage:string;message:string};
 type TauriWindow=Window&{__TAURI__?:{core?:{invoke:(command:string,payload?:unknown)=>Promise<unknown>}}};
