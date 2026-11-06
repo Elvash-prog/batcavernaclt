@@ -1,0 +1,5 @@
+Encerra explicitamente a sessão temporária usada para confirmar a senha na troca de e-mail, tanto após sucesso quanto após erro. A sessão normal do aplicativo é preservada.
+
+Se o encerramento não puder ser confirmado, o aplicativo orienta conferir o resultado antes de repetir a solicitação.
+
+Remove uma exceção obsoleta da auditoria de dependências; a revisão completa passou sem avisos ativos nem exceções.
