@@ -300,9 +300,11 @@ async fn change_email(input:EmailInput,state:tauri::State<'_,AppState>)->Result<
  if email.len()>254||email.chars().any(char::is_whitespace)||!email.split_once('@').is_some_and(|(a,b)|!a.is_empty()&&b.contains('.')&&!b.starts_with('.')&&!b.ends_with('.')){return Err("Informe um e-mail válido.".into());}
  let session=current(&state).await?;
  let fresh=password_session(&state.client,&session.user.email,&input.current).await.map_err(|_|"A senha atual está incorreta.".to_string())?;
- if fresh.user.id!=session.user.id{return Err("Sua sessão mudou.".into());}
- let result=value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&fresh.access_token).json(&json!({"email":email})).send().await.map_err(|_|"Não foi possível solicitar a troca de e-mail.".to_string())?).await?;
- Ok(json!({"email":result.get("email"),"pending":result.get("new_email"),"message":"Solicitação enviada. Confira os e-mails de confirmação para concluir a alteração."}))
+ auth_revocation::with_temporary_session(&state.client,SUPABASE_URL,SUPABASE_KEY,&fresh.access_token,async {
+  if fresh.user.id!=session.user.id{return Err("Sua sessão mudou.".into());}
+  let result=value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&fresh.access_token).json(&json!({"email":email})).send().await.map_err(|_|"Não foi possível solicitar a troca de e-mail.".to_string())?).await?;
+  Ok(json!({"email":result.get("email"),"pending":result.get("new_email"),"message":"Solicitação enviada. Confira os e-mails de confirmação para concluir a alteração."}))
+ }).await
 }
 #[tauri::command]
 async fn launcher_settings(state:tauri::State<'_,AppState>)->Result<Value,String>{
