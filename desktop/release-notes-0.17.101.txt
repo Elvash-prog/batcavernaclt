@@ -1,0 +1,5 @@
+Corrige a sobreposição dos botões Adicionar, Reparar capas e Selecionar títulos com o resumo da biblioteca e dos animes em janelas menores.
+
+Os filtros se reorganizam conforme a largura disponível, incluindo escala de interface de 125%.
+
+As notificações abrem ao lado da barra lateral, respeitam os limites da janela e mantêm cabeçalho e ações visíveis enquanto a lista rola. Textos longos se ajustam ao painel.

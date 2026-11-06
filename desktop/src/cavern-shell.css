@@ -439,9 +439,19 @@ body[data-screen="discover"] .retro-library-grid .retro-game-cover { aspect-rati
 body[data-screen="discover"] .retro-recent { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
 body[data-screen="discover"] .retro-recent > button { flex: 0 0 240px; }
 
-/* Biblioteca: cabeçalho com ações na mesma linha e cards mais enxutos */
-@media (min-width: 1100px) {
-  .reference-ui .cavern-library .library-toolbar { margin-top: -78px; margin-bottom: 18px; justify-content: flex-end; position: relative; z-index: 1; }
+/* Actions stay in normal flow so they never overlap collection metrics. */
+.reference-ui .cavern-library .library-toolbar {
+  margin-top: 0;
+  margin-bottom: 18px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.reference-ui .library-collection-hero { grid-template-columns: minmax(0, 1fr) auto; }
+.reference-ui .library-hero-copy { min-width: 0; }
+.reference-ui .library-hero-metrics { flex-wrap: wrap; }
+@media (max-width: 1450px) {
+  .reference-ui .library-collection-hero { grid-template-columns: minmax(0, 1fr); gap: 18px; }
 }
 .reference-ui .cavern-library .library-controls { margin-bottom: 14px; }
 .reference-ui .cavern-library #statusTabs, .reference-ui .cavern-library .library-status-tabs { margin-bottom: 8px; }
@@ -866,3 +876,29 @@ body.reference-ui.light-theme .reference-detail :is(h2,h3,h4,p,small,label){colo
 
 .reference-ui .sidebar nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .reference-ui .sidebar nav button:not(.active):hover { background: color-mix(in srgb, var(--text) 5%, var(--bg)); color: var(--text); }
+
+/* Notifications keep their controls visible while long lists scroll. */
+.notification-popover.reference-notices { padding: 16px; overflow: hidden; }
+.notification-popover.reference-notices > header,
+.notification-popover.reference-notices > .notification-toolbar { flex-shrink: 0; }
+.notification-popover.reference-notices .notification-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.notification-popover.reference-notices .notification-toolbar button { min-height: 36px; padding: 8px 10px; font-size: 12px; }
+.notification-popover.reference-notices .notification-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.notification-popover.reference-notices .notice { align-items: flex-start; padding: 12px 8px; }
+.notification-popover.reference-notices .notice > div { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.notification-popover.reference-notices .notice b { font-size: 13px; line-height: 1.5; }
+.notification-popover.reference-notices .notice small { font-size: 11px; }
+.notification-popover.reference-notices .notice:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Account for the width left by both sidebars and the user's UI scale. */
+.reference-ui .cavern-library { container: library / inline-size; }
+.reference-ui .cavern-library .library-controls > :is(input, select) { min-width: 0; width: 100%; }
+@container library (max-width: 1050px) {
+  .reference-ui .cavern-library .library-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reference-ui .cavern-library .library-controls input { grid-column: 1 / -1; }
+}
+@container library (max-width: 600px) {
+  .reference-ui .cavern-library .library-controls { grid-template-columns: minmax(0, 1fr); }
+  .reference-ui .cavern-library .library-controls input { grid-column: auto; }
+  .reference-ui .library-collection-hero { grid-template-columns: minmax(0, 1fr); }
+}
