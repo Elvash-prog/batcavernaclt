@@ -1,0 +1,17 @@
+package dev.gamersclt.batcaverna.nativeapp;
+import android.app.*;
+import android.view.*;
+import android.widget.*;
+import org.json.*;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.*;
+import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowDialog;
+import static org.junit.Assert.*;
+@RunWith(RobolectricTestRunner.class) @Config(sdk={23,35},manifest=Config.NONE)
+public class CatalogStudioTest {
+ @Test public void emptySelectionCannotBeSubmitted(){Activity a=Robolectric.buildActivity(Activity.class).setup().get();new CatalogAddDialog(a,false,0,(JSONObject)null,()->{});Dialog d=ShadowDialog.getLatestDialog();View root=d.getWindow().getDecorView();assertFalse(root.findViewWithTag("catalog-save").isEnabled());assertTrue(((TextView)root.findViewWithTag("catalog-selection-count")).getText().toString().contains("Selecione"));d.dismiss();a.finish();}
+ @Test public void optionalFieldsKeepDraftsAndExpandWhenValidationFails(){Activity a=Robolectric.buildActivity(Activity.class).setup().get();new CatalogAddDialog(a,false,0,(JSONObject)null,()->{});Dialog parent=ShadowDialog.getLatestDialog();View source=parent.getWindow().getDecorView();((EditText)source.findViewWithTag("catalog-query")).setText("Jogo de teste");source.findViewWithTag("catalog-manual").performClick();Dialog review=ShadowDialog.getLatestDialog();View root=review.getWindow().getDecorView();OptionalSection extra=root.findViewWithTag("catalog-optional");EditText year=root.findViewWithTag("catalog-field-ano");assertEquals(View.GONE,extra.body.getVisibility());extra.findViewWithTag("catalog-optional-toggle").performClick();year.setText("2025");extra.findViewWithTag("catalog-optional-toggle").performClick();assertEquals("2025",year.getText().toString());year.setText("abcd");root.findViewWithTag("catalog-review-apply").performClick();assertTrue(review.isShowing());assertEquals(View.VISIBLE,extra.body.getVisibility());year.setText("2025");root.findViewWithTag("catalog-review-apply").performClick();assertFalse(review.isShowing());assertTrue(source.findViewWithTag("catalog-save").isEnabled());assertTrue(((TextView)source.findViewWithTag("catalog-selection-count")).getText().toString().contains("1 selecionado"));parent.dismiss();a.finish();}
+ @Test public void longEditionNamesFitWithLargeFonts()throws Exception{Activity a=Robolectric.buildActivity(Activity.class).setup().get();android.content.res.Configuration config=new android.content.res.Configuration(a.getResources().getConfiguration());config.fontScale=1.6f;a.getResources().updateConfiguration(config,a.getResources().getDisplayMetrics());JSONObject item=new JSONObject().put("name","Uma aventura com nome muito longo Ultimate Definitive Edition com todos os capítulos da coleção completa e pacote de expansão especial").put("released","2025-01-01");LinearLayout card=CatalogCard.result(a,item,false,0,"Já na biblioteca");card.measure(View.MeasureSpec.makeMeasureSpec(NativeSheet.dp(a,260),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));card.layout(0,0,card.getMeasuredWidth(),card.getMeasuredHeight());TextView title=(TextView)((LinearLayout)card.getChildAt(1)).getChildAt(0);assertEquals(Integer.MAX_VALUE,title.getMaxLines());assertNull(title.getEllipsize());assertEquals(item.getString("name"),title.getText().toString());assertTrue("Title must fit its card",title.getMeasuredWidth()<=card.getMeasuredWidth());assertTrue(card.getContentDescription().toString().contains("Já na biblioteca"));a.finish();}
+}

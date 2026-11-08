@@ -5,6 +5,7 @@
  const kindLabels={jogos:'Jogo',filmes:'Filme',series:'Série',animes:'Anime'};
  const updated=row=>{const stamp=Date.parse(row.updated_at);return Number.isFinite(stamp)?'Atualizado em '+new Date(stamp).toLocaleDateString('pt-BR'): 'Sem data de atualização';};
  const journey=(action,data)=>call('community',{input:{op:'journey',action,data}});
+ const editor=openItemEditor;openItemEditor=function(item){editor(item);if(!item)window.BatCatalogStudio.install(document.querySelector('.editor-overlay:last-of-type form'),categoryInfo(state.libraryCategory));};
  let homeGeneration=0;
  const settings=renderSettings;renderSettings=async function(){await settings();if(state.current==='settings')window.BatSettings.enhance($('#content'));};
  const home=renderHome;

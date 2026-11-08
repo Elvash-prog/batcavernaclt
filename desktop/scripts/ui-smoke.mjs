@@ -674,6 +674,8 @@ try {
           if (c === "realtime_start") return {};
           if (c === "catalog") {
             const i = p.input;
+            if(i.provider==='igdb'&&i.query==='Seleção múltipla')return {results:[{id:401,name:'Primeiro da fila',released:'2025-01-01'},{id:402,name:'Segundo da fila',released:'2024-01-01'}]};
+            if(i.provider==='igdb'&&[401,402].includes(i.id))return {id:i.id,name:i.id===401?'Primeiro da fila':'Segundo da fila',released:i.id===401?'2025-01-01':'2024-01-01',genres:[{name:'Action'}]};
             if(i.provider==='igdb'&&i.query==='Teste')return {results:[{id:210,name:'Novo resultado IGDB',steam_appid:210,released:'2025-01-01'}]};
             if(i.provider==='igdb'&&i.id===210)return {id:210,name:'Novo resultado IGDB',steam_appid:210,released:'2025-01-01',genres:[{name:'Action'}]};
             if(i.provider==='igdb'&&i.query==='Edições de teste')return {results:[{id:201,name:'Control',steam_appid:10,released:'2019-08-27',platforms:[{platform:{name:'PC (Microsoft Windows)'}}]},{id:202,name:'Control Ultimate Edition',steam_appid:11,released:'2020-08-27',platforms:[{platform:{name:'PlayStation 5'}}]},{id:203,name:'Duna',released:'2021-01-01',platforms:[{platform:{name:'PC (Microsoft Windows)'}}]}]};
@@ -1691,6 +1693,40 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "save_item"),
   );
+  await page.locator('#addItem').waitFor();
+  await page.locator('#addItem').click();
+  await page.locator('#catalogQuery').fill('Seleção múltipla');
+  await page.locator('#catalogSearch').click();
+  await page.locator('[data-catalog-select]').first().waitFor();
+  assert.equal(await page.locator('.catalog-optional').getAttribute('open'),null);
+  await page.locator('[data-catalog-select]').nth(0).check();
+  await page.locator('#catalogQuery').fill('Teste');
+  await page.locator('#catalogSearch').click();
+  await page.locator('[data-result]').waitFor();
+  assert.match(await page.locator('.catalog-queue [role="status"]').innerText(),/1 selecionado/);
+  await page.locator('#catalogQuery').fill('Seleção múltipla');
+  await page.locator('#catalogSearch').click();
+  await page.locator('[data-catalog-select]').nth(1).waitFor();
+  assert.equal(await page.locator('[data-catalog-select]').nth(0).isChecked(),true);
+  await page.locator('[data-catalog-select]').nth(1).check();
+  assert.match(await page.locator('.catalog-queue [role="status"]').innerText(),/2 selecionados/);
+  await page.locator('[data-queue-start]').click();
+  await page.waitForFunction(()=>document.querySelector('[name="nome"]').value==='Primeiro da fila');
+  for(const width of [1920,1280,820]){await page.setViewportSize({width,height:1000});await page.screenshot({path:`preview/catalog-studio-${width}.png`,animations:'disabled'});assert.equal(await page.locator('.catalog-studio').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true);const bounds=await page.locator('.catalog-studio>footer button.primary').boundingBox();assert.ok(bounds.y>=0&&bounds.y+bounds.height<=1000,'A ação de adicionar deve estar visível');}
+  await page.setViewportSize({width:1920,height:1000});
+  await page.locator('.catalog-studio button.primary').click();
+  await page.waitForFunction(()=>document.querySelector('[name="nome"]').value==='Segundo da fila');
+  assert.match(await page.locator('.catalog-queue [role="status"]').innerText(),/1 adicionado.*1 restante/);
+  await page.evaluate(()=>window.failCatalogSave=true);
+  await page.locator('.catalog-studio button.primary').click();
+  await page.locator('.form-error').filter({hasText:'campos foram mantidos'}).waitFor();
+  assert.equal(await page.locator('[name="nome"]').inputValue(),'Segundo da fila');
+  assert.equal(await page.evaluate(()=>window.saved.filter(s=>s.c==='save_item'&&s.p.item.nome==='Primeiro da fila').length),1);
+  await page.evaluate(()=>window.failCatalogSave=false);
+  await page.locator('.catalog-studio button.primary').click();
+  await page.locator('#addItem').waitFor();
+  assert.equal(await page.evaluate(()=>window.saved.filter(s=>s.c==='save_item'&&s.p.item.nome==='Primeiro da fila').length),1);
+  assert.equal(await page.evaluate(()=>window.saved.filter(s=>s.c==='save_item'&&s.p.item.nome==='Segundo da fila').length),1);
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('[data-settings-tab="appearance"]').click();
   await page.locator('[data-theme-range="cardWidth"]').evaluate((el) => {
@@ -2251,6 +2287,7 @@ try {
   // Preset ratings preserve text; deletion uses an in-app confirmation.
   await page.evaluate(async()=>{state.libraryCategory='jogos';await navigate('library')});
   await page.locator('#addItem').click();
+  await page.locator('.catalog-optional summary').click();
   await page.locator('[name="nota"]').selectOption('⭐⭐⭐⭐ Muito bom');
   assert.equal(await page.locator('[name="nota"]').inputValue(),'⭐⭐⭐⭐ Muito bom');
   await page.locator('[data-item-tab="cover"]').click();
