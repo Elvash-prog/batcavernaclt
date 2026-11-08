@@ -1,0 +1,3 @@
+Carregamento com espaços reservados para as capas, estados de coleção vazia e mensagens de erro com nova tentativa na biblioteca e no início.
+
+Uma falha ao atualizar mantém a coleção já carregada, a busca e os filtros. Salvamento com indicador de atividade e confirmação após resposta do servidor.
