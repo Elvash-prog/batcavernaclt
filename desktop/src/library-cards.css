@@ -1,0 +1,49 @@
+/* Library artwork keeps its chosen proportions; effects never change layout. */
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .reference-card {
+  isolation:isolate; min-width:0; transform:none;
+  transition:transform 180ms ease,border-color 180ms ease,box-shadow 180ms ease;
+}
+.reference-ui .cavern-library #libraryGroups .reference-card:focus-visible {
+  outline:2px solid var(--accent);outline-offset:3px;
+  border-color:var(--accent);
+}
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .cover-wrap::after {
+  content:'';position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;
+  background:linear-gradient(125deg,transparent 25%,#ffffff16 46%,transparent 64%);
+  transition:opacity 180ms ease;
+}
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .reference-card:focus-visible .cover-wrap::after {opacity:1}
+@media (hover:hover) and (pointer:fine) {
+  .reference-ui .cavern-library #libraryGroups:not(.cavern-list) .reference-card:hover {
+    transform:translateY(-3px);border-color:color-mix(in srgb,var(--accent) 60%,var(--line));box-shadow:0 12px 28px #0005;
+  }
+  .reference-ui .cavern-library #libraryGroups:not(.cavern-list) .reference-card:hover .cover-wrap::after {opacity:1}
+}
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .reference-card .card-shade {
+  inset:0;background:linear-gradient(180deg,transparent 55%,#03070c30 100%);
+}
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .reference-card .body {
+  position:static;inset:auto;padding:16px;min-width:0;min-height:116px;color:var(--text);background:var(--panel);
+}
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .reference-card h3 {
+  color:var(--text);font-size:16px;line-height:1.35;letter-spacing:-.015em;
+  margin:0 0 10px;text-shadow:none;overflow-wrap:anywhere;
+}
+.reference-ui .cavern-library #libraryGroups .card-bottom {gap:8px;flex-wrap:wrap;justify-content:flex-start}
+.reference-ui .cavern-library #libraryGroups .card-bottom .card-status {max-width:100%;font-size:11px;line-height:1.4}
+.reference-ui .cavern-library #libraryGroups .playtime-badge {min-width:0;max-width:100%}
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .cover-wrap:has(img[src$="brand.jpg"]) {
+  background:radial-gradient(ellipse at 50% 28%,color-mix(in srgb,var(--accent) 12%,var(--panel)),var(--bg));
+}
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .cover-wrap img[src$="brand.jpg"] {object-fit:contain;padding:20%;opacity:.5}
+@media (hover:none), (pointer:coarse) {
+  .reference-ui .cavern-library #libraryGroups .reference-card:hover {transform:none;box-shadow:0 4px 16px #0002}
+}
+@media (prefers-reduced-motion:reduce) {
+  .reference-ui .cavern-library #libraryGroups .reference-card:hover {transform:none}
+  .reference-ui .cavern-library #libraryGroups .reference-card,
+  .reference-ui .cavern-library #libraryGroups .cover-wrap::after {transition:none}
+}
+body.no-animations .cavern-library #libraryGroups .reference-card:hover {transform:none}
+
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .reference-card h3{min-height:2.7em}

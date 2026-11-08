@@ -1,0 +1,3 @@
+Cartões da biblioteca com capas em destaque, informações abaixo da imagem, brilho e elevação discretos com o mouse e destaque de foco pelo teclado.
+
+Títulos, status e horas ficam mais legíveis sem alterar a proporção escolhida para as capas. Capas ausentes recebem uma apresentação discreta. Os efeitos respeitam movimento reduzido e a opção de desativar animações, preservando grade e lista.

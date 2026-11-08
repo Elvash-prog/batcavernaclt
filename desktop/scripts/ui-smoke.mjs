@@ -943,6 +943,29 @@ try {
   // Functional flows below stay stable; motion itself was checked above.
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.evaluate(async()=>{state.libraryCategory='jogos';await navigate('home')});
+  // Card feedback must preserve cover geometry, adjacent layout and reduced motion.
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.locator('#mainNav [data-collection="jogos"]').click();
+  await page.locator('#libraryGroups .reference-card').first().waitFor();
+  await page.evaluate(async()=>await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{}))));
+  const libraryCard=page.locator('#libraryGroups .reference-card').first();
+  const previousFormat=await page.locator('body').getAttribute('data-card-format');
+  for(const [format,ratio] of [['poster',2/3],['landscape',16/9]]){
+    await page.evaluate(format=>document.body.dataset.cardFormat=format,format);
+    const art=await libraryCard.locator('.cover-wrap').boundingBox(),card=await libraryCard.boundingBox(),title=await libraryCard.locator('h3').boundingBox(),status=await libraryCard.locator('.card-status').boundingBox();
+    assert.ok(Math.abs(art.width/art.height-ratio)<.03,'Preservar proporção da capa');
+    assert.ok(title.y>=art.y+art.height-1&&status.y+status.height<=card.y+card.height+1,'Informações fora da capa e dentro do cartão');
+  }
+  await page.evaluate(format=>document.body.dataset.cardFormat=format,previousFormat);
+  await page.keyboard.press('Tab');await libraryCard.focus();assert.equal(await libraryCard.evaluate(n=>getComputedStyle(n).outlineStyle),'solid');
+  const nextCard=page.locator('#libraryGroups .reference-card').nth(1),nextBefore=await nextCard.boundingBox();
+  await libraryCard.hover();
+  await page.evaluate(async()=>await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{}))));
+  const nextAfter=await nextCard.boundingBox();assert.ok(Math.abs(nextAfter.y-nextBefore.y)<1&&Math.abs(nextAfter.x-nextBefore.x)<1,'Hover não desloca vizinhos');
+  await page.screenshot({path:'preview/library-cards-finish.png',animations:'disabled'});
+  await page.emulateMedia({reducedMotion:'reduce'});
+  assert.equal(await libraryCard.evaluate(n=>getComputedStyle(n).transform),'none');
+  await page.evaluate(async()=>{state.libraryCategory='jogos';await navigate('home')});
   // Windowed layouts must keep actions below metrics, including compact mode and UI scaling.
   for(const compact of [false,true]) {
     if((await page.locator('.sidebar-toggle').getAttribute('aria-expanded')==='false')!==compact)await page.locator('.sidebar-toggle').click();

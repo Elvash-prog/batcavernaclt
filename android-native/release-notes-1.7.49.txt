@@ -1,0 +1,3 @@
+Cartões da biblioteca com resposta suave ao toque, foco de teclado, status visível e informações mais legíveis. A rolagem cancela o toque sem abrir o título.
+
+O placeholder de capa fica centralizado e a imagem real recupera o recorte normal quando carregada. Os efeitos respeitam a preferência de animação do dispositivo.
