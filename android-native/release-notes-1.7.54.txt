@@ -1,0 +1,3 @@
+Novo menu de configurações com categorias, descrições e busca por assunto. Volte ao menu mantendo sua pesquisa.
+
+Opções de tema adaptadas a telas estreitas e fontes ampliadas. Integrações e serviços ficam mais fáceis de localizar, com os ajustes existentes preservados.
