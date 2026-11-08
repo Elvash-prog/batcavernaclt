@@ -1,0 +1,3 @@
+Adicionar títulos com resultados mais legíveis, seleção de até 50 títulos e fila de revisão. A seleção é mantida entre buscas; cada título é revisado e salvo individualmente, com contagem de confirmados e restantes.
+
+Campos opcionais recolhidos, prévia do título em revisão e ação de adicionar sempre acessível. Em falhas, os campos são preservados e os títulos já confirmados não são reenviados. Layout adaptado a janelas menores.
