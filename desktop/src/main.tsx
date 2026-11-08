@@ -17,6 +17,8 @@ import chatImages from './chat-images.js?url';
 import './chat-images.css';
 import './chat-studio.css';
 import './sidebar-layout.css';
+import './motion-feedback.css';
+import './motion-feedback.js';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';
 import homeHighlight from './home-highlight.js?url';
