@@ -84,6 +84,10 @@ public final class MobileAppearanceTest {
    final SettingsMenu[] settingsMenu=new SettingsMenu[1];final int[] chosenSetting={-1};
    getInstrumentation().runOnMainSync(()->{settingsMenu[0]=new SettingsMenu(activity,tab->chosenSetting[0]=tab);settingsMenu[0].setPadding(24,24,24,24);ScrollView scroll=new ScrollView(activity);scroll.setBackgroundColor(NativeTheme.backgroundEnd(activity));scroll.addView(settingsMenu[0]);activity.setContentView(scroll);EditText query=settingsMenu[0].findViewWithTag("settings-menu-search");query.setText("SENHA");assertEquals(View.VISIBLE,settingsMenu[0].findViewWithTag("settings-category-0").getVisibility());assertEquals(View.GONE,settingsMenu[0].findViewWithTag("settings-category-1").getVisibility());settingsMenu[0].findViewWithTag("settings-category-0").performClick();assertEquals(0,chosenSetting[0]);query.setText("");});
    getInstrumentation().waitForIdleSync();capture(settingsMenu[0],"configuracoes-android");
+   final ListsView[] listsView=new ListsView[1];
+   getInstrumentation().runOnMainSync(()->{try{org.json.JSONArray rows=new org.json.JSONArray("[{\"id\":\"list-a\",\"nome\":\"Fim de semana\",\"mine\":true,\"count\":4},{\"id\":\"list-b\",\"nome\":\"Histórias para compartilhar\",\"owner_name\":\"Luna\",\"compartilhada\":true,\"count\":2}]");listsView[0]=new ListsView(activity,rows,"",0,new ListsView.Actions(){public void open(org.json.JSONObject row){}public void create(){}public void filter(String q,int s){}});listsView[0].setPadding(24,24,24,24);ScrollView scroll=new ScrollView(activity);scroll.setBackgroundColor(NativeTheme.backgroundEnd(activity));scroll.addView(listsView[0]);activity.setContentView(scroll);EditText query=listsView[0].findViewWithTag("lists-search");query.setText("LUNA");assertNull(listsView[0].findViewWithTag("list-card-list-a"));assertNotNull(listsView[0].findViewWithTag("list-card-list-b"));query.setText("");}catch(Exception e){throw new AssertionError(e);}});
+   getInstrumentation().waitForIdleSync();capture(listsView[0],"listas-android");
+
 
 
 

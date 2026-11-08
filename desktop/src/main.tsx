@@ -27,6 +27,8 @@ import './statistics-view.css';
 import './statistics-view.js';
 import './settings-studio.css';
 import './settings-studio.js';
+import './lists-studio.css';
+import './lists-studio.js';
 import './motion-feedback.js';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';

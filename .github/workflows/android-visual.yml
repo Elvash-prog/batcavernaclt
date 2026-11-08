@@ -40,6 +40,7 @@ jobs:
             adb shell am instrument -w dev.gamersclt.batcaverna.nativeapp.preview.debug.test/androidx.test.runner.AndroidJUnitRunner > build/mobile-test-results.txt
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/inicio-continuar-android.png > build/mobile-previews/inicio-continuar-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/catalogo-edicoes-android.png > build/mobile-previews/catalogo-edicoes-android.png
+            adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/listas-android.png > build/mobile-previews/listas-android.png
             python3 -c "from pathlib import Path; s=Path('build/mobile-test-results.txt').read_text(); print(s); assert 'OK (1 test)' in s and 'FAILURES' not in s"
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/login-android.png > build/mobile-previews/login-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/controles-android.png > build/mobile-previews/controles-android.png
@@ -54,7 +55,7 @@ jobs:
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/catalogo-edicoes-android.png > build/mobile-previews/catalogo-edicoes-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/estatisticas-android.png > build/mobile-previews/estatisticas-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/configuracoes-android.png > build/mobile-previews/configuracoes-android.png
-            python3 -c "from pathlib import Path; files=list(Path('build/mobile-previews').glob('*.png')); assert len(files)==13 and all(p.read_bytes().startswith(bytes([137,80,78,71,13,10,26,10])) for p in files)"
+            python3 -c "from pathlib import Path; files=list(Path('build/mobile-previews').glob('*.png')); assert len(files)==14 and all(p.read_bytes().startswith(bytes([137,80,78,71,13,10,26,10])) for p in files)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,0 +1,3 @@
+Novo visual das listas com mosaicos de capas, dono, quantidade de títulos e identificação de listas privadas ou compartilhadas com amigos.
+
+Busque por nome ou pessoa e filtre suas listas ou as dos amigos. A pesquisa é preservada ao voltar; listas vazias e buscas sem resultado recebem ações claras. Layout adaptado a fontes ampliadas.
