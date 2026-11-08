@@ -1,0 +1,3 @@
+Estatísticas com resumo, comparação por categoria e gráfico mensal interativo. Selecione um mês e alterne entre 6 e 12 meses para consultar as conclusões registradas.
+
+Layout nativo adaptado a fontes ampliadas, com dados também em texto e tratamento de histórico ausente. Totais gerais, conclusões sem data e horas registradas são identificados separadamente.
