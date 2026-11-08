@@ -1,0 +1,3 @@
+Destaque suave nos ícones da navegação, confirmação de favorito após salvar e indicador de envio ao atualizar foto ou capa.
+
+As animações curtas respeitam a preferência de animação do dispositivo. O indicador de envio é indeterminado e termina quando a resposta é recebida.

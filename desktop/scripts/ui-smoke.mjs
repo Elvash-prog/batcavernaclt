@@ -922,6 +922,27 @@ try {
   await page.locator('.detail-title-row h2').filter({hasText:'Jogo em progresso'}).waitFor();
 
   await page.locator('.reference-detail [data-close]').click();
+  // Feedback follows real selection and task state; reduced motion stays static.
+  await page.locator('#mainNav [data-collection="animes"]').click();
+  await page.locator('#librarySearch').waitFor();
+  await page.waitForFunction(()=>{const m=document.querySelector('.nav-motion-marker'),a=document.querySelector('#mainNav button.active');return m&&a&&!m.hidden&&Math.abs(m.getBoundingClientRect().top-a.getBoundingClientRect().top)<4});
+  const marker=await page.locator('.nav-motion-marker').boundingBox(),selectedNav=await page.locator('#mainNav button.active').boundingBox();
+  assert.ok(marker&&Math.abs(marker.y-selectedNav.y)<4,'O marcador deve acompanhar o item selecionado');
+  await page.evaluate(()=>{const f=document.createElement('form');f.id='motion-test';f.innerHTML='<p class="form-error"></p>';document.body.append(f);window.BatMotion.uploadState(f,'pending')});
+  assert.equal(await page.locator('#motion-test [role="progressbar"]').getAttribute('aria-valuenow'),null,'Envio indeterminado não inventa porcentagem');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  assert.ok(await page.locator('.nav-motion-marker').evaluate(n=>parseFloat(getComputedStyle(n).transitionDuration)<=.001));
+  assert.equal(await page.locator('.save-feedback-track').evaluate(n=>getComputedStyle(n,'::after').animationName),'none');
+  await page.evaluate(()=>window.BatMotion.uploadState(document.querySelector('#motion-test'),'error'));
+  assert.equal(await page.locator('#motion-test [role="progressbar"]').count(),0,'Erro deve interromper progresso');
+  await page.evaluate(()=>{toast('Favorito salvo.');window.BatMotion.favoriteSaved()});
+  assert.equal(await page.locator('#toast').evaluate(n=>n.classList.contains('favorite-confirmed')),true);
+  await page.evaluate(()=>toast('Outra mensagem'));
+  assert.equal(await page.locator('#toast').evaluate(n=>n.classList.contains('favorite-confirmed')),false,'Confirmação não deve vazar para a próxima mensagem');
+  await page.evaluate(()=>document.querySelector('#motion-test').remove());
+  // Functional flows below stay stable; motion itself was checked above.
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.evaluate(async()=>{state.libraryCategory='jogos';await navigate('home')});
   // Windowed layouts must keep actions below metrics, including compact mode and UI scaling.
   for(const compact of [false,true]) {
     if((await page.locator('.sidebar-toggle').getAttribute('aria-expanded')==='false')!==compact)await page.locator('.sidebar-toggle').click();
@@ -1651,6 +1672,7 @@ try {
   assert.match(light.background,/255, 255, 255/);
   assert.notEqual(light.color,'rgb(255, 255, 255)');
   await page.evaluate(async()=>await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{}))));
+  await page.waitForFunction(()=>getComputedStyle(document.querySelector('#mainNav [data-view="home"]')).color===getComputedStyle(document.body).color);
   assert.equal(await page.locator('#mainNav [data-view="home"]').evaluate(n=>getComputedStyle(n).color),await page.locator('body').evaluate(n=>getComputedStyle(n).color),'Navegação do tema claro precisa de contraste');
   await page.screenshot({path:'preview/light-settings-check.png'});
   await page.locator('[data-theme-preset="Caverna"]').click();
