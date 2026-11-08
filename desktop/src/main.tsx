@@ -23,6 +23,8 @@ import './screen-feedback.css';
 import './screen-feedback.js';
 import './dashboard-studio.css';
 import './dashboard-studio.js';
+import './statistics-view.css';
+import './statistics-view.js';
 import './motion-feedback.js';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';

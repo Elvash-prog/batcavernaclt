@@ -1,0 +1,3 @@
+Estatísticas com novo resumo de títulos, conclusões, horas registradas e taxa de conclusão. Distribuição da coleção entre jogos, filmes, séries e animes.
+
+Gráfico mensal com jogos e mídias separados por cor, seleção de um mês para ver os valores e períodos de 6 ou 12 meses. Os totais gerais permanecem separados do período do gráfico. Mensagens para biblioteca vazia e histórico ausente, com esclarecimento sobre conclusões sem data e horas totais.

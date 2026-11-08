@@ -514,6 +514,7 @@ try {
             if (i.op === "journey") {
               if (window.missingJourney)
                 throw "Could not find the function public.clt_journey(p_action, p_data) in the schema cache";
+              if(i.action==="stats"&&window.statisticsFixture)return [window.statisticsFixture];
               if (i.action === "stats")
                 return [
                   {
@@ -1221,13 +1222,34 @@ try {
   assert.equal(await page.locator(".sidebar").evaluate((n) => n.scrollTop), 0);
   assert.match(await page.locator(".statistics-summary").innerText(), /30h/);
   assert.equal(await page.locator(".bar-chart>div").count(), 12);
+  await page.locator('[data-stats-span="6"]').click();
+  assert.equal(await page.locator('.bar-chart>div').count(),6);
+  assert.match(await page.locator('.statistics-summary').innerText(),/30h/);
+  await page.locator('[data-stats-month="2026-10"]').click();
+  assert.match(await page.locator('.stats-month-detail').innerText(),/outubro de 2026/);
+  assert.match(await page.locator('.stats-month-detail').innerText(),/1 jogo ·/);
+  await page.locator('[data-stats-span="12"]').click();
+  assert.equal(await page.locator('.bar-chart>div').count(),12);
+  const statsViewport=page.viewportSize();
+  for(const width of [1920,1280,820]){
+    await page.setViewportSize({width,height:1000});
+    assert.equal(await page.locator('.statistics-studio').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Estatísticas devem caber na janela '+width);
+    await page.screenshot({path:'preview/statistics-'+width+'.png',animations:'disabled'});
+  }
+  await page.setViewportSize(statsViewport);
   await page.screenshot({ path: "preview/journey-check.png" });
   await page.evaluate(() => (window.missingJourney = true));
   await page.evaluate(async()=>await navigate('statistics'));
   await page.locator(".statistics-summary").waitFor();
   assert.match(await page.locator(".statistics-summary").innerText(), /33,8h/);
   assert.equal(await page.locator(".bar-chart>div").count(), 12);
-  await page.evaluate(() => (window.missingJourney = false));
+  await page.evaluate(async()=>{window.missingJourney=false;window.statisticsFixture={total:0,concluidos:0,horas:0,months:[]};await navigate('statistics')});
+  await page.locator('.stats-empty').waitFor();
+  assert.equal(await page.locator('[data-stats-month]').count(),0);
+  assert.match(await page.locator('.stats-chart-empty').innerText(),/houver dados mensais/);
+  await page.locator('[data-stats-explore]').click();
+  await page.locator('#librarySearch').waitFor();
+  await page.evaluate(()=>delete window.statisticsFixture);
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('[data-settings-tab="notifications"]').click();
   await page.locator("#openNotificationPreferences").click();
