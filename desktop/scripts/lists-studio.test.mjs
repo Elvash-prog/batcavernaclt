@@ -1,0 +1,5 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {matches,previews,visibility} from '../src/lists-studio.js';
+test('list search combines owner, title and ownership filters without changing visibility',()=>{const mine={nome:'Séries de ficção',mine:true,compartilhada:false},friend={nome:'Férias',owner_name:'João',mine:false,compartilhada:true};assert.ok(matches(mine,'SERIES ficcao','mine'));assert.ok(matches(friend,'joao ferias','friends'));assert.ok(!matches(friend,'','mine'));assert.ok(!matches(mine,'','friends'));assert.equal(visibility(mine),'Privada');assert.equal(visibility(friend),'Compartilhada com amigos');assert.equal(mine.compartilhada,false);});
+test('mosaic uses at most four actual previews and supports lists with no artwork',()=>{const list={preview:Array.from({length:9},(_,i)=>({nome:String(i),capa:''}))};assert.equal(previews(list).length,4);assert.equal(list.preview.length,9);assert.deepEqual(previews({}),[]);assert.deepEqual(previews({preview:'invalid'}),[]);});

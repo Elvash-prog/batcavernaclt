@@ -1,6 +1,6 @@
 'use strict';
 (()=>{
-const recent={list:null,library:null};
+const recent={list:null,library:null,listQuery:'',listScope:'all',listOwner:null};
 const feature=(action,data={})=>call('community',{input:{op:'features',action,data}});
 const journey=(action,data={})=>call('community',{input:{op:'journey',action,data}});
 const icon=name=>({home:'⌂',library:'▦',film:'▤',anime:'✦',social:'◉',friends:'♙',chat:'◌',lists:'☷',recommend:'↗',stats:'⌁',discover:'◇',settings:'⚙',user:'◎'}[name]||'•');
@@ -15,10 +15,9 @@ async function run(form,work,done){disable(form,true);const note=form.querySelec
 function cardCover(t){const cover=coverUrl(t.capa);return `<div class="journey-cover">${cover?`<img src="brand.jpg" data-cover="${esc(cover)}" data-cover-name="${esc(t.nome)}" data-cover-game="${t.categoria==='jogos'?'1':'0'}" alt="">`:`<span>${icon(t.categoria==='jogos'?'library':'film')}</span>`}</div>`;}
 
 async function renderLists(){
- setPage('Listas','ORGANIZE SEU UNIVERSO');const rows=await feature('lists');if(state.current!=='lists')return;recent.list=null;
- $('#content').innerHTML=`<section class="journey-page">${viewHeader('COLEÇÕES PERSONALIZADAS','Suas listas','Separe histórias por clima, ocasião ou por quem vai jogar com você.','<button class="primary" id="newList">＋ Nova lista</button>')}<div class="journey-grid">${rows.map(r=>`<button class="journey-list-card" data-list="${esc(r.id)}"><span class="journey-list-icon">☷</span><div><h3>${esc(r.nome)}</h3><p>${r.mine?'Sua lista':`Lista de ${esc(r.owner_name||'amigo')}`}</p><small>${Number(r.count)||0} títulos · ${r.compartilhada?'Visível aos amigos':'Privada'}</small></div><b>→</b></button>`).join('')||'<div class="empty">Crie sua primeira lista para guardar títulos.</div>'}</div></section>`;
- $$('[data-list]').forEach(b=>b.onclick=()=>openList(rows.find(r=>String(r.id)===b.dataset.list)));
- $('#newList').onclick=()=>listDialog();
+ setPage('Listas','ORGANIZE SEU UNIVERSO');if(recent.listOwner!==state.userId){recent.listQuery='';recent.listScope='all';recent.listOwner=state.userId;}const rows=await feature('lists');if(state.current!=='lists')return;recent.list=null;
+ $('#content').innerHTML='<section class="journey-page"></section>';
+ window.BatLists.render($('#content .journey-page'),rows,{open:openList,create:()=>listDialog(),cover:coverUrl,fallback:url=>queueCover(async()=>api.coverImage(await signed(url))),query:recent.listQuery,scope:recent.listScope,change:(query,scope)=>{recent.listQuery=query;recent.listScope=scope;}});
 }
 function listDialog(list=null){
  const o=dialog(`<form class="journey-dialog-form"><header><div><small>${list?'EDITAR LISTA':'NOVA LISTA'}</small><h2>${list?'Renomear lista':'Criar lista'}</h2></div><button type="button" data-close aria-label="Fechar">×</button></header><label>Nome da lista<input name="nome" maxlength="60" required value="${esc(list?.nome||'')}" placeholder="Ex.: Jogar no fim de semana"></label><p role="status"></p><footer><button type="button" class="secondary" data-close>Cancelar</button><button class="primary">${list?'Salvar':'Criar lista'}</button></footer></form>`);
@@ -27,6 +26,7 @@ function listDialog(list=null){
 async function openList(list){
  recent.list=list;setPage(list.nome,'LISTAS');const rows=await feature('list_items',{list_id:list.id});if(state.current!=='lists')return;
  $('#content').innerHTML=`<section class="journey-page">${viewHeader(list.mine?'SUA LISTA':`LISTA DE ${String(list.owner_name||'AMIGO').toUpperCase()}`,list.nome,`${rows.length} título${rows.length===1?'':'s'} nesta lista.`,list.mine?'<button class="primary" id="addListItem">＋ Adicionar título</button>':'')}<div class="journey-toolbar"><button class="secondary" id="backLists">← Todas as listas</button>${list.mine?`<button class="secondary" id="shareList">${list.compartilhada?'Tornar privada':'Compartilhar com amigos'}</button><button class="secondary" id="renameList">Renomear</button><button class="danger" id="deleteList">Excluir</button>`:''}</div><div class="journey-title-grid">${rows.map(r=>{const t=r.titulo||{};return `<article class="journey-title-card">${cardCover(t)}<div><h3>${esc(t.nome||'Título')}</h3><p>${esc(titleKind(t))}</p>${list.mine?`<button class="secondary" data-list-library="${esc(r.item_id)}">Adicionar à biblioteca</button><button class="link-button" data-remove-item="${esc(r.item_id)}">Remover</button>`:''}</div></article>`}).join('')||'<div class="empty">Esta lista ainda está vazia.</div>'}</div></section>`;hydrateCovers($('#content'));
+ const privacy=document.createElement('p');privacy.className='list-detail-visibility';privacy.textContent=list.compartilhada?'Compartilhada com amigos':'Privada';$('#content .journey-heading').after(privacy);
  $$('[data-list-library]').forEach(b=>b.onclick=()=>acceptRecommendation({titulo:rows.find(r=>String(r.item_id)===b.dataset.listLibrary)?.titulo||{}}));
  $('#backLists').onclick=renderLists;$('#addListItem')?.addEventListener('click',()=>pickLibrary(list));$('#renameList')?.addEventListener('click',()=>listDialog(list));
  $('#shareList')?.addEventListener('click',async e=>{const actionButton=e.currentTarget;actionButton.disabled=true;try{await feature('share_list',{list_id:list.id,compartilhada:!list.compartilhada});list.compartilhada=!list.compartilhada;toast(list.compartilhada?'Lista compartilhada.':'Lista privada.');openList(list);}catch(err){toast(message(err));e.currentTarget.disabled=false;}});

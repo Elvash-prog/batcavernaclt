@@ -1,0 +1,3 @@
+Listas personalizadas com mosaicos de até quatro capas, identificação de privacidade, dono e quantidade de títulos. Busque por nome ou pessoa e filtre entre todas, suas listas e listas de amigos.
+
+A busca e o filtro são mantidos ao voltar de uma lista. Layout adaptado a janelas menores e mensagens com ação para listas vazias ou busca sem resultados.

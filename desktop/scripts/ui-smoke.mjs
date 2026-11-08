@@ -46,6 +46,7 @@ try {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("https://**", (r) => r.abort());
+  await page.route('https://example.test/list-preview-*.jpg',route=>{const warm=route.request().url().includes('-2.');return route.fulfill({status:200,contentType:'image/svg+xml',body:`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><defs><linearGradient id="a" x2="1" y2="1"><stop stop-color="${warm?'#642c62':'#164658'}"/><stop offset="1" stop-color="${warm?'#db8c63':'#253c5e'}"/></linearGradient></defs><rect width="600" height="450" fill="url(#a)"/><circle cx="440" cy="100" r="85" fill="#e7b677" opacity=".6"/><path d="M0 450 170 160 300 350 440 200 600 450Z" fill="#101925"/></svg>`});});
   await page.addInitScript(() => {
     const image =
       "data:image/svg+xml;base64," +
@@ -153,7 +154,10 @@ try {
           mine: true,
           compartilhada: false,
           count: 1,
+          preview:[{nome:'Jogo zerado',capa:'https://example.test/list-preview-1.jpg'}],
         },
+        {id:'friend-list',nome:'Férias com ficção',owner_name:'João',mine:false,compartilhada:true,count:4,preview:[{capa:'https://example.test/list-preview-1.jpg'},{capa:'https://example.test/list-preview-2.jpg'},{capa:'https://example.test/list-preview-2.jpg'},{capa:'https://example.test/list-preview-1.jpg'}]},
+        {id:'empty-list',nome:'Próxima aventura',mine:true,compartilhada:false,count:0},
       ],
       recommendations = [
         {
@@ -821,6 +825,7 @@ try {
   await page.locator('[data-settings-tab="app"]').click();
   assert.equal(await page.locator('.settings-section-links button').count(),4);
   const settingsViewport=page.viewportSize();
+  await page.locator('.list-mosaic img').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));
   for(const width of [1920,1280,820]){
     await page.setViewportSize({width,height:1000});
     assert.equal(await page.locator('.settings-studio').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Configurações devem caber na janela '+width);
@@ -1123,12 +1128,27 @@ try {
     await page.locator('[data-list="list1"]').innerText(),
     /Fim de semana/,
   );
+  assert.equal(await page.locator('.list-studio-card').count(),3);
+  assert.equal(await page.locator('[data-list="friend-list"] .list-visibility').innerText(),'Compartilhada com amigos');
+  await page.locator('#listSearch').fill('JOAO ficcao');
+  assert.equal(await page.locator('.list-studio-card').count(),1);
+  await page.locator('[data-list-scope="mine"]').click();
+  assert.equal(await page.locator('.list-studio-card').count(),0);
+  await page.locator('.lists-empty button').click();
+  assert.equal(await page.locator('.list-studio-card').count(),3);
+  for(const width of [1920,1280,820]){await page.setViewportSize({width,height:1000});await page.screenshot({path:`preview/lists-${width}.png`,animations:'disabled'});assert.equal(await page.locator('.lists-studio').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true);}
+  await page.setViewportSize({width:1920,height:1000});
+  await page.locator('#listSearch').fill('Fim');
   await page.locator('[data-list="list1"]').click();
   await page.locator(".journey-title-card").waitFor();
   assert.match(
     await page.locator(".journey-title-card").innerText(),
     /Jogo zerado/,
   );
+  await page.locator('#backLists').click();
+  assert.equal(await page.locator('#listSearch').inputValue(),'Fim');
+  assert.equal(await page.locator('.list-studio-card').count(),1);
+  await page.locator('#listSearch').fill('');
   await page.locator('[data-view="recommendations"]').click();
   await page.locator(".recommendation-card").waitFor();
   await page.locator('#recommendCategory').selectOption('Filme');
