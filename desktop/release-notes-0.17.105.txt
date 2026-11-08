@@ -1,0 +1,3 @@
+Tela de detalhes com capa e título em destaque, status identificado e cartões de horas e avaliação. Informações do catálogo reunidas na aba Sobre, com abas e ações organizadas para janelas menores.
+
+A descrição completa passa a expandir sem limite de altura. Edição, notas, conquistas, listas e progresso de episódios preservados.

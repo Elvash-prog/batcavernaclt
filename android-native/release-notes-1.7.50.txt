@@ -1,0 +1,3 @@
+Detalhes dos títulos com novo cabeçalho, capa, título e plataforma organizados.
+
+O cabeçalho se adapta a telas estreitas e fonte ampliada, mantendo o título completo. Progresso identificado e resposta ao toque nas ações de status, horas e avaliação.

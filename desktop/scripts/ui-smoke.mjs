@@ -1482,10 +1482,23 @@ try {
   await page.evaluate(()=>document.querySelector('#detailDescription').textContent='Descrição longa de teste. '.repeat(200));
   await page.locator('.description-toggle').click();
   assert.equal(await page.locator('#detailDescription.description-expanded').count(),1);
+  assert.equal(await page.locator('#detailDescription').evaluate(el=>el.scrollHeight<=el.clientHeight+2),true,'A descrição expandida deve mostrar o texto completo');
   await page.locator('.description-toggle').click();
   await page.evaluate(()=>document.querySelector('#detailDescription').textContent='Descrição do jogo');
   assert.ok(closeBounds.x>=dialogBounds.x&&closeBounds.x+closeBounds.width<=dialogBounds.x+dialogBounds.width&&closeBounds.y>=dialogBounds.y,'Fechar deve permanecer dentro da janela');
   assert.equal(await page.locator('.detail-personal-metrics [data-detail-edit]').count(),2);
+  assert.equal(await page.locator('[data-detail-panel="about"] .detail-catalog-meta').count(),1);
+  assert.equal(await page.locator('.reference-detail-summary #catalogRating').count(),0);
+  const detailsViewport=page.viewportSize();
+  for(const width of [980,740,480]){
+    await page.setViewportSize({width,height:900});
+    assert.equal(await page.locator('.reference-detail-main').evaluate(el=>el.scrollWidth<=el.clientWidth+2),true,'Detalhes devem caber na janela '+width);
+    const select=await page.locator('#detailStatus').boundingBox(),dialog=await page.locator('.reference-detail').boundingBox();
+    assert.ok(select.x>=dialog.x&&select.x+select.width<=dialog.x+dialog.width,'Status deve permanecer dentro da janela');
+    assert.ok(dialog.x>=0&&dialog.x+dialog.width<=width+1,'O modal deve caber na área visível '+width);
+    await page.screenshot({path:'preview/details-'+width+'.png',animations:'disabled'});
+  }
+  await page.setViewportSize(detailsViewport);
   await page.screenshot({ path: "preview/details-check.png" });
   await page.locator('[data-detail-edit="horas"]').click();
   assert.equal(await page.locator('[data-item-panel="collection"]').isVisible(),true);
