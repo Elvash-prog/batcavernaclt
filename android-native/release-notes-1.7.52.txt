@@ -1,0 +1,3 @@
+Início com novo banner de boas-vindas, atalho para a coleção e indicadores com visual consistente. Cabeçalho e cartões se adaptam a telas estreitas e fontes ampliadas.
+
+Navegação inferior com marca de seleção e descrição acessível. Configurações agora aparecem no cabeçalho. Dados, progresso e ações existentes preservados.
