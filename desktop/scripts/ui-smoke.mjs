@@ -798,6 +798,17 @@ try {
   });
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
+  // The dashboard exposes the existing totals and keeps actions after a return visit.
+  assert.equal(await page.locator('.studio-welcome').count(),1);
+  assert.equal(await page.locator('.studio-metrics>article').count(),4);
+  assert.equal(await page.locator('.studio-metric-icon svg').count(),4);
+  const dashboardCounts=await page.locator('.studio-metrics strong').allTextContents();
+  await page.locator('.studio-add').click();
+  await page.locator('.item-editor-modern').waitFor();
+  await page.locator('.item-editor-modern [data-close]').first().click();
+  await page.evaluate(async()=>await navigate('home'));
+  assert.equal(await page.locator('.studio-welcome').count(),1);
+  assert.deepEqual(await page.locator('.studio-metrics strong').allTextContents(),dashboardCounts);
   // Read retries retain the collection context and never repeat a save.
   const feedbackSavedBefore=await page.evaluate(()=>window.saved.filter(x=>x.c==='save_item').length);
   await page.evaluate(()=>{state.libraryCategory='jogos';window.delayLibrary=true;window.libraryDelay=900;void navigate('library')});
@@ -1058,6 +1069,13 @@ try {
       ),
       false,
     );
+    const welcome=await page.locator('.studio-welcome').boundingBox(),metrics=await page.locator('.studio-metrics').boundingBox(),continuity=await page.locator('.continuity').boundingBox();
+    assert.ok(welcome.y+welcome.height<=hero.y+1,'A saudação deve vir antes do destaque');
+    assert.ok(metrics.y>=hero.y+hero.height,'Indicadores devem vir depois do destaque');
+    assert.ok(metrics.y+metrics.height<=continuity.y+1,'Indicadores devem anteceder a continuação');
+    for(const card of await page.locator('.studio-metrics>article').all()){
+      assert.equal(await card.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Indicador não deve ultrapassar o cartão');
+    }
     await page.screenshot({ path: "preview/" + name });
   }
   await page.setViewportSize({ width: 1920, height: 1080 });

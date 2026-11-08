@@ -1,0 +1,3 @@
+Nova composição da tela inicial: saudação e adição de títulos no topo, destaque com ações agrupadas e quatro indicadores da coleção logo abaixo. Painéis com espaçamento, cores e cantos consistentes, adaptados a janelas menores.
+
+Barra lateral com ícones em blocos e seleção mais clara, preservando o modo compacto, o teclado, os temas e as preferências de movimento.
