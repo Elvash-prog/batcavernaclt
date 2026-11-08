@@ -1,0 +1,3 @@
+Carregamento com cartões no formato da biblioteca, mensagens claras para coleção vazia e busca sem resultados, e nova tentativa em falhas de leitura. Busca, filtros e ordenação são mantidos na recuperação.
+
+Indicação de salvamento e confirmação visual mais consistentes. Os campos preenchidos continuam preservados quando o envio falha. Movimento reduzido respeitado.

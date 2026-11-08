@@ -314,6 +314,7 @@ try {
               updates: rows.slice(0, 2),
             };
           if (c === "journey_stats") throw "RPC ausente";
+          if(c==="library"&&window.libraryFailure)throw Error("Falha temporária de conexão. Tente novamente.");
           if (c === "library" && window.delayLibrary)
             await new Promise((r) =>
               setTimeout(r, window.libraryDelay || 120),
@@ -387,6 +388,7 @@ try {
           }
           if(c==='set_home_status'){window.saved.push({c,p});if(window.failHomeStatus)throw Error('O título mudou em outra tela. Atualize o início.');return [{id:p.id,status:p.status,updated_at:new Date().toISOString()}];}
           if (c === "save_item" || c === "update_profile") {
+            if(c==='save_item'&&window.delayItemSave)await new Promise(r=>setTimeout(r,800));
             if(c==='save_item'&&window.failCatalogSave)throw Error('Falha simulada de conexão');
             if(c==='update_profile'&&p.input.status)profile.status_personalizado=p.input.status;
             if(c==='save_item'&&window.libraryQueryRows){const row=window.libraryQueryRows.find(row=>String(row.id)===String(p.item.id));if(row)Object.assign(row,p.item,{updated_at:new Date().toISOString()});}
@@ -796,6 +798,41 @@ try {
   });
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
+  // Read retries retain the collection context and never repeat a save.
+  const feedbackSavedBefore=await page.evaluate(()=>window.saved.filter(x=>x.c==='save_item').length);
+  await page.evaluate(()=>{state.libraryCategory='jogos';window.delayLibrary=true;window.libraryDelay=900;void navigate('library')});
+  await page.locator('.library-loading').waitFor();
+  assert.equal(await page.locator('.screen-skeleton-card').count(),6);
+  assert.equal(await page.locator('.screen-skeleton-grid').getAttribute('aria-hidden'),'true');
+  await page.screenshot({path:'preview/library-loading-check.png',animations:'disabled'});
+  await page.emulateMedia({reducedMotion:'reduce'});
+  assert.equal(await page.locator('.screen-skeleton-art').first().evaluate(el=>getComputedStyle(el).animationName),'none');
+  await page.locator('#librarySearch').waitFor();
+  await page.evaluate(()=>window.delayLibrary=false);
+  await page.locator('#librarySearch').fill('Jogo');
+  await page.locator('#librarySort').selectOption('hours');
+  await page.evaluate(async()=>{window.libraryFailure=true;await navigate('library')});
+  await page.locator('.screen-state-error').waitFor();
+  await page.screenshot({path:'preview/read-error-check.png',animations:'disabled'});
+  await page.evaluate(()=>window.libraryFailure=false);
+  await page.locator('.screen-state-error button').click();
+  await page.locator('#librarySearch').waitFor();
+  assert.equal(await page.locator('#librarySearch').inputValue(),'Jogo');
+  assert.equal(await page.locator('#librarySort').inputValue(),'hours');
+  assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='save_item').length),feedbackSavedBefore);
+  await page.locator('#librarySearch').fill('nenhum-titulo-com-este-nome');
+  await page.locator('.screen-state-empty h3').filter({hasText:'Nenhum resultado por aqui'}).waitFor();
+  await page.locator('.screen-state-empty button').click();
+  assert.equal(await page.locator('#librarySearch').inputValue(),'');
+  assert.equal(await page.locator('#librarySort').inputValue(),'hours');
+  await page.evaluate(async()=>{window.catalogLibraryRows=[];await navigate('library')});
+  await page.locator('.screen-state-empty h3').filter({hasText:'Sua coleção começa aqui'}).waitFor();
+  await page.screenshot({path:'preview/empty-library-check.png',animations:'disabled'});
+  await page.locator('.screen-state-empty button').click();
+  await page.locator('.item-editor-modern').waitFor();
+  await page.locator('.item-editor-modern [data-close]').first().click();
+  await page.evaluate(async()=>{delete window.catalogLibraryRows;state.librarySort='recent';await navigate('home')});
+  await page.emulateMedia({reducedMotion:'no-preference'});
   assert.equal(await page.locator('.journey-progress progress').getAttribute('value'),'25');
   assert.match(await page.locator('.journey-progress').innerText(),/25%/);
   await page.locator(".friend-activity").waitFor();
@@ -840,6 +877,7 @@ try {
   assert.notEqual(visualSystem.sidebarBackground, "rgba(0, 0, 0, 0)");
   assert.notEqual(visualSystem.navigationBorder, "rgba(0, 0, 0, 0)");
   assert.notEqual(visualSystem.cardRadius, "0px");
+  await page.keyboard.press("Tab");
   await page.locator(".home-hero-content .primary").focus();
   assert.equal(
     await page.locator(".home-hero-content .primary").evaluate(
@@ -1544,12 +1582,14 @@ try {
   await page.locator('[data-result="2"]').click();
   await page.waitForFunction(()=>document.querySelector('[name="nome"]').value==='Duna (2021)');
   await page.locator('[name="status"]').selectOption({label:'🎮 Em Progresso'});
-  await page.evaluate(()=>window.failCatalogSave=true);
+  await page.evaluate(()=>{window.failCatalogSave=true;window.delayItemSave=true;});
   await page.locator('.item-editor-modern button.primary').click();
+  await page.locator('.save-feedback[data-phase="pending"] [role="progressbar"]').waitFor();
   await page.locator('.form-error').filter({hasText:'campos foram mantidos'}).waitFor();
+  assert.equal(await page.locator('.save-feedback[data-phase="error"] .save-feedback-track').isHidden(),true);
   assert.equal(await page.locator('[name="nome"]').inputValue(),'Duna (2021)');
   assert.equal(await page.locator('[name="status"]').inputValue(),'🎮 Em Progresso');
-  await page.evaluate(()=>{window.failCatalogSave=false;window.catalogLibraryRows=null;});
+  await page.evaluate(()=>{window.failCatalogSave=false;window.delayItemSave=false;window.catalogLibraryRows=null;});
   await page.locator("#catalogQuery").fill("Teste");
   await page.locator("#catalogSearch").click();
   await page.locator("[data-result]").click();

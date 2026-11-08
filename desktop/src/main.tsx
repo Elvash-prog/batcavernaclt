@@ -19,6 +19,8 @@ import './chat-studio.css';
 import './sidebar-layout.css';
 import './motion-feedback.css';
 import './library-cards.css';
+import './screen-feedback.css';
+import './screen-feedback.js';
 import './motion-feedback.js';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';
