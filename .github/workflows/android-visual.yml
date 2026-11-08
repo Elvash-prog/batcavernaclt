@@ -53,7 +53,8 @@ jobs:
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/inicio-continuar-android.png > build/mobile-previews/inicio-continuar-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/catalogo-edicoes-android.png > build/mobile-previews/catalogo-edicoes-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/estatisticas-android.png > build/mobile-previews/estatisticas-android.png
-            python3 -c "from pathlib import Path; files=list(Path('build/mobile-previews').glob('*.png')); assert len(files)==12 and all(p.read_bytes().startswith(bytes([137,80,78,71,13,10,26,10])) for p in files)"
+            adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/configuracoes-android.png > build/mobile-previews/configuracoes-android.png
+            python3 -c "from pathlib import Path; files=list(Path('build/mobile-previews').glob('*.png')); assert len(files)==13 and all(p.read_bytes().startswith(bytes([137,80,78,71,13,10,26,10])) for p in files)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

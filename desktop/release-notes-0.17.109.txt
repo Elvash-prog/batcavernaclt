@@ -1,0 +1,3 @@
+Configurações reorganizadas em categorias com descrições e busca por assunto. Encontre conta, aparência, notificações, privacidade, integrações e suporte com mais facilidade.
+
+Navegação adaptada a janelas menores e atalhos para atualizações, Windows, jogos abertos e diagnóstico. Os campos de integração são preservados durante a busca.

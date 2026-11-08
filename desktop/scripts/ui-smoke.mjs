@@ -799,6 +799,35 @@ try {
   });
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
+  // Settings search only locates categories and preserves the currently open controls.
+  await page.locator('#mainNav [data-view="settings"]').click();
+  await page.locator('.settings-search-label input').fill('SENHA');
+  assert.equal(await page.locator('.settings-menu-group button:visible').count(),1);
+  assert.equal(await page.locator('[data-settings-tab="account"]').isVisible(),true);
+  await page.locator('[data-settings-tab="account"]').click();
+  assert.equal(await page.locator('.settings-section-heading h2').innerText(),'Conta');
+  await page.locator('[data-settings-tab="integrations"]').click();
+  await page.locator('#steamConnection input').fill('76561198000000001');
+  await page.locator('.settings-search-label input').fill('NOTIFICAÇÕES');
+  assert.equal(await page.locator('[data-settings-tab="notifications"]').isVisible(),true);
+  assert.equal(await page.locator('#steamConnection input').inputValue(),'76561198000000001');
+  await page.locator('.settings-search-label input').fill('nada-com-este-nome');
+  await page.locator('.settings-search-empty').waitFor();
+  assert.equal(await page.locator('#steamConnection input').inputValue(),'76561198000000001');
+  await page.locator('.settings-search-label input').fill('');
+  await page.locator('[data-settings-tab="privacy"]').click();
+  assert.equal(await page.locator('.settings-section-heading h2').innerText(),'Privacidade');
+  await page.locator('#goFriends').waitFor();
+  await page.locator('[data-settings-tab="app"]').click();
+  assert.equal(await page.locator('.settings-section-links button').count(),4);
+  const settingsViewport=page.viewportSize();
+  for(const width of [1920,1280,820]){
+    await page.setViewportSize({width,height:1000});
+    assert.equal(await page.locator('.settings-studio').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'Configurações devem caber na janela '+width);
+    await page.screenshot({path:'preview/settings-'+width+'.png',animations:'disabled'});
+  }
+  await page.setViewportSize(settingsViewport);
+  await page.evaluate(async()=>await navigate('home'));
   // The dashboard exposes the existing totals and keeps actions after a return visit.
   assert.equal(await page.locator('.studio-welcome').count(),1);
   assert.equal(await page.locator('.studio-metrics>article').count(),4);

@@ -81,6 +81,10 @@ public final class MobileAppearanceTest {
    final StatisticsView[] statistics=new StatisticsView[1];
    getInstrumentation().runOnMainSync(()->{try{org.json.JSONArray months=new org.json.JSONArray();for(int i=1;i<=12;i++)months.put(new org.json.JSONObject().put("mes",String.format(java.util.Locale.ROOT,"2026-%02d",i)).put("jogos",i==10?1:0).put("midias",i==11?1:0));org.json.JSONObject data=new org.json.JSONObject().put("total",6).put("concluidos",3).put("horas",30.5).put("sem_data",1).put("jogos",4).put("filmes",1).put("series",0).put("animes",1).put("months",months);statistics[0]=new StatisticsView(activity,data,()->{},()->{});statistics[0].setPadding(24,24,24,24);ScrollView scroll=new ScrollView(activity);scroll.setBackgroundColor(NativeTheme.backgroundEnd(activity));scroll.addView(statistics[0]);activity.setContentView(scroll);statistics[0].findViewWithTag("statistics-month-2026-11").performClick();assertTrue(((TextView)statistics[0].findViewWithTag("statistics-month-detail")).getText().toString().contains("novembro de 2026"));}catch(Exception e){throw new AssertionError(e);}});
    getInstrumentation().waitForIdleSync();capture(statistics[0],"estatisticas-android");
+   final SettingsMenu[] settingsMenu=new SettingsMenu[1];final int[] chosenSetting={-1};
+   getInstrumentation().runOnMainSync(()->{settingsMenu[0]=new SettingsMenu(activity,tab->chosenSetting[0]=tab);settingsMenu[0].setPadding(24,24,24,24);ScrollView scroll=new ScrollView(activity);scroll.setBackgroundColor(NativeTheme.backgroundEnd(activity));scroll.addView(settingsMenu[0]);activity.setContentView(scroll);EditText query=settingsMenu[0].findViewWithTag("settings-menu-search");query.setText("SENHA");assertEquals(View.VISIBLE,settingsMenu[0].findViewWithTag("settings-category-0").getVisibility());assertEquals(View.GONE,settingsMenu[0].findViewWithTag("settings-category-1").getVisibility());settingsMenu[0].findViewWithTag("settings-category-0").performClick();assertEquals(0,chosenSetting[0]);query.setText("");});
+   getInstrumentation().waitForIdleSync();capture(settingsMenu[0],"configuracoes-android");
+
 
 
 
