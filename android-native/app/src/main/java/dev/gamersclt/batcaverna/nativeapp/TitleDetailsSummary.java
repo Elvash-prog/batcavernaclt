@@ -17,7 +17,7 @@ final class TitleDetailsSummary {
   return root;
  }
  private static void metric(Context c,LinearLayout grid,String key,String label,String value,Edit edit){
-  LinearLayout card=new LinearLayout(c);card.setOrientation(LinearLayout.VERTICAL);int pad=NativeSheet.dp(c,14);card.setPadding(pad,pad,pad,pad);card.setBackground(AppStyle.shape(card,NativeTheme.panel(c),16));card.setTag("title-edit-"+key);
+  LinearLayout card=new LinearLayout(c);card.setOrientation(LinearLayout.VERTICAL);int pad=NativeSheet.dp(c,14);card.setPadding(pad,pad,pad,pad);card.setBackground(edit==null?AppStyle.shape(card,NativeTheme.panel(c),16):AppStyle.interactive(card,NativeTheme.panel(c),16));card.setTag("title-edit-"+key);
   boolean vertical=grid.getOrientation()==LinearLayout.VERTICAL;LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(vertical?-1:0,-2,vertical?0:1);lp.setMargins(0,NativeSheet.dp(c,6),vertical?0:NativeSheet.dp(c,6),NativeSheet.dp(c,8));grid.addView(card,lp);
   card.addView(NativeSheet.text(c,label,12,0xffbfc8d5));TextView amount=NativeSheet.text(c,value,19,0xfff3f4f8);amount.setTypeface(null,Typeface.BOLD);card.addView(amount);
   if(edit!=null){card.addView(NativeSheet.text(c,"Editar ↗",12,NativeTheme.accent(c)));card.setFocusable(true);card.setClickable(true);card.setContentDescription("Editar "+label.toLowerCase(new java.util.Locale("pt","BR"))+", "+value);card.setOnClickListener(v->edit.open(key));}else card.setContentDescription(label+", "+value);

@@ -10,14 +10,9 @@ final class TitleDetailsDialog {
   NativeSheet sheet=new NativeSheet(c,media?"Detalhes do título":"Detalhes do jogo");LinearLayout body=sheet.body;
   boolean writable=!item.optBoolean("_readonly")&&ItemEditInput.validId(item.optString("id",""))&&item.has("updated_at");
   TitleDetailsSummary.Edit editor=field->{sheet.busy(true);new ItemEditorDialog(c,item,media,(updated,deleted)->{sheet.dialog.dismiss();changed.done(updated,false);},()->sheet.busy(false),field);};
-  LinearLayout header=new LinearLayout(c);header.setGravity(android.view.Gravity.CENTER_VERTICAL);header.setPadding(0,0,0,NativeSheet.dp(c,12));body.addView(header);
-  FrameLayout artwork=new FrameLayout(c);artwork.setBackground(AppStyle.shape(artwork,NativeTheme.panel(c),16));artwork.setClipToOutline(true);
-  TextView placeholder=NativeSheet.text(c,media?"▶":"🎮",32,0xffc6b8ff);placeholder.setGravity(android.view.Gravity.CENTER);artwork.addView(placeholder,new FrameLayout.LayoutParams(-1,-1));
-  ImageView art=new ImageView(c);art.setScaleType(ImageView.ScaleType.FIT_CENTER);artwork.addView(art,new FrameLayout.LayoutParams(-1,-1));header.addView(artwork,new LinearLayout.LayoutParams(NativeSheet.dp(c,96),NativeSheet.dp(c,144)));MobileArtworkLoader.load(art,item,media,true);
-  LinearLayout heading=new LinearLayout(c);heading.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams headingLayout=new LinearLayout.LayoutParams(0,-2,1);headingLayout.setMargins(NativeSheet.dp(c,16),0,0,0);header.addView(heading,headingLayout);
-  heading.addView(NativeSheet.text(c,media?"NA SUA COLEÇÃO":"NA SUA BIBLIOTECA",10,0xffc6b8ff));TextView title=NativeSheet.text(c,value(item,"nome","Sem título"),23,0xfff3f4f8);title.setTypeface(null,Typeface.BOLD);heading.addView(title);
-  String platform=value(item,media?"onde":"plataforma","");if(!platform.isEmpty())heading.addView(NativeSheet.text(c,platform,12,0xffbfc8d5));
-  TextView status=NativeSheet.text(c,value(item,"status","Sem status")+(writable?"  ↗":""),14,0xffc6b8ff);status.setPadding(NativeSheet.dp(c,14),NativeSheet.dp(c,14),NativeSheet.dp(c,14),NativeSheet.dp(c,14));status.setBackground(AppStyle.shape(status,NativeTheme.panel(c),12));body.addView(status);if(writable){status.setContentDescription("Editar status: "+value(item,"status","Sem status"));status.setFocusable(true);status.setOnClickListener(v->editor.open("status"));}
+  body.addView(TitleDetailsHero.create(c,item,media,!writable));
+  body.addView(NativeSheet.text(c,writable?"SEU PROGRESSO":"PROGRESSO DESTE PERFIL",11,NativeTheme.accent(c)));
+  TextView status=NativeSheet.text(c,value(item,"status","Sem status")+(writable?"  ↗":""),14,0xffc6b8ff);status.setPadding(NativeSheet.dp(c,14),NativeSheet.dp(c,14),NativeSheet.dp(c,14),NativeSheet.dp(c,14));status.setMinHeight(NativeSheet.dp(c,48));status.setBackground(AppStyle.interactive(status,NativeTheme.panel(c),14));body.addView(status);if(writable){status.setContentDescription("Editar status: "+value(item,"status","Sem status"));status.setFocusable(true);status.setOnClickListener(v->editor.open("status"));}
   body.addView(TitleDetailsSummary.create(c,item,media,writable?editor:null));
   if(media)row(c,body,"Onde assistir",value(item,"onde","—"));
   if(writable){Button edit=action(c,"Editar informações",true);sheet.footer.setVisibility(android.view.View.VISIBLE);sheet.footer.addView(edit);edit.setOnClickListener(v->{sheet.busy(true);new ItemEditorDialog(c,item,media,(updated,deleted)->{sheet.dialog.dismiss();changed.done(updated,false);},()->sheet.busy(false));});

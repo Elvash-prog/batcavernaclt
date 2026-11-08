@@ -1,1 +1,34 @@
 .reference-ui .detail-focused{padding:32px;max-width:1120px;border:1px solid var(--line);box-shadow:0 28px 90px #0008}.reference-ui .detail-focused .reference-detail-main{grid-template-columns:230px minmax(0,1fr);gap:32px}.detail-focused .detail-title-row h2{font-size:clamp(24px,2.4vw,36px);letter-spacing:-.025em}.detail-personal-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 20px}.detail-personal-metrics>button,.detail-personal-metrics>article{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px;min-width:0;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--bg);color:var(--text)}.detail-personal-metrics small{font-size:12px;color:var(--muted)}.detail-personal-metrics strong{font-size:20px;line-height:1.35;overflow-wrap:anywhere}.detail-personal-metrics span{font-size:11px;color:var(--accent)}.detail-personal-metrics button:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--bg))}.detail-personal-metrics button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.detail-progress-caption{display:block;color:var(--muted);font-size:11px;margin-top:16px}.reference-ui .detail-focused .detail-progress select{background:var(--bg);color:var(--text);border:1px solid var(--line);min-height:42px;max-width:100%;border-radius:10px}.reference-ui .detail-focused .detail-tabs{border-radius:12px;scrollbar-width:thin}.reference-ui .detail-focused .detail-tabs button{min-height:44px;padding:12px 18px}.detail-focused .detail-poster>img{border:1px solid var(--line);border-radius:18px}.reference-ui .detail-focused .detail-close{width:36px;height:36px;top:10px;right:10px}.detail-focused .detail-primary-actions>button{min-height:44px}@media(max-width:700px){.reference-ui .detail-focused{padding:22px 18px}.reference-ui .detail-focused .reference-detail-main{grid-template-columns:1fr;gap:20px}.detail-personal-metrics{gap:8px}.detail-personal-metrics>button,.detail-personal-metrics>article{padding:14px}.detail-personal-metrics strong{font-size:17px}}
+
+/* Title details: personal progress first, catalog information in the About panel. */
+.reference-ui .detail-focused{padding:32px;background:radial-gradient(ellipse at top left,color-mix(in srgb,var(--accent) 11%,transparent),transparent 65%),var(--panel);container-type:inline-size}
+.detail-focused .reference-detail-summary{min-width:0;padding-top:4px}
+.detail-collection-label{margin:0 44px 12px 0;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--accent)}
+.reference-ui .detail-focused .detail-title-row h2{margin:0 0 20px;overflow-wrap:anywhere;line-height:1.18}
+.detail-status-label{display:block;font-size:11px;color:var(--muted);margin-bottom:10px}
+.reference-ui .detail-focused .detail-progress{border:1px solid color-mix(in srgb,var(--accent) 26%,var(--line));margin:0 0 12px;padding:16px 18px}
+.reference-ui .detail-focused .detail-progress select{width:100%;max-width:100%;font-size:13px;background:var(--bg)}
+.detail-focused .detail-progress>div:first-of-type{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.detail-focused .detail-personal-metrics{margin:0 0 18px;gap:10px}
+.detail-focused .detail-personal-metrics>button,.detail-focused .detail-personal-metrics>article{padding:16px 18px;background:color-mix(in srgb,var(--bg) 70%,transparent);border-radius:14px}
+.detail-focused .detail-personal-metrics span{margin-top:auto}
+.reference-ui .detail-focused .detail-poster>img{height:315px;box-shadow:0 14px 30px #0003}
+.detail-focused .detail-poster .detail-primary-actions{gap:10px}
+.reference-ui .detail-focused .detail-primary-actions>button{width:100%}
+.detail-focused .detail-synopsis{border-top:1px solid var(--line);padding-top:8px;margin:0}
+.reference-ui .detail-focused #detailDescription{line-height:1.75;margin:8px 0;max-height:none}
+.reference-ui .detail-focused #detailDescription.description-expanded{display:block;overflow:visible;-webkit-line-clamp:unset}
+.detail-focused .detail-catalog-meta{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--bg);margin-bottom:16px}
+.detail-focused .detail-catalog-meta>:empty{display:none}
+.detail-focused .detail-catalog-meta .catalog-rating{margin-bottom:0}
+.detail-focused .detail-catalog-meta .detail-byline{margin-top:0}
+.reference-ui .detail-focused .detail-tabs{display:flex;gap:4px;padding:5px;scroll-padding:6px;border-radius:14px;margin:28px 0 20px}
+.reference-ui .detail-focused .detail-tabs button{border:0;border-radius:9px;flex:1;box-shadow:none}
+.reference-ui .detail-focused .detail-tabs button.active{background:color-mix(in srgb,var(--accent) 22%,var(--panel));color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
+.reference-ui .detail-focused .detail-facts{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.detail-focused :is(button,select,summary):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@container(max-width:620px){.reference-ui .detail-focused .reference-detail-main{grid-template-columns:150px minmax(0,1fr);gap:20px}.reference-ui .detail-focused .detail-poster>img{height:220px}.detail-focused .detail-personal-metrics{grid-template-columns:1fr}.reference-ui .detail-focused .detail-title-row h2{font-size:25px}}
+@media(max-width:540px){.reference-ui .detail-focused{padding:22px 16px}.reference-ui .detail-focused .reference-detail-main{grid-template-columns:1fr}.reference-ui .detail-focused .detail-poster>img{height:240px}.detail-focused .detail-personal-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-focused .detail-collection-label{margin-top:8px}.reference-ui .detail-focused .detail-tabs button{flex:0 0 auto}}
+.reference-ui .editor-overlay:has(>.detail-focused){width:100vw;min-width:0;height:100dvh;padding:12px;right:auto;bottom:auto}
+.reference-ui .detail-focused .reference-detail-main{padding:16px 0 0}
+.reference-ui .detail-focused .reference-detail-panels{padding:0 0 8px}

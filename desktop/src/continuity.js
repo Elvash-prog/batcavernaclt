@@ -41,14 +41,18 @@
  document.addEventListener('batcaverna:item-details',event=>{
   const {item}=event.detail||{};const overlay=document.querySelector('.editor-overlay:last-of-type'),summary=overlay?.querySelector('.reference-detail-summary');if(!summary||!item)return;
   overlay.querySelector('.reference-detail').classList.add('detail-focused');
-  const progress=summary.querySelector('.detail-progress');if(progress)summary.querySelector('.detail-title-row').after(progress);
+  const heading=document.createElement('p');heading.className='detail-collection-label';heading.textContent=event.detail.readOnly?'COLEÇÃO DESTE PERFIL':item.categoria==='jogos'||!item.categoria?'NA SUA BIBLIOTECA':'NA SUA COLEÇÃO';summary.prepend(heading);
+  const catalog=document.createElement('section');catalog.className='detail-catalog-meta';catalog.setAttribute('aria-label','Informações do catálogo');
+  for(const selector of ['#detailByline','#detailPlatforms','#detailGenres','#catalogRating']){const node=summary.querySelector(selector);if(node)catalog.append(node);}
+  overlay.querySelector('[data-detail-panel="about"]').prepend(catalog);
+  const progress=summary.querySelector('.detail-progress');if(progress){summary.querySelector('.detail-title-row').after(progress);const label=document.createElement('label');label.className='detail-status-label';label.textContent='Status na coleção';if(!event.detail.readOnly)label.htmlFor='detailStatus';progress.prepend(label);}
   const game=item.categoria==='jogos'||!item.categoria,readOnly=Boolean(event.detail.readOnly);
-  const metrics=document.createElement('div');metrics.className='detail-personal-metrics';metrics.setAttribute('aria-label','Seu progresso');
-  for(const [key,label,value] of [...(game?[['horas','Horas jogadas',formatPlaytime(item.horas)+' h']]:[]),['nota','Sua avaliação',item.nota||'Ainda não avaliado']]){
+  const metrics=document.createElement('div');metrics.className='detail-personal-metrics';metrics.setAttribute('aria-label',readOnly?'Progresso deste perfil':'Seu progresso');
+  for(const [key,label,value] of [...(game?[['horas','Horas jogadas',formatPlaytime(item.horas)+' h']]:[]),['nota','Sua avaliação',item.nota??'Ainda não avaliado']]){
    const card=document.createElement(readOnly?'article':'button');if(!readOnly){card.type='button';card.dataset.detailEdit=key;card.setAttribute('aria-label','Editar '+label.toLowerCase());card.onclick=()=>{overlay.querySelector('#editInformation')?.click();const form=document.querySelector('.item-editor-modern'),field=key==='horas'?form?.querySelector('[data-play-hours]'):form?.elements[key];if(!field)return;const panel=field.closest('[data-item-panel]');form.querySelector(`[data-item-tab="${panel?.dataset.itemPanel}"]`)?.click();field.focus();field.scrollIntoView({block:'center'});};}
    const heading=document.createElement('small');heading.textContent=label;const valueNode=document.createElement('strong');valueNode.textContent=String(value);card.append(heading,valueNode);if(!readOnly){const hint=document.createElement('span');hint.textContent='Editar ↗';card.append(hint);}metrics.append(card);
   }
-  progress?.after(metrics);if(game)progress?.querySelector(':scope>div:first-child>span:last-child:not(:first-child)')?.remove();
+  progress?.after(metrics);if(game)progress?.querySelector(':scope>div>span:last-child:not(:first-child)')?.remove();
   const meter=progress?.querySelector('progress');if(meter){meter.setAttribute('aria-label','Conquistas concluídas');const caption=document.createElement('small');caption.className='detail-progress-caption';caption.textContent='Conquistas concluídas';progress.querySelector('.detail-progress-meter').before(caption);}
 
   const actions=summary.querySelector('.detail-primary-actions');if(actions)overlay.querySelector('.detail-poster').append(actions);
