@@ -1,0 +1,7 @@
+BatCaverna CLT 2.0.0 — lançamento oficial para Windows.
+
+Sua coleção de jogos, filmes, séries e animes com status, notas, listas, estatísticas e indicações. Perfis personalizáveis, conversas com amigos e integrações com Steam e RetroAchievements.
+
+No PC, detecção de executáveis associados e registro de tempo enquanto o BatCaverna estiver aberto. Biblioteca com busca, filtros e ações em lote que permitem parar, continuar e repetir apenas falhas. Atualizações com progresso e verificação de assinatura.
+
+Esta versão consolida as melhorias já publicadas e unifica a numeração oficial com o Android. Use o atualizador do aplicativo para instalar sobre a versão anterior; sua conta e os dados existentes são preservados.

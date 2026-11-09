@@ -140,7 +140,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.release-metadata.outputs.tag }}
-          name: BatCaverna CLT Windows ${{ needs.release-metadata.outputs.tag }}
+          name: BatCaverna CLT Windows ${{ needs.release-metadata.outputs.version }} — versão oficial
+          draft: false
+          prerelease: false
           make_latest: 'true'
           body_path: desktop/release-notes-${{ needs.release-metadata.outputs.version }}.txt
           files: |

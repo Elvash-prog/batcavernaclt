@@ -102,7 +102,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-v${{ steps.version.outputs.version }}
-          name: BatCaverna CLT Android ${{ steps.version.outputs.version }}
+          name: BatCaverna CLT Android ${{ steps.version.outputs.version }} — versão oficial
+          draft: false
+          prerelease: false
           make_latest: 'false'
           body_path: android-native/release-notes-${{ steps.version.outputs.version }}.txt
           files: |

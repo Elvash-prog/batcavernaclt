@@ -1,0 +1,7 @@
+BatCaverna CLT 2.0.0 — lançamento oficial para Android.
+
+Sua coleção de jogos, filmes, séries e animes com status, notas, listas e indicações, além de perfil personalizado e conversas com amigos. Integrações com Steam e RetroAchievements e dados da mesma conta utilizada no PC.
+
+Biblioteca com abas visíveis, contagens e filtros combinados. Detalhes dos títulos com cartões alinhados e tempo jogado em horas e minutos. Atualização com progresso e conferência do arquivo e da assinatura antes da instalação.
+
+Esta versão consolida as melhorias já publicadas e unifica a numeração oficial com o Windows. Confirme a atualização no Android e mantenha sua instalação; sua conta e os dados existentes são preservados.
