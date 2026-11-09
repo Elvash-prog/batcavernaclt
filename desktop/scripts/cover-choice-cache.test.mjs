@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const source=fs.readFileSync(new URL('../src/refinement.js',import.meta.url),'utf8');
+function fixture(){const values=new Map(),state={userId:'a'},context=vm.createContext({state,localStorage:{getItem:key=>values.get(key)||null,setItem:(key,value)=>{if(context.full)throw Error('quota');values.set(key,value);}}});vm.runInContext(source.slice(source.indexOf('let coverChoiceSnapshot='),source.indexOf('const emptyImage=')),context);return {values,state,context,read:key=>context.savedCoverChoice(key),write:(key,value)=>context.savedCoverChoice(key,value)};}
+test('cached cover choices detect external updates and account changes',()=>{const f=fixture();f.write('cover','first');assert.equal(f.read('cover'),'first');f.values.set('bc-cover-choices-v2:a',JSON.stringify({cover:'external'}));assert.equal(f.read('cover'),'external');f.state.userId='b';assert.equal(f.read('cover'),'');f.write('cover','other');assert.equal(f.read('cover'),'other');f.state.userId='a';assert.equal(f.read('cover'),'external');});
+test('failed writes preserve persisted choices and corrupt storage can recover',()=>{const f=fixture();f.write('cover','first');f.context.full=true;f.write('cover','unsaved');assert.equal(f.read('cover'),'first');f.values.set('bc-cover-choices-v2:a','broken');assert.equal(f.read('cover'),'');f.values.set('bc-cover-choices-v2:a',JSON.stringify({cover:'recovered'}));assert.equal(f.read('cover'),'recovered');});
+test('new cover choices keep the persisted index bounded',()=>{const f=fixture();for(let i=0;i<520;i++)f.write('key-'+i,'image-'+i);const stored=JSON.parse(f.values.get('bc-cover-choices-v2:a'));assert.equal(Object.keys(stored).length,512);assert.equal(f.read('key-0'),'');assert.equal(f.read('key-519'),'image-519');});

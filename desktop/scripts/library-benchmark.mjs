@@ -13,7 +13,7 @@ export async function benchmarkLibrary(page,destination,bootMs){
    window.libraryQueryRows=rows;state.libraryCategory='jogos';state.libraryStatus='all';state.libraryQuery='';state.cavernFilter='all';state.librarySort='recent';
    const start=performance.now();await navigate('library');await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));const openMs=performance.now()-start;
    const measured=async action=>{const values=[];for(let i=0;i<8;i++){const at=performance.now();await action();values.push(performance.now()-at);}return values.slice(2).sort((a,b)=>a-b)[3];};
-   const filterSortMs=await measured(()=>{rows.filter(row=>window.BatLibraryQuery.matchesFilters(row,{query:'colecao aurea',genre:'acao',platform:'PC'})).sort(window.BatLibraryQuery.comparator?window.BatLibraryQuery.comparator('rating'):(a,b)=>window.BatLibraryQuery.compare(a,b,'rating'));});
+   const filterSortMs=await measured(()=>{rows.filter(window.BatLibraryQuery.predicate?window.BatLibraryQuery.predicate({query:'colecao aurea',genre:'acao',platform:'PC'}):row=>window.BatLibraryQuery.matchesFilters(row,{query:'colecao aurea',genre:'acao',platform:'PC'})).sort(window.BatLibraryQuery.comparator?window.BatLibraryQuery.comparator('rating'):(a,b)=>window.BatLibraryQuery.compare(a,b,'rating'));});
    const searchMs=await measured(()=>{state.libraryQuery='colecao aurea 0001';drawLibrary();});
    const searchFound=document.querySelectorAll('#libraryGroups [data-detail]').length;
    state.libraryQuery='';state.librarySort='name';const sortMs=await measured(()=>drawLibrary());
