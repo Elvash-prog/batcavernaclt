@@ -15,15 +15,17 @@ final class LibraryQuery {
  private static Filter lastFilter;
  private static List<String> folded(List<String> source){List<String> out=new ArrayList<>();for(String value:source)out.add(fold(value));return out;}
  private static final class SearchEntry {
-  final String title,genres,platform,where,category,name;final List<String> genreKeys,platformKeys;
-  SearchEntry(JSONObject row){title=row.optString("nome");genres=clean(row.opt("generos"));platform=clean(row.opt("plataforma"));where=clean(row.opt("onde"));category=row.optString("categoria");name=fold(title);genreKeys=folded(tags(row.opt("generos")));platformKeys=folded(platforms(row));}
+  final String title,genres,platform,where,category,name;private List<String> genreKeys,platformKeys;
+  SearchEntry(JSONObject row){title=row.optString("nome");genres=clean(row.opt("generos"));platform=clean(row.opt("plataforma"));where=clean(row.opt("onde"));category=row.optString("categoria");name=fold(title);}
+  synchronized boolean hasGenre(JSONObject row,String key){if(genreKeys==null)genreKeys=folded(tags(row.opt("generos")));return genreKeys.contains(key);}
+  synchronized boolean hasPlatform(JSONObject row,String key){if(platformKeys==null)platformKeys=folded(platforms(row));return platformKeys.contains(key);}
   boolean current(JSONObject row){return title.equals(row.optString("nome"))&&genres.equals(clean(row.opt("generos")))&&platform.equals(clean(row.opt("plataforma")))&&where.equals(clean(row.opt("onde")))&&category.equals(row.optString("categoria"));}
  }
  private static synchronized SearchEntry searchEntry(JSONObject row){SearchEntry value=SEARCH.get(row);if(value==null||!value.current(row)){value=new SearchEntry(row);SEARCH.put(row,value);}return value;}
  static final class Filter {
   final String query,genre,platform;private final String[] words;private final String genreKey,platformKey;
   Filter(String query,String genre,String platform){this.query=query;this.genre=genre;this.platform=platform;String folded=fold(query);words=folded.isEmpty()?new String[0]:folded.split(" ");genreKey=fold(genre);platformKey=fold(platform);}
-  boolean matches(JSONObject row){if(words.length==0&&genreKey.isEmpty()&&platformKey.isEmpty())return true;SearchEntry value=searchEntry(row);for(String word:words)if(!value.name.contains(word))return false;return (genreKey.isEmpty()||value.genreKeys.contains(genreKey))&&(platformKey.isEmpty()||value.platformKeys.contains(platformKey));}
+  boolean matches(JSONObject row){if(words.length==0&&genreKey.isEmpty()&&platformKey.isEmpty())return true;SearchEntry value=searchEntry(row);for(String word:words)if(!value.name.contains(word))return false;return (genreKey.isEmpty()||value.hasGenre(row,genreKey))&&(platformKey.isEmpty()||value.hasPlatform(row,platformKey));}
  }
  static synchronized Filter filter(String query,String genre,String platform){query=clean(query);genre=clean(genre);platform=clean(platform);if(lastFilter==null||!lastFilter.query.equals(query)||!lastFilter.genre.equals(genre)||!lastFilter.platform.equals(platform))lastFilter=new Filter(query,genre,platform);return lastFilter;}
  static boolean matches(String title,String query){Filter lookup=filter(query,"","");if(lookup.words.length==0)return true;String name=fold(title);for(String word:lookup.words)if(!name.contains(word))return false;return true;}

@@ -22,6 +22,7 @@ public class LibraryPerformanceTest {
    JSONObject result=new JSONObject().put("size",size);instrumentation.runOnMainSync(()->{try{
     AccountDataView view=screen[0];set(view,"all",rows);set(view,"loaded",true);set(view,"loading",false);set(view,"loadError","");Method draw=AccountDataView.class.getDeclaredMethod("render");draw.setAccessible(true);EditText search=(EditText)get(view,"search");LinearLayout list=(LinearLayout)get(view,"list");
     ArrayList<JSONObject> values=new ArrayList<>();for(int i=0;i<rows.length();i++)values.add(rows.optJSONObject(i));
+    search.setText("colecao aurea 0001");long firstSearch=SystemClock.elapsedRealtimeNanos();draw.invoke(view);layout(view);result.put("coldSearchMs",(SystemClock.elapsedRealtimeNanos()-firstSearch)/1e6);assertEquals(1,count(list));search.setText("");draw.invoke(view);layout(view);
     result.put("querySortMs",median(()->{List<JSONObject> filtered=new ArrayList<>();for(JSONObject row:values)if(LibraryQuery.matches(row,"colecao aurea","acao","PC"))filtered.add(row);Collections.sort(filtered,LibraryQuery.comparator("rating"));}));
     result.put("renderMs",median(()->{draw.invoke(view);layout(view);}));int mounted=count(list);assertTrue("Mounted cards must remain bounded",mounted<=42);result.put("cards",mounted);
     search.setText("colecao aurea 0001");result.put("searchMs",median(()->{draw.invoke(view);layout(view);}));assertEquals(1,count(list));result.put("searchFound",count(list));
