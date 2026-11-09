@@ -1,0 +1,8 @@
+.batch-operation-dialog .bulk-dialog{width:min(640px,calc(100vw - 32px));max-width:640px}
+.batch-operation-dialog progress{display:block;width:100%;height:10px;accent-color:var(--accent);margin:22px 0 12px}
+.batch-operation-dialog [role=status]{font-variant-numeric:tabular-nums;line-height:1.6}
+.batch-operation-dialog .batch-operation-hint{color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
+.batch-operation-dialog ul{max-height:200px;overflow:auto;overscroll-behavior:contain;padding-left:22px;line-height:1.6;overflow-wrap:anywhere}
+.batch-operation-dialog footer{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.batch-operation-dialog footer button{min-height:40px}
+@media(max-width:560px){.batch-operation-dialog footer button{flex:1 1 100%}}

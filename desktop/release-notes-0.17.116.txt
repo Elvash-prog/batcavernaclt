@@ -1,0 +1,3 @@
+Ações em lote da biblioteca e reparo de capas com progresso, contagem de concluídos, falhas e pendentes. É possível parar após os títulos em andamento e continuar a fila depois, enquanto a janela permanecer aberta.
+
+Nova tentativa somente dos títulos que falharam, sem reenviar os já concluídos. Os campos escolhidos ficam preservados durante a operação; títulos pendentes continuam selecionados nas ações em lote. Uma troca de conta interrompe novos envios.
