@@ -16,7 +16,7 @@ function cachedRead(scope,input,ttl,load){
 }
 const api=Object.freeze({
  state:()=>call('app_state'),login:credentials=>call('login',{credentials}),register:input=>call('register',{input}),recover:email=>call('recover_password',{email}),verifyEmail:input=>call('verify_email_proof',{input}),resendConfirmation:email=>call('resend_confirmation',{email}),logout:()=>call('logout'),
- checkForUpdates:()=>call('check_for_updates'),installUpdate:(version,onProgress)=>{const Channel=window.__TAURI__?.core?.Channel;const channel=Channel?new Channel():null;if(channel)channel.onmessage=onProgress;return call('install_update',{version,onProgress:channel})},
+ checkForUpdates:()=>call('check_for_updates'),installUpdate:(version,onProgress)=>{const Channel=window.__TAURI__?.core?.Channel;if(!Channel)throw Error('Não foi possível preparar o progresso da atualização. Reinicie o aplicativo e tente novamente.');const channel=new Channel();channel.onmessage=onProgress;return call('install_update',{version,onProgress:channel})},
  dashboard:()=>call('dashboard'),stats:()=>call('journey_stats'),profile:userId=>call('profile',{userId:userId||null}),updateProfile:input=>call('update_profile',{input}),changePassword:input=>call('change_password',{input}),
  library:category=>call('library',{category}),saveItem:item=>call('save_item',{item:{...item,...('generos' in item?{generos:normalizeGenres(item.generos)}:{})}}),deleteItem:id=>call('delete_item',{id:String(id)}),
  feed:()=>call('feed'),socialMeta:()=>call('social_meta'),publish:input=>call('publish',{input}),uploadMedia:input=>call('upload_media',{input}),mediaUrl:url=>call('media_url',{url}),

@@ -225,7 +225,7 @@ async fn check_for_updates(app: AppHandle) -> Result<Value, String> {
 }
 
 #[tauri::command]
-async fn install_update(version: String, on_progress: Option<tauri::ipc::Channel<Value>>, app: AppHandle, state: tauri::State<'_,AppState>) -> Result<Value, String> {
+async fn install_update(version: String, on_progress: tauri::ipc::Channel<Value>, app: AppHandle, state: tauri::State<'_,AppState>) -> Result<Value, String> {
     let _install_guard = update_install::InstallGuard::acquire()?;
     if version.trim().is_empty() || version.len() > 64 {
         return Err("Versão de atualização inválida.".into());
@@ -246,12 +246,12 @@ async fn install_update(version: String, on_progress: Option<tauri::ipc::Channel
         downloaded = downloaded.saturating_add(chunk as u64);
         let percent = total.filter(|n| *n > 0).map(|n| downloaded.saturating_mul(100) / n);
         if percent != last_percent || last_sent.elapsed() >= Duration::from_millis(250) {
-            if let Some(channel) = &on_progress { let _ = channel.send(json!({"phase":"downloading","downloaded":downloaded,"total":total})); }
+            let _ = on_progress.send(json!({"phase":"downloading","downloaded":downloaded,"total":total}));
             last_percent = percent;
             last_sent = std::time::Instant::now();
         }
     }, || {
-        if let Some(channel) = &on_progress { let _ = channel.send(json!({"phase":"installing"})); }
+        let _ = on_progress.send(json!({"phase":"installing"}));
     }).await{session_persistence::clear_pending();return Err(format!("Não foi possível baixar ou instalar a atualização: {error}"));}
     Ok(json!({"installed":true}))
 }
