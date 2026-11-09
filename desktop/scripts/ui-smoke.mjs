@@ -1589,6 +1589,7 @@ try {
   assert.equal(await page.locator("#selectItems").innerText(), "Selecionar títulos");
   assert.equal(await page.locator("#bulkBar").isHidden(), true);
   assert.equal(await page.locator(".card-select").count(), 0);
+  assert.equal(await page.locator('#libraryGroups [data-detail]').count(),5,'A primeira página acompanha o grupo que cresceu durante a operação');
   await page.evaluate(()=>{window.progressPending=true;window.holdProgressPending=true});
   await page.locator('[data-detail="1"]').click();
   await page.locator("#editInformation").waitFor();
