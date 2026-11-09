@@ -103,6 +103,7 @@ jobs:
         with:
           tag_name: android-v${{ steps.version.outputs.version }}
           name: BatCaverna CLT Android ${{ steps.version.outputs.version }}
+          make_latest: 'false'
           body_path: android-native/release-notes-${{ steps.version.outputs.version }}.txt
           files: |
             android-native/build/update-release/BatCaverna-${{ steps.version.outputs.version }}.apk

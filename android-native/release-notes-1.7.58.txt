@@ -1,0 +1,3 @@
+Publicação Android independente do canal de atualização Windows. Conferência automática do feed, checksum do APK, arquivo no Drive e links da página oficial.
+
+As funções do aplicativo permanecem preservadas; esta versão valida o novo processo de entrega e atualização dos downloads.
