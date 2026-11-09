@@ -1,0 +1,3 @@
+Detalhes dos títulos com capa e informações mais equilibradas, progresso reunido em um painel e cartões de tempo jogado e avaliação com alturas alinhadas. Em telas pequenas ou com fonte ampliada, os cartões ficam em uma coluna.
+
+Tempo jogado no mesmo formato da biblioteca: 54 min, 1 h 30 min ou 2 h. A mudança é de apresentação; os valores registrados e o campo de edição em horas são preservados.
