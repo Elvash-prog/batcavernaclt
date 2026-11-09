@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import {benchmarkLibrary} from "./library-benchmark.mjs";
 import assert from "node:assert/strict";
 import http from "node:http";
 import fs from "node:fs";
@@ -803,8 +804,10 @@ try {
       },
     };
   });
+  const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
+  if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
   // Settings search only locates categories and preserves the currently open controls.
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('.settings-search-label input').fill('SENHA');
@@ -2472,6 +2475,7 @@ try {
   console.log(
     "UI OK: início, biblioteca por categorias, comunidade, amigos/chat, detalhes, aparência, presença, notificações, perfil e Full HD/QHD/HD. APIs e eventos simulados.",
   );
+}
 } catch (error) {
   if (testPage)
     await testPage
