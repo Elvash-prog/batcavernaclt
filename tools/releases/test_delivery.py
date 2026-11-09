@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch
+from unittest.mock import MagicMock
 import delivery as d
 
 DOC = '''<html><a class="download-option" href="https://old.example/windows"><svg></svg><span><strong>Windows</strong><small>Versão 0.17.99 · Instalador .exe</small></span></a>
@@ -185,6 +186,17 @@ class DeliveryTests(unittest.TestCase):
             d.PublicRedirect().redirect_request(None, None, 302, '', {}, 'http://github.com/file')
         with self.assertRaises(d.DeliveryError):
             d.PublicRedirect().redirect_request(None, None, 302, '', {}, 'https://evil.test/file')
+
+    def test_public_probe_identifies_itself_without_api_credentials(self):
+        opener = MagicMock()
+        opener.open.return_value.__enter__.return_value.read.return_value = b'page'
+        client = d.Client('Elvash-prog/batcavernaclt', 'private-github', 'private-drive')
+        with patch.object(d.urllib.request, 'build_opener', return_value=opener):
+            self.assertEqual(client.public(d.SITE), b'page')
+        request = opener.open.call_args.args[0]
+        self.assertTrue(request.get_header('User-agent').startswith('BatCaverna-Delivery/'))
+        self.assertIsNone(request.get_header('Authorization'))
+        self.assertEqual(request.full_url, d.SITE)
 
     def test_retries_consistency_errors_but_not_missing_permissions(self):
         calls = []

@@ -63,7 +63,10 @@ class Client:
         self.assets = {}
 
     def _read(self, url, *, headers=None, data=None, method='GET', limit=1_048_576, public=False):
-        request = urllib.request.Request(url, headers=headers or {}, data=data, method=method)
+        request = urllib.request.Request(url, headers={
+            'User-Agent': 'BatCaverna-Delivery/1.0 (+https://github.com/Elvash-prog/batcavernaclt)',
+            **(headers or {}),
+        }, data=data, method=method)
         opener = urllib.request.build_opener(PublicRedirect() if public else NoRedirect())
         try:
             with opener.open(request, timeout=25) as response:
