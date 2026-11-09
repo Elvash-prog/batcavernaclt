@@ -1,0 +1,7 @@
+package dev.gamersclt.batcaverna.nativeapp;
+import org.json.*;import org.junit.Test;import org.junit.runner.RunWith;import org.robolectric.RobolectricTestRunner;import org.robolectric.annotation.Config;import static org.junit.Assert.*;
+@RunWith(RobolectricTestRunner.class) @Config(sdk=35,manifest=Config.NONE)
+public class GameFeedModelTest {
+ @Test public void recommendationIsNotReplacedByCurrentStatus()throws Exception{JSONObject r=new JSONObject().put("status","✅ Zerado").put("meta",new JSONObject().put("acao","recommend"));assertEquals("Recomenda",GameFeedModel.action(r));assertTrue(GameFeedModel.manual(r));r.put("meta",new JSONObject().put("acao","atualizou")).put("status","🎮 Em Progresso");assertEquals("Começou a jogar",GameFeedModel.action(r));assertFalse(GameFeedModel.manual(r));}
+ @Test public void copyExcludesAnotherPersonsProgressAndId()throws Exception{JSONObject source=new JSONObject().put("id",23).put("user_id","friend").put("nome","Prince of Persia").put("horas",99).put("review","private").put("status","finished").put("updated_at","now").put("capa","https://example.com/game.jpg").put("ano",2024);JSONObject result=GameFeedModel.title(source);assertEquals("jogos",result.getString("categoria"));assertEquals("Prince of Persia",result.getString("nome"));assertEquals(2024,result.getInt("ano"));assertEquals(4,result.length());for(String key:new String[]{"id","user_id","horas","review","status","updated_at"})assertFalse(result.has(key));}
+}

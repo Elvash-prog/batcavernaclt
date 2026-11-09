@@ -486,6 +486,14 @@ try {
           }
           if (c === "community") {
             const i = p.input;
+            if(i.op==='game_feed'){
+              const d=i.data||{};window.gameFeedRows??=Array.from({length:22},(_,n)=>({id:String(8000+n),user_id:'friend',created_at:new Date(Date.UTC(2026,10,9,12,0,22-n)).toISOString(),status:'🎮 Em Progresso',meta:{acao:n===0?'recommend':'started'},title:{nome:n===0?'Prince of Persia':'Aventura '+n,categoria:'jogos',capa:'https://example.com/cover.jpg',plataforma:'PC',ano:2024},author:{nome:'Amigo CLT',avatar_url:''},liked:false,like_count:0}));
+              if(i.action==='list'){if(window.delayFeed)await new Promise(r=>setTimeout(r,180));const start=d.before_id?window.gameFeedRows.findIndex(x=>x.id===d.before_id)+1:0;return structuredClone(window.gameFeedRows.slice(start,start+20));}
+              window.saved.push({c,p});
+              if(i.action==='like'){const row=window.gameFeedRows.find(x=>x.id===d.id);row.liked=d.liked;row.like_count=d.liked?1:0;return [{liked:row.liked,like_count:row.like_count}]}
+              if(i.action==='share'){window.gameFeedRows.unshift({...window.gameFeedRows[0],id:'9999',user_id:profile.id,meta:{acao:d.action},title:{...rows[0],nome:rows[0].nome},author:{nome:profile.nome}});return [{id:'9999'}]}
+              if(i.action==='delete'){window.gameFeedRows=window.gameFeedRows.filter(x=>x.id!==d.id);return []}
+            }
             if (i.op === "features") {
               const d = i.data || {};
               if (i.action === "lists") return customLists;
@@ -893,7 +901,7 @@ try {
   await page.emulateMedia({reducedMotion:'no-preference'});
   assert.equal(await page.locator('.journey-progress progress').getAttribute('value'),'25');
   assert.match(await page.locator('.journey-progress').innerText(),/25%/);
-  await page.locator(".friend-activity").waitFor();
+  assert.equal(await page.locator('.friend-activity').count(),0);
   await page.locator(".recommendation-row .cover-wrap").first().waitFor();
   const formatCover = page.locator(".recommendation-row .cover-wrap").first();
   let formatBox = await formatCover.boundingBox();
@@ -945,10 +953,7 @@ try {
     "A navegação por teclado deve exibir um foco visível.",
   );
   await page.locator(".home-hero-content .primary").evaluate((button) => button.blur());
-  assert.match(
-    await page.locator(".friend-activity").first().innerText(),
-    /Amigo/,
-  );
+  assert.equal(await page.locator('#mainNav [data-view="game-feed"]').count(),1);
   assert.equal(await page.locator(".ranking-podium").count(), 1);
   await page.locator("#updateToast [data-update-later]").click({ timeout: 15000 });
   assert.equal(await page.locator("#updateToast").count(), 0);
@@ -1100,13 +1105,9 @@ try {
     [1280, 720, "home-hd-check.png"],
   ]) {
     await page.setViewportSize({ width, height });
-    const hero = await page.locator(".home-hero").boundingBox(),
-      activity = await page.locator(".hero-activity").boundingBox(),
-      dashboard = await page.locator(".dashboard-columns").boundingBox();
-    assert.ok(
-      activity.y > hero.y + hero.height,
-      `Atividade recente deve ficar abaixo do hero em ${width}px`,
-    );
+    const hero = await page.locator(".home-hero").boundingBox(), dashboard = await page.locator(".dashboard-columns").boundingBox();
+    assert.equal(await page.locator('.hero-activity,.cavern-recent').count(),0,'Activities belong in the feed.');
+    assert.equal(await page.locator('#mainNav [data-view="game-feed"]').count(),1);
     assert.ok(
       dashboard.height < 460,
       `Início alto demais em ${width}px: ${Math.round(dashboard.height)}px`,
@@ -1326,6 +1327,40 @@ try {
   assert.equal(await page.locator('#mainNav [data-view="social"]').count(),0,'A Comunidade deve permanecer oculta enquanto estiver desativada.');
   await page.evaluate(async()=>await navigate('social'));
   await page.locator('.friends-compact,.reference-friends,.friend-grid').first().waitFor();
+  await page.locator('#mainNav [data-view="game-feed"]').click();
+  await page.locator('.game-feed-card').first().waitFor();
+  assert.equal(await page.locator('.game-feed-card').count(),20);
+  await page.locator('[data-feed-like]').first().click();
+  await page.waitForFunction(()=>document.querySelector('[data-feed-like]')?.getAttribute('aria-pressed')==='true');
+  await page.locator('[data-feed-like]').first().click();
+  await page.waitForFunction(()=>document.querySelector('[data-feed-like]')?.getAttribute('aria-pressed')==='false');
+  await page.locator('[data-feed-more]').click();
+  await page.waitForFunction(()=>document.querySelectorAll('.game-feed-card').length===22);
+  assert.equal(await page.locator('[data-feed-more]').isHidden(),true);
+  await page.locator('[data-feed-details]').first().click();
+  await page.locator('.reference-detail').waitFor();
+  assert.equal(await page.locator('[data-feed-detail-add]').count(),1);
+  assert.equal(await page.locator('#editInformation').count(),0);
+  await page.locator('.detail-close').click();
+  for(const width of [1920,1280,1024]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:`preview/game-feed-${width}.png`,animations:'disabled'});}
+  await page.setViewportSize({width:1920,height:1080});
+  await page.locator('[data-share-game]').click();
+  await page.locator('[data-game-choice]').first().waitFor();
+  await page.locator('[data-game-choice]').first().click();
+  await page.locator('[data-share-action]').selectOption('started');
+  await page.locator('[data-share-submit]').click();
+  await page.waitForFunction(()=>document.querySelector('[data-game-feed-list] .game-feed-card')?.dataset.feedId==='9999');
+  await page.locator('[data-feed-delete]').click();
+  await page.locator('.app-confirm-dialog [data-confirm]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-feed-id="9999"]'));
+  await page.locator('[data-feed-add]').first().click();
+  await page.locator('.editor-overlay form').waitFor();
+  assert.equal(await page.locator('.editor-overlay form [name="nome"]').inputValue(),'Prince of Persia');
+  assert.match(await page.locator('.editor-overlay form header').innerText(),/Adicionar/i);
+  assert.equal(await page.locator('.editor-overlay form [name="id"]').count(),0);
+  await page.locator('.editor-overlay [data-close]').first().click();
+  await page.evaluate(async()=>{window.delayFeed=true;const pending=navigate('game-feed');await navigate('friends');await pending;delete window.delayFeed;});
+  assert.equal(await page.locator('.game-feed-card').count(),0,'Delayed feed must not overwrite another screen.');
   await page.locator('[data-view="home"]').click();
   await page.evaluate(() => (window.delayLibrary = true));
   await page.locator('[data-view="library"]').click();
@@ -1942,12 +1977,7 @@ try {
   assert.equal(await page.locator('#settingsPanel img[alt="TMDB"]').count(),1);
   assert.match(await page.locator('#settingsPanel').innerText(),/not endorsed or certified by TMDB/);
   await page.evaluate(async()=>await navigate('home'));
-  await page.locator('[data-clear-activity]').click();
-  assert.equal(await page.locator('#updateToast:empty').count(),0,'Limpar não deve criar aviso de atualização vazio');
-  assert.equal(await page.locator('.cavern-recent [data-update]').count(),0);
-  await page.evaluate(async()=>await navigate('home'));
-  assert.equal(await page.locator('.cavern-recent [data-update]').count(),0);
-  await page.evaluate(()=>localStorage.removeItem('bc-activity-cleared:'+state.userId));
+  assert.equal(await page.locator('[data-clear-activity],.cavern-recent,.hero-activity').count(),0);
   await page.evaluate(async()=>{state.discoverTab='retro';await navigate('discover')});
   assert.equal(await page.locator('[data-retro-remove]').count(),0);
   await page.locator('.retro-game-card').click();

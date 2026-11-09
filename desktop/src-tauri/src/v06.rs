@@ -38,6 +38,12 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
  let reaction_table=if input["group"].as_bool()==Some(true){"clt_chat_group_reactions"}else{"clt_chat_reactions"};
  let message_table=if input["group"].as_bool()==Some(true){"clt_chat_group_messages"}else{"clt_chat_messages"};
  match op{
+ "game_feed"=>{
+   let action=input["action"].as_str().unwrap_or("list");
+   if !matches!(action,"list"|"share"|"like"|"delete"){return Err("Ação de feed inválida.".into());}
+   let data=input.get("data").filter(|v|v.is_object()).cloned().unwrap_or_else(||json!({}));
+   rpc(&state.client,"clt_game_feed",json!({"p_action":action,"p_data":data}),token).await
+ },
  "features"=>{
    let action=input["action"].as_str().unwrap_or("");
    if !matches!(action,"lists"|"create_list"|"list_items"|"rename_list"|"share_list"|"delete_list"|"add_item"|"remove_item"|"save_recommendation"|"recommend"|"recommendations"|"recommendation_state"|"preferences"|"save_preferences"){return Err("Operação de recursos não permitida.".into());}
