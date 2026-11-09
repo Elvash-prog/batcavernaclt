@@ -1,0 +1,101 @@
+name: Conferir downloads oficiais
+on:
+  workflow_run:
+    workflows: [Release desktop Windows, Android nativo]
+    types: [completed]
+  workflow_dispatch:
+  pull_request:
+    paths: ['tools/releases/**', '.github/workflows/official-delivery.yml', '.github/workflows/desktop-release.yml', '.github/workflows/android-native.yml']
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tools/releases -p 'test_*.py' -v
+  reconcile:
+    needs: tests
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       ((github.event.workflow_run.name == 'Android nativo' && github.event.workflow_run.head_branch == 'main') ||
+        (github.event.workflow_run.name == 'Release desktop Windows' &&
+         (github.event.workflow_run.head_branch == 'main' ||
+          startsWith(github.event.workflow_run.head_branch, 'release-desktop-') ||
+          startsWith(github.event.workflow_run.head_branch, 'desktop-v')))))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: official-download-delivery
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      # Privileged work always uses reviewed main, never workflow_run.head_sha.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Autenticar para conferir os arquivos do Drive
+        id: google-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+      - name: Conferir releases, feeds, assinaturas e arquivos do Drive
+        id: delivery
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GDRIVE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          GDRIVE_WINDOWS_FILE_ID: ${{ vars.GDRIVE_WINDOWS_FILE_ID }}
+          GDRIVE_WINDOWS_SIG_FILE_ID: ${{ vars.GDRIVE_WINDOWS_SIG_FILE_ID }}
+          GDRIVE_APK_FILE_ID: ${{ vars.GDRIVE_APK_FILE_ID }}
+        run: python tools/releases/delivery.py prepare --report build/official-delivery.json
+      - name: Atualizar somente os downloads já conferidos
+        env:
+          WINDOWS_VERSION: ${{ steps.delivery.outputs.windows }}
+          ANDROID_VERSION: ${{ steps.delivery.outputs.android }}
+        run: |
+          if git diff --quiet -- public/index.html; then
+            echo "Os downloads já estão atualizados."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/index.html
+          git commit -m "Atualiza downloads oficiais: Windows ${WINDOWS_VERSION} e Android ${ANDROID_VERSION}"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main || { git rebase --abort || true; exit 1; }
+            if git push origin HEAD:main; then exit 0; fi
+          done
+          exit 1
+      - name: Conferir a página pública após a publicação
+        run: python tools/releases/delivery.py check-site --report build/official-delivery.json
+      - name: Resumo da entrega
+        run: |
+          python - <<'PY'
+          import json, os
+          d=json.load(open('build/official-delivery.json'))
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as s:
+              s.write('## Downloads oficiais conferidos\n\n')
+              s.write(f"Windows **{d['windows']['version']}** e Android **{d['android']['version']}**.\n\n")
+              s.write('Releases, feeds, checksums do Drive, download público Windows e links do site conferidos.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-delivery-evidence
+          path: build/official-delivery.json
+          if-no-files-found: ignore

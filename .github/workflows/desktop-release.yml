@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - id: version
@@ -19,6 +20,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./desktop/package.json').version")
           echo "tag=desktop-v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
   create-release-tag:
     needs: release-metadata
@@ -72,6 +74,9 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
             throw "Configure o secret TAURI_SIGNING_PRIVATE_KEY do GitHub Actions."
           }
+          if (!(Test-Path "desktop/release-notes-$tagVersion.txt")) {
+            throw "Notas da versão Windows ausentes."
+          }
       - name: Install desktop dependencies
         working-directory: desktop
         run: npm ci
@@ -121,7 +126,7 @@ jobs:
           $version = $env:RELEASE_TAG -replace '^desktop-v', ''
           $manifest = @{
             version = $version
-            notes = "Atualização BatCaverna CLT para Windows $version."
+            notes = (Get-Content "desktop/release-notes-$version.txt" -Raw -Encoding utf8).Trim()
             pub_date = [DateTimeOffset]::UtcNow.ToString("o")
             platforms = @{
               "windows-x86_64" = @{
@@ -136,7 +141,8 @@ jobs:
         with:
           tag_name: ${{ needs.release-metadata.outputs.tag }}
           name: BatCaverna CLT Windows ${{ needs.release-metadata.outputs.tag }}
-          generate_release_notes: true
+          make_latest: 'true'
+          body_path: desktop/release-notes-${{ needs.release-metadata.outputs.version }}.txt
           files: |
             desktop/release-assets/BatCaverna-CLT-Windows-setup.exe
             desktop/release-assets/BatCaverna-CLT-Windows-setup.exe.sig

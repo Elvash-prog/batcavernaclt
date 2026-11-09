@@ -1,0 +1,3 @@
+Publicação com canais de atualização Windows e Android independentes. A release Android deixa de alterar a marca de última versão usada pelo atualizador Windows.
+
+Conferência automática dos feeds, arquivos e checksums do Drive e links públicos. A página de downloads é atualizada após as verificações. As notas desta versão passam a alimentar automaticamente o manifesto e a release Windows.
