@@ -395,6 +395,11 @@ try {
           }
           if(c==='set_home_status'){window.saved.push({c,p});if(window.failHomeStatus)throw Error('O título mudou em outra tela. Atualize o início.');return [{id:p.id,status:p.status,updated_at:new Date().toISOString()}];}
           if (c === "save_item" || c === "update_profile") {
+            if(c==='save_item'&&window.batchFixture&&p.item.status==='⏸️ Pausado'){
+              window.batchAttempts.push(String(p.item.id));
+              if(window.holdBatchSave)await new Promise(resolve=>window.releaseBatchSave=resolve);
+              if(window.batchFailureIds.includes(String(p.item.id)))throw Error('Falha simulada em um título');
+            }
             if(c==='save_item'&&window.delayItemSave)await new Promise(r=>setTimeout(r,800));
             if(c==='save_item'&&window.failCatalogSave)throw Error('Falha simulada de conexão');
             if(c==='update_profile'&&p.input.status)profile.status_personalizado=p.input.status;
@@ -1049,6 +1054,7 @@ try {
   }
   await page.evaluate(format=>document.body.dataset.cardFormat=format,previousFormat);
   await page.keyboard.press('Tab');await libraryCard.focus();assert.equal(await libraryCard.evaluate(n=>getComputedStyle(n).outlineStyle),'solid');
+  await page.evaluate(async()=>await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{}))));
   const nextCard=page.locator('#libraryGroups .reference-card').nth(1),nextBefore=await nextCard.boundingBox();
   await libraryCard.hover();
   await page.evaluate(async()=>await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{}))));
@@ -1529,8 +1535,34 @@ try {
     /5 selecionados/,
   );
   await page.locator('[data-bulk-action="edit"]').click();
+  await page.locator('#bulkConfirm').click();
+  assert.match(await page.locator('#bulkProgress').innerText(),/Selecione um campo/);
   await page.locator("#bulkStatus").selectOption("⏸️ Pausado");
+  await page.evaluate(()=>{window.batchFixture=true;window.batchAttempts=[];window.holdBatchSave=true;window.batchFailureIds=['2'];});
   await page.locator("#bulkConfirm").click();
+  await page.waitForFunction(()=>typeof window.releaseBatchSave==='function');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.batch-operation-dialog').count(),1);
+  await page.evaluate(()=>document.activeElement.blur());
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.batch-operation-dialog').count(),1);
+  await page.locator('[data-batch-stop]').click();
+  await page.evaluate(()=>{window.holdBatchSave=false;window.releaseBatchSave();});
+  await page.locator('[data-batch-resume]').waitFor({state:'visible'});
+  assert.match(await page.locator('#bulkProgress').innerText(),/1 concluídos.*4 pendentes/);
+  assert.equal(await page.evaluate(()=>window.batchAttempts.length),1);
+  await page.locator('.batch-operation-dialog .bulk-dialog').screenshot({path:'preview/library-batch-paused-check.png'});
+  await page.locator('[data-batch-resume]').click();
+  await page.locator('[data-batch-retry]').waitFor({state:'visible'});
+  assert.match(await page.locator('#bulkProgress').innerText(),/4 concluídos.*1 não atualizados/);
+  assert.equal(await page.locator('#bulkErrors li').count(),1);
+  await page.locator('.batch-operation-dialog .bulk-dialog').screenshot({path:'preview/library-batch-retry-check.png'});
+  await page.evaluate(()=>{window.batchFailureIds=[];});
+  await page.locator('[data-batch-retry]').click();
+  await page.waitForFunction(()=>document.querySelector('#bulkProgress')?.textContent==='5 concluídos · 0 não atualizados');
+  assert.equal(await page.evaluate(()=>window.batchAttempts.filter(id=>id==='2').length),2);
+  assert.equal(await page.evaluate(()=>window.batchAttempts.length),6);
+  await page.evaluate(()=>{window.batchFixture=false;});
   await page.locator("[data-finish]").waitFor();
   assert.equal(
     await page.evaluate(
@@ -1557,6 +1589,7 @@ try {
   assert.equal(await page.locator("#selectItems").innerText(), "Selecionar títulos");
   assert.equal(await page.locator("#bulkBar").isHidden(), true);
   assert.equal(await page.locator(".card-select").count(), 0);
+  assert.equal(await page.locator('#libraryGroups [data-detail]').count(),5,'A primeira página acompanha o grupo que cresceu durante a operação');
   await page.evaluate(()=>{window.progressPending=true;window.holdProgressPending=true});
   await page.locator('[data-detail="1"]').click();
   await page.locator("#editInformation").waitFor();
