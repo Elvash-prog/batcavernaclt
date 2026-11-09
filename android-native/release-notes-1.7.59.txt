@@ -1,0 +1,3 @@
+Atualizações com porcentagem e quantidade baixada, inclusive quando o servidor não informa o tamanho. A verificação do arquivo e da assinatura aparece como uma etapa separada.
+
+Proteção contra downloads simultâneos e nova tentativa após falha. Arquivos incompletos são removidos; checksum, pacote, versão e certificado continuam sendo verificados antes da instalação.

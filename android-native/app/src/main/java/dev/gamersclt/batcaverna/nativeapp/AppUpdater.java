@@ -25,6 +25,7 @@ final class AppUpdater {
  private static final OkHttpClient HTTP=new OkHttpClient.Builder().connectTimeout(20,TimeUnit.SECONDS).readTimeout(60,TimeUnit.SECONDS).build();
  private static final Handler UI=new Handler(Looper.getMainLooper());
  private static volatile boolean checking;private static JSONObject availableUpdate;
+ private static final UpdateDownloadState DOWNLOAD = new UpdateDownloadState();
  static void attach(Activity a){if(a.isFinishing()||a.isDestroyed())return;android.view.ViewGroup root=a.findViewById(android.R.id.content);if(root==null)return;android.view.View old=root.findViewWithTag("appUpdateBanner");if(old!=null)root.removeView(old);JSONObject m=availableUpdate;if(m==null||m.optInt("versionCode")<=BuildConfig.VERSION_CODE)return;LinearLayout bar=new LinearLayout(a);bar.setTag("appUpdateBanner");bar.setGravity(android.view.Gravity.CENTER_VERTICAL);bar.setPadding(12,6,12,6);bar.setBackgroundColor(NativeTheme.panelDark(a));TextView title=NativeSheet.text(a,"Nova versão "+m.optString("versionName")+" disponível",14,NativeTheme.accent(a));bar.addView(title,new LinearLayout.LayoutParams(0,-2,1));Button update=button(a,"Atualizar");bar.addView(update);update.setOnClickListener(v->offer(a,m));android.widget.FrameLayout.LayoutParams lp=new android.widget.FrameLayout.LayoutParams(-1,-2,android.view.Gravity.BOTTOM);lp.setMargins(NativeSheet.dp(a,8),0,NativeSheet.dp(a,8),NativeSheet.dp(a,72));root.addView(bar,lp);}
 
  static void automatic(Activity a){
@@ -45,6 +46,7 @@ final class AppUpdater {
  private static void post(Activity a,Runnable r){UI.post(()->{if(!a.isFinishing()&&!a.isDestroyed())r.run();});}
  private static JSONObject json(String url)throws Exception{try(Response r=HTTP.newCall(new Request.Builder().url(url).header("Accept","application/vnd.github+json").build()).execute()){if(!r.isSuccessful()||r.body()==null)throw new IOException("Não foi possível consultar as versões (HTTP "+r.code()+").");return new JSONObject(r.body().string());}}
  static void check(Activity a,boolean quiet){
+  if(DOWNLOAD.isRunning()){if(!quiet)Toast.makeText(a,"Uma atualização já está sendo baixada. Aguarde a conclusão.",Toast.LENGTH_LONG).show();return;}
   if(checking)return;checking=true;
   if(!quiet)Toast.makeText(a,"Verificando atualizações…",Toast.LENGTH_SHORT).show();
   new Thread(()->{try{
@@ -66,19 +68,64 @@ final class AppUpdater {
   }catch(Exception e){checking=false;post(a,()->{if(!quiet)Toast.makeText(a,"Não foi possível verificar atualizações. Confira a conexão e tente novamente.",Toast.LENGTH_LONG).show();});}},"app-update-check").start();
  }
  private static void offer(Activity a,JSONObject m){NativeSheet s=new NativeSheet(a,"Nova versão disponível");s.body.addView(NativeSheet.text(a,"BatCaverna "+m.optString("versionName"),22,0xfff3eafa));s.body.addView(NativeSheet.text(a,m.optString("notes","Melhorias e correções do aplicativo."),14,0xffb4a7c4));Button b=button(a,"Baixar e atualizar");s.body.addView(b);b.setOnClickListener(v->{s.dialog.dismiss();download(a,m);});s.show();}
- private static void download(Activity a,JSONObject m){
-  NativeSheet s=new NativeSheet(a,"Baixando atualização");TextView status=NativeSheet.text(a,"Iniciando download…",14,0xfff3eafa);s.body.addView(status);ProgressBar progress=new ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(100);s.body.addView(progress);s.show();s.busy(true);
-  new Thread(()->{File target=new File(a.getCacheDir(),"updates/update.apk"),part=new File(a.getCacheDir(),"updates/update.part");try{
-   target.getParentFile().mkdirs();target.delete();String url=m.getString("url");UpdatePolicy.validateUrl(url);
-   try(Response r=HTTP.newCall(new Request.Builder().url(url).build()).execute()){
-    if(!r.isSuccessful()||r.body()==null)throw new IOException("Falha no download. Tente novamente.");long total=r.body().contentLength(),count=0;int last=-1;MessageDigest digest=MessageDigest.getInstance("SHA-256");
-    try(InputStream in=r.body().byteStream();OutputStream out=new FileOutputStream(part)){byte[] bytes=new byte[65536];int n;while((n=in.read(bytes))!=-1){count+=n;if(count>300L*1024*1024)throw new IOException("Arquivo de atualização muito grande.");out.write(bytes,0,n);digest.update(bytes,0,n);int percent=total>0?(int)(count*100/total):0;if(percent!=last){last=percent;int value=percent;post(a,()->{progress.setIndeterminate(total<=0);progress.setProgress(value);status.setText("Baixando atualização… "+value+"%");});}}}
-    StringBuilder hash=new StringBuilder();for(byte value:digest.digest())hash.append(String.format(java.util.Locale.ROOT,"%02x",value&255));if(!hash.toString().equalsIgnoreCase(m.getString("sha256")))throw new IOException("Arquivo incompleto ou inválido. Baixe novamente.");
-   }
-   validatePackage(a,part,m.getInt("versionCode"));if(!part.renameTo(target))throw new IOException("Não foi possível preparar o arquivo.");
-   post(a,()->{s.busy(false);status.setText("Download verificado. Confirme a instalação no Android.");Button install=button(a,"Instalar atualização");s.body.addView(install);install.setOnClickListener(v->install(a,target,status));install(a,target,status);});
-  }catch(Exception e){part.delete();target.delete();post(a,()->{s.busy(false);status.setText(e.getMessage()==null?"Não foi possível baixar a atualização. Tente novamente.":e.getMessage());});}},"app-update-download").start();
+ private static void download(Activity a,JSONObject m){download(a,m,HTTP);}
+ static void download(Activity a,JSONObject m,OkHttpClient http){
+  if(a.isFinishing()||a.isDestroyed())return;
+  if(!DOWNLOAD.begin()){
+   Toast.makeText(a,"Uma atualização já está sendo baixada. Aguarde a conclusão.",Toast.LENGTH_LONG).show();return;
+  }
+  NativeSheet s=new NativeSheet(a,"Atualizando BatCaverna");
+  s.body.addView(NativeSheet.text(a,"Versão "+m.optString("versionName"),18,0xfff3eafa));
+  TextView status=NativeSheet.text(a,"Iniciando download…",14,0xffb4a7c4);s.body.addView(status);
+  ProgressBar progress=new ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal);
+  progress.setMax(100);progress.setIndeterminate(true);s.body.addView(progress);
+  TextView details=NativeSheet.text(a,"",13,0xffb4a7c4);s.body.addView(details);
+  s.show();s.busy(true);
+  new Thread(()->{
+   File target=new File(a.getCacheDir(),"updates/update.apk"),part=new File(a.getCacheDir(),"updates/update.part");
+   try{
+    if(!target.getParentFile().isDirectory()&&!target.getParentFile().mkdirs())throw new IOException("Não foi possível preparar o download. Confira o armazenamento do aparelho.");
+    target.delete();String url=m.getString("url");UpdatePolicy.validateUrl(url);
+    try(Response r=http.newCall(new Request.Builder().url(url).build()).execute()){
+     if(!r.isSuccessful()||r.body()==null)throw new IOException("Falha no download. Confira a conexão e tente novamente.");
+     long total=r.body().contentLength(),count=0,lastBytes=0;int last=-2;
+     MessageDigest digest=MessageDigest.getInstance("SHA-256");
+     try(InputStream in=r.body().byteStream();OutputStream out=new FileOutputStream(part)){
+      byte[] bytes=new byte[65536];int n;
+      while((n=in.read(bytes))!=-1){
+       count+=n;if(count>300L*1024*1024)throw new IOException("Arquivo de atualização muito grande.");
+       out.write(bytes,0,n);digest.update(bytes,0,n);
+       int percent=UpdateDownloadState.percent(count,total);
+       if(percent!=last||count-lastBytes>=262144){
+        last=percent;lastBytes=count;long received=count;
+        post(a,()->{progress.setIndeterminate(total<=0);if(total>0)progress.setProgress(UpdateDownloadState.percent(received,total));status.setText("Baixando atualização…");details.setText(UpdateDownloadState.text(received,total));});
+       }
+      }
+     }
+     post(a,()->{progress.setIndeterminate(true);status.setText("Verificando arquivo e assinatura…");});
+     StringBuilder hash=new StringBuilder();for(byte value:digest.digest())hash.append(String.format(java.util.Locale.ROOT,"%02x",value&255));
+     if(!hash.toString().equalsIgnoreCase(m.getString("sha256")))throw new IOException("Arquivo incompleto ou inválido. Baixe novamente.");
+    }
+    validatePackage(a,part,m.getInt("versionCode"));
+    if(!part.renameTo(target))throw new IOException("Não foi possível preparar o arquivo.");
+    post(a,()->{
+     s.busy(false);progress.setIndeterminate(false);progress.setProgress(100);
+     status.setText("Download verificado. Confirme a instalação no Android.");
+     Button install=button(a,"Instalar atualização");s.body.addView(install);
+     install.setOnClickListener(v->install(a,target,status));install(a,target,status);
+    });
+   }catch(Exception e){
+    part.delete();target.delete();
+    post(a,()->{
+     s.busy(false);progress.setVisibility(android.view.View.GONE);
+     status.setText(e instanceof IOException&&e.getMessage()!=null?e.getMessage():"Não foi possível baixar a atualização. Confira a conexão e tente novamente.");
+     Button retry=button(a,"Tentar novamente");s.body.addView(retry);
+     retry.setOnClickListener(v->{s.dialog.dismiss();download(a,m,http);});
+    });
+   }finally{DOWNLOAD.finish();}
+  },"app-update-download").start();
  }
+
  @SuppressWarnings("deprecation") private static void validatePackage(Activity a,File file,int version)throws Exception{
   PackageManager pm=a.getPackageManager();int flags=Build.VERSION.SDK_INT>=28?PackageManager.GET_SIGNING_CERTIFICATES:PackageManager.GET_SIGNATURES;
   PackageInfo next=pm.getPackageArchiveInfo(file.getAbsolutePath(),flags),current=pm.getPackageInfo(a.getPackageName(),flags);

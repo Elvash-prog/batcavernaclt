@@ -221,6 +221,7 @@ try {
         },
       },
       core: {
+        Channel: class { onmessage() {} },
         invoke: async (c, p) => {
         if(c==='pc_game_preferences'){window.nativePcPreferences=window.nativePcPreferences||{};if(p.input.preferences){if(window.failNativePcPreferences)throw Error('disk full');window.nativePcPreferences[p.input.owner]=structuredClone(p.input.preferences);window.saved.push({c,p});}return window.nativePcPreferences[p.input.owner]||null;}
         if (c === "progress_sync") {
@@ -242,6 +243,7 @@ try {
         }
         if (c === "install_update") {
           window.saved.push({ c, p });
+          if(window.holdUpdateDownload)return await new Promise((resolve,reject)=>{window.updateTransfer={channel:p.onProgress,resolve,reject};});
           return { installed: true };
         }
         if (c === "client_log") {
@@ -1854,10 +1856,31 @@ try {
   await page.locator(".update-confirm-modal [data-update-cancel]").first().click();
   await page.locator("#checkUpdates").click();
   await page.getByRole("dialog", { name: "Atualização disponível" }).waitFor();
+  await page.evaluate(()=>{window.holdUpdateDownload=true;});
   await page.locator(".update-confirm-modal [data-update-install]").click();
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "install_update"),
   );
+  await page.waitForFunction(()=>!!window.updateTransfer);
+  await page.evaluate(()=>window.updateTransfer.channel.onmessage({phase:'downloading',downloaded:1048576,total:null}));
+  assert.match(await page.locator('.update-progress-modal [data-transfer]').innerText(),/1 MB recebidos/);
+  assert.equal(await page.locator('.update-progress-modal progress').getAttribute('value'),null);
+  await page.evaluate(()=>window.updateTransfer.channel.onmessage({phase:'downloading',downloaded:1048576,total:2097152}));
+  assert.match(await page.locator('.update-progress-modal [data-transfer]').innerText(),/50%/);
+  assert.equal(await page.locator('#checkUpdates').isDisabled(),true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.update-progress-modal').count(),1);
+  await page.locator('.update-progress-modal').screenshot({path:'preview/update-download-check.png'});
+  await page.evaluate(()=>window.updateTransfer.channel.onmessage({phase:'installing'}));
+  assert.match(await page.locator('.update-progress-modal [data-update-stage]').innerText(),/assinatura/);
+  await page.evaluate(()=>window.updateTransfer.reject(Error('Conexão interrompida durante o download.')));
+  await page.locator('.update-progress-modal [data-retry]').waitFor({state:'visible'});
+  assert.match(await page.locator('.update-progress-modal [data-update-stage]').innerText(),/Conexão interrompida/);
+  await page.locator('.update-progress-modal').screenshot({path:'preview/update-retry-check.png'});
+  await page.evaluate(()=>{window.holdUpdateDownload=false;});
+  await page.locator('.update-progress-modal [data-retry]').click();
+  await page.getByRole('heading',{name:'Atualização preparada',exact:true}).waitFor();
+  await page.locator('.update-progress-modal [data-dismiss]').click();
   await page.evaluate(async()=>await navigate('lists'));
   await page.locator('[data-list="list1"]').click();
   await page.locator('[data-list-library]').first().click();
