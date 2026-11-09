@@ -1,34 +1,25 @@
-# Atualizações in-app
+# Atualizações nos aplicativos
 
-## Estado atual
+## Windows
 
-- **Windows:** o cliente Tauri, endpoint GitHub Releases, workflow de release por tag e geração do manifest estão implementados. A verificação é manual em **Configurações → Aplicativo**, a instalação exige confirmação e Tauri verifica a assinatura antes de executar o bundle. A publicação permanece bloqueada até que a chave pública e o secret da chave privada sejam configurados.
-- **Android:** `.github/workflows/android-native.yml` compila e disponibiliza um APK de debug para validação. Não há publicação de APK de produção, feed de atualizações ou mecanismo de instalação in-app configurado. O tipo de assinatura de produção e a chave compatível com instalações existentes não estão definidos neste repositório.
+O canal de produção usa releases `desktop-vX.Y.Z` com instalador NSIS, assinatura Tauri e manifesto `latest.json`. A chave pública está no cliente; a chave privada permanece nos secrets de assinatura do GitHub Actions.
 
-Não se deve exibir um estado de atualizações ativas nem oferecer instalação antes de completar os itens de configuração abaixo.
+Em **Configurações → Aplicativo → Verificar atualizações**, o aplicativo consulta o canal, mostra a versão e as notas e pede confirmação antes de baixar. A janela acompanha os bytes recebidos e a porcentagem quando o servidor informa o tamanho; sem tamanho conhecido, usa progresso indeterminado. Depois do download, informa a verificação e preparação do instalador. O plugin Tauri verifica a assinatura antes de instalar. A versão escolhida é reconfirmada no servidor antes de cada tentativa.
 
-## Windows: GitHub Releases
+Falhas permitem tentar novamente na mesma janela. O comando nativo impede instalações concorrentes entre janelas e libera a próxima tentativa ao terminar ou falhar. A preservação protegida da sessão durante a atualização permanece em `session_persistence`; nenhuma senha é enviada ao instalador.
 
-Configuração única antes da primeira release:
+## Android
 
-1. No diretório `desktop`, gere uma chave localmente com `npm run tauri -- signer generate -w "$HOME\.tauri\batcaverna-updater.key"`. Guarde a chave privada e a senha em um gerenciador seguro; não a envie em chat, não a versione e não a cole em logs.
-2. Copie a chave pública exibida pelo comando para `plugins.updater.pubkey` em `desktop/src-tauri/tauri.conf.json`, substituindo `REPLACE_WITH_TAURI_UPDATER_PUBLIC_KEY`.
-3. Cadastre `TAURI_SIGNING_PRIVATE_KEY` nos secrets do GitHub Actions com o conteúdo da chave privada ou um caminho acessível ao runner (prefira o conteúdo do secret). Cadastre `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` se a chave tiver senha. Não configure esses valores em `.env` nem no repositório.
-4. Atualize as versões para a mesma versão SemVer em `desktop/package.json`, `desktop/package-lock.json`, `desktop/src-tauri/Cargo.toml` e `desktop/src-tauri/tauri.conf.json`; então crie uma tag `desktop-vX.Y.Z` correspondente. O workflow valida igualdade e exige o signing secret antes de compilar.
-5. Com `createUpdaterArtifacts: true`, o Tauri assina o próprio instalador NSIS (`*-setup.exe` e `*-setup.exe.sig`). O workflow copia esses ativos e publica o manifest `latest.json` em uma GitHub Release. O endpoint HTTPS já está configurado para a release mais recente deste repositório.
+O aplicativo consulta as releases Android estáveis, lê `android-update.json` e compara `versionCode` com a instalação atual. A consulta automática ao abrir pode ser desativada na tela de atualizações; a verificação manual continua disponível.
 
-O botão **Verificar atualizações** consulta o manifest; se houver uma versão nova, apresenta versão/notas e solicita confirmação. A instalação verifica novamente se aquela versão continua disponível e deixa a verificação criptográfica do bundle ao plugin Tauri. O instalador NSIS usa o modo passivo. Nenhuma release foi publicada nesta alteração.
+O download mostra a quantidade recebida e a porcentagem quando o tamanho é conhecido. Downloads concorrentes são bloqueados, pois compartilham os arquivos temporários. Uma falha remove o arquivo incompleto e oferece nova tentativa. Antes de abrir o instalador, o cliente confere SHA-256, pacote, código de versão e certificado compatível com a instalação atual. O Android pede autorização para instalar aplicativos desta origem quando necessário; a instalação continua dependendo da confirmação do usuário no sistema.
 
-## Android: APK direto pelo site/servidor
+Os APKs de produção são assinados no CI com a keystore existente. Não trocar a chave: outra assinatura impede a atualização sobre instalações anteriores. A variante de debug usa outro pacote e não substitui a instalação de produção.
 
-Antes de habilitar a atualização:
+## Publicação e conferência
 
-1. Definir o endereço HTTPS permanente do feed de versões e da hospedagem dos APKs. O feed precisa identificar versão/código e URL de download; nenhum endpoint de atualização existe hoje.
-2. Confirmar o application ID que será distribuído. A variante debug usa o sufixo `.preview`; ela não é substituta de um APK release para os usuários de produção.
-3. Confirmar que existe uma keystore de produção controlada pelo responsável pelo app e que a mesma chave pode ser usada em todas as versões futuras. Não é possível atualizar uma instalação assinada com outro certificado; perder/trocar a chave impede atualizações diretas sobre essa instalação.
-4. Configurar os dados da keystore como secrets do CI e compilar APK release assinado. Publicar o APK e atualizar o feed somente após verificar a assinatura, o application ID e o incremento de `versionCode`.
-5. Implementar a consulta ao feed e o fluxo de download/instalação do Android, respeitando a permissão do sistema para instalar apps desta origem e pedindo consentimento do usuário.
+Windows usa `make_latest: true`; Android usa `make_latest: false`, preservando o endpoint Windows `/releases/latest/download/latest.json`. O fluxo `Conferir downloads oficiais` verifica feeds, arquivos do GitHub e do Drive e o download público Windows antes de atualizar os links do site. Depois confere a página publicada e guarda a evidência. Detalhes em [tools/releases/README.md](../tools/releases/README.md).
 
-**Ainda necessário para concluir:** URL HTTPS do feed, decisão do pacote de produção, confirmação/acesso à keystore de produção compatível com as instalações existentes e secrets de assinatura. O workflow atual gera somente APK debug, então não há atualização direta segura que possa ser habilitada agora.
+Para uma versão Windows, manter a mesma versão em `package.json`, `package-lock.json`, `Cargo.toml`, `Cargo.lock` e `tauri.conf.json`, e incluir `desktop/release-notes-X.Y.Z.txt`. Uma branch `release-desktop-X.Y.Z` ou tag `desktop-vX.Y.Z` aciona o fluxo assinado. Para Android, incrementar `versionCode`, atualizar `versionName` e incluir as notas da versão antes da integração em `main`.
 
-Os dois canais são independentes: publicar uma GitHub Release para Windows não disponibiliza automaticamente um APK Android. Nenhum dos fluxos deve executar migrações do Supabase durante a atualização.
+Esses fluxos atualizam os aplicativos e os downloads; não executam migrações do banco.

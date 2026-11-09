@@ -27,6 +27,8 @@ import './statistics-view.css';
 import './statistics-view.js';
 import './settings-studio.css';
 import './settings-studio.js';
+import './update-progress.js';
+import './update-progress.css';
 import './lists-studio.css';
 import './lists-studio.js';
 import './catalog-studio.css';

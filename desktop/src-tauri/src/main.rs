@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod home_resume;
+mod update_install;
 mod pc_preferences;
 mod windows_startup;
 mod chat_delivery;
@@ -224,7 +225,8 @@ async fn check_for_updates(app: AppHandle) -> Result<Value, String> {
 }
 
 #[tauri::command]
-async fn install_update(version: String, app: AppHandle, state: tauri::State<'_,AppState>) -> Result<Value, String> {
+async fn install_update(version: String, on_progress: Option<tauri::ipc::Channel<Value>>, app: AppHandle, state: tauri::State<'_,AppState>) -> Result<Value, String> {
+    let _install_guard = update_install::InstallGuard::acquire()?;
     if version.trim().is_empty() || version.len() > 64 {
         return Err("Versão de atualização inválida.".into());
     }
@@ -237,7 +239,20 @@ async fn install_update(version: String, app: AppHandle, state: tauri::State<'_,
      if latest.user.id!=active.user.id{return Err("Sua conta mudou. Tente atualizar novamente.".into());}
      session_persistence::prepare_update(&latest.refresh_token)?;
     }
-    if let Err(error)=update.download_and_install(|_, _| {}, || {}).await{session_persistence::clear_pending();return Err(format!("Não foi possível baixar ou instalar a atualização: {error}"));}
+    let mut downloaded = 0u64;
+    let mut last_percent = None;
+    let mut last_sent = std::time::Instant::now() - Duration::from_secs(1);
+    if let Err(error)=update.download_and_install(|chunk, total| {
+        downloaded = downloaded.saturating_add(chunk as u64);
+        let percent = total.filter(|n| *n > 0).map(|n| downloaded.saturating_mul(100) / n);
+        if percent != last_percent || last_sent.elapsed() >= Duration::from_millis(250) {
+            if let Some(channel) = &on_progress { let _ = channel.send(json!({"phase":"downloading","downloaded":downloaded,"total":total})); }
+            last_percent = percent;
+            last_sent = std::time::Instant::now();
+        }
+    }, || {
+        if let Some(channel) = &on_progress { let _ = channel.send(json!({"phase":"installing"})); }
+    }).await{session_persistence::clear_pending();return Err(format!("Não foi possível baixar ou instalar a atualização: {error}"));}
     Ok(json!({"installed":true}))
 }
 

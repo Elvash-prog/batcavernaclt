@@ -1,0 +1,3 @@
+Atualizações com progresso de download, porcentagem e quantidade recebida. Etapas de verificação de assinatura e preparação do instalador identificadas em uma janela própria.
+
+Nova tentativa após falha na mesma janela. Proteção contra instalações simultâneas, inclusive entre janelas do aplicativo. A assinatura continua obrigatória antes da instalação.
