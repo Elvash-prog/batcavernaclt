@@ -1,0 +1,7 @@
+BatCaverna CLT 2.1.0 — Feed dos amigos.
+
+Compartilhe jogos da sua biblioteca com atividades como “Comecei a jogar”, “Recomendo este jogo” e “Zerei”. As mudanças de status também aparecem no feed, com capa, autor e data.
+
+Curta publicações, abra os detalhes pela capa e adicione os jogos à sua própria biblioteca. O feed respeita amizades e bloqueios. As publicações manuais podem ser excluídas pelo autor.
+
+O bloco de atividade recente foi retirado do início. No Windows, o novo Feed dos amigos fica na barra lateral. No Android, ele pode ser aberto pelo atalho Feed dos amigos.

@@ -25,7 +25,7 @@
  const main=[
   ['home','Início','home'],['library','Biblioteca','library',{collection:'jogos'}],['media','Filmes e Séries','film',{collection:'filmes'}],['anime','Animes','anime',{collection:'animes'}],
   ['discover','Minha Steam','steam',{kind:'steam'}],['discover','Meu Retrô','retro',{kind:'retro'}],
-  ['settings','Configurações','settings']
+  ['game-feed','Feed dos amigos','social'],['settings','Configurações','settings']
  ];
  const more=[
   ['lists','Listas','lists'],['recommendations','Indicações','recommend']
@@ -57,13 +57,7 @@
  renderHome=async function(){
   await baseHome();
   if(state.current!=='home')return;
-  const content=$('#content'),activity=$('.hero-activity');
-  if(activity&&!activity.closest('.cavern-recent')){
-   activity.querySelector(':scope>.section-head')?.remove();
-   const section=document.createElement('section');section.className='cavern-recent';
-   section.innerHTML='<div class="section-head"><h2>Atividade recente</h2><button type="button" class="link-button" data-clear-activity>Limpar</button><button type="button" class="link-button" data-shell-go="social">Ver todos →</button></div>';
-   section.append(activity);content.append(section);section.querySelector('[data-clear-activity]').onclick=()=>{localStorage.setItem('bc-activity-cleared:'+state.userId,String(Date.now()));activity.querySelectorAll('[data-update],.friend-activity').forEach(node=>node.remove());activity.querySelector('.friend-activities')?.replaceChildren();};
-  }
+  const content=$('#content');$('.hero-activity')?.remove();
   const recent=$('.shelf-section .section-head');
   if(recent&&!recent.querySelector('[data-shell-go]')){
    recent.insertAdjacentHTML('beforeend','<button type="button" class="link-button" data-shell-go="library">Ver todos →</button>');

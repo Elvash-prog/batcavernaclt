@@ -1,0 +1,48 @@
+'use strict';
+(()=>{
+ const model=window.BatGameFeed;
+ const request=(action,data={})=>call('community',{input:{op:'game_feed',action,data}});
+ const baseNavigate=navigate;
+ let generation=0;
+ navigate=async function(view){
+  if(view!=='game-feed'){generation++;$('#content').classList.remove('game-feed-screen');return baseNavigate(view)}
+  const ticket=++generation,owner=state.userId;state.current=view;state.navigationSequence=(state.navigationSequence||0)+1;
+  document.body.dataset.screen=view;document.body.classList.remove('rail-off');
+  $$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));setPage('Feed dos amigos','SUAS PRÓXIMAS AVENTURAS');
+  const host=$('#content');host.classList.add('game-feed-screen');
+  host.innerHTML=`<section class="game-feed-head"><div><span class="eyebrow">ENTRE AMIGOS</span><h2>Um jogo leva a outro.</h2><p>Descubra o que seus amigos estão jogando e compartilhe suas recomendações.</p></div><button class="primary" data-share-game>＋ Compartilhar jogo</button></section><div class="game-feed-layout"><section class="game-feed-stream" aria-label="Atividades de jogos"><div class="game-feed-toolbar"><span>Atividades e recomendações</span><button class="secondary" data-feed-refresh>Atualizar</button></div><div data-game-feed-list></div><p data-feed-state role="status" aria-live="polite"></p><button class="secondary" data-feed-more>Carregar mais</button></section><aside class="game-feed-guide"><span class="eyebrow">SÓ ENTRE AMIGOS</span><h3>Histórias que merecem companhia.</h3><p>As mudanças de status dos jogos aparecem aqui. Você também pode recomendar um jogo da sua biblioteca.</p><p>Curta para apoiar. Toque na capa para conhecer o jogo e salvar na sua coleção.</p><button class="secondary" data-feed-friends>Ver meus amigos</button></aside></div>`;
+  const current=()=>generation===ticket&&state.current===view&&state.userId===owner&&host.querySelector('[data-game-feed-list]')===list;
+  const list=host.querySelector('[data-game-feed-list]'),status=host.querySelector('[data-feed-state]'),more=host.querySelector('[data-feed-more]'),refresh=host.querySelector('[data-feed-refresh]');
+  let rows=[],seen=new Set(),busy=false,cursor={};
+  function draw(row){
+   const game=model.title(row.title),tile=document.createElement('article');tile.className='game-feed-card';tile.dataset.feedId=String(row.id);
+   tile.innerHTML=`<header><img class="game-feed-avatar" src="brand.jpg" data-private-src="${esc(row.author?.avatar_url||'')}" alt=""><div><b>${esc(row.author?.nome||'Amigo')}</b><time datetime="${esc(row.created_at)}">${esc(date(row.created_at))}</time></div>${String(row.user_id)===String(owner)&&model.manual(row)?'<button class="link-button" data-feed-delete aria-label="Excluir sua publicação">Excluir</button>':''}</header><p class="game-feed-action">${esc(model.action(row))}</p><button class="game-feed-title" data-feed-details><div class="game-feed-art"><img loading="lazy" src="brand.jpg" data-cover="${esc(coverUrl(game.capa))}" data-cover-name="${esc(game.nome)}" data-cover-game="1" data-steam-appid="${esc(game.steam_appid||'')}" alt="Capa de ${esc(game.nome)}"></div><span><small>JOGO</small><strong>${esc(game.nome)}</strong><span>${esc([game.plataforma,game.ano].filter(Boolean).join(' · '))}</span><em>Ver detalhes ↗</em></span></button><footer><button class="secondary" data-feed-like></button><button class="secondary" data-feed-add>＋ Adicionar à biblioteca</button></footer><p class="game-feed-feedback" role="status"></p>`;
+   list.append(tile);hydrateCovers(tile);void hydrateMedia(tile);
+   const feedback=tile.querySelector('.game-feed-feedback'),like=tile.querySelector('[data-feed-like]');
+   const paint=()=>{like.textContent=`${row.liked?'♥ Curtido':'♡ Curtir'} · ${Math.max(0,Number(row.like_count)||0)}`;like.setAttribute('aria-pressed',String(!!row.liked))};paint();
+   like.onclick=async()=>{like.disabled=true;feedback.textContent='';try{const result=await request('like',{id:String(row.id),liked:!row.liked});if(current()){Object.assign(row,result[0]);paint()}}catch(e){if(current())feedback.textContent=failure(e)}finally{if(current())like.disabled=false}};
+   async function add(){const b=tile.querySelector('[data-feed-add]');b.disabled=true;try{const owned=await api.library('jogos');if(!current())return;const existing=owned.find(x=>String(x.nome).trim().toLocaleLowerCase('pt-BR')===String(game.nome).trim().toLocaleLowerCase('pt-BR'));state.profileUser=null;state.libraryCategory='jogos';state.libraryStatus='all';await navigate('library');if(state.userId!==owner)return;openItemEditor(existing||null);const form=document.querySelector('.editor-overlay:last-of-type form');if(form&&!existing){for(const key of ['nome','capa','ano','generos','plataforma'])if(form.elements[key]&&game[key]!=null)form.elements[key].value=key==='generos'?normalizeGenres(game[key]).join(' • '):game[key];form.querySelector('#catalogQuery').value=game.nome||'';form.elements.capa.dispatchEvent(new Event('input',{bubbles:true}));}if(existing)toast('Este jogo já está na sua biblioteca.');}catch(e){if(current()){feedback.textContent=failure(e);b.disabled=false}}}
+   tile.querySelector('[data-feed-add]').onclick=add;
+   tile.querySelector('[data-feed-details]').onclick=()=>{
+    void window.batcavernaOpenDetails({...game,status:'Compartilhado por um amigo'},true).catch(e=>toast(failure(e)));
+    const modal=document.querySelector('.editor-overlay:last-of-type');let actions=modal?.querySelector('.detail-actions,.detail-primary-actions');if(!actions&&modal){const summary=modal.querySelector('.reference-detail-summary,.detail-body');if(summary){actions=document.createElement('div');actions.className='detail-primary-actions';summary.append(actions)}}if(actions){const b=document.createElement('button');b.className='primary';b.textContent='＋ Adicionar à minha biblioteca';b.dataset.feedDetailAdd='1';b.onclick=()=>{modal.remove();void add()};actions.append(b)}
+   };
+   tile.querySelector('[data-feed-delete]')?.addEventListener('click',async()=>{if(!await window.batcavernaConfirm('Excluir publicação?','Ela será removida do feed e suas curtidas serão apagadas.'))return;try{await request('delete',{id:String(row.id)});if(current())tile.remove()}catch(e){if(current())feedback.textContent=failure(e)}});
+  }
+  async function load(reset=false){if(busy)return;busy=true;refresh.disabled=true;more.disabled=true;status.textContent='Carregando atividades…';if(reset){rows=[];seen=new Set();cursor={};list.replaceChildren()}
+   try{const batch=await request('list',cursor);if(!current())return;for(const row of batch)if(!seen.has(String(row.id))){seen.add(String(row.id));rows.push(row);draw(row)}if(batch.length)cursor=model.cursor(batch.at(-1));more.hidden=batch.length<20;status.textContent=rows.length?'':'Seus jogos e os dos seus amigos aparecerão aqui. Compartilhe a primeira recomendação.';}
+   catch(e){if(current()){status.textContent=failure(e);more.hidden=false;more.textContent='Tentar novamente'}}finally{if(current()){busy=false;refresh.disabled=false;more.disabled=false}}
+  }
+  more.onclick=()=>load();refresh.onclick=()=>load(true);host.querySelector('[data-feed-friends]').onclick=()=>navigate('friends');
+  host.querySelector('[data-share-game]').onclick=async()=>{
+   const dialog=window.batcavernaPopup('<header><div><span class="eyebrow">ENTRE AMIGOS</span><h2>Compartilhar um jogo</h2></div><button class="icon-button" data-close aria-label="Fechar">×</button></header><p>Escolha um jogo da sua biblioteca. A publicação ficará visível para seus amigos.</p><label>Buscar jogo<input type="search" data-share-query placeholder="Nome do jogo"></label><label>Atividade<select data-share-action><option value="recommend">Recomendo este jogo</option><option value="started">Comecei a jogar</option><option value="finished">Zerei</option></select></label><div class="game-feed-picker" data-share-options></div><p data-share-feedback role="status">Carregando sua biblioteca…</p><footer><button class="primary" data-share-submit disabled>Compartilhar com amigos</button></footer>','game-feed-composer');
+   const message=dialog.querySelector('[data-share-feedback]'),submit=dialog.querySelector('[data-share-submit]'),options=dialog.querySelector('[data-share-options]');let selected='',games=[];
+   const valid=()=>dialog.isConnected&&current();
+   function choices(){const q=dialog.querySelector('[data-share-query]').value.trim().toLocaleLowerCase('pt-BR'),filtered=games.filter(g=>String(g.nome).toLocaleLowerCase('pt-BR').includes(q));options.innerHTML=filtered.slice(0,60).map(g=>`<button class="secondary" data-game-choice="${esc(g.id)}" aria-pressed="${String(String(g.id)===selected)}">${esc(g.nome)}</button>`).join('');message.textContent=filtered.length>60?'Mostrando 60 jogos. Refine a busca.':games.length?'':'Adicione um jogo à biblioteca para compartilhar.';options.querySelectorAll('[data-game-choice]').forEach(b=>b.onclick=()=>{selected=b.dataset.gameChoice;submit.disabled=false;choices()})}
+   dialog.querySelector('[data-share-query]').oninput=choices;
+   try{games=await api.library('jogos');if(valid())choices()}catch(e){if(valid())message.textContent=failure(e)}
+   submit.onclick=async()=>{if(!selected||!valid())return;submit.disabled=true;dialog.dataset.busy='1';message.textContent='Compartilhando…';try{await request('share',{item_id:selected,action:dialog.querySelector('[data-share-action]').value});if(valid()){dialog.remove();void load(true)}}catch(e){if(valid()){message.textContent=failure(e);submit.disabled=false}}finally{dialog.dataset.busy='0'}};
+  };
+  await load();
+ };
+})();
