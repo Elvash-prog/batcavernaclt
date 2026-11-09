@@ -1,0 +1,3 @@
+Biblioteca com abas visíveis para todos os títulos, filmes, séries e animes, com contagens e seleção deslizante. As abas podem ser roladas em telas estreitas e respeitam a preferência de reduzir animações.
+
+Filtros rápidos de progresso próximos dos resultados, combinados com busca, gênero e plataforma ou serviço. Filtros avançados ativos ficam identificados; limpar a busca e os filtros mantém a categoria e a ordenação escolhidas.

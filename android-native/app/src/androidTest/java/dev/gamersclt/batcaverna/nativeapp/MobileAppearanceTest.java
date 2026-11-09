@@ -55,6 +55,16 @@ public final class MobileAppearanceTest {
     for(String method:new String[]{"rebuildFilters","render"}){java.lang.reflect.Method m=AccountDataView.class.getDeclaredMethod(method);m.setAccessible(true);m.invoke(collection[0]);}
     Button filters=findButton(collection[0],"Filtrar ▾");assertNotNull(filters);filters.performClick();
    }catch(Exception e){throw new AssertionError(e);}});
+   getInstrumentation().waitForIdleSync();
+   getInstrumentation().runOnMainSync(()->{try{
+    AccountDataView stories=new AccountDataView(activity,false,1);activity.setContentView(stories);
+    org.json.JSONArray rows=new org.json.JSONArray("[{\"id\":\"preview-movie\",\"nome\":\"Uma aventura no cinema\",\"categoria\":\"filmes\",\"tipo\":\"filme\",\"status\":\"✅ Concluído\"},{\"id\":\"preview-series\",\"nome\":\"Histórias em capítulos\",\"categoria\":\"filmes\",\"tipo\":\"serie\",\"status\":\"▶️ Assistindo\"},{\"id\":\"preview-anime-one\",\"nome\":\"Uma jornada pelos céus\",\"categoria\":\"filmes\",\"tipo\":\"anime\",\"status\":\"▶️ Assistindo\"},{\"id\":\"preview-anime-two\",\"nome\":\"A próxima aventura\",\"categoria\":\"filmes\",\"tipo\":\"anime\",\"status\":\"⏳ Para Assistir\"}]");
+    for(String name:new String[]{"all","loaded","loading","loadError"}){java.lang.reflect.Field f=AccountDataView.class.getDeclaredField(name);f.setAccessible(true);f.set(stories,name.equals("all")?rows:name.equals("loaded")?Boolean.TRUE:name.equals("loading")?Boolean.FALSE:"");}
+    for(String method:new String[]{"rebuildFilters","renderOverview","render"}){java.lang.reflect.Method m=AccountDataView.class.getDeclaredMethod(method);m.setAccessible(true);m.invoke(stories);}
+    stories.findViewWithTag("library-type-tabs:4").performClick();stories.findViewWithTag("library-status-tabs:progress").performClick();
+    assertTrue(stories.findViewWithTag("library-type-tabs:4").isSelected());assertTrue(stories.findViewWithTag("library-status-tabs:progress").isSelected());
+    assertNotNull(stories.findViewWithTag("preview-anime-one"));assertNull(stories.findViewWithTag("preview-anime-two"));assertNull(stories.findViewWithTag("preview-movie"));
+   }catch(Exception e){throw new AssertionError(e);}});
    getInstrumentation().waitForIdleSync();capture(activity,"biblioteca-filtros-android");
    final NativeSheet[] details=new NativeSheet[1];
    getInstrumentation().runOnMainSync(()->{try{
