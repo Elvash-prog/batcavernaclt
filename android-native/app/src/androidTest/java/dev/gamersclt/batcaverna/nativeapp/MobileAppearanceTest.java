@@ -57,8 +57,17 @@ public final class MobileAppearanceTest {
    }catch(Exception e){throw new AssertionError(e);}});
    getInstrumentation().waitForIdleSync();capture(activity,"biblioteca-filtros-android");
    final NativeSheet[] details=new NativeSheet[1];
-   getInstrumentation().runOnMainSync(()->{try{org.json.JSONObject item=new org.json.JSONObject().put("nome","Celeste").put("categoria","jogos").put("status","🎮 Em Progresso").put("plataforma","PC • Switch").put("horas",12.5).put("nota","⭐⭐⭐⭐½ Excelente").put("conquistas",42.5).put("_readonly",true);details[0]=TitleDetailsDialog.show(activity,item,false,(updated,deleted)->{throw new AssertionError("Prévia somente leitura");});}catch(Exception e){throw new AssertionError(e);}});
-   getInstrumentation().waitForIdleSync();capture(details[0].dialog.getWindow().getDecorView(),"detalhes-jogo-android");
+   getInstrumentation().runOnMainSync(()->{try{
+    org.json.JSONObject item=new org.json.JSONObject().put("id","1").put("updated_at","2026-11-09T12:00:00Z").put("nome","Phantom Blade Zero").put("ano",2026).put("categoria","jogos").put("status","📌 Backlog").put("plataforma","PC").put("horas",.9).put("conquistas",1.52);
+    details[0]=TitleDetailsDialog.show(activity,item,false,(updated,deleted)->{throw new AssertionError("A prévia não deve salvar dados");});
+   }catch(Exception e){throw new AssertionError(e);}});
+   getInstrumentation().waitForIdleSync();
+   View detailRoot=details[0].dialog.getWindow().getDecorView();
+   TextView detailHours=detailRoot.findViewWithTag("title-value-horas");assertEquals("54 min",detailHours.getText().toString());
+   View hourCard=detailRoot.findViewWithTag("title-edit-horas"),ratingCard=detailRoot.findViewWithTag("title-edit-nota");assertEquals(hourCard.getHeight(),ratingCard.getHeight());
+   assertEquals(((View)detailRoot.findViewWithTag("title-action-horas")).getBottom(),((View)detailRoot.findViewWithTag("title-action-nota")).getBottom());
+   assertNotNull(findButton(detailRoot,"Editar informações"));
+   capture(detailRoot,"detalhes-jogo-android");
    getInstrumentation().runOnMainSync(()->details[0].dialog.dismiss());
    getInstrumentation().runOnMainSync(()->{try{
     FriendsDataView chat=new FriendsDataView(activity,true);chat.setBackgroundColor(NativeTheme.backgroundEnd(activity));activity.setContentView(chat);org.json.JSONArray messages=new org.json.JSONArray();for(int i=79;i>=0;i--)messages.put(new org.json.JSONObject().put("id","preview-"+i).put("remetente_id","friend-preview").put("texto",i==0?"Novidades para a próxima partida?":"Mensagem de exemplo "+i).put("created_at",String.format(java.util.Locale.ROOT,"2026-11-05T10:%02d:%02dZ",i/60,i%60)).put("lida",false));

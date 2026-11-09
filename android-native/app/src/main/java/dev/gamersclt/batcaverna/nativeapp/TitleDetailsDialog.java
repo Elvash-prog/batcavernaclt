@@ -11,8 +11,6 @@ final class TitleDetailsDialog {
   boolean writable=!item.optBoolean("_readonly")&&ItemEditInput.validId(item.optString("id",""))&&item.has("updated_at");
   TitleDetailsSummary.Edit editor=field->{sheet.busy(true);new ItemEditorDialog(c,item,media,(updated,deleted)->{sheet.dialog.dismiss();changed.done(updated,false);},()->sheet.busy(false),field);};
   body.addView(TitleDetailsHero.create(c,item,media,!writable));
-  body.addView(NativeSheet.text(c,writable?"SEU PROGRESSO":"PROGRESSO DESTE PERFIL",11,NativeTheme.accent(c)));
-  TextView status=NativeSheet.text(c,value(item,"status","Sem status")+(writable?"  ↗":""),14,0xffc6b8ff);status.setPadding(NativeSheet.dp(c,14),NativeSheet.dp(c,14),NativeSheet.dp(c,14),NativeSheet.dp(c,14));status.setMinHeight(NativeSheet.dp(c,48));status.setBackground(AppStyle.interactive(status,NativeTheme.panel(c),14));body.addView(status);if(writable){status.setContentDescription("Editar status: "+value(item,"status","Sem status"));status.setFocusable(true);status.setOnClickListener(v->editor.open("status"));}
   body.addView(TitleDetailsSummary.create(c,item,media,writable?editor:null));
   if(media)row(c,body,"Onde assistir",value(item,"onde","—"));
   if(writable){Button edit=action(c,"Editar informações",true);sheet.footer.setVisibility(android.view.View.VISIBLE);sheet.footer.addView(edit);edit.setOnClickListener(v->{sheet.busy(true);new ItemEditorDialog(c,item,media,(updated,deleted)->{sheet.dialog.dismiss();changed.done(updated,false);},()->sheet.busy(false));});
