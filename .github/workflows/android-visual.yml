@@ -38,11 +38,13 @@ jobs:
             adb install -r -t app/build/outputs/apk/debug/app-debug.apk
             adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w dev.gamersclt.batcaverna.nativeapp.preview.debug.test/androidx.test.runner.AndroidJUnitRunner > build/mobile-test-results.txt
+            adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/library-performance.json > build/mobile-previews/library-performance.json
+            python3 -c "import json; d=json.load(open('build/mobile-previews/library-performance.json')); assert [c['size'] for c in d['cases']]==[500,2000] and all(c['searchFound']==1 and c['cards']<=42 for c in d['cases'])"
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/inicio-continuar-android.png > build/mobile-previews/inicio-continuar-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/catalogo-edicoes-android.png > build/mobile-previews/catalogo-edicoes-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/listas-android.png > build/mobile-previews/listas-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/adicionar-titulos-android.png > build/mobile-previews/adicionar-titulos-android.png
-            python3 -c "from pathlib import Path; s=Path('build/mobile-test-results.txt').read_text(); print(s); assert 'OK (1 test)' in s and 'FAILURES' not in s"
+            python3 -c "from pathlib import Path; s=Path('build/mobile-test-results.txt').read_text(); print(s); assert 'OK (2 tests)' in s and 'FAILURES' not in s"
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/login-android.png > build/mobile-previews/login-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/controles-android.png > build/mobile-previews/controles-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/navegacao-retro-android.png > build/mobile-previews/navegacao-retro-android.png

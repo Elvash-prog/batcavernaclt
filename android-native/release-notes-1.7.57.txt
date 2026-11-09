@@ -1,0 +1,3 @@
+Busca e ordenação com menos trabalho repetido em bibliotecas grandes. Consultas reaproveitam os dados normalizados, as notas, as datas e os critérios de ordenação.
+
+Os índices reconhecem alterações em nomes, gêneros, plataformas, notas e horas. Carregamento por etapas, busca em toda a coleção e preservação dos cartões ao expandir continuam disponíveis.

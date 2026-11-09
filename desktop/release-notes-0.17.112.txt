@@ -1,0 +1,3 @@
+Busca, filtros e ordenação de bibliotecas grandes com menos processamento repetido. As regras de acentos, gêneros, plataformas, notas e datas permanecem preservadas; edições atualizam os índices de consulta.
+
+Leitura do índice local de capas reaproveitada entre cartões, mantendo isolamento por conta, limite de armazenamento e recuperação após falhas. Cartões e capas continuam carregando por etapas.
