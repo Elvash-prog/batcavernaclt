@@ -56,10 +56,20 @@ public final class MobileAppearanceTest {
     Button filters=findButton(collection[0],"Filtrar ▾");assertNotNull(filters);filters.performClick();
    }catch(Exception e){throw new AssertionError(e);}});
    getInstrumentation().waitForIdleSync();
+   final AccountDataView[] mediaPreview=new AccountDataView[1];
+   getInstrumentation().runOnMainSync(()->{mediaPreview[0]=new AccountDataView(activity,false,1);activity.setContentView(mediaPreview[0]);});
+   // Finish the unauthenticated initial read before installing the synthetic data.
+   final boolean[] previewLoading={true};long previewDeadline=android.os.SystemClock.uptimeMillis()+5000;
+   while(previewLoading[0]&&android.os.SystemClock.uptimeMillis()<previewDeadline){
+    getInstrumentation().waitForIdleSync();getInstrumentation().runOnMainSync(()->{try{java.lang.reflect.Field f=AccountDataView.class.getDeclaredField("loading");f.setAccessible(true);previewLoading[0]=f.getBoolean(mediaPreview[0]);}catch(Exception e){throw new AssertionError(e);}});
+    if(previewLoading[0])Thread.sleep(20);
+   }
+   assertFalse("Initial preview read did not settle",previewLoading[0]);
    getInstrumentation().runOnMainSync(()->{try{
-    AccountDataView stories=new AccountDataView(activity,false,1);activity.setContentView(stories);
+    AccountDataView stories=mediaPreview[0];
     org.json.JSONArray rows=new org.json.JSONArray("[{\"id\":\"preview-movie\",\"nome\":\"Uma aventura no cinema\",\"categoria\":\"filmes\",\"tipo\":\"filme\",\"status\":\"✅ Concluído\"},{\"id\":\"preview-series\",\"nome\":\"Histórias em capítulos\",\"categoria\":\"filmes\",\"tipo\":\"serie\",\"status\":\"▶️ Assistindo\"},{\"id\":\"preview-anime-one\",\"nome\":\"Uma jornada pelos céus\",\"categoria\":\"filmes\",\"tipo\":\"anime\",\"status\":\"▶️ Assistindo\"},{\"id\":\"preview-anime-two\",\"nome\":\"A próxima aventura\",\"categoria\":\"filmes\",\"tipo\":\"anime\",\"status\":\"⏳ Para Assistir\"}]");
     for(String name:new String[]{"all","loaded","loading","loadError"}){java.lang.reflect.Field f=AccountDataView.class.getDeclaredField(name);f.setAccessible(true);f.set(stories,name.equals("all")?rows:name.equals("loaded")?Boolean.TRUE:name.equals("loading")?Boolean.FALSE:"");}
+    java.lang.reflect.Field feedback=AccountDataView.class.getDeclaredField("feedback");feedback.setAccessible(true);((LinearLayout)feedback.get(stories)).removeAllViews();
     for(String method:new String[]{"rebuildFilters","renderOverview","render"}){java.lang.reflect.Method m=AccountDataView.class.getDeclaredMethod(method);m.setAccessible(true);m.invoke(stories);}
     stories.findViewWithTag("library-type-tabs:4").performClick();stories.findViewWithTag("library-status-tabs:progress").performClick();
     assertTrue(stories.findViewWithTag("library-type-tabs:4").isSelected());assertTrue(stories.findViewWithTag("library-status-tabs:progress").isSelected());
