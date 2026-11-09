@@ -59,7 +59,8 @@
    resume.hidden=s.busy||s.blocked||!s.pending;retry.hidden=s.busy||s.blocked||!s.failed;
    finish.hidden=s.busy;finish.textContent=s.pending?'Fechar':'Concluir';
    if(!s.busy){finished(s);(s.blocked?finish:s.failed?retry:s.pending?resume:finish).focus();}
-   else if([resume,retry].includes(document.activeElement))(s.stopping?dialog:stop).focus();
+   else if(s.stopping||s.blocked)dialog.focus();
+   else if([resume,retry].includes(document.activeElement))stop.focus();
   }});
   stop.onclick=()=>queue.stop();
   resume.onclick=()=>queue.run();retry.onclick=()=>queue.run('failed');

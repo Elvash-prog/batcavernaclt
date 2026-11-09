@@ -1543,6 +1543,9 @@ try {
   await page.waitForFunction(()=>typeof window.releaseBatchSave==='function');
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('.batch-operation-dialog').count(),1);
+  await page.evaluate(()=>document.activeElement.blur());
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.batch-operation-dialog').count(),1);
   await page.locator('[data-batch-stop]').click();
   await page.evaluate(()=>{window.holdBatchSave=false;window.releaseBatchSave();});
   await page.locator('[data-batch-resume]').waitFor({state:'visible'});
