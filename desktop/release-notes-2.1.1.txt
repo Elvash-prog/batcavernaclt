@@ -1,0 +1,3 @@
+BatCaverna CLT 2.1.1 — Correção no Feed dos amigos.
+
+O layout do Feed dos amigos não muda mais ao trocar de aba.
