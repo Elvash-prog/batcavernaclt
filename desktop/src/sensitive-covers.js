@@ -15,7 +15,7 @@
  marked:item=>item?.capa_adulta===true||item?.adult===true||item?.nsfw===true,
  visible(item){return !this.marked(item)||allowed();},
  attrs:item=>`data-sensitive="${item?.capa_adulta===true||item?.adult===true?'1':'0'}"`,
- controlHTML:()=>'<label class="explicit-content-filter"><input type="checkbox" data-explicit-filter>Mostrar pornografia/hentai (+18)</label>',
+ controlHTML:()=>'<label class="explicit-content-filter"><input type="checkbox" data-explicit-filter>Mostrar conteúdo adulto</label>',
  register(node,changed){node._explicitFilterChanged=changed;subscribers.add(new WeakRef(node));},
  mount(image,sensitive){
   const flag=sensitive===undefined?image.dataset.sensitive==='1':!!sensitive;
