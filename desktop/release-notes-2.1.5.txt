@@ -1,0 +1,7 @@
+BatCaverna CLT 2.1.5 — a capa escolhida permanece fixa.
+
+A URL salva do jogo é a escolha definitiva, seja a capa original do IGDB, uma imagem do SteamGridDB, uma imagem enviada ou uma URL personalizada permitida. Trocar o formato, associar um App ID, abrir a tela inicial ou atualizar os dados não substitui essa imagem.
+
+Se a imagem não carregar, o aplicativo mantém a escolha e mostra um espaço reservado. Não procura outra capa nem recupera uma escolha anterior do cache. Você pode editar o título e escolher outra imagem quando quiser.
+
+Buscas automáticas e a ferramenta de capas ausentes atuam apenas quando não existe uma URL salva. As regras de acesso, validação de URLs e mídia privada permanecem ativas. Atualize Windows e Android para aplicar o mesmo comportamento nos dois aplicativos.

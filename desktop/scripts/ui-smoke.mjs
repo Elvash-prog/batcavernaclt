@@ -2396,6 +2396,11 @@ try {
   await page.waitForFunction(()=>document.querySelectorAll('.cover-picker [data-cover-option]').length===2);
   await page.locator('.cover-picker [data-cover-option]').first().click();
   await page.waitForFunction(()=>document.querySelector('[name="capa"]').value.includes('portrait-one.png'));
+  const chosenGrid=await page.locator('[name="capa"]').inputValue();
+  await page.locator('#editorCoverOrientation').selectOption('landscape');
+  assert.equal(await page.locator('[name="capa"]').inputValue(),chosenGrid);
+  await page.locator('#editorCoverOrientation').selectOption('poster');
+  assert.equal(await page.locator('[name="capa"]').inputValue(),chosenGrid);
   await page.locator('.editor-overlay [data-close]').first().click();
   await page.evaluate(()=>openItemEditor({id:999,nome:'Regressão decimal',categoria:'jogos',status:'🎮 Em Progresso',plataforma:'💻 PC',loja:'Steam',conquistas:13.79,tempo_est:12.5,horas:3.775}));
   await page.locator('[data-item-tab="progress"]').click();
@@ -2534,6 +2539,22 @@ try {
     finally{window.savedCoverProbe=null;}
   });
   assert.equal(savedCoverPerformance.lookups,0);assert.equal(savedCoverPerformance.downloads,1);assert.equal(savedCoverPerformance.persistedPayloads,false);
+  let oldHintRequests=0;
+  await page.route('https://example.test/pinned-custom-cover.jpg',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900"><rect width="600" height="900" fill="purple"/></svg>'}));
+  await page.route('https://example.test/previous-cover-must-not-load.jpg',route=>{oldHintRequests++;return route.abort();});
+  const fixedCoverChoices=await page.evaluate(async()=>{
+    const sources=['https://images.igdb.com/igdb/image/upload/t_cover_big/pinned-choice.jpg','https://cdn2.steamgriddb.com/grid/pinned-choice.png','https://example.test/pinned-custom-cover.jpg'];
+    const traffic=window.savedCoverProbe=[];let frames=0;
+    const wait=image=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Selected artwork did not load')),5000);const ready=()=>{if(image.naturalWidth>1){clearTimeout(timer);resolve()}};image.addEventListener('load',ready);ready()});
+    const add=(source,orientation,name)=>{const key=coverKey(source,name+':2020','424242',orientation,'game');readyImages.delete(key);savedCoverChoice(key,'https://example.test/previous-cover-must-not-load.jpg');const image=document.createElement('img');image.style.width='10px';image.src=cachedCover({nome:name,ano:'2020',steam_appid:'424242',categoria:'jogos',capa:source},orientation);Object.assign(image.dataset,{cover:source,coverName:name,coverYear:'2020',coverGame:'1',coverFormat:orientation,coverVisible:'1',steamAppid:'424242',autoFormat:'1'});document.querySelector('#content').append(image);hydrateCovers({querySelectorAll:()=>[image]});return image};
+    try{for(const [index,source]of sources.entries())for(const orientation of ['poster','landscape']){const image=add(source,orientation,'Pinned choice '+index);await wait(image);image.remove();frames++;}
+      const healthy=traffic.slice();traffic.length=0;window.failCoverImage=true;const failed='https://images.igdb.com/igdb/image/upload/t_cover_big/pinned-offline.jpg',image=add(failed,'landscape','Pinned offline');await new Promise((resolve,reject)=>{const deadline=Date.now()+5000;const check=()=>{if(image.classList.contains('image-unavailable'))resolve();else if(Date.now()>deadline)reject(Error('Chosen cover did not report failure'));else setTimeout(check,20)};check()});image.remove();
+      return {frames,healthy,failed:traffic.slice()};
+    }finally{window.savedCoverProbe=null;window.failCoverImage=false;}
+  });
+  assert.equal(fixedCoverChoices.frames,6);assert.equal(oldHintRequests,0);
+  assert.ok(fixedCoverChoices.healthy.every(x=>x.c==='cover_image'&&['https://images.igdb.com/igdb/image/upload/t_cover_big/pinned-choice.jpg','https://cdn2.steamgriddb.com/grid/pinned-choice.png'].includes(x.p.url)));
+  assert.ok(fixedCoverChoices.failed.length>0&&fixedCoverChoices.failed.every(x=>x.c==='cover_image'&&x.p.url.endsWith('/pinned-offline.jpg')));
   await page.evaluate(() => showLogin());
   await page.locator("#loginScreen").waitFor({ state: "visible" });
   await page.locator('[data-auth="recover"]').click();

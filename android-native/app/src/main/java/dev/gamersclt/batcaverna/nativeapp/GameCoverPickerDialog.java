@@ -8,7 +8,7 @@ final class GameCoverPickerDialog {
  interface Choice {void selected(String url);}
  static void show(Context c,JSONObject item,Choice choice){
   NativeSheet sheet=new NativeSheet(c,"Capas do SteamGridDB");
-  TextView state=NativeSheet.text(c,"Escolha o formato e depois a imagem oficial do jogo.",13,0xffbcaed0);sheet.body.addView(state);
+  TextView state=NativeSheet.text(c,"Escolha o formato e depois a capa que deseja usar.",13,0xffbcaed0);sheet.body.addView(state);
   Spinner format=NativeSheet.options(c,new String[]{"Vertical","Horizontal"});sheet.body.addView(format);
   Button search=new Button(c);search.setText("Buscar capas");AppStyle.button(search,true);sheet.body.addView(search);
   GridLayout grid=new GridLayout(c);grid.setColumnCount(2);sheet.body.addView(grid,new LinearLayout.LayoutParams(-1,-2));
