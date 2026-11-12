@@ -1,0 +1,5 @@
+BatCaverna CLT 2.1.8 — Mostrar conteúdo adulto.
+
+O filtro opcional passa a usar o rótulo Mostrar conteúdo adulto na busca de jogos, no seletor de capas e nas configurações.
+
+O funcionamento é o mesmo: capas de jogos comuns aparecem normalmente, inclusive classificação etária 18. O filtro considera conteúdo sexual explícito sinalizado, e a preferência é salva por conta neste dispositivo. A capa escolhida continua fixa.
