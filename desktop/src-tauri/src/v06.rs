@@ -155,30 +155,90 @@ pub async fn realtime_start(input:Value,app:tauri::AppHandle,state:tauri::State<
 pub fn realtime_presence(input:Value)->Result<(),String>{*PRESENCE.lock().map_err(|_|"Presença indisponível.")?=input;Ok(())}
 async fn realtime_loop(app:tauri::AppHandle,owner:String,generation:u64){
  let url=format!("wss://luoqlhgfmixvfqbfcdoc.supabase.co/realtime/v1/websocket?apikey={SUPABASE_KEY}&vsn=1.0.0");
- while GENERATION.load(Ordering::SeqCst)==generation{
+ let mut failures=0u32;
+ while GENERATION.load(Ordering::SeqCst)==generation {
   let state=app.state::<AppState>();let session=match current(&state).await{Ok(s) if s.user.id==owner=>s,_=>break};
+  let started=std::time::Instant::now();let mut limited=false;
   let _=app.emit("desktop-connection",json!({"userId":owner,"status":"connecting"}));
-  if let Ok(Ok((mut ws,_)))=tokio::time::timeout(Duration::from_secs(20),connect_async(&url)).await{
-   let mut seq=10u64;let mut token=session.access_token;let changes=json!([{"event":"*","schema":"public","table":"clt_chat_messages","filter":format!("destinatario_id=eq.{owner}")},{"event":"*","schema":"public","table":"clt_chat_messages","filter":format!("remetente_id=eq.{owner}")},{"event":"*","schema":"public","table":"clt_chat_reactions"},{"event":"*","schema":"public","table":"notificacoes","filter":format!("destinatario_id=eq.{owner}")},{"event":"*","schema":"public","table":"clt_chat_group_messages"},{"event":"*","schema":"public","table":"clt_chat_group_reactions"}]);
+  if let Ok(Ok((mut ws,_)))=tokio::time::timeout(Duration::from_secs(20),connect_async(&url)).await {
+   let mut seq=10u64;let mut token=session.access_token;
+   let changes=json!([{"event":"*","schema":"public","table":"clt_chat_messages","filter":format!("destinatario_id=eq.{owner}")},{"event":"*","schema":"public","table":"clt_chat_messages","filter":format!("remetente_id=eq.{owner}")},{"event":"*","schema":"public","table":"clt_chat_reactions"},{"event":"*","schema":"public","table":"notificacoes","filter":format!("destinatario_id=eq.{owner}")},{"event":"*","schema":"public","table":"clt_chat_group_messages"},{"event":"*","schema":"public","table":"clt_chat_group_reactions"}]);
    let topic="realtime:desktop-changes";let presence_topic="realtime:platinados-presenca";
-   if ws.send(envelope(topic,"phx_join",json!({"config":{"broadcast":{"self":false},"presence":{"enabled":false},"postgres_changes":changes,"private":false},"access_token":token}),1,"1")).await.is_err(){continue;}
-   if ws.send(envelope(presence_topic,"phx_join",json!({"config":{"presence":{"enabled":true,"key":owner},"broadcast":{"self":false},"private":false},"access_token":token}),2,"2")).await.is_err(){continue;}
-   let mut tick=tokio::time::interval(Duration::from_secs(5));let mut last_response=std::time::Instant::now();
-   loop{if GENERATION.load(Ordering::SeqCst)!=generation{let _=ws.close(None).await;return;}
-    tokio::select!{
-     _=tick.tick()=>{
-      if last_response.elapsed()>Duration::from_secs(60){break;}
-      let current_session=match current(&state).await{Ok(s) if s.user.id==owner=>s,_=>return};
-      if current_session.access_token!=token{token=current_session.access_token;for (t,j) in [(topic,"1"),(presence_topic,"2")]{seq+=1;if ws.send(envelope(t,"access_token",json!({"access_token":token}),seq,j)).await.is_err(){break;}}}
-      seq+=1;if ws.send(envelope("phoenix","heartbeat",json!({}),seq,"")).await.is_err(){break;}
-      let payload=presence_activity::payload(PRESENCE.lock().map(|v|v.clone()).unwrap_or(json!({})),SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64);let event=if payload["status"]=="invisivel"{"untrack"}else{"track"};seq+=1;
-      if ws.send(envelope(presence_topic,"presence",json!({"type":"presence","event":event,"payload":payload}),seq,"2")).await.is_err(){break;}
-     },
-     frame=ws.next()=>{match frame{Some(Ok(Message::Text(text)))=>{last_response=std::time::Instant::now();if let Ok(v)=serde_json::from_str::<Value>(&text){let event=v["event"].as_str().unwrap_or("");if event=="postgres_changes"{let data=&v["payload"]["data"];if data["table"]=="notificacoes"&&data["type"]=="INSERT"{desktop_runtime::realtime_notification(&app,&owner,&data["record"]);}let _=app.emit("desktop-change",json!({"userId":owner,"data":data}));}if matches!(event,"presence_state"|"presence_diff"){let _=app.emit("desktop-presence",json!({"userId":owner,"event":event,"data":v["payload"]}));}if event=="system"&&v["topic"]==topic{let _=app.emit("desktop-connection",json!({"userId":owner,"status":if v["payload"]["status"]=="ok"{"connected"}else{"polling"}}));}if matches!(event,"phx_error"|"phx_close"){break;}}},Some(Ok(Message::Ping(p)))=>{let _=ws.send(Message::Pong(p)).await;},Some(Ok(_))=>{},_=>break}}
+   let joined=ws.send(envelope(topic,"phx_join",json!({"config":{"broadcast":{"self":false},"presence":{"enabled":false},"postgres_changes":changes,"private":false},"access_token":token}),1,"1")).await.is_ok()
+    && ws.send(envelope(presence_topic,"phx_join",json!({"config":{"presence":{"enabled":true,"key":owner},"broadcast":{"self":false},"private":false},"access_token":token}),2,"2")).await.is_ok();
+   if joined {
+    let mut tick=tokio::time::interval(Duration::from_secs(5));
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let mut last_response=std::time::Instant::now();let mut last_heartbeat=std::time::Instant::now();
+    let mut presence_joined=false;let mut sender=presence_flow::Sender::default();
+    'socket: loop {
+     if GENERATION.load(Ordering::SeqCst)!=generation {let _=ws.close(None).await;return;}
+     tokio::select! {
+      _=tick.tick()=>{
+       if last_response.elapsed()>Duration::from_secs(60){break;}
+       let current_session=match current(&state).await{Ok(s) if s.user.id==owner=>s,_=>{let _=ws.close(None).await;return;}};
+       if current_session.access_token!=token {
+        token=current_session.access_token;
+        for (t,j) in [(topic,"1"),(presence_topic,"2")] {
+         seq+=1;if ws.send(envelope(t,"access_token",json!({"access_token":token}),seq,j)).await.is_err(){break 'socket;}
+        }
+       }
+       // A Phoenix heartbeat keeps the socket alive; it is not a presence update.
+       if last_heartbeat.elapsed()>=Duration::from_secs(20) {
+        seq+=1;if ws.send(envelope("phoenix","heartbeat",json!({}),seq,"")).await.is_err(){break;}
+        last_heartbeat=std::time::Instant::now();
+       }
+       if presence_joined {
+        let now=SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+        let payload=presence_activity::payload(PRESENCE.lock().map(|v|v.clone()).unwrap_or(json!({})),now);
+        let mut semantic=payload.clone();if let Some(fields)=semantic.as_object_mut(){fields.remove("online_at");}
+        let visible=payload["status"]!="invisivel";
+        if let Some(push)=sender.next(&semantic.to_string(),visible,started.elapsed().as_millis() as u64) {
+         let event=match push{presence_flow::Push::Track=>"track",presence_flow::Push::Untrack=>"untrack"};
+         let data=if visible{payload}else{json!({})};
+         seq+=1;if ws.send(envelope(presence_topic,"presence",json!({"type":"presence","event":event,"payload":data}),seq,"2")).await.is_err(){break;}
+        }
+       }
+      },
+      frame=ws.next()=>{match frame {
+       Some(Ok(Message::Text(text)))=>{
+        last_response=std::time::Instant::now();
+        if let Ok(v)=serde_json::from_str::<Value>(&text) {
+         let event=v["event"].as_str().unwrap_or("");let presence=v["topic"]==presence_topic;
+         if event=="phx_reply" && presence {
+          if v["payload"]["status"]=="error" {limited=presence_flow::rate_limited(&v["payload"].to_string());break;}
+          if v["ref"]=="2" && v["payload"]["status"]=="ok"{presence_joined=true;}
+         }
+         if event=="system" && presence && v["payload"]["status"]=="error" {
+          limited=presence_flow::rate_limited(&v["payload"].to_string());break;
+         }
+         if event=="postgres_changes" {
+          let data=&v["payload"]["data"];
+          if data["table"]=="notificacoes"&&data["type"]=="INSERT"{desktop_runtime::realtime_notification(&app,&owner,&data["record"]);}
+          let _=app.emit("desktop-change",json!({"userId":owner,"data":data}));
+         }
+         if presence && matches!(event,"presence_state"|"presence_diff") {
+          if event=="presence_state" {presence_joined=true;}
+          let _=app.emit("desktop-presence",json!({"userId":owner,"event":event,"data":v["payload"]}));
+         }
+         if event=="system"&&v["topic"]==topic{let _=app.emit("desktop-connection",json!({"userId":owner,"status":if v["payload"]["status"]=="ok"{"connected"}else{"polling"}}));}
+         if matches!(event,"phx_error"|"phx_close"){break;}
+        }
+       },
+       Some(Ok(Message::Ping(p)))=>{if ws.send(Message::Pong(p)).await.is_err(){break;}},
+       Some(Ok(_))=>{},_=>break
+      }}
+     }
     }
    }
+   let _=ws.close(None).await;
   }
-  let _=app.emit("desktop-connection",json!({"userId":owner,"status":"polling"}));tokio::time::sleep(Duration::from_secs(5)).await;
+  if GENERATION.load(Ordering::SeqCst)!=generation {return;}
+  let _=app.emit("desktop-presence",json!({"userId":owner,"ready":false}));
+  let _=app.emit("desktop-connection",json!({"userId":owner,"status":"polling"}));
+  if started.elapsed()>=Duration::from_secs(120){failures=0;}
+  let wait=presence_flow::retry_ms(failures,limited);failures=failures.saturating_add(1);
+  tokio::time::sleep(Duration::from_millis(wait)).await;
  }
 }
 

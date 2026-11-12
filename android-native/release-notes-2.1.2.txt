@@ -1,0 +1,9 @@
+BatCaverna CLT 2.1.2 — correção da presença online.
+
+Evita republicar o mesmo status continuamente e respeita a janela de operações de presença do Supabase. A conexão continua ativa por sinais próprios, sem transformar cada sinal em atualização para todos os amigos.
+
+Preserva o estado invisível, agrupa mudanças rápidas e faz uma pausa maior se o servidor limitar a presença. Ao perder a conexão, o aplicativo limpa os dados de presença antigos e tenta se reconectar gradualmente.
+
+No Windows, a atividade de um jogo continua expirando quando fica sem amostra recente, enquanto a presença da conexão é renovada separadamente. No Android, mudanças repetidas de perfil são agrupadas para evitar consultas simultâneas e envios desnecessários.
+
+Instale a atualização para aplicar a correção neste dispositivo.
