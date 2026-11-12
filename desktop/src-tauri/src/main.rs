@@ -395,7 +395,7 @@ async fn dashboard(state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let unread = count(&state.client, &format!("/rest/v1/notificacoes?destinatario_id=eq.{user}&read=eq.false"), token).await?;
     let profiles = get(&state.client, &format!("/rest/v1/perfis?select=id,nome,slug,avatar_url,banner_url,status_personalizado,bio,steam_id,retroachievements_user,retroachievements_ulid,fundo&id=eq.{user}&limit=1"), token).await?;
     let profile = profiles.as_array().and_then(|v| v.first()).cloned().unwrap_or_else(|| json!({"id":user,"nome":"Minha BatCaverna"}));
-    let recent = get(&state.client, &format!("{games}&select=id,nome,status,capa,horas,plataforma&order=updated_at.desc,id.desc&limit=8"), token).await?;
+    let recent = get(&state.client, &format!("{games}&select=id,nome,status,capa_adulta,capa,horas,plataforma&order=updated_at.desc,id.desc&limit=8"), token).await?;
     let updates = get(&state.client, &format!("/rest/v1/itens?select=id,nome,categoria,status,updated_at&user_id=eq.{user}&order=updated_at.desc,id.desc&limit=6"), token).await?;
     Ok(json!({"counts":{"totalGames":total_games,"playing":playing,"finished":finished,"totalMedia":total_media,"unread":unread},"profile":profile,"email":session.user.email,"recent":recent,"updates":updates}))
 }
@@ -516,8 +516,8 @@ async fn save_item(item: Value, state: tauri::State<'_, AppState>) -> Result<Val
     if !matches!(category, "jogos" | "filmes") { return Err("Categoria inválida.".into()); }
     let mut row = serde_json::Map::new();
     row.insert("nome".into(), json!(name)); row.insert("categoria".into(), json!(category));
-    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data","inicio","prioridade","tempo_est","conquistas","preco","duracao","steam_appid"] {
-        if let Some(value) = object.get(key) { row.insert(key.into(), if key == "generos" { normalize_genres(value)? } else if key == "steam_appid" { normalize_steam_appid(value)? } else { value.clone() }); }
+    for key in ["tipo","status","capa","nota","horas","plataforma","loja","onde","ano","generos","review","data","inicio","prioridade","tempo_est","conquistas","preco","duracao","steam_appid","capa_adulta"] {
+        if let Some(value) = object.get(key) { row.insert(key.into(), if key == "capa_adulta" { json!(value.as_bool().ok_or("Marcação de capa inválida.")?) } else if key == "generos" { normalize_genres(value)? } else if key == "steam_appid" { normalize_steam_appid(value)? } else { value.clone() }); }
     }
     let id = object.get("id").and_then(Value::as_str).map(str::to_owned).or_else(|| object.get("id").and_then(Value::as_i64).map(|v| v.to_string()));
     if let Some(appid) = row.get("steam_appid").and_then(Value::as_u64) {
@@ -655,7 +655,7 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
         _=>return Err("Catálogo inválido.".into())
     };
     if id.is_none()&&!recommend&&query.len()<2{return Err("Digite pelo menos dois caracteres.".into());}
-    let request=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if matches!(provider,"igdb"|"rawg"){"search"}else{"query"},query),("language","pt-BR"),("page_size","40"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,100).to_string()),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]);
+    let request=state.client.get(format!("{CATALOG_ORIGIN}/api/catalog/{path}")).bearer_auth(&session.access_token).query(&[(if matches!(provider,"igdb"|"rawg"){"search"}else{"query"},query),("language","pt-BR"),("include_sensitive",if input["includeSensitive"].as_bool()==Some(true){"1"}else{"0"}),("page_size","40"),("page",&input["page"].as_u64().unwrap_or(1).clamp(1,100).to_string()),("with_genres",if input["anime"].as_bool()==Some(true){"16"}else{""}),("with_original_language",if input["anime"].as_bool()==Some(true){"ja"}else{""})]);
     let request=if recommend{request.query(&[("ordering","-added"),("sort_by","popularity.desc")])}else{request};
     let retry=request.try_clone();
     let response=match request.send().await{Ok(r) if !r.status().is_server_error()=>r,Ok(_)|Err(_)=>{tokio::time::sleep(Duration::from_millis(400)).await;retry.ok_or_else(||"Não foi possível consultar o catálogo.".to_string())?.send().await.map_err(|_|"Não foi possível consultar o catálogo.".to_string())?}};

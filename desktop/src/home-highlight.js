@@ -13,6 +13,7 @@ async function resolveHomeHighlight(games){
 }
 function rememberHomeGame(row){if(!row||!state.userId)return;const prefs=homeHighlightPreferences();prefs.recent=Object.fromEntries(Object.entries({...prefs.recent,[String(row.id)]:Date.now()}).sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,128));writeLocalPreference(localStorage,'bc-home-highlight:'+state.userId,JSON.stringify(prefs));}
 async function loadHomeHero(image,item){
+ globalThis.window?.BatSensitive?.mount(image,item.capa_adulta===true);
  if(item.capa){const unavailable=()=>{if(image.isConnected){image.onerror=null;image.src='brand.jpg';image.title='A capa escolhida está indisponível. Escolha outra em Editar informações.';}};image.onerror=unavailable;try{const url=coverUrl(item.capa);if(!url)throw Error('Capa inválida');const source=requiresMediaSigning(url)?await signed(url):typeof publicCover==='function'&&publicCover(url)?await (typeof loadPublicCover==='function'?loadPublicCover(url,10):api.coverImage(url)):url;if(image.isConnected)image.src=source;}catch{unavailable();}return;}
  const urls=[];if(/^[1-9][0-9]*$/.test(String(item.steam_appid||''))){for(const host of ['shared.akamai.steamstatic.com','shared.fastly.steamstatic.com'])urls.push(`https://${host}/store_item_assets/steam/apps/${item.steam_appid}/library_hero.jpg`);}
  for(const url of urls){try{const source=await api.coverImage(url);if(image.isConnected)image.src=source;return;}catch{}}

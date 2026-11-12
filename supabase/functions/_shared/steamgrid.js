@@ -3,19 +3,19 @@ const titleKey=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f
 export function selectSteamGrid(rows,format){
  return steamGridRows(rows,format)[0]?.url||null;
 }
-export function steamGridRows(rows,format){
+export function steamGridRows(rows,format,includeSensitive=false){
  return (Array.isArray(rows)?rows:[]).filter(row=>{
-  try{const u=new URL(row.url);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&['cdn2.steamgriddb.com','cdn.steamgriddb.com'].includes(u.hostname)&&!row.nsfw&&!row.humor&&!row.epilepsy&&row.mime!=='image/gif'&&(format==='landscape'?row.width>row.height:row.height>row.width);}catch{return false;}
- }).sort((a,b)=>(Number(b.score)||0)-(Number(a.score)||0)||(Number(a.id)||0)-(Number(b.id)||0)).slice(0,24).map(row=>({url:row.url,width:Number(row.width)||0,height:Number(row.height)||0,score:Number(row.score)||0}));
+  try{const u=new URL(row.url);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&['cdn2.steamgriddb.com','cdn.steamgriddb.com'].includes(u.hostname)&&(includeSensitive||!row.nsfw)&&!row.humor&&!row.epilepsy&&row.mime!=='image/gif'&&(format==='landscape'?row.width>row.height:row.height>row.width);}catch{return false;}
+ }).sort((a,b)=>(Number(b.score)||0)-(Number(a.score)||0)||(Number(a.id)||0)-(Number(b.id)||0)).slice(0,24).map(row=>({url:row.url,width:Number(row.width)||0,height:Number(row.height)||0,score:Number(row.score)||0,...(includeSensitive?{nsfw:row.nsfw===true,capa_adulta:row.nsfw===true}:{})}));
 }
-export async function steamGridCovers({name,appid,format='poster',key,getJson}){
+export async function steamGridCovers({name,appid,format='poster',key,getJson,includeSensitive=false}){
  if(!key)return null;
  const headers={Authorization:'Bearer '+key};let path;
  if(appid)path='grids/steam/'+Number(appid);
  else{const result=await getJson('https://www.steamgriddb.com/api/v2/search/autocomplete/'+encodeURIComponent(name||''),headers);const matches=(result.data||[]).filter(row=>titleKey(row.name)===titleKey(name));if(matches.length!==1)return null;path='grids/game/'+Number(matches[0].id);}
  const dimensions=format==='landscape'?'460x215,920x430':'600x900';
- const data=await getJson('https://www.steamgriddb.com/api/v2/'+path+'?'+new URLSearchParams({dimensions,types:'static',nsfw:'false',humor:'false',epilepsy:'false'}),headers);
- return steamGridRows(data.data,format);
+ const data=await getJson('https://www.steamgriddb.com/api/v2/'+path+'?'+new URLSearchParams({...(!includeSensitive?{dimensions}:{}),types:'static',nsfw:includeSensitive?'any':'false',humor:'false',epilepsy:'false'}),headers);
+ return steamGridRows(data.data,format,includeSensitive);
 }
 export async function steamGridCover(options){
  const rows=await steamGridCovers(options);
