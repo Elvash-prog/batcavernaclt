@@ -3,7 +3,7 @@ import {translateDescription} from './translation.js';
 import {adultContent} from './handlers.js';
 import {persistentCatalogQuery} from './catalog-cache.js';
 const clients=new WeakMap();
-const FIELDS='id,name,slug,summary,storyline,first_release_date,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,platforms.name,involved_companies.developer,involved_companies.publisher,involved_companies.company.name,total_rating,total_rating_count,themes.name,age_ratings.rating_category.rating,age_ratings.rating_content_descriptions.description,alternative_names.name,websites.url';
+const FIELDS='id,name,slug,version_parent,summary,storyline,first_release_date,cover.image_id,artworks.image_id,screenshots.image_id,genres.name,platforms.name,involved_companies.developer,involved_companies.publisher,involved_companies.company.name,total_rating,total_rating_count,themes.name,age_ratings.rating_category.rating,age_ratings.rating_content_descriptions.description,alternative_names.name,websites.url';
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 export function igdbImage(id,size='cover_big'){
  return /^[A-Za-z0-9_-]{1,150}$/.test(id||'')?`https://images.igdb.com/igdb/image/upload/t_${size}/${id}.jpg`:'';
@@ -13,7 +13,9 @@ export function blockedGame(g){
  if((g.themes||[]).some(t=>t.id===42||/erotic/i.test(t.name||'')))return true;
  if(ratings.some(r=>/\bAO\b|adults?\s*only/i.test(r.rating_category?.rating||'')))return true;
  const descriptions=ratings.flatMap(r=>r.rating_content_descriptions||[]).map(d=>d.description||'').join(' ');
- if(/sexual content|strong sexual|nudity|nude|sex simulation|pornograph|hentai|erotic/i.test(descriptions))return true;
+ // Regional descriptors such as CERO Sexual Content or Partial Nudity do not
+ // classify an ordinary teen/mature game as pornography.
+ if(/strong sexual content|sexual violence|sex simulation|pornograph|hentai|erotic/i.test(descriptions))return true;
  return adultContent({...g,tags:[...(g.themes||[]),...(g.alternative_names||[])]});
 }
 export function normalizeGame(g){
@@ -37,8 +39,22 @@ export function normalizeGame(g){
   videos:[],
   alternative_names:(g.alternative_names||[]).map(x=>x.name)};
 }
-export function titleKey(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[™®©]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim()}
-export function gameSearchScore(game,query){const q=titleKey(query),words=q.split(' ').filter(Boolean);if(!words.length)return 0;return Math.max(0,...[game.name,...(game.alternative_names||[]).map(x=>x.name)].map((name,index)=>{const key=titleKey(name),tokens=key.split(' ');if(key===q)return index?990:1000;if(!words.every(w=>tokens.some(t=>/^\d+$/.test(w)?t===w:t.startsWith(w))))return 0;return (key.startsWith(q)?800:500)-Math.abs(tokens.length-words.length)}))}
+const ROMAN={i:'1',ii:'2',iii:'3',iv:'4',v:'5',vi:'6',vii:'7',viii:'8',ix:'9',x:'10',xi:'11',xii:'12',xiii:'13',xiv:'14',xv:'15',xvi:'16',xvii:'17',xviii:'18',xix:'19',xx:'20'};
+export function titleKey(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[™®©’‘'`]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim().split(' ').map(w=>ROMAN[w]||w).join(' ')}
+export function searchParts(value){
+ const original=String(value||'').replace(/[\u0000-\u001f]/g,' ').trim(),match=/^(.*?)\s*\(?\b((?:19|20)\d{2})\)?$/.exec(original);
+ const year=match?Number(match[2]):0;
+ return match&&match[1].trim().length>=2&&year>=1970&&year<=new Date().getUTCFullYear()+2?{original,title:match[1].trim(),year}:{original,title:original,year:0};
+}
+export function gameSearchScore(game,query){
+ const q=titleKey(query),parts=searchParts(query),core=titleKey(parts.title);if(!q)return 0;
+ const names=[game.name,...(game.alternative_names||[]).map(x=>typeof x==='string'?x:x.name)];
+ const exact=names.findIndex(name=>titleKey(name)===q);if(exact>=0)return exact?990:1000;
+ const released=Number(game.first_release_date),releaseYear=Number.isFinite(released)&&released>0?new Date(released*1000).getUTCFullYear():Number(String(game.released||'').slice(0,4));
+ if(parts.year&&releaseYear!==parts.year)return 0;
+ const wanted=parts.year?core:q,words=wanted.split(' ').filter(Boolean);
+ return Math.max(0,...names.map((name,index)=>{const key=titleKey(name),tokens=key.split(' ');if(key===wanted)return index?990:1000;if(!words.every(w=>tokens.some(t=>/^\d+$/.test(w)?t===w:t.startsWith(w))))return 0;return (key.startsWith(wanted)?800:500)-Math.abs(tokens.length-words.length)}));
+}
 class IgdbError extends Error {constructor(status){super('IGDB');this.status=status;}}
 function client(env){
  if(clients.has(env))return clients.get(env);
@@ -80,7 +96,8 @@ function client(env){
 }
 export async function igdbProbe(env){
  if(!env.IGDB_CLIENT_ID||!env.IGDB_CLIENT_SECRET)return false;
- try{const games=await client(env).query(`fields ${FIELDS}; search "Horizon Zero Dawn"; where (themes = null | themes != (42)); limit 20;`);return games.some(g=>!blockedGame(g)&&gameSearchScore(g,"Horizon Zero Dawn")===1000);}catch{return false}
+ // Two stable catalog fixtures exercise ordinary age descriptors as well as connectivity.
+ try{const games=await client(env).query(`fields ${FIELDS}; where id = (113112,21593); limit 2;`);return [113112,21593].every(id=>games.some(g=>g.id===id&&!blockedGame(g)));}catch{return false}
 }
 export async function igdbCatalog(env,url,path,legacy=false){
  if(!env.IGDB_CLIENT_ID||!env.IGDB_CLIENT_SECRET)return response({error:'IGDB ainda não configurado.'},503);
@@ -94,11 +111,12 @@ export async function igdbCatalog(env,url,path,legacy=false){
  if(!Number.isInteger(page)||!Number.isInteger(size))return response({error:'Página inválida.'},400);
  const normalize=g=>{const item=normalizeGame(g);if(legacy)item.id+=legacyOffset;return item};
  const fields=`fields ${FIELDS}; `;
- const body=id?fields+`where id = ${Number(id)}; limit 1;`:fields+(search?`search ${JSON.stringify(search.replace(/[\u0000-\u001f]/g,' '))}; `:'sort total_rating_count desc; ')+`where (themes = null | themes != (42))${search?'':' & cover != null & total_rating_count >= 5'}; limit ${size+1}; offset ${(page-1)*size};`;
+ const parts=searchParts(search),literal=JSON.stringify(parts.original),yearFilter=parts.year?` & (first_release_date >= ${Date.UTC(parts.year,0,1)/1000} & first_release_date < ${Date.UTC(parts.year+1,0,1)/1000} | name ~ *${literal}* | alternative_names.name ~ *${literal}*)`:'';
+ const body=id?fields+`where id = ${Number(id)}; limit 1;`:fields+(search?`search ${JSON.stringify(parts.title)}; `:'sort total_rating_count desc; ')+`where (themes = null | themes != (42))${search?yearFilter:' & cover != null & total_rating_count >= 5'}; limit ${size+1}; offset ${(page-1)*size};`;
  try{
   const raw=await client(env).query(body),visible=raw.filter(g=>!blockedGame(g));
   if(id){const selected=visible.find(g=>Number(g.id)===Number(id));if(!selected)return response({error:'Jogo não encontrado ou conteúdo não permitido.'},404);const item=normalize(selected),localized=await translateDescription(env,item.description_raw);item.description_raw=localized.text;item.overview=localized.text;item.description_language=localized.translated?'pt-BR':'original';return response(item);}
-  const hasMore=raw.length>size,results=raw.slice(0,size).filter(g=>!blockedGame(g)&&(!search||gameSearchScore(g,search)>0)).sort((a,b)=>search?gameSearchScore(b,search)-gameSearchScore(a,search):0).map(normalize);
+  const hasMore=raw.length>size,results=raw.slice(0,size).filter(g=>!blockedGame(g)&&(!search||gameSearchScore(g,search)>0)).sort((a,b)=>search?gameSearchScore(b,search)-gameSearchScore(a,search)||(Number(!!a.version_parent)-Number(!!b.version_parent)):0).map(normalize);
   return response({source:'igdb',results,count:(page-1)*size+raw.slice(0,size).length+(hasMore?1:0),total_pages:page+(hasMore?1:0),has_more:hasMore});
  }catch(e){return response({error:e.status===429?'O IGDB atingiu o limite de consultas. Aguarde um instante.':'Não foi possível consultar o IGDB. Tente novamente.',code:e.status===429?'CATALOG_RATE_LIMIT':'CATALOG_UNAVAILABLE'},e.status||502);}
 }
