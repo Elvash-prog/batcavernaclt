@@ -19,7 +19,11 @@ export function blockedGame(g){
  return adultContent({...g,tags:[...(g.themes||[]),...(g.alternative_names||[])]});
 }
 export function sensitiveGame(g){
- return blockedGame(g)||(g.age_ratings||[]).some(r=>/^(?:18|18\+|AO|Z|R18\+?|Adults? Only)$/i.test(String(r.rating_category?.rating||'').trim()));
+ // General age-18, violence, nudity and mature themes do not establish pornography.
+ const themes=g.themes||[];
+ if(themes.some(t=>Number(t.id)===42||/^(?:erotic|pornographic|hentai)$/i.test(t.name||'')))return true;
+ const labels=[g.name,g.slug,...(g.alternative_names||[]).map(n=>n.name),...(g.genres||[]).map(n=>n.name)].join(' ');
+ return /\b(?:hentai|porn(?:ography|ographic|ografia|ogr[aá]fico)?|eroge|sex(?:ual)? simulator|sex simulation)\b/i.test(labels);
 }
 export function normalizeGame(g){
  const steamIds=[...new Set((g.websites||[]).map(x=>{try{const u=new URL(x.url);if(u.protocol!=='https:'||u.hostname!=='store.steampowered.com'||u.username||u.password)return null;const id=Number(u.pathname.match(/^\/app\/([1-9][0-9]*)(?:\/|$)/)?.[1]);return Number.isSafeInteger(id)&&id<=4294967295?id:null;}catch{return null}}).filter(Boolean))];

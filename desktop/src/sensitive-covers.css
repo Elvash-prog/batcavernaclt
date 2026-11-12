@@ -1,6 +1,7 @@
-/* Marked images are concealed even before hydration/cache results arrive. */
-img[data-sensitive="1"]:not([data-sensitive-revealed="1"]){filter:blur(24px)!important;opacity:0!important;pointer-events:none}
-.sensitive-cover-guard{position:absolute;z-index:4;display:flex;align-items:center;justify-content:center;white-space:pre-line;text-align:center;padding:8px;box-sizing:border-box;border:1px solid #75618d;border-radius:10px;background:linear-gradient(145deg,#282035,#171321);color:#eee8f5;font-size:12px;font-weight:600;cursor:pointer;line-height:1.5;min-width:0}
-.sensitive-cover-guard:focus-visible{outline:3px solid #b78aff;outline-offset:2px}
-.sensitive-cover-guard.revealed{background:#171321e8;font-size:11px;border-radius:6px}
-.sensitive-cover-label{display:flex!important;gap:10px;align-items:center;font-size:13px}.sensitive-cover-label input{width:auto!important}
+/* Ordinary covers, including age-18 games, always retain their normal layout. */
+html:not([data-explicit-content="show"]) img[data-sensitive="1"]{opacity:0!important;pointer-events:none}
+.explicit-cover-placeholder{position:absolute;z-index:4;display:flex;align-items:center;justify-content:center;white-space:pre-line;text-align:center;box-sizing:border-box;border:1px solid #554368;border-radius:8px;background:#211a2c;color:#c6bad6;font-size:11px;line-height:1.3;pointer-events:none;overflow:hidden}
+html[data-explicit-content="show"] .explicit-cover-placeholder{display:none}
+.explicit-content-filter,.sensitive-cover-label{display:flex!important;gap:10px;align-items:center;font-size:13px;line-height:1.5;margin:10px 0}
+.explicit-content-filter input,.sensitive-cover-label input{width:auto!important;flex:0 0 auto}
+.explicit-content-settings{margin-top:24px;padding-top:16px;border-top:1px solid #334154}

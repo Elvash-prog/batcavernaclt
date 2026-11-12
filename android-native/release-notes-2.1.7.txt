@@ -1,0 +1,7 @@
+BatCaverna CLT 2.1.7 — filtro opcional de conteúdo sexual explícito.
+
+Capas de jogos comuns aparecem normalmente, inclusive títulos classificados para 18 anos. A classificação etária, violência e temas maduros não são tratados como pornografia.
+
+A busca de jogos, o seletor de capas e Configurações > Aparência oferecem a opção Mostrar pornografia/hentai (+18). Ative para incluir o conteúdo sexual explícito sinalizado e exibir suas capas normalmente. Desative para voltar a filtrá-lo. A escolha é salva por conta neste dispositivo.
+
+Removemos a confirmação individual de cada capa. Imagens próprias podem ser marcadas como conteúdo sexual explícito no editor. A sinalização usa os dados do catálogo ou a marca manual; não analisa automaticamente os pixels. A capa escolhida continua fixa.
