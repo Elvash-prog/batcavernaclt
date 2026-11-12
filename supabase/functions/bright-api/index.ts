@@ -104,6 +104,7 @@ function validate(b: any): {body: any, cost:number} {
   switch (b.op) {
     case "capas": case "capaOpcoes": case "steamInfo":
       out.appids = array(b.appids, 50, appid); out.nomes = array(b.nomes, 20, name);
+      out.includeSensitive=b.op==="capaOpcoes"&&b.includeSensitive===true;
       out.format = b.format === "landscape" ? "landscape" : "poster";
       cost = Math.max(1, out.appids.length ? out.appids.length * 2 : out.nomes.length * 3); break;
     case "steamStoreSearch": out.query=name(b.query);cost=6;break;
@@ -207,7 +208,7 @@ async function resolver(entrada: string): Promise<string> {
       case "capaOpcoes": {
         const nome=b.nomes?.[0], id=b.appids?.[0];
         if(!nome&&!id){out={opcoes:[]};break;}
-        const opcoes=await steamGridCovers({name:nome,appid:id,format:b.format,key:STEAMGRID,getJson}).catch(()=>[]);
+        const opcoes=await steamGridCovers({name:nome,appid:id,format:b.format,key:STEAMGRID,getJson,includeSensitive:b.includeSensitive}).catch(()=>[]);
         out={opcoes:opcoes||[]};
         break;
       }

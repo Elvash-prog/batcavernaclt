@@ -81,7 +81,7 @@ pub async fn community(input:Value,state:tauri::State<'_,AppState>)->Result<Valu
      async {
        let mut items=Vec::new();
        for offset in (0..10000).step_by(1000){
-         let r=get(&state.client,&format!("/rest/v1/itens?select=id,user_id,categoria,nome,plataforma,status,nota,data,inicio,horas,loja,ano,prioridade,tempo_est,conquistas,capa,tipo,onde,duracao,steam_appid,generos,created_at,updated_at&user_id=eq.{id}&order=id.asc&offset={offset}&limit=1000"),token).await?;
+         let r=get(&state.client,&format!("/rest/v1/itens?select=id,user_id,categoria,nome,plataforma,status,nota,data,inicio,horas,loja,ano,prioridade,tempo_est,conquistas,capa_adulta,capa,tipo,onde,duracao,steam_appid,generos,created_at,updated_at&user_id=eq.{id}&order=id.asc&offset={offset}&limit=1000"),token).await?;
          let rows=r.as_array().cloned().unwrap_or_default();
          let count=rows.len();items.extend(rows);
          if count<1000{break;}

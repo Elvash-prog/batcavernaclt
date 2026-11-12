@@ -1,3 +1,4 @@
+import {testSensitiveCovers} from './sensitive-covers-ui.mjs';
 import { chromium } from "playwright";
 import {benchmarkLibrary} from "./library-benchmark.mjs";
 import assert from "node:assert/strict";
@@ -39,6 +40,7 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 let browser, testPage;
 try {
   browser = await chromium.launch({ headless: true });
+  await testSensitiveCovers(browser);
   const page = await browser.newPage({
     viewport: { width: 1920, height: 1080 },
   });

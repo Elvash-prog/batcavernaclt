@@ -116,3 +116,5 @@ await check('retired storefront operations never contact the store or offers fee
  assert.ok(!calls.some(c=>['store.steampowered.com','store-site-backend-static.ak.epicgames.com','www.reddit.com'].includes(c.u.hostname)));
 });
 await check('official library remains available without storefront metadata',async()=>{assert.equal((await handler(req({op:'jogos',steamid:'76561198000000000'}))).status,200)});
+
+await check('classified gallery accepts explicit opt-in without changing automatic requests',async()=>{const r=await handler(req({op:'capaOpcoes',appids:[42],includeSensitive:true}));assert.equal(r.status,200);const d=await r.json();assert.ok(d.opcoes.every(row=>typeof row.nsfw==='boolean'));const call=calls.find(x=>x.u.hostname==='www.steamgriddb.com');assert.equal(call.u.searchParams.get('nsfw'),'any');assert.equal(call.u.searchParams.has('dimensions'),false);});

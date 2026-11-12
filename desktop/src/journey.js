@@ -12,7 +12,7 @@ function titleKind(t){return t.categoria==='jogos'?'Jogo':/anime/i.test(t.tipo||
 function pendingRecommendation(r){return !r.received||['','pendente','enviada'].includes(String(r.estado||'').trim().toLowerCase());}
 function disable(form,on=true){form.querySelectorAll('button,input,select,textarea').forEach(x=>x.disabled=on);}
 async function run(form,work,done){disable(form,true);const note=form.querySelector('[role=status]');if(note)note.textContent='Salvando…';try{const result=await work();await done(result);}catch(e){if(note)note.textContent=message(e);else toast(message(e));disable(form,false);}}
-function cardCover(t){const cover=coverUrl(t.capa);return `<div class="journey-cover">${cover?`<img src="brand.jpg" data-cover="${esc(cover)}" data-cover-name="${esc(t.nome)}" data-cover-game="${t.categoria==='jogos'?'1':'0'}" alt="">`:`<span>${icon(t.categoria==='jogos'?'library':'film')}</span>`}</div>`;}
+function cardCover(t){const cover=coverUrl(t.capa);return `<div class="journey-cover">${cover?`<img src="brand.jpg" ${window.BatSensitive.attrs(t)} data-cover="${esc(cover)}" data-cover-name="${esc(t.nome)}" data-cover-game="${t.categoria==='jogos'?'1':'0'}" alt="">`:`<span>${icon(t.categoria==='jogos'?'library':'film')}</span>`}</div>`;}
 
 async function renderLists(){
  setPage('Listas','ORGANIZE SEU UNIVERSO');if(recent.listOwner!==state.userId){recent.listQuery='';recent.listScope='all';recent.listOwner=state.userId;}const rows=await feature('lists');if(state.current!=='lists')return;recent.list=null;
@@ -50,7 +50,7 @@ async function acceptRecommendation(recommendation){
  state.profileUser=null;state.libraryCategory=category;state.libraryStatus='all';await navigate('library');
  // Always create the recipient's own item; never reuse the sender's item ID or personal fields.
  openItemEditor(existing||null);const form=document.querySelector('.editor-overlay:last-of-type form');if(!form)throw Error('Não foi possível abrir o cadastro.');
- if(!existing){for(const key of ['nome','capa','ano','generos'])if(form.elements[key]&&t[key]!=null)form.elements[key].value=key==='capa'?coverUrl(t[key]):key==='generos'?normalizeGenres(t[key]).join(' • '):t[key];form.querySelector('#catalogQuery').value=t.nome||'';form.elements.capa.dispatchEvent(new Event('input',{bubbles:true}));}
+ if(!existing){for(const key of ['nome','capa','ano','generos'])if(form.elements[key]&&t[key]!=null)form.elements[key].value=key==='capa'?coverUrl(t[key]):key==='generos'?normalizeGenres(t[key]).join(' • '):t[key];form.querySelector('#catalogQuery').value=t.nome||'';form.elements.capa_adulta.checked=t.capa_adulta===true;form.elements.capa.dispatchEvent(new Event('input',{bubbles:true}));}
  else toast('Este título já está na sua biblioteca. Confira seu cadastro.');
  const submit=form.onsubmit;form.onsubmit=async event=>{await submit(event);if(form.dataset.saved==='1'&&state.userId===owner){recent.library=null;try{if(recommendation.id)await feature('recommendation_state',{id:recommendation.id,estado:'interesse'});recommendation.estado='interesse';toast('Indicação aceita e título salvo na sua biblioteca.')}catch(e){toast('Título salvo. Não foi possível atualizar a indicação: '+message(e))}}};
 }

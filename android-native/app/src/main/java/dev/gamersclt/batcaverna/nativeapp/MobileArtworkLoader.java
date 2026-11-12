@@ -21,7 +21,7 @@ final class MobileArtworkLoader {
  private static void remember(android.content.SharedPreferences prefs,String owner,String key,String source){try{JSONObject choices=new JSONObject(prefs.getString("artwork_choices_v2:"+owner,"{}"));choices.put(key,source);while(choices.length()>512)choices.remove(choices.keys().next());prefs.edit().putString("artwork_choices_v2:"+owner,choices.toString()).apply();}catch(Exception ignored){}}
  private static void display(ImageView image,JSONObject item,boolean media,boolean vertical,String source){if(source!=null&&!source.isEmpty())AccountImageLoader.loadArtwork(image,source,item.optString("capa"));else AccountImageLoader.loadMobile(image,item.optString("capa"),media?"":item.optString("steam_appid"),vertical,media?null:()->steamFallback(image,item));}
  interface SelectedImage {void display(ImageView image,String source);}
- static void load(ImageView image,JSONObject item,boolean media,boolean vertical){load(image,item,media,vertical,AccountImageLoader::load);}
+ static void load(ImageView image,JSONObject item,boolean media,boolean vertical){SensitiveCover.load(image,item,()->load(image,item,media,vertical,AccountImageLoader::load));}
  static void load(ImageView image,JSONObject item,boolean media,boolean vertical,SelectedImage selected){
   String fallback=item.optString("capa");
   if(!fallback.trim().isEmpty()&&!fallback.equals("null")){selected.display(image,fallback);return;}
