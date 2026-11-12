@@ -1,0 +1,7 @@
+BatCaverna CLT 2.1.6 — jogos e capas com aviso +18.
+
+A busca de jogos passa a incluir títulos adultos disponíveis no IGDB, acompanhados de aviso. O seletor manual SteamGridDB inclui capas sinalizadas como NSFW e imagens em outras resoluções do formato escolhido.
+
+Capas marcadas ficam ocultas até clicar para mostrar. É possível ocultar novamente; revelar uma imagem não libera as demais. O editor permite marcar imagens próprias e URLs personalizadas como conteúdo adulto. A marca acompanha biblioteca, perfil, detalhes, feed e listas nos aplicativos atualizados.
+
+A capa escolhida continua fixa. Se a imagem estiver indisponível, o aplicativo mantém sua escolha. A sinalização usa os dados do catálogo ou a marca manual; não analisa automaticamente os pixels e não verifica idade. Atualize Windows e Android para receber o mesmo comportamento.
