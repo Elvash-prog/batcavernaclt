@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {igdbCatalog,igdbProbe,normalizeGame,blockedGame,igdbImage,gameSearchScore} from '../supabase/functions/native-api/igdb.js';
+import {igdbCatalog,igdbProbe,normalizeGame,blockedGame,igdbImage,gameSearchScore,searchParts} from '../supabase/functions/native-api/igdb.js';
 const env={IGDB_CLIENT_ID:'test-client',IGDB_CLIENT_SECRET:'test-secret'};
 let tokens=0,queries=0,force401=true,lastBody='',lastUrl='';
 globalThis.fetch=async(url,o)=>{
@@ -8,7 +8,7 @@ globalThis.fetch=async(url,o)=>{
   tokens++;assert.equal(o.body.get('client_secret'),'test-secret');return Response.json({access_token:'app-token-'+tokens,expires_in:3600});
  }
  assert.equal(lastUrl,'https://api.igdb.com/v4/games');assert.equal(o.headers['Client-ID'],'test-client');assert.ok(o.headers.Authorization.startsWith('Bearer app-token-'));
- queries++;lastBody=o.body;if(o.body.includes('search "Horizon Zero Dawn"'))return Response.json([{id:16596,name:'Horizon Zero Dawn'}]);
+ queries++;lastBody=o.body;if(o.body.includes('where id = (113112,21593)'))return Response.json([{id:113112,name:'Hades',age_ratings:[{rating_category:{rating:'C'},rating_content_descriptions:[{description:'Sexual Content'}]}]},{id:21593,name:'Lords of the Fallen',age_ratings:[{rating_category:{rating:'M'},rating_content_descriptions:[{description:'Partial Nudity'}]}]}]);
  if(force401){force401=false;return Response.json({}, {status:401})}
  return Response.json([{id:99,name:'A Safe Game',first_release_date:1704067200,cover:{image_id:'co_99'},artworks:[{image_id:'ar_99'}],total_rating:88,total_rating_count:23,genres:[{name:'Adventure'}],platforms:[{name:'PC'}],summary:'Game description',videos:[{video_id:'abcdefghijk'}]}]);
 };
@@ -29,6 +29,17 @@ assert.equal(igdbImage('../bad'), '');assert.equal(normalizeGame({id:1,name:'Wit
 r=await igdbCatalog({},url,'games');assert.equal(r.status,503);
 r=await igdbCatalog(env,new URL('https://local/?page=1.5'),'games');assert.equal(r.status,400);
 assert.equal(gameSearchScore({name:'Horizon Forbidden West'},'Horizon Zero Dawn'),0);assert.equal(gameSearchScore({name:'Horizon Zero Dawn'},'Horizon Zero Dawn'),1000);assert.ok(gameSearchScore({name:'Horizon Zero Dawn: Complete Edition'},'horizon zero dawn')>0);assert.equal(gameSearchScore({name:'Resident Evil 1'},'Resident Evil 9'),0);
+// Ordinary age descriptors are not erotic game classifications; explicit filters remain.
+assert.equal(blockedGame({name:'Hades',age_ratings:[{rating_category:{rating:'C'},rating_content_descriptions:[{description:'Sexual Content'}]}]}),false);
+assert.equal(blockedGame({name:'Lords of the Fallen',age_ratings:[{rating_category:{rating:'M'},rating_content_descriptions:[{description:'Partial Nudity'}]}]}),false);
+assert.ok(gameSearchScore({name:'Hades II'},'Hades 2')>0);
+assert.equal(gameSearchScore({name:'Hades'},'Hades 2'),0);
+assert.ok(gameSearchScore({name:"Assassin’s Creed II"},"Assassins Creed 2")>0);
+assert.equal(gameSearchScore({name:'Lords of the Fallen',first_release_date:1697155200},'Lords of the Fallen (2023)'),1000);
+assert.equal(gameSearchScore({name:'Lords of the Fallen',first_release_date:1414454400},'Lords of the Fallen (2023)'),0);
+assert.equal(searchParts('Cyberpunk 2077').year,0);
+assert.equal(gameSearchScore({name:'FIFA 2000',first_release_date:939945600},'FIFA 2000'),1000,'a year can be part of the actual name');
+r=await igdbCatalog(env,new URL('https://local/?search=Lords%20of%20the%20Fallen%20(2023)'),'games');assert.equal(r.status,200);assert.match(lastBody,/search "Lords of the Fallen";/);assert.match(lastBody,/first_release_date >= 1672531200/);assert.match(lastBody,/name ~ \*"Lords of the Fallen \(2023\)"\*/);
 const failed={IGDB_CLIENT_ID:'x',IGDB_CLIENT_SECRET:'y'};globalThis.fetch=async()=>Response.json({error:'do not disclose y'}, {status:400});
 r=await igdbCatalog(failed,url,'games');assert.equal(r.status,503);assert.doesNotMatch(await r.text(),/disclose/);
 console.log('IGDB: token renewal, cache, query escaping, image formats, ratings, adult filtering and secret redaction passed');

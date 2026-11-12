@@ -1,0 +1,7 @@
+BatCaverna CLT 2.1.4 — capas e busca de jogos.
+
+O aplicativo prioriza a capa já salva quando ela corresponde ao formato escolhido. No Windows, downloads simultâneos da mesma imagem pública são agrupados e imagens carregadas são reutilizadas em memória, sem guardar imagens completas nas preferências. No Android, o cache em disco passa a incluir capas públicas de Steam, SteamGridDB, TMDB e AniList, além do IGDB.
+
+A busca do IGDB corrige falsos positivos de descritores regionais de idade e reconhece melhor anos, apóstrofos e números romanos. Jogos com nomes iguais continuam separados por ID e ano. Os filtros para tema erótico, classificação Adults Only e indicadores explícitos continuam ativos. A disponibilidade dos títulos depende do catálogo do fornecedor.
+
+Capas escolhidas manualmente são preservadas. As regras de autenticação, mídia privada, permissões e validação de senhas permanecem ativas.

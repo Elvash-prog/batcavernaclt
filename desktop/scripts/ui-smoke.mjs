@@ -223,6 +223,7 @@ try {
       core: {
         Channel: class { onmessage() {} },
         invoke: async (c, p) => {
+        if(window.savedCoverProbe&&["cover_image","catalog","bright_api"].includes(c))window.savedCoverProbe.push({c,p});
         if(c==='pc_game_preferences'){window.nativePcPreferences=window.nativePcPreferences||{};if(p.input.preferences){if(window.failNativePcPreferences)throw Error('disk full');window.nativePcPreferences[p.input.owner]=structuredClone(p.input.preferences);window.saved.push({c,p});}return window.nativePcPreferences[p.input.owner]||null;}
         if (c === "progress_sync") {
           if(p.input.op==='record')window.saved.push({c,p});
@@ -2524,6 +2525,15 @@ try {
   assert.ok((await page.locator('.sidebar').boundingBox()).width>200);
   assert.equal(await page.evaluate(()=>localStorage.getItem('bc-sidebar-compact-v1')),'0');
   await page.screenshot({path:'preview/sidebar-expanded-check.png',animations:'disabled'});
+  const savedCoverPerformance=await page.evaluate(async()=>{
+    const source='https://images.igdb.com/igdb/image/upload/t_cover_big/regression_saved.jpg',name='Saved Artwork Regression';
+    const traffic=window.savedCoverProbe=[];
+    const add=()=>{const image=document.createElement('img');image.style.width='10px';Object.assign(image.dataset,{cover:source,coverName:name,coverYear:'2020',coverGame:'1',coverFormat:'poster',coverVisible:'1',steamAppid:'424242'});document.querySelector('#content').append(image);hydrateCovers({querySelectorAll:()=>[image]});return image};
+    const wait=image=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Saved artwork did not load')),5000);const ready=()=>{if(image.naturalWidth>1&&image.src.startsWith('data:image')){clearTimeout(timer);resolve()}};image.addEventListener('load',ready);ready()});
+    try{const first=add();await wait(first);first.remove();const second=add();await wait(second);second.remove();const choices=JSON.parse(localStorage.getItem('bc-cover-choices-v2:'+state.userId)||'{}');return {lookups:traffic.filter(x=>x.p?.input?.query===name||x.p?.input?.nomes?.includes(name)).length,downloads:traffic.filter(x=>x.c==='cover_image'&&x.p.url===source).length,persistedPayloads:Object.values(choices).some(v=>String(v).startsWith('data:'))};}
+    finally{window.savedCoverProbe=null;}
+  });
+  assert.equal(savedCoverPerformance.lookups,0);assert.equal(savedCoverPerformance.downloads,1);assert.equal(savedCoverPerformance.persistedPayloads,false);
   await page.evaluate(() => showLogin());
   await page.locator("#loginScreen").waitFor({ state: "visible" });
   await page.locator('[data-auth="recover"]').click();
