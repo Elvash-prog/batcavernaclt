@@ -39,6 +39,7 @@ pub async fn verify_email_proof(input:EmailProof,state:tauri::State<'_,AppState>
  let email=self::email(&input.email)?;
  if input.recovery&&input.password.as_ref().map(|p|!(12..=256).contains(&p.chars().count())).unwrap_or(true){return Err("Use uma senha de 12 a 256 caracteres.".into());}
  let payload=proof_payload(&email,&input.proof,input.recovery)?;
+ if input.recovery { crate::password_safety::check(input.password.as_deref().ok_or("Informe a nova senha.")?).await?; }
  let session=request(&state.client,"verify",reqwest::Method::POST,payload,None).await?;
  let token=session["access_token"].as_str().filter(|t|!t.is_empty()).ok_or("O serviço não confirmou a verificação. Solicite outro e-mail.")?;
  let result=async{

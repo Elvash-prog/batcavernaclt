@@ -17,6 +17,7 @@ mod game_catalog;
 mod progress_outbox;
 
 mod native_auth;
+mod password_safety;
 mod auth_revocation;
 mod api_errors;
 mod v06;
@@ -282,6 +283,7 @@ async fn register(input: RegisterInput, state: tauri::State<'_, AppState>) -> Re
     if username.is_empty() || username.len()>40 || !username.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b,b'_'|b'.'|b'-')) { return Err("Use apenas letras, números, ponto, traço ou sublinhado no usuário.".into()); }
     if !email.contains('@') || email.len()>254 { return Err("Informe um e-mail válido.".into()); }
     if input.password.len()<12 || input.password.len()>256 { return Err("A senha precisa ter pelo menos 12 caracteres.".into()); }
+    password_safety::check(&input.password).await?;
     let response=auth(&state.client,"/auth/v1/signup").json(&json!({"email":email,"password":input.password,"data":{"nome":name,"slug":username,"username":username}})).send().await.map_err(|_|"Não foi possível criar a conta.".to_string())?;
     let status=response.status(); let body=response.text().await.map_err(|_|"A resposta foi interrompida.".to_string())?;
     if !status.is_success(){return Err(message(&body,status));}
@@ -301,6 +303,7 @@ async fn recover_password(email: String, state: tauri::State<'_, AppState>) -> R
 #[tauri::command]
 async fn change_password(input: PasswordInput, state: tauri::State<'_, AppState>) -> Result<Value, String> {
     if input.password.len()<12 || input.password.len()>256{return Err("A nova senha precisa ter pelo menos 12 caracteres.".into());}
+    password_safety::check(&input.password).await?;
     let session=current(&state).await?;
     let _auth_guard=state.auth_gate.lock().await;
     let result=value(state.client.put(format!("{SUPABASE_URL}/auth/v1/user")).header("apikey",SUPABASE_KEY).bearer_auth(&session.access_token).header("content-type","application/json").json(&json!({"password":input.password,"current_password":input.current})).send().await.map_err(|_|"Não foi possível alterar a senha.".to_string())?).await?;

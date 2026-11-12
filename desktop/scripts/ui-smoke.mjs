@@ -271,6 +271,7 @@ try {
             window.saved.push({ c, p });
             return {};
           }
+          if(c === "register" && window.passwordSafetyError) throw new Error(window.passwordSafetyError);
           if(c === "register") return {confirmationRequired:!window.autoConfirm,message:"Conta criada. Você já pode entrar."};
           if(c === "verify_email_proof") { window.saved.push({c,p});return {message:p.input.recovery?"Senha atualizada. Entre com sua nova senha.":"E-mail confirmado. Você já pode entrar."}; }
           if(c === "resend_confirmation" || c === "recover_password") return {sent:true};
@@ -2554,6 +2555,15 @@ try {
   await registration.locator('[name="username"]').fill('contateste');
   await registration.locator('[name="email"]').fill('teste@example.com');
   await registration.locator('[name="password"]').fill('SenhaSeguraTeste123');
+  for(const message of ['Essa senha apareceu em vazamentos. Escolha outra senha.','Não foi possível verificar a segurança da senha. Tente novamente em instantes.']){
+    await page.evaluate(message=>window.passwordSafetyError=message,message);
+    await registration.locator('.primary').click();
+    await page.waitForFunction(message=>document.querySelector('#registerForm .error').textContent===message,message);
+    assert.equal(await registration.isVisible(),true);
+    await page.waitForFunction(()=>!document.querySelector('#registerForm .primary').disabled);
+    assert.equal(await page.locator('.editor-overlay').count(),0);
+  }
+  await page.evaluate(()=>window.passwordSafetyError='');
   await registration.locator('.primary').click();
   await page.locator('#loginForm').waitFor({state:'visible'});
   assert.equal(await page.locator('.editor-overlay').count(),0);

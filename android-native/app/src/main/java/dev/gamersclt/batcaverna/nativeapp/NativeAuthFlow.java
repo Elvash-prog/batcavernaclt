@@ -24,6 +24,7 @@ final class NativeAuthFlow {
     else{
      if(recovery&&(password==null||password.length()<12||password.length()>256))throw new Exception("Use uma senha de 12 a 256 caracteres.");
      AuthCodeInput input=AuthCodeInput.parse(proof,recovery);JSONObject payload=new JSONObject().put("type",input.type);if(input.hash)payload.put("token_hash",input.token);else payload.put("email",address).put("token",input.token);
+     if(recovery)PasswordSafety.check(password);
      JSONObject session=request("verify","POST",payload,null);token=session.optString("access_token","");JSONObject user=session.optJSONObject("user");
      if(token.isEmpty()||user==null||!address.equalsIgnoreCase(user.optString("email")))throw new Exception("Este código ou link não pertence ao e-mail informado. Solicite outro se necessário.");
      if(recovery){

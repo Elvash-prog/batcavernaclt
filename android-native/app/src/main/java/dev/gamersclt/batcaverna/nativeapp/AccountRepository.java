@@ -70,6 +70,7 @@ public final class AccountRepository {
         return new JSONArray().put(new JSONObject().put("complete",complete).put("email",after.optString("email")).put("current",before.optString("email")));
     },cb);}
     public void updateAuth(boolean password,String value,String current,Callback callback){execute((user,token,config)->{
+        if(password){PasswordSafety.check(value);if(!user.equals(SessionPreferences.get(context).getString("user_id",""))||!token.equals(SessionPreferences.get(context).getString("access_token","")))throw new IOException("A sessão mudou. Tente novamente.");}
         JSONObject fields=new JSONObject().put(password?"password":"email",value);
         if(password)fields.put("current_password",current);
         HttpURLConnection conn=(HttpURLConnection)new URL(config[0]+"/auth/v1/user").openConnection();

@@ -64,14 +64,14 @@ public final class SupabaseAuthClient {
     public void signUp(String name,String username,String email,String password,Callback callback){
         java.util.concurrent.ExecutorService executor=Executors.newSingleThreadExecutor();executor.execute(()->{
             boolean success=false;String message="Não foi possível criar o perfil. Tente novamente.";
-            try{String[] config=loadConfig();HttpURLConnection c=(HttpURLConnection)new URL(config[0]+"/auth/v1/signup").openConnection();
+            try{PasswordSafety.check(password);String[] config=loadConfig();HttpURLConnection c=(HttpURLConnection)new URL(config[0]+"/auth/v1/signup").openConnection();
                 try{c.setInstanceFollowRedirects(false);c.setRequestMethod("POST");c.setDoOutput(true);c.setConnectTimeout(12000);c.setReadTimeout(12000);c.setRequestProperty("apikey",config[1]);c.setRequestProperty("Content-Type","application/json");
                     JSONObject body=new JSONObject().put("email",email).put("password",password).put("data",new JSONObject().put("username",username).put("nome",name));
                     try(OutputStream out=c.getOutputStream()){out.write(body.toString().getBytes(StandardCharsets.UTF_8));}int code=c.getResponseCode();String response=read(code<400?c.getInputStream():c.getErrorStream());JSONObject auth=new JSONObject(response);
                     if(code>=200&&code<300){if(!auth.optString("access_token","").isEmpty()){saveSession(auth,true);success=true;message="Perfil criado.";}else message="Confira seu e-mail para confirmar o cadastro e depois entre.";}
                     else message=ApiErrorPolicy.message(auth.optString("code",auth.optString("error_code",auth.optString("error",""))),code);
                 }finally{c.disconnect();}
-            }catch(Exception ignored){message="Não foi possível criar o perfil. Verifique a conexão e tente novamente.";}
+            }catch(PasswordSafety.Failure e){message=e.getMessage();}catch(Exception ignored){message="Não foi possível criar o perfil. Verifique a conexão e tente novamente.";}
             boolean ok=success;String result=message;new Handler(Looper.getMainLooper()).post(()->callback.done(ok,result));executor.shutdown();
         });
     }
