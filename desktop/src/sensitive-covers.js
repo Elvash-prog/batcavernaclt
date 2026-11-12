@@ -1,26 +1,34 @@
 'use strict';
-// Consent belongs to this image instance, never to a shared URL or another account.
-window.BatSensitive={
+// A local account preference controls explicit sexual content. Age ratings alone do not.
+(()=>{
+ const subscribers=new Set();
+ const owner=()=>typeof state==='undefined'?'':String(state.userId||'');
+ const key=()=>`bc-explicit-content:${owner()}`;
+ let activeOwner=null;
+ function allowed(){try{return !!owner()&&localStorage.getItem(key())==='show';}catch{return false;}}
+ function sync(){const show=allowed();activeOwner=owner();const value=show?'show':'hide';if(document.documentElement.dataset.explicitContent!==value)document.documentElement.dataset.explicitContent=value;for(const input of document.querySelectorAll('[data-explicit-filter]'))input.checked=show;return show;}
+ function setAllowed(show){if(!owner())return;try{localStorage.setItem(key(),show?'show':'hide');}catch{if(typeof toast==='function')toast('Não foi possível salvar o filtro.');return;}sync();for(const ref of subscribers){const node=ref.deref();if(!node?.isConnected){subscribers.delete(ref);continue;}node._explicitFilterChanged?.();}}
+ function controls(root){for(const input of root.querySelectorAll('[data-explicit-filter]')){input.checked=allowed();if(input.dataset.filterReady)continue;input.dataset.filterReady='1';input.addEventListener('change',()=>setAllowed(input.checked));}}
+ function settings(){if(typeof state==='undefined'||state.current!=='settings'||state.settingsTab!=='appearance')return;const panel=document.querySelector('#settingsPanel');if(!panel||panel.querySelector('[data-explicit-settings]'))return;const section=document.createElement('section');section.dataset.explicitSettings='1';section.className='explicit-content-settings';section.innerHTML='<h3>Filtro de conteúdo</h3>'+api.controlHTML()+'<p class="muted">Capas de jogos comuns aparecem normalmente, inclusive jogos classificados para 18 anos. Este filtro se aplica a pornografia e hentai sinalizados.</p>';panel.append(section);controls(section);}
+ const api=window.BatSensitive={
+ allowed, setAllowed,
+ marked:item=>item?.capa_adulta===true||item?.adult===true||item?.nsfw===true,
+ visible(item){return !this.marked(item)||allowed();},
  attrs:item=>`data-sensitive="${item?.capa_adulta===true||item?.adult===true?'1':'0'}"`,
+ controlHTML:()=>'<label class="explicit-content-filter"><input type="checkbox" data-explicit-filter>Mostrar pornografia/hentai (+18)</label>',
+ register(node,changed){node._explicitFilterChanged=changed;subscribers.add(new WeakRef(node));},
  mount(image,sensitive){
   const flag=sensitive===undefined?image.dataset.sensitive==='1':!!sensitive;
-  if(sensitive!==undefined)delete image.dataset.sensitiveRevealed;
   if(image.dataset.sensitive!==(flag?'1':'0'))image.dataset.sensitive=flag?'1':'0';
-  if(!flag){image._sensitiveResize?.disconnect();image._sensitiveGuard?.remove();delete image._sensitiveGuard;delete image.dataset.sensitiveRevealed;return;}
-  if(image._sensitiveGuard&&sensitive===undefined)return;
-  if(image._sensitiveGuard){image._sensitiveGuard.remove();image._sensitiveResize?.disconnect();delete image._sensitiveGuard;}
-  const parent=image.parentElement;if(!parent)return;
-  if(getComputedStyle(parent).position==='static')parent.style.position='relative';
-  const guard=document.createElement('span');guard.className='sensitive-cover-guard';guard.setAttribute('role','button');guard.tabIndex=0;
-  const paint=()=>{const visible=image.dataset.sensitiveRevealed==='1';guard.textContent=visible?'Ocultar +18':'+18 · Conteúdo adulto\nClique para mostrar';guard.setAttribute('aria-label',visible?'Ocultar capa adulta':'Mostrar capa com conteúdo adulto, maiores de 18 anos');guard.setAttribute('aria-pressed',String(visible));guard.classList.toggle('revealed',visible);};
-  const position=()=>{if(!image.isConnected)return;const r=image.getBoundingClientRect(),p=parent.getBoundingClientRect();guard.style.left=(r.left-p.left+parent.scrollLeft)+'px';guard.style.top=(r.top-p.top+parent.scrollTop)+'px';guard.style.width=r.width+'px';guard.style.height=(image.dataset.sensitiveRevealed==='1'?Math.min(r.height,32):r.height)+'px';};
-  const toggle=e=>{e.preventDefault();e.stopPropagation();image.dataset.sensitiveRevealed=image.dataset.sensitiveRevealed==='1'?'0':'1';paint();position();};
-  guard.addEventListener('click',toggle);guard.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')toggle(e);});
-  image._sensitiveGuard=guard;parent.append(guard);paint();position();
-  const resize=new ResizeObserver(position);resize.observe(image);resize.observe(parent);
-  image._sensitiveResize=resize;
+  if(!flag){image._sensitiveResize?.disconnect();image._sensitiveGuard?.remove();delete image._sensitiveGuard;return;}
+  if(image._sensitiveGuard)return;
+  const parent=image.parentElement;if(!parent)return;if(getComputedStyle(parent).position==='static')parent.style.position='relative';
+  const label=document.createElement('span');label.className='explicit-cover-placeholder';label.textContent='+18\nExplícito';label.setAttribute('aria-label','Conteúdo sexual explícito oculto pelo filtro');
+  const position=()=>{if(!image.isConnected)return;const r=image.getBoundingClientRect(),p=parent.getBoundingClientRect();Object.assign(label.style,{left:(r.left-p.left+parent.scrollLeft)+'px',top:(r.top-p.top+parent.scrollTop)+'px',width:r.width+'px',height:r.height+'px'});};
+  image._sensitiveGuard=label;parent.append(label);position();const resize=new ResizeObserver(position);resize.observe(image);resize.observe(parent);image._sensitiveResize=resize;
  },
- scan(root=document){for(const image of root.querySelectorAll('img[data-sensitive]'))this.mount(image);}
-};
-// Observe only inserted/changed classifications. CSS masks marked art before this callback.
-new MutationObserver(records=>{for(const record of records){if(record.type==='attributes')window.BatSensitive.mount(record.target);else {for(const node of record.removedNodes)if(node.nodeType===1){node._sensitiveResize?.disconnect();for(const img of node.querySelectorAll?.('img[data-sensitive]')||[])img._sensitiveResize?.disconnect();}for(const node of record.addedNodes)if(node.nodeType===1){if(node.matches?.('img[data-sensitive]'))window.BatSensitive.mount(node);window.BatSensitive.scan(node);}}}}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['data-sensitive']});
+ scan(root=document){for(const image of root.querySelectorAll('img[data-sensitive]'))this.mount(image);controls(root);}
+ };
+ sync();
+ new MutationObserver(records=>{const changed=activeOwner!==owner();if(changed)sync();for(const record of records){if(record.type==='attributes')api.mount(record.target);else{for(const node of record.removedNodes)if(node.nodeType===1){node._sensitiveResize?.disconnect();for(const img of node.querySelectorAll?.('img[data-sensitive]')||[])img._sensitiveResize?.disconnect();}for(const node of record.addedNodes)if(node.nodeType===1){if(node.matches?.('img[data-sensitive]'))api.mount(node);api.scan(node);}}}settings();}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['data-sensitive']});
+})();

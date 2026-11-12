@@ -694,6 +694,7 @@ try {
           if (c === "realtime_start") return {};
           if (c === "catalog") {
             const i = p.input;
+            if(i.provider==='igdb'&&i.query==='Filtro sexual')return {results:[{id:901,name:'Lords of the Fallen',released:'2023-10-13',adult:false,capa_adulta:false,cover_image:'https://images.igdb.com/ordinary-age-18.jpg'},{id:902,name:'Synthetic explicit',adult:true,capa_adulta:true}]};
             if(i.provider==='igdb'&&i.query==='Seleção múltipla')return {results:[{id:401,name:'Primeiro da fila',released:'2025-01-01'},{id:402,name:'Segundo da fila',released:'2024-01-01'}]};
             if(i.provider==='igdb'&&[401,402].includes(i.id))return {id:i.id,name:i.id===401?'Primeiro da fila':'Segundo da fila',released:i.id===401?'2025-01-01':'2024-01-01',genres:[{name:'Action'}]};
             if(i.provider==='igdb'&&i.query==='Teste')return {results:[{id:210,name:'Novo resultado IGDB',steam_appid:210,released:'2025-01-01'}]};
@@ -1738,6 +1739,12 @@ try {
   await page.locator("#addItem").waitFor();
   await page.locator("#addItem").click();
   await page.evaluate(()=>window.catalogLibraryRows=[{id:301,nome:'Control',ano:2019,categoria:'jogos',steam_appid:10},{id:302,nome:'Duna',ano:1984,categoria:'jogos'}]);
+  await page.locator('#catalogQuery').fill('Filtro sexual');await page.locator('#catalogSearch').click();await page.locator('#catalogResults [data-result]').first().waitFor();
+  assert.equal(await page.locator('#catalogResults [data-result]').count(),1);assert.match(await page.locator('#catalogResults').innerText(),/Lords of the Fallen/);
+  assert.equal(await page.locator('#catalogResults img').first().evaluate(img=>getComputedStyle(img).opacity),'1');
+  await page.locator('.catalog-search [data-explicit-filter]').check();await page.waitForFunction(()=>document.querySelectorAll('#catalogResults [data-result]').length===2);
+  assert.equal(await page.locator('#catalogResults .sensitive-cover-guard').count(),0);await page.locator('.catalog-search [data-explicit-filter]').uncheck();await page.waitForFunction(()=>document.querySelectorAll('#catalogResults [data-result]').length===1);
+  await page.screenshot({path:'preview/ordinary-age-18-search.png'});
   await page.locator('#catalogQuery').fill('Edições de teste');
   await page.locator('#catalogSearch').click();
   await page.locator('[data-result="0"]').filter({hasText:'Já na biblioteca'}).waitFor();
@@ -2039,6 +2046,7 @@ try {
   await page.evaluate(() => (window.adminMode = true));
   await page.locator('[data-settings-tab="appearance"]').click();
   await page.locator(".launcher-admin").waitFor();
+  const explicitSetting=page.locator('#settingsPanel [data-explicit-filter]');await explicitSetting.waitFor();await explicitSetting.check();assert.equal(await page.locator('html').getAttribute('data-explicit-content'),'show');await explicitSetting.uncheck();
   assert.equal(await page.locator(".launcher-admin").count(), 1);
   await page.locator("#resetLoginBackground").click();
   await page.waitForFunction(() =>

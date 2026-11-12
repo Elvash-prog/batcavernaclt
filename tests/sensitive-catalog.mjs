@@ -10,12 +10,17 @@ test('new classified catalog includes adult games and details while legacy remai
  r=await igdbCatalog(env,new URL('https://test/?search=Synthetic'),'games');assert.deepEqual((await r.json()).results,[]);assert.ok(body.includes('themes !='));
  assert.equal((await igdbCatalog(env,new URL('https://test/'),'games/88')).status,404);
 });
-test('18 ratings are a warning, ordinary regional descriptors alone are not',()=>{
- assert.equal(sensitiveGame({name:'Synthetic',age_ratings:[{rating_category:{rating:'18'}}]}),true);
+test('age 18 and mature descriptors are not pornography',()=>{
+ assert.equal(sensitiveGame({name:'Synthetic',age_ratings:[{rating_category:{rating:'18'}}]}),false);
  assert.equal(sensitiveGame({name:'Hades',age_ratings:[{rating_category:{rating:'C'},rating_content_descriptions:[{description:'Sexual Content'}]}]}),false);
 });
 test('manual gallery includes labeled NSFW; automatic cover never picks it',async()=>{
  let requested;const getJson=async url=>{requested=new URL(url);return {data:[{id:1,url:'https://cdn2.steamgriddb.com/grid/synthetic.png',nsfw:true,score:99,width:600,height:900}]}};
  let rows=await steamGridCovers({appid:42,key:'synthetic',includeSensitive:true,getJson});assert.equal(requested.searchParams.get('nsfw'),'any');assert.equal(requested.searchParams.has('dimensions'),false);assert.equal(rows.length,1);assert.equal(rows[0].capa_adulta,true);assert.equal(rows[0].nsfw,true);
  assert.equal(await steamGridCover({appid:42,key:'synthetic',getJson}),null);assert.equal(requested.searchParams.get('nsfw'),'false');
+});
+
+test('ordinary mature games remain visible; erotic titles and hentai are explicit',()=>{
+ for(const rating of ['18','18+','AO','Z','R18+'])assert.equal(sensitiveGame({name:'Lords of the Fallen',age_ratings:[{rating_category:{rating},rating_content_descriptions:[{description:'Strong Sexual Content'}]}]}),false);
+ assert.equal(sensitiveGame({name:'Synthetic hentai title'}),true);assert.equal(sensitiveGame({name:'Synthetic',themes:[{id:42,name:'Erotic'}]}),true);
 });
