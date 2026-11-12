@@ -11,6 +11,16 @@ on:
 permissions:
   contents: read
 jobs:
+  presence-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify rolling presence quota without application dependencies
+        shell: bash
+        run: |
+          rustc --test desktop/src-tauri/src/presence_flow.rs -o "$RUNNER_TEMP/presence-policy"
+          "$RUNNER_TEMP/presence-policy"
   windows:
     runs-on: windows-latest
     steps:

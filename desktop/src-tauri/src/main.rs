@@ -5,6 +5,7 @@ mod pc_preferences;
 mod windows_startup;
 mod chat_delivery;
 mod presence_activity;
+mod presence_flow;
 mod chat_images;
 mod email_change;
 mod game_detection;
