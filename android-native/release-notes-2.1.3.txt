@@ -1,0 +1,9 @@
+BatCaverna CLT 2.1.3 — verificação de senhas conhecidas em vazamentos.
+
+Ao criar uma conta, alterar ou redefinir a senha, o aplicativo consulta o serviço gratuito Pwned Passwords. Senhas encontradas na base são recusadas e o aplicativo pede outra escolha.
+
+A consulta envia apenas os cinco primeiros caracteres de uma impressão digital calculada no dispositivo. Não envia ao serviço sua senha, e-mail ou a impressão digital completa. Não guardamos essas consultas em cache nem em diagnósticos.
+
+Se a consulta estiver indisponível, a operação pede uma nova tentativa. O código de recuperação só é utilizado depois da verificação. O login das contas existentes continua funcionando como antes.
+
+Essa proteção atua nos aplicativos atualizados e complementa as regras do Supabase. Não ativa o recurso pago do Supabase Auth nem bloqueia chamadas diretas à API que contornem os aplicativos. A consulta não garante que uma senha seja forte ou desconhecida em outros vazamentos.
