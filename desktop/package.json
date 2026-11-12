@@ -1,10 +1,10 @@
 {
   "name": "batcaverna-clt-desktop",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test scripts/desktop.test.mjs scripts/layout-sync.test.mjs scripts/home-highlight.test.mjs scripts/home-resume.test.mjs scripts/catalog-selection.test.mjs scripts/pc-preferences.test.mjs scripts/statistics-view.test.mjs scripts/lists-studio.test.mjs scripts/cover-choice-cache.test.mjs scripts/cover-priority.test.mjs scripts/batch-operation.test.mjs scripts/game-feed.test.mjs && node ../tests/webview-policy.mjs && node ../tests/friend-presence.mjs && node ../tests/chat-presentation.mjs && node ../tests/chat-delivery.mjs && node ../tests/chat-images.mjs && node ../tests/library-query.mjs",
+    "test": "node --test scripts/desktop.test.mjs scripts/layout-sync.test.mjs scripts/home-highlight.test.mjs scripts/home-resume.test.mjs scripts/catalog-selection.test.mjs scripts/pc-preferences.test.mjs scripts/statistics-view.test.mjs scripts/lists-studio.test.mjs scripts/cover-choice-cache.test.mjs scripts/cover-priority.test.mjs scripts/fixed-cover.test.mjs scripts/batch-operation.test.mjs scripts/game-feed.test.mjs && node ../tests/webview-policy.mjs && node ../tests/friend-presence.mjs && node ../tests/chat-presentation.mjs && node ../tests/chat-delivery.mjs && node ../tests/chat-images.mjs && node ../tests/library-query.mjs",
     "dev:web": "vite --host 127.0.0.1 --port 1420",
     "dev": "tauri dev",
     "build:web": "vite build && node scripts/verify-bundle.mjs",

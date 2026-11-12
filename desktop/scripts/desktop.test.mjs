@@ -222,7 +222,9 @@ test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em portug
 test('capas escolhidas manualmente permanecem fixas e ofertas preservam imagens oficiais', () => {
   const app=read('src/app.js'),redesign=read('src/redesign.js'),refinement=read('src/refinement.js'),reference=read('src/reference.js');
   assert.match(app,/function isPinnedCover\(value\)/);
-  assert.match(app,/steamgriddb\\\.com/);
+  const pin=vm.runInNewContext('('+app.match(/function isPinnedCover\(value\)\{[^\n]+/)[0]+')',{coverUrl:value=>String(value||'').startsWith('https://')?value:''});
+  for(const url of ['https://images.igdb.com/igdb/image/upload/t_cover_big/a.jpg','https://cdn2.steamgriddb.com/grid/a.png','https://example.test/custom.jpg'])assert.equal(pin(url),true);
+  assert.equal(pin(''),false);
   assert.match(redesign,/image\.dataset\.steamAppid&&!image\.dataset\.cover/);
   assert.match(refinement,/genericGameCover/);
   assert.match(refinement,/!isPinnedCover\(url\)/);
