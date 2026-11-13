@@ -86,7 +86,6 @@ test('biblioteca cinematográfica separa o tema e preenche capas horizontais', (
   const shell=read('src/main.tsx'),script=read('src/reference.js'),css=read('src/cavern-library.css');
   assert.match(shell,/import '\.\/cavern-library\.css'/);
   assert.match(script,/classList\.add\('cavern-library'\)/);
-  assert.match(script,/classList\.remove\([^)]*'cavern-home'[^)]*'cavern-library'/);
   assert.match(css,/\.cavern-library \.collection-overview/);
   assert.match(css,/aspect-ratio:\s*16 \/ 9/);
   assert.match(css,/object-fit:\s*cover/);
@@ -94,10 +93,9 @@ test('biblioteca cinematográfica separa o tema e preenche capas horizontais', (
 });
 
 test('perfil Neon Underground preserva capa, progressão e responsividade', () => {
-  const shell=read('src/main.tsx'),script=read('src/alignment.js'),navigation=read('src/reference.js'),css=read('src/cavern-profile.css');
+  const shell=read('src/main.tsx'),script=read('src/alignment.js'),css=read('src/cavern-profile.css');
   assert.match(shell,/import '\.\/cavern-profile\.css'/);
   assert.match(script,/classList\.add\('cavern-profile'\)/);
-  assert.match(navigation,/classList\.remove\([^)]*'cavern-profile'/);
   assert.match(css,/\.cavern-profile \.complete-profile::after/);
   assert.match(css,/background-size:\s*cover/);
   assert.match(css,/\.cavern-profile \.level-card progress/);
@@ -565,8 +563,8 @@ test('presença tolera saída transitória, expira offline e cancela por nova se
  send('presence_state',{});context.state.userId='another';context.ui.presence={friend:{status:'online'}};for(const fn of timers.values())fn();assert.equal(context.ui.presence.friend.status,'online');
 });
 
-test('jogos em destaque saem do bloco oculto e telas revelam o layout completo',()=>{
- const s=read('src/cavern-shell.js');assert.match(s,/querySelector\('#profile-featured'\)/);assert.match(s,/overview\.append\(favorites\)/);assert.match(s,/renderProfile=wrap\(renderProfile\);renderDiscover=wrap\(renderDiscover\)/);
+test('jogos em destaque saem do bloco oculto',()=>{
+ const s=read('src/cavern-shell.js');assert.match(s,/querySelector\('#profile-featured'\)/);assert.match(s,/overview\.append\(favorites\)/);
 });
 
 

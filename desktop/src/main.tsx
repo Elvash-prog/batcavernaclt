@@ -25,6 +25,8 @@ import './sidebar-layout.css';
 import './motion-feedback.css';
 import './library-cards.css';
 import './screen-feedback.css';
+import './navigation-feedback.css';
+import navigationFeedback from './navigation-feedback.js?url';
 import './screen-feedback.js';
 import './dashboard-studio.css';
 import './dashboard-studio.js';
@@ -60,7 +62,7 @@ const modules:BootModule[]=[
  {name:'Ajustes de navegação',src:refinement},{name:'Acabamento visual',src:polish},
  {name:'Comunidade e conversas',src:redesign},{name:'Jornada e indicações',src:journey},
  {name:'Alinhamento da interface',src:alignment},{name:'Correções do desktop',src:fixes},
- {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity},{name:'Seleção de destaques',src:profileHighlights},{name:'Editor de imagens',src:profileImages},{name:'Contexto da biblioteca',src:libraryNavigation},{name:'Modelo do feed de jogos',src:gameFeedModel},{name:'Feed dos amigos',src:gameFeed}
+ {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity},{name:'Seleção de destaques',src:profileHighlights},{name:'Editor de imagens',src:profileImages},{name:'Contexto da biblioteca',src:libraryNavigation},{name:'Modelo do feed de jogos',src:gameFeedModel},{name:'Feed dos amigos',src:gameFeed},{name:'Transições entre abas',src:navigationFeedback}
 ];
 
 function load(module:BootModule){return new Promise<void>((resolve,reject)=>{const script=document.createElement('script');script.src=module.src;script.dataset.bootModule=module.name;script.onload=()=>resolve();script.onerror=()=>reject(new Error(`O arquivo de ${module.name.toLowerCase()} não pôde ser carregado.`));document.body.append(script)})}

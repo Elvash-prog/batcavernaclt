@@ -1,0 +1,7 @@
+BatCaverna CLT Windows 2.1.9 — navegação mais estável entre abas.
+
+Removemos os cartões vazios que apareciam ao trocar de aba. A tela anterior permanece visível enquanto a próxima é preparada, sem aceitar cliques durante a transição.
+
+Um indicador compacto aparece apenas se o carregamento demorar. A próxima tela é apresentada com o layout pronto, evitando entradas e piscadas sucessivas. O indicador respeita a preferência de movimento reduzido.
+
+Respostas antigas não podem encerrar o indicador de uma navegação mais recente. Erros continuam oferecendo nova tentativa de leitura, sem repetir salvamentos. Esta atualização é do cliente Windows; o Android mantém sua versão atual.

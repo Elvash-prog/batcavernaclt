@@ -1,0 +1,14 @@
+/* Keep the previous screen stable and non-interactive while its replacement is read. */
+.reference-ui #content.navigation-reading{visibility:visible!important;opacity:1;pointer-events:none}
+.reference-ui #content.navigation-reading.navigation-waiting{opacity:.65}
+.reference-ui #content.navigation-staging{visibility:hidden!important;opacity:0;pointer-events:none}
+#content.navigation-pending{pointer-events:none}
+#content.navigation-reading>*,#content.navigation-committed.view-enter>*{animation:none!important}
+#appShell>main{position:relative}
+.navigation-progress{position:absolute;z-index:35;top:16px;right:24px;max-width:calc(100% - 48px);pointer-events:none;animation:navigation-indicator-in 140ms ease-out both}
+.navigation-progress-initial{top:40%;right:auto;left:50%;transform:translate(-50%,-50%);width:min(360px,calc(100% - 48px))}
+.navigation-progress-initial .screen-loading{padding:22px 26px;justify-content:center;width:100%;box-sizing:border-box}
+@keyframes navigation-indicator-in{from{opacity:0}to{opacity:1}}
+@media(max-width:820px){.navigation-progress{right:16px;max-width:calc(100% - 32px)}}
+body.no-animations .navigation-progress{animation:none}
+@media(prefers-reduced-motion:reduce){.navigation-progress{animation:none}}
