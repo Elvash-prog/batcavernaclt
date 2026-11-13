@@ -1,4 +1,4 @@
-# Conversas e envios no Windows 2.1.13
+# Conversas e envios no Windows 2.1.14
 
 A troca de conversa prepara mensagens, grupos, membros e leitura em paralelo. O painel novo só substitui o anterior após essa preparação. A lista de contatos é preservada, incluindo pesquisa, rolagem e imagens quando os contatos não mudaram. Durante a leitura, a conversa antiga fica sem interação, mas a lista permite escolher outro destino. A transição de 220 ms usa somente o painel da conversa; não há captura de tela pelo View Transitions. As preferências de reduzir movimento continuam válidas.
 
