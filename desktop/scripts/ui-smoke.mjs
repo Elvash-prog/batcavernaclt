@@ -1,3 +1,4 @@
+import {testAppearance} from './appearance-ui.mjs';
 import {testSensitiveCovers} from './sensitive-covers-ui.mjs';
 import { chromium } from "playwright";
 import {benchmarkLibrary} from "./library-benchmark.mjs";
@@ -226,6 +227,7 @@ try {
         Channel: class { onmessage() {} },
         invoke: async (c, p) => {
         if(window.savedCoverProbe&&["cover_image","catalog","bright_api"].includes(c))window.savedCoverProbe.push({c,p});
+        if(c==='desktop_layout'){window.layoutAccounts=window.layoutAccounts||{};const account=p.input?.owner||'test',layout=window.layoutAccounts[account]||{};if(p.input?.patch){for(const [key,value] of Object.entries(p.input.patch)){if(value===null)delete layout[key];else layout[key]=value;}window.layoutAccounts[account]=layout;window.saved.push({c,p});}return {layout:structuredClone(layout)};}
         if(c==='pc_game_preferences'){window.nativePcPreferences=window.nativePcPreferences||{};if(p.input.preferences){if(window.failNativePcPreferences)throw Error('disk full');window.nativePcPreferences[p.input.owner]=structuredClone(p.input.preferences);window.saved.push({c,p});}return window.nativePcPreferences[p.input.owner]||null;}
         if (c === "progress_sync") {
           if(p.input.op==='record')window.saved.push({c,p});
@@ -393,6 +395,7 @@ try {
             window.mediaResolved++;
             return image;
           }
+          if(c==='update_profile_background'){if(window.failWallpaperSave)throw Error('Falha simulada ao salvar fundo');window.saved.push({c,p});profile.fundo=p.input.url?{...p.input}:null;return {};}
           if(c === "upload_profile_image"){
             window.saved.push({c,p});
             if(window.failProfileUpload)throw Error("Falha simulada ao enviar imagem");
@@ -828,7 +831,7 @@ try {
   const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
-  if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
   // Settings search only locates categories and preserves the currently open controls.
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('.settings-search-label input').fill('SENHA');
@@ -1983,16 +1986,7 @@ try {
   }
   await page.waitForFunction(()=>document.querySelectorAll('.editor-overlay').length===0);
   await page.evaluate(async()=>{await navigate('settings');state.settingsTab='appearance';await renderSettings()});
-  await page.locator('[data-theme-preset="Claro"]').click();
-  assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('light-theme')),true);
-  const light=await page.locator('#settingsPanel').evaluate(n=>({background:getComputedStyle(n).backgroundColor,color:getComputedStyle(n).color}));
-  assert.match(light.background,/255, 255, 255/);
-  assert.notEqual(light.color,'rgb(255, 255, 255)');
-  await page.evaluate(async()=>await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{}))));
-  await page.waitForFunction(()=>getComputedStyle(document.querySelector('#mainNav [data-view="home"]')).color===getComputedStyle(document.body).color);
-  assert.equal(await page.locator('#mainNav [data-view="home"]').evaluate(n=>getComputedStyle(n).color),await page.locator('body').evaluate(n=>getComputedStyle(n).color),'Navegação do tema claro precisa de contraste');
-  await page.screenshot({path:'preview/light-settings-check.png'});
-  await page.locator('[data-theme-preset="Caverna"]').click();
+  await testAppearance(page);
   await page.evaluate(async()=>{state.settingsTab='app';await renderSettings()});
   await page.locator('[data-credits]').click();
   await page.getByText('Créditos e serviços',{exact:true}).last().waitFor();
@@ -2173,7 +2167,7 @@ try {
   if (await friendsDockClose.isVisible()) await friendsDockClose.click();
   await page.locator("#sidebarAccount").click();
   await page.locator(".complete-profile").waitFor();
-  await page.locator("#content.profile-user-background").waitFor();
+  await page.waitForFunction(()=>document.body.classList.contains("has-wallpaper"));
   await page.locator("#profile-featured").waitFor();
   assert.equal(await page.locator("#profile-featured").isVisible(),true);
   await page.evaluate(()=>{window.holdProfilePreparation=true;window.profilePreparation=renderProfile()});
@@ -2192,7 +2186,7 @@ try {
   assert.equal(await page.locator('#navigationProgress .library-loading').count(),1);
   await page.evaluate(async()=>{window.holdLibraryPreparation=false;window.releaseLibraryPreparation();await window.newLibraryNavigation;await navigate('profile');});
   await page.locator('#profile-featured').waitFor();
-  assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), true);
+  assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), false);
   assert.notEqual(
     await page.locator(".complete-profile").evaluate(
       (n) => getComputedStyle(n).boxShadow,
@@ -2207,14 +2201,7 @@ try {
     "0px",
     "A barra de progressão deve usar o estilo arredondado do tema.",
   );
-  assert.equal(
-    await page.locator(".sidebar").evaluate((n) => {
-      const color=getComputedStyle(n).backgroundColor;
-      return color.startsWith('rgb(')||/rgba\([^)]*,\s*1\)$/.test(color);
-    }),
-    true,
-    "A barra lateral deve manter fundo opaco independente da cor do tema",
-  );
+  assert.match(await page.locator('.sidebar').evaluate(n=>getComputedStyle(n).backgroundColor),/0\.8\)|\/ 0\.8\)/,'Sidebar uses the shared translucent surface');
   await page.setViewportSize({ width: 980, height: 860 });
   const minimumWidthProfile = await page.locator(".complete-profile").boundingBox(),
     minimumWidthContent = await page.locator("#content").boundingBox(),
@@ -2254,7 +2241,8 @@ try {
   await page.locator("#profileAction").click();
   await page.locator(".profile-editor").waitFor();
   await page.locator('[data-profile-tab="appearance"]').click();
-  assert.equal(await page.locator("#desktopProfileBackground").count(), 1);
+  assert.equal(await page.locator("#desktopProfileBackground").count(), 0);
+  assert.equal(await page.locator("[data-edit-wallpaper]").count(), 1);
   assert.equal(await page.locator('.profile-image-studio input[type="range"], .profile-editor input[type="url"]').count(), 0);
   const imageFixture=path.resolve('../tests/fixtures/profile-images/valid.png');
   await page.locator('[name="bannerFile"]').setInputFiles(imageFixture);
@@ -2301,7 +2289,7 @@ try {
   await page.screenshot({ path: "preview/profile-editor-highlights-check.png" });
   await page.locator('[data-save-profile]').click();
   await page.waitForFunction(()=>!document.querySelector('.profile-editor'));
-  const imageSave=await page.evaluate(()=>({uploads:window.saved.filter(s=>s.c==='upload_profile_image'),profile:window.saved.filter(s=>s.c==='update_profile').at(-1)}));
+  const imageSave=await page.evaluate(()=>({uploads:window.saved.filter(s=>s.c==='upload_profile_image'&&['banner','avatar'].includes(s.p.input.name)),profile:window.saved.filter(s=>s.c==='update_profile').at(-1)}));
   assert.deepEqual(imageSave.uploads.map(s=>s.p.input.name),['banner','avatar']);
   assert.match(imageSave.profile.p.input.banner,/#bc-cover=/);
   assert.equal(imageSave.uploads[1].p.input.mime,'image/webp');
