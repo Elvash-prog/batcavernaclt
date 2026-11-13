@@ -11,4 +11,5 @@
 .save-feedback[data-phase=error]{border-color:#ed636350;background:#ed636310}
 @media(prefers-reduced-motion:reduce){.nav-motion-marker{transition:none}#toast.favorite-confirmed::before{animation:none}.save-feedback-track::after{animation:none;transform:none;width:100%;opacity:.6}}
 body.no-animations #toast.favorite-confirmed::before{animation:none}
+body.no-animations .nav-motion-marker{transition:none}
 body.no-animations .save-feedback-track::after{animation:none;transform:none;width:100%;opacity:.6}

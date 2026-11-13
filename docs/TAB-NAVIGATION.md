@@ -15,3 +15,13 @@ A navegação não usa a animação escalonada dos cartões na apresentação fi
 - A publicação Windows executa novamente as suítes, os testes Rust e a geração do instalador com assinatura do atualizador.
 
 O Android permanece na versão 2.1.8 (117).
+
+## Movimento na versão 2.1.12
+
+A conclusão de uma troca real de tela usa uma única animação Web Animations no `#content`: opacidade de 0,4 a 1 e deslocamento vertical de 6 px a zero, durante 220 ms, com desaceleração. Não há desfoque, escala ou animação escalonada de cartões. O efeito não faz parte da promessa de leitura e não bloqueia a interação; novos pedidos começam imediatamente.
+
+A identidade da tela inclui categoria da biblioteca, seção de configurações, aba de descoberta e usuário do perfil. Recarregar a mesma identidade não repete a entrada. Uma nova revelação cancela a anterior, e sua conclusão antiga não interfere no efeito atual. Logout, aba oculta, preferência do sistema por movimento reduzido e `no-animations` cancelam o efeito. Se Web Animations não estiver disponível, a tela é apresentada normalmente.
+
+Leituras longas mantêm o indicador de 180 ms e passam a reduzir gradualmente a opacidade da tela anterior para 0,84 em 140 ms. O marcador do menu respeita a preferência de desativar animações.
+
+Validação adicional: testes de efeitos sobrepostos, conclusão antiga e cancelamento; teste visual de uma entrada em andamento, interação desbloqueada, busca imediata durante a animação anterior, troca entre categorias, atualização da mesma tela e cancelamento pelos dois modos de reduzir movimento. A suíte completa mantém a verificação de geometria durante a leitura, erros, concorrência, temas e resoluções.

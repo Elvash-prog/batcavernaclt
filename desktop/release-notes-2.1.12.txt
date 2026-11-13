@@ -1,0 +1,9 @@
+BatCaverna CLT Windows 2.1.12 — trocas de abas mais suaves.
+
+A nova tela entra como um único bloco, com uma transição curta de opacidade e um deslocamento discreto. Os cartões não aparecem em cascata, e as buscas começam imediatamente, sem esperar a animação terminar.
+
+Cliques rápidos substituem o efeito anterior. Atualizar a mesma tela não repete a entrada; trocar de categoria da biblioteca ou de seção das configurações acompanha a navegação.
+
+O aviso de espera continua compacto e atrasado. A tela anterior suaviza a opacidade gradualmente durante leituras demoradas. Reduzir movimento no sistema ou nas configurações do aplicativo desativa a transição, inclusive se ela já estiver em andamento.
+
+Esta atualização é do Windows; o Android permanece na versão atual.
