@@ -85,7 +85,7 @@ renderFriends=async function(){
 function openFriendSearch(){
  $('.friend-search-overlay')?.remove();
  const overlay=document.createElement('div');overlay.className='editor-overlay friend-search-overlay';
- overlay.innerHTML=`<section class="editor friend-search-dialog"><button class="detail-close" data-close aria-label="Fechar">×</button><span class="eyebrow">NOVA CONEXÃO</span><h2>Adicionar amigo</h2><p>Busque pelo nome, usuário ou código da pessoa.</p><form id="unifiedFriendSearch"><input name="query" type="search" minlength="2" required placeholder="Buscar usuário"><button class="primary">Pesquisar</button></form><div id="unifiedFriendResults"></div></section>`;
+ overlay.innerHTML=`<section class="editor friend-search-dialog"><button class="detail-close" data-close aria-label="Fechar">×</button><span class="eyebrow">NOVA CONEXÃO</span><h2>Adicionar amigo</h2><form id="unifiedFriendSearch"><input name="query" type="search" minlength="2" required placeholder="Buscar usuário"><button class="primary">Pesquisar</button></form><div id="unifiedFriendResults"></div></section>`;
  document.body.append(overlay);overlay.querySelector('[data-close]').onclick=()=>overlay.remove();overlay.onclick=event=>{if(event.target===overlay)overlay.remove()};
  $('#unifiedFriendSearch').onsubmit=async event=>{event.preventDefault();const out=$('#unifiedFriendResults');out.innerHTML='<div class="loading">Buscando pessoas…</div>';try{const rows=await api.searchPeople(event.currentTarget.elements.query.value);out.innerHTML=rows.map(person=>`<article><img src="brand.jpg" data-private-src="${esc(person.avatar_url||'')}" alt=""><span><b>${esc(person.nome||person.slug)}</b><small>@${esc(person.slug||'')}</small></span><button class="primary" data-unified-invite="${esc(person.id)}">Adicionar</button></article>`).join('')||'<div class="empty">Nenhuma pessoa encontrada.</div>';hydrateMedia(out);out.querySelectorAll('[data-unified-invite]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await api.invite(button.dataset.unifiedInvite);button.textContent='Convite enviado'}catch(error){toast(failure(error));button.disabled=false}})}catch(error){out.innerHTML=`<p class="form-error">${esc(failure(error))}</p>`}};
  overlay.querySelector('input').focus();
@@ -116,7 +116,7 @@ const baseSettings=renderSettings;
 renderSettings=async function(){
  await baseSettings();if(state.current!=='settings')return;
  if(state.settingsTab==='notifications'){
-  const panel=$('#settingsPanel');panel?.insertAdjacentHTML('beforeend','<div class="settings-row"><div><strong>Preferências por categoria</strong><small>Escolha alertas de mensagens, comunidade, amizades, indicações e progresso.</small></div><button class="secondary" id="openNotificationPreferences">Configurar</button></div>');
+  const panel=$('#settingsPanel');panel?.insertAdjacentHTML('beforeend','<div class="settings-row"><div><strong>Preferências por categoria</strong></div><button class="secondary" id="openNotificationPreferences">Configurar</button></div>');
   $('#openNotificationPreferences')?.addEventListener('click',()=>navigate('preferences'));
  }
  const admins=$$('.launcher-admin');admins.forEach((section,index)=>{if(state.settingsTab!=='appearance'||index>0)section.remove()});

@@ -1,0 +1,5 @@
+BatCaverna CLT Android 2.1.9 — interface mais direta.
+
+Removidos textos com tom de tutorial e explicações repetidas no catálogo, capas, perfil, feed, listas, estatísticas e configurações. Títulos, botões e estados vazios ficaram mais objetivos.
+
+Mensagens de status vazias não reservam espaço nos formulários revisados. Avisos de erro, confirmação de ações, privacidade, créditos e descrições de acessibilidade foram preservados.

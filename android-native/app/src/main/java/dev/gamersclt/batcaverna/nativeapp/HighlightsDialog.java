@@ -8,9 +8,9 @@ import java.util.*;
 /** Two selection panels in one scroll, with a fixed save footer. */
 final class HighlightsDialog {
  static void show(Context c,JSONObject profile,Runnable saved){
-  NativeSheet sheet=new NativeSheet(c,"Editar destaques");TextView state=NativeSheet.text(c,"Carregando sua biblioteca…",13,0xffc2add9);sheet.body.addView(state);AccountRepository repo=new AccountRepository(c);
+  NativeSheet sheet=new NativeSheet(c,"Editar destaques");TextView state=NativeSheet.status(c,"Carregando sua biblioteca…",13,0xffc2add9);sheet.body.addView(state);AccountRepository repo=new AccountRepository(c);
   repo.profileLibrary((items,error)->{
-   if(!sheet.dialog.isShowing())return;if(error!=null){state.setText(error);return;}state.setText("Escolha o que merece um lugar no seu perfil.");state.setTextSize(12);state.setTextColor(0xffaaa3b8);TextView heading=NativeSheet.text(c,"O melhor da sua jornada",23,0xfff4effb);heading.setTypeface(null,android.graphics.Typeface.BOLD);sheet.body.addView(heading,0);
+   if(!sheet.dialog.isShowing())return;if(error!=null){state.setText(error);return;}state.setText("");state.setTextSize(12);state.setTextColor(0xffaaa3b8);TextView heading=NativeSheet.text(c,"Destaques",23,0xfff4effb);heading.setTypeface(null,android.graphics.Typeface.BOLD);sheet.body.addView(heading,0);
    Set<String> selectedGames=new LinkedHashSet<>();Set<Integer> selectedAchievements=new LinkedHashSet<>();JSONArray oldGames=profile.optJSONArray("jogos_destaque"),oldAchievements=profile.optJSONArray("conquistas_destaque");
    if(oldGames!=null)for(int i=0;i<Math.min(8,oldGames.length());i++)selectedGames.add(oldGames.optString(i));if(oldAchievements!=null)for(int i=0;i<Math.min(4,oldAchievements.length());i++)selectedAchievements.add(oldAchievements.optInt(i,-1));
    List<JSONObject> games=new ArrayList<>();Set<String> validGames=new HashSet<>();for(int i=0;i<items.length();i++){JSONObject game=items.optJSONObject(i);if(game!=null&&"jogos".equals(game.optString("categoria"))){games.add(game);validGames.add(game.optString("nome"));}}Collections.sort(games,(a,b)->a.optString("nome").compareToIgnoreCase(b.optString("nome")));selectedGames.retainAll(validGames);

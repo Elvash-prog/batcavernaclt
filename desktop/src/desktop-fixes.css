@@ -516,3 +516,5 @@ body.no-animations::view-transition-new(*) {
     flex: 1;
   }
 }
+
+.pc-detection-note:empty{display:none}

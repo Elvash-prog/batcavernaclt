@@ -1,0 +1,5 @@
+BatCaverna CLT Windows 2.1.15 — interface mais direta.
+
+Removidos blocos de instruções e dicas repetidas nas conversas, capas, catálogo, feed, listas, perfil e configurações. Títulos, botões e estados vazios ficaram mais objetivos.
+
+O feed aproveita o espaço do antigo painel explicativo e mantém o acesso aos amigos junto das ações. Campos de busca, atalhos e controles de acessibilidade continuam disponíveis. Avisos de erro, confirmação de ações, privacidade e créditos dos serviços foram preservados.

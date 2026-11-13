@@ -16,9 +16,9 @@ final class FriendSearchSheet {
   c=context;owner=account();repo=new AccountRepository(c);sheet=new NativeSheet(c,"Adicionar amigos");
   query=NativeSheet.input(c,"Nome, @usuário ou código de convite",80);query.setSingleLine(true);query.setImeOptions(EditorInfo.IME_ACTION_SEARCH);sheet.body.addView(query);
   Button search=new Button(c);search.setText("Pesquisar pessoas");AppStyle.button(search,true);sheet.body.addView(search,new LinearLayout.LayoutParams(-1,-2));search.setOnClickListener(v->search());
-  state=NativeSheet.text(c,"Encontre uma pessoa e envie um convite. Ela precisa aceitar para virar sua amiga.",13,0xffb9aace);sheet.body.addView(state);
+  state=NativeSheet.status(c,"",13,0xffb9aace);sheet.body.addView(state);
   results=new LinearLayout(c);results.setOrientation(LinearLayout.VERTICAL);sheet.body.addView(results);
-  query.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int n,int x){}public void afterTextChanged(android.text.Editable e){}public void onTextChanged(CharSequence s,int a,int b,int n){revision++;inviteButtons.clear();results.removeAllViews();state.setText("Toque em Pesquisar ou use a busca do teclado.");}});
+  query.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int n,int x){}public void afterTextChanged(android.text.Editable e){}public void onTextChanged(CharSequence s,int a,int b,int n){revision++;inviteButtons.clear();results.removeAllViews();state.setText("");}});
   query.setOnEditorActionListener((v,action,event)->{if(action==EditorInfo.IME_ACTION_SEARCH){search();return true;}return false;});
   sheet.dialog.setOnDismissListener(d->revision++);sheet.show();
  }
@@ -28,7 +28,7 @@ final class FriendSearchSheet {
   final String term;try{term=FriendSearchInput.term(query.getText().toString());}catch(IllegalArgumentException e){state.setText(e.getMessage());return;}
   int ticket=++revision;inviteButtons.clear();results.removeAllViews();state.setText("Procurando pessoas…");
   repo.searchPeople(term,(rows,error)->{if(!active(ticket))return;if(error!=null){state.setText(error+" Toque em Pesquisar para tentar novamente.");return;}
-   state.setText(rows.length()==0?"Nenhuma pessoa encontrada. Tente outro nome, @usuário ou código.":rows.length()+" pessoas encontradas");
+   state.setText(rows.length()==0?"Nenhuma pessoa encontrada.":rows.length()+" pessoas encontradas");
    for(int i=0;i<rows.length();i++){JSONObject person=rows.optJSONObject(i);if(person==null)continue;String id=person.optString("id");if(id.equals(owner)||!ItemEditInput.validId(id))continue;
     LinearLayout card=new LinearLayout(c);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(12),dp(10),dp(12),dp(10));card.setBackground(AppStyle.shape(card,0xff242035,14));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);cp.setMargins(0,dp(6),0,dp(6));results.addView(card,cp);
     LinearLayout row=new LinearLayout(c);row.setGravity(Gravity.CENTER_VERTICAL);card.addView(row);

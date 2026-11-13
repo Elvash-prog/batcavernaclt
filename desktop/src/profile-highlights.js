@@ -14,7 +14,7 @@
   let active='games',selectedOnly=false,limit=24;
   const id='profile-picks-'+Math.random().toString(36).slice(2);
   root.classList.add('profile-highlights');
-  root.innerHTML=`<div class="picks-heading"><div><span class="eyebrow">A SUA ASSINATURA</span><h3>O melhor da sua jornada</h3><p>Escolha o que merece um lugar no seu perfil.</p></div><span class="picks-heading-icon">${icon('star')}</span></div>
+  root.innerHTML=`<div class="picks-heading"><div><span class="eyebrow">A SUA ASSINATURA</span><h3>Destaques</h3></div><span class="picks-heading-icon">${icon('star')}</span></div>
    <div class="picks-tabs" role="tablist" aria-label="Tipos de destaque"><button type="button" role="tab" id="${id}-games-tab" aria-controls="${id}-games" data-picks-tab="games">${icon('star')}<span>Jogos</span><b data-picks-game-count></b></button><button type="button" role="tab" id="${id}-achievements-tab" aria-controls="${id}-achievements" data-picks-tab="achievements">${icon('trophy')}<span>Conquistas</span><b data-picks-achievement-count></b></button></div>
    <p class="picks-notice" role="status" aria-live="polite"></p>
    <div data-picks-values hidden></div>
@@ -32,7 +32,7 @@
    const query=fold(root.querySelector('input[type=search]').value.trim());
    const matches=library.map((game,index)=>({game,index})).filter(({game})=>fold(game.nome).includes(query)&&(!selectedOnly||selectedGames.has(game.nome)));
    root.querySelector('[data-picks-results]').textContent=matches.length+' '+(matches.length===1?'jogo':'jogos')+(selectedOnly?' selecionados':' na biblioteca');
-   grid.innerHTML=matches.slice(0,limit).map(({game,index})=>`<label class="picks-game ${selectedGames.has(game.nome)?'is-selected':''}"><input type="checkbox" data-pick-game="${index}" aria-label="Destacar ${escape(game.nome)}" ${selectedGames.has(game.nome)?'checked':''}><span class="picks-check">${icon('check')}</span><span class="picks-art"><img src="brand.jpg" data-private-src="${escape(game.capa||'')}" alt="" loading="lazy" decoding="async"></span><span class="picks-game-copy"><strong title="${escape(game.nome)}">${escape(game.nome)}</strong><small>${escape(game.plataforma||'Na sua biblioteca')}</small></span></label>`).join('')||`<div class="picks-empty">${icon('search')}<h4>${selectedOnly?'Sua vitrine começa aqui':'Nenhum jogo encontrado'}</h4><p>${selectedOnly?'Escolha até 8 favoritos na biblioteca.':'Tente outro nome ou adicione jogos à sua biblioteca.'}</p></div>`;
+   grid.innerHTML=matches.slice(0,limit).map(({game,index})=>`<label class="picks-game ${selectedGames.has(game.nome)?'is-selected':''}"><input type="checkbox" data-pick-game="${index}" aria-label="Destacar ${escape(game.nome)}" ${selectedGames.has(game.nome)?'checked':''}><span class="picks-check">${icon('check')}</span><span class="picks-art"><img src="brand.jpg" data-private-src="${escape(game.capa||'')}" alt="" loading="lazy" decoding="async"></span><span class="picks-game-copy"><strong title="${escape(game.nome)}">${escape(game.nome)}</strong><small>${escape(game.plataforma||'Na sua biblioteca')}</small></span></label>`).join('')||`<div class="picks-empty">${icon('search')}<h4>${selectedOnly?'Sua vitrine começa aqui':'Nenhum jogo encontrado'}</h4><p>${selectedOnly?'Nenhum destaque selecionado.':'Nenhum jogo encontrado.'}</p></div>`;
    root.querySelector('.picks-more').hidden=matches.length<=limit;
    if(typeof hydrateMedia==='function')void hydrateMedia(grid).catch(()=>{});
   }
