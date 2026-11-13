@@ -1,3 +1,4 @@
+import {testChatFlow} from './chat-flow-ui.mjs';
 import {testNavigationMotion} from './navigation-motion-ui.mjs';
 import {testAppearance} from './appearance-ui.mjs';
 import {testSensitiveCovers} from './sensitive-covers-ui.mjs';
@@ -377,7 +378,7 @@ try {
             return p.userId
               ? { ...friend, stats: { total: 5, finished: 2, hours: 30 } }
               : window.presenceTestProfile?{...profile,...window.presenceTestProfile}:profile;
-          if (c === "friends" || c === "search_people") return [friend];
+          if (c === "friends" || c === "search_people") return window.testFriends||[friend];
           if (c === "cover_image") {
             window.coverCalls++;
             if (window.failCoverImage) {
@@ -484,13 +485,14 @@ try {
               capas: ["https://images.igdb.com/igdb/image/upload/t_cover_big/test.jpg"],
               amigos: [],
             };
-          if (c === "chat_messages") return window.testPrivateMessages||messages;
+          if(c==='chat_messages'){const target=String(p.friendId),rows=structuredClone(window.testMessagesByTarget?.[target]||window.testPrivateMessages||messages);if(window.holdChatReads?.[target])await new Promise(resolve=>{((window.pendingChatReads||={})[target]||=[]).push(resolve);});return rows;}
           if(c==='upload_chat_image'){window.saved.push({c,p});return {path:p.group?'test/group-photo.png':'test/photo.png'};}
           if(c==='save_chat_image'){window.saved.push({c,p});return {name:'BatCaverna-imagem.png'};}
           if (c === "send_message") {
+            if(window.holdChatSend)await new Promise(resolve=>{(window.pendingChatSends||=[]).push(resolve);});
             window.saved.push({c,p});await new Promise(r=>setTimeout(r,100));
             if(window.sendFailure==='before'){window.sendFailure='';throw Error('Conexão interrompida');}
-            if(!messages.some(m=>m.id===p.input.messageId))messages.push({id:p.input.messageId||'m'+(messages.length+1),remetente_id:'test',destinatario_id:'friend',texto:p.input.text,midia_url:p.input.media,created_at:new Date().toISOString()});
+            const store=window.testMessagesByTarget?.[p.input.friendId]||messages;if(!store.some(m=>m.id===p.input.messageId))store.push({id:p.input.messageId||'m'+(store.length+1),remetente_id:'test',destinatario_id:p.input.friendId,texto:p.input.text,midia_url:p.input.media,created_at:new Date().toISOString()});if(window.holdChatAck)await new Promise(resolve=>{(window.pendingChatAcks||=[]).push(resolve);});
             if(window.sendFailure==='after'){window.sendFailure='';throw Error('Resposta perdida');}return {};
           }
           if (c === "community") {
@@ -591,7 +593,7 @@ try {
                   i.id === "test"
                     ? profile
                     : {
-                        ...friend,
+                        ...(window.testFriends?.find(person=>String(person.id)===String(i.id))||friend),
                         bio: "Bio do amigo",
                         banner_url: "",
                         jogos_destaque: ["Jogo zerado"],
@@ -633,10 +635,10 @@ try {
               ].map(([id, periodo, missao_id, nome, objetivo, meta, progresso, xp]) => ({ id, periodo, missao_id, nome, objetivo, meta, progresso, xp, reivindicada: false }));
             if (i.op === "groups") return window.testGroups||[];
             if (i.op === 'group_messages') return window.testGroupMessages||[];
-            if(i.op==='group_send'){window.saved.push({c:'group_send',p:i});await new Promise(r=>setTimeout(r,100));(window.testGroupMessages||=[]).push({id:'g-sent',remetente_id:'test',texto:i.text,created_at:new Date().toISOString()});return {};}
+            if(i.op==='group_send'){if(window.holdGroupSend)await new Promise(resolve=>(window.pendingGroupSends||=[]).push(resolve));window.saved.push({c:'group_send',p:i});await new Promise(r=>setTimeout(r,100));(window.testGroupMessages||=[]).push({id:i.messageId||'g-sent',remetente_id:'test',texto:i.text,created_at:new Date().toISOString()});return {};}
 
             if (i.op === 'group_manage') { window.saved.push({c:'group_manage',p:i});if(i.action==='members')return window.testGroupMembers||[{user_id:'test',admin:true},{user_id:'member-2',admin:false}];return []; }
-            if (i.op === "reactions") return reactions;
+            if(i.op==='reactions'){const rows=structuredClone(reactions);if(window.holdChatReactions)await new Promise(resolve=>(window.pendingChatReactions||=[]).push(resolve));return rows;}
             if (i.op === "react") {
               reactions = i.remove
                 ? reactions.filter((r) => r.message_id !== i.id)
@@ -832,8 +834,9 @@ try {
   const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
-  if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
   await testNavigationMotion(page);
+  await testChatFlow(page);
   // Settings search only locates categories and preserves the currently open controls.
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('.settings-search-label input').fill('SENHA');
