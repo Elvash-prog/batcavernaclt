@@ -42,6 +42,15 @@ export async function testAppearance(page){
   await page.screenshot({path:`preview/unified-theme-${preset==='Âmbar'?'Ambar':preset}.png`,animations:'disabled'});
   await settings();
  }
+ // Media headers use the selected palette even when their cover is applied inline.
+ await page.evaluate(async()=>{state.discoverTab='retro';await navigate('discover');});
+ const retro=await page.locator('.retro-profile').evaluate(n=>({background:getComputedStyle(n).backgroundImage,color:getComputedStyle(n.querySelector('h2')).color}));
+ assert.match(retro.background,/color\(srgb 1 1 1 \/ 0\.96\)/,'retro cover overlay follows the light panel token');assert.equal(retro.color,'rgb(23, 32, 51)');
+ await page.screenshot({path:'preview/unified-light-retro.png',animations:'disabled'});
+ await settings();await page.locator('[data-theme-preset="Caverna"]').click();
+ await page.evaluate(async()=>{state.discoverTab='retro';await navigate('discover');});
+ assert.match(await page.locator('.retro-profile').evaluate(n=>getComputedStyle(n).backgroundImage),/color\(srgb 0\.0627451 0\.121569 0\.168627 \/ 0\.96\)/,'retro cover overlay follows the dark panel token');
+ await settings();await page.locator('[data-theme-preset="Claro"]').click();
  const fixture=path.resolve('../tests/fixtures/profile-images/valid.png');
  const before=await page.evaluate(()=>({source:state.profile.fundo.url,writes:window.saved.filter(x=>x.c==='update_profile_background').length}));
  await page.evaluate(()=>window.failProfileUpload=true);
