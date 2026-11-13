@@ -1,10 +1,10 @@
 #content.game-feed-screen{max-width:1260px;margin-inline:auto;width:100%;min-width:0}
 .game-feed-head{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:8px 0 28px;padding:28px;border:1px solid var(--border,#2c3644);border-radius:22px;background:linear-gradient(125deg,color-mix(in srgb,var(--accent) 13%,var(--panel)),var(--panel))}
 .game-feed-head h2{font-size:clamp(24px,2.6vw,38px);letter-spacing:-.04em;margin:10px 0}
-.game-feed-head p,.game-feed-guide p{color:var(--muted,#a9b3c0);line-height:1.65;margin:0;max-width:58ch}
+.game-feed-head p{color:var(--muted,#a9b3c0);line-height:1.65;margin:0;max-width:58ch}
 .game-feed-head button{flex-shrink:0;min-height:44px}
-.game-feed-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px;align-items:start}
-.game-feed-stream{min-width:0}.game-feed-toolbar{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:0 2px 18px;color:var(--muted,#a9b3c0);font-size:13px}
+.game-feed-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start}
+.game-feed-toolbar-actions{display:flex;gap:10px;flex-wrap:wrap}.game-feed-stream{min-width:0}.game-feed-toolbar{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;padding:0 2px 18px;color:var(--muted,#a9b3c0);font-size:13px}
 .game-feed-card{padding:22px;margin-bottom:20px;border:1px solid var(--border,#2c3644);border-radius:22px;background:var(--panel);min-width:0}
 .game-feed-card header{display:flex;align-items:center;gap:12px}.game-feed-card header>div{flex:1;min-width:0}.game-feed-card header b{display:block;overflow-wrap:anywhere;font-size:14px}.game-feed-card time{display:block;font-size:11px;color:var(--muted,#a9b3c0);margin-top:4px}.game-feed-avatar{width:40px;height:40px;object-fit:cover;border-radius:50%;flex-shrink:0}
 .game-feed-action{font-size:15px;margin:20px 0 12px;color:var(--text)}
@@ -12,8 +12,7 @@
 .game-feed-art{min-width:0;min-height:180px;height:100%;background:var(--bg)}.game-feed-art img{width:100%;height:100%;min-height:180px;max-height:240px;object-fit:cover;display:block}
 .game-feed-title>span{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:22px;gap:10px;min-width:0}.game-feed-title small{font-size:10px;letter-spacing:.13em;color:var(--accent)}.game-feed-title strong{font-size:clamp(18px,1.6vw,24px);line-height:1.25;overflow-wrap:anywhere}.game-feed-title span>span{color:var(--muted,#a9b3c0);font-size:12px}.game-feed-title em{font-size:12px;font-style:normal;color:var(--accent);margin-top:8px}
 .game-feed-card footer{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-top:18px}.game-feed-card button[aria-pressed=true]{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--panel))}.game-feed-feedback:empty{display:none}.game-feed-feedback{font-size:12px;color:#ffb8b8;line-height:1.5}
-.game-feed-guide{padding:24px;background:color-mix(in srgb,var(--panel) 85%,var(--bg));border:1px solid var(--border,#2c3644);border-radius:20px}.game-feed-guide h3{font-size:21px;line-height:1.3;margin:14px 0}.game-feed-guide p{font-size:13px;margin-bottom:18px}.game-feed-guide button{width:100%;min-height:44px}
 .game-feed-picker{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto;margin:16px 0}.game-feed-picker button{text-align:left;min-height:44px;white-space:normal;overflow-wrap:anywhere}.game-feed-picker button[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--text)}
 .game-feed-composer{max-width:600px}.game-feed-composer label{margin-block:14px}.game-feed-composer footer{display:flex;justify-content:flex-end}
-@media(max-width:1300px){.game-feed-layout{grid-template-columns:minmax(0,1fr)}.game-feed-guide{display:none}.game-feed-head{padding:22px;align-items:flex-start}.game-feed-head p{font-size:13px}}
+@media(max-width:1300px){.game-feed-layout{grid-template-columns:minmax(0,1fr)}.game-feed-head{padding:22px;align-items:flex-start}.game-feed-head p{font-size:13px}}
 @media(max-width:760px){.game-feed-head{flex-direction:column;gap:16px}.game-feed-card{padding:16px}.game-feed-title>span{padding:16px}.game-feed-card footer{gap:8px}.game-feed-card footer button{font-size:12px;flex:1}.game-feed-title{min-height:155px}.game-feed-art,.game-feed-art img{min-height:155px}}

@@ -5,7 +5,7 @@ export async function testAppearance(page){
  const paint=()=>page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})));});
  await settings();
  assert.equal(await page.locator('[data-setting-section="wallpaper"]').count(),1);
- assert.match(await page.locator('[data-setting-section="wallpaper"]').innerText(),/todas as abas.*perfil/);
+ assert.equal(await page.locator('[data-setting-section="wallpaper"] .wallpaper-help').count(),0);
  await page.locator('[data-theme-preset="Claro"]').click();await paint();
  await page.evaluate(()=>{const sync=window.batcavernaLayoutSync;sync.save({...sync.get(),preset:'Claro',bg:'#eef2f8'});});
  const colorState=await page.evaluate(()=>({body:getComputedStyle(document.body).backgroundColor,main:getComputedStyle(document.querySelector('#appShell>main')).backgroundColor,content:getComputedStyle(document.querySelector('#content')).backgroundColor,railInput:getComputedStyle(document.querySelector('.rail-search input')).backgroundColor,wallpaper:getComputedStyle(document.body,'::before').backgroundImage}));

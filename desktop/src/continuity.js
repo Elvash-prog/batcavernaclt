@@ -13,7 +13,7 @@
   const generation=++homeGeneration;await home();if(state.current!=='home'||generation!==homeGeneration)return;
   window.BatDashboard.decorate($('#content'),{add:()=>{state.libraryCategory='jogos';openItemEditor(null);}});
   const owner=state.userId,host=document.createElement('section');host.className='continuity';host.setAttribute('aria-label','Continuar de onde parei');
-  host.innerHTML='<header class="section-head"><div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2>Continuar de onde parei</h2><p>Títulos em andamento, pelas últimas atualizações.</p></div></header><div class="continuity-filters" role="group" aria-label="Categorias para continuar"></div><div class="continuity-groups"></div>';
+  host.innerHTML='<header class="section-head"><div><span class="eyebrow">SEU PRÓXIMO PASSO</span><h2>Continuar de onde parei</h2></div></header><div class="continuity-filters" role="group" aria-label="Categorias para continuar"></div><div class="continuity-groups"></div>';
   const anchor=$('.studio-metrics')||$('.dashboard-columns');if(anchor)anchor.after(host);else $('#content').prepend(host);
   $('#recent-shelf')?.closest('.shelf-section')?.remove();
   const current=()=>host.isConnected&&state.current==='home'&&owner===state.userId&&generation===homeGeneration;

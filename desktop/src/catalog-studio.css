@@ -8,3 +8,5 @@
 @media(max-width:900px){.catalog-studio .catalog-results{grid-template-columns:1fr;max-height:300px}.reference-ui .catalog-studio{width:calc(100vw - 40px);max-height:calc(100dvh - 40px)}.catalog-studio>header{padding:18px}.catalog-studio>.catalog-search{margin:0 14px 16px}.catalog-studio>.item-editor-tabs,.catalog-studio>[data-item-panel]{margin-left:14px;margin-right:14px}.catalog-studio>footer{padding:14px}.catalog-draft-preview strong{font-size:18px}}
 
 .catalog-reviewing #catalogResults,.catalog-reviewing .catalog-search>label{display:none!important}.reference-ui:has(.catalog-studio-overlay) .friends-dock{display:none!important}.reference-ui:has(.catalog-studio-overlay) #toast{bottom:90px;pointer-events:none}
+
+.catalog-queue-note:empty{display:none}

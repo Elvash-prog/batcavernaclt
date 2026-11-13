@@ -10,7 +10,6 @@ public final class AccountDataView extends ScrollView {
  public AccountDataView(Context c,boolean profile){this(c,profile,0);}
  public AccountDataView(Context c,boolean profile,int initialCategory){super(c);category=initialCategory;repo=new AccountRepository(c);setFillViewport(true);setVerticalScrollBarEnabled(false);body=new LinearLayout(c);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(16),dp(16),dp(16),dp(24));addView(body);
   TextView heading=NativeSheet.text(c,category==0?"Sua coleção de jogos":"Suas histórias",24,0xfff3effa);heading.setTypeface(null,android.graphics.Typeface.BOLD);body.addView(heading);
-  body.addView(NativeSheet.text(c,"Busque, acompanhe e organize por progresso.",13,0xffb2a9c1));
   if(category!=0){typeTabs=new LibraryTabs(c,"library-type-tabs",new String[]{"1","2","3","4"},new String[]{"Todos","Filmes","Séries","Animes"},String.valueOf(category),key->{category=Integer.parseInt(key);summaryFilter="all";genre=platform="";limits.clear();rebuildFilters();renderOverview();render();});body.addView(typeTabs);}
 
   search=NativeSheet.input(c,"Buscar na sua biblioteca",160);search.setSingleLine(true);ActionIcon searchIcon=new ActionIcon(ActionIcon.SEARCH,0xffb2a9c1);searchIcon.setBounds(0,0,dp(20),dp(20));search.setCompoundDrawablePadding(dp(10));search.setCompoundDrawables(searchIcon,null,null,null);body.addView(search);
@@ -30,7 +29,7 @@ public final class AccountDataView extends ScrollView {
 
   if(clearFilters!=null)clearFilters.setVisibility(!query.isEmpty()||!summaryFilter.equals("all")||!genre.isEmpty()||!platform.isEmpty()?VISIBLE:GONE);state.setText(!loadError.isEmpty()?"A biblioteca não foi atualizada.":loading?"Carregando biblioteca completa…":visible+" títulos encontrados • "+selected().length()+" na biblioteca");if(visible==0&&!loading&&loadError.isEmpty()){
    boolean filtered=!query.isEmpty()||!summaryFilter.equals("all")||!genre.isEmpty()||!platform.isEmpty();
-   list.addView(ScreenState.message(getContext(),false,filtered?"Nenhum resultado por aqui":"Sua coleção começa aqui",filtered?"Tente outro nome ou limpe os filtros para explorar sua biblioteca.":"Adicione seu primeiro título para acompanhar seu progresso.",filtered?"Limpar busca e filtros":"Adicionar primeiro título",()->{if(filtered)clearFilters();else add.performClick();}));
+   list.addView(ScreenState.message(getContext(),false,filtered?"Nenhum resultado por aqui":"Sua coleção começa aqui",filtered?"Nenhum título encontrado.":"Nenhum título na biblioteca.",filtered?"Limpar busca e filtros":"Adicionar primeiro título",()->{if(filtered)clearFilters();else add.performClick();}));
   }}
  private String[] statusKeys(){return category==0?new String[]{"all","progress","backlog","finished","platinum","hours"}:new String[]{"all","progress","backlog","finished"};}
  private void syncTabs(){

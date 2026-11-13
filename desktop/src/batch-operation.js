@@ -53,7 +53,7 @@
    if(!overlay.isConnected)return;
    overlay.dataset.busy=s.busy?'1':'0';meter.value=s.success+s.failed;
    status.textContent=s.blocked?'A conta mudou. Esta operação foi interrompida.':`${s.success} ${successLabel} · ${s.failed} ${failureLabel}${s.pending?' · '+s.pending+' pendentes':''}`;
-   hint.textContent=s.blocked?'Feche esta janela e abra a biblioteca da conta atual.':s.busy?(s.stopping?'Aguardando os títulos em andamento terminarem…':'Em andamento: '+s.running.map(item=>item.nome).join(', ')):s.pending?'Você pode continuar os títulos pendentes ou fechar esta janela.':s.failed?'A nova tentativa processa somente os títulos com falha.':'Todos os títulos foram processados.';
+   hint.textContent=s.blocked?'A sessão mudou.':s.busy?(s.stopping?'Aguardando os títulos em andamento terminarem…':'Em andamento: '+s.running.map(item=>item.nome).join(', ')):s.pending?'Há títulos pendentes.':s.failed?'Há títulos com falha.':'Todos os títulos foram processados.';
    errors.replaceChildren();if(!s.blocked){for(const error of s.errors.slice(0,50)){const li=document.createElement('li');li.textContent=`${error.item.nome}: ${error.message}`;errors.append(li);}if(s.errors.length>50){const li=document.createElement('li');li.textContent=`Mais ${s.errors.length-50} títulos com falha.`;errors.append(li);}}
    stop.hidden=!s.busy;stop.disabled=s.stopping||s.blocked;
    resume.hidden=s.busy||s.blocked||!s.pending;retry.hidden=s.busy||s.blocked||!s.failed;
