@@ -1,0 +1,5 @@
+BatCaverna CLT Android 2.1.10 — interface mais direta.
+
+Removidos blocos de orientação e dicas repetidas no catálogo, capas, perfil, feed, listas, estatísticas e configurações. O rodapé de seleção mostra apenas a contagem de títulos; listas indisponíveis recebem um aviso curto.
+
+Avisos de erro, confirmações, privacidade, créditos e acessibilidade foram preservados.
