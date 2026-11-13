@@ -13,3 +13,5 @@ O controlador reutiliza a resolução da mesma imagem. Navegações não a subst
 Validação: `npm test` inclui precedência legada, fonte única, deduplicação, remoção, falhas recuperáveis, concorrência, logout e contraste do destaque. `npm run test:ui` verifica os seis temas, contraste dos textos e botões, transparência, telas claras, fundo estável entre abas, atalho do perfil e falhas no upload/salvamento. Também executa os fluxos existentes em HD, Full HD e QHD com APIs simuladas. A publicação repete os testes de interface e Rust no Windows.
 
 Android permanece em 2.1.8 (117).
+
+A versão 2.1.11 completa o tratamento de cabeçalhos de mídia: a camada sobre a capa do Meu Retrô usa a cor do painel do tema, com 96% próximo aos textos e 35% no lado da arte. Os agrupamentos e cabeçalhos da coleção também seguem as superfícies translúcidas. O teste visual verifica a mesma capa nos temas Claro e Caverna.
