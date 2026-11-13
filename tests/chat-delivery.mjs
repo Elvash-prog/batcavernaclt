@@ -4,3 +4,9 @@ const original={owner:'alice',target:'bob',group:false,text:'Olá',attachment:nu
 for(const change of [{owner:'eve'},{target:'carol'},{group:true},{text:'Alterada'},{attachment:{name:'photo.webp'}}])assert.notEqual(api.attempt(first,{...original,...change}).id,first.id);
 assert.equal(api.atEnd({clientHeight:500,scrollHeight:1500,scrollTop:1000}),true);assert.equal(api.atEnd({clientHeight:500,scrollHeight:1500,scrollTop:100}),false);assert.equal(api.atEnd({clientHeight:0,scrollHeight:0,scrollTop:0}),false);
 const rows=[{id:'old',remetente_id:'bob',lida:true,created_at:'2026-11-05T10:00:00Z'},{id:'own',remetente_id:'alice',lida:false,created_at:'2026-11-05T10:01:00Z'},{id:'new',remetente_id:'bob',lida:false,created_at:'2026-11-05T10:02:00Z'}];assert.equal(api.firstUnread(rows,'alice',false,''),'new');assert.equal(api.firstUnread(rows,'alice',true,'2026-11-05T07:00:00-03:00'),'new');assert.equal(api.firstUnread(rows,'alice',true,'2026-11-05T10:02:00Z'),undefined);console.log('Chat: identidade de envio, tentativas, leitura e limite visível passaram.');
+const sending={row:{id:'pending',remetente_id:'alice',texto:'Agora',created_at:'2026-11-05T10:03:00Z'},status:'sending'};
+assert.equal(api.merge(rows,[sending]).at(-1)._delivery,'sending');
+const optimistic=api.merge(rows,[sending]);assert.equal(api.merge(optimistic,[{...sending,status:'failed'}]).at(-1)._delivery,'failed');
+const confirmed={...sending.row,lida:true};assert.equal(api.merge([...rows,confirmed],[sending]).filter(row=>row.id==='pending').length,1);assert.equal(api.merge([...rows,confirmed],[sending]).at(-1)._delivery,undefined);
+assert.notEqual(api.scope('alice','bob',false),api.scope('alice','bob',true));assert.notEqual(api.scope('alice','bob',false),api.scope('eve','bob',false));
+console.log('Chat: reconciliação otimista, confirmação por ID e separação de conta/conversa passaram.');

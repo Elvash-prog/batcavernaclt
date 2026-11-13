@@ -1,0 +1,9 @@
+BatCaverna CLT Windows 2.1.13 — conversas mais fluidas e mensagens imediatas.
+
+Ao trocar de contato ou grupo, a lista de conversas permanece disponível. A próxima conversa é preparada antes da apresentação e recebe uma transição curta, sem capturar ou animar a janela inteira. Rascunhos e posição de leitura ficam separados por conversa.
+
+Textos, imagens e figurinhas aparecem imediatamente com indicação de envio. A confirmação atualiza a mesma mensagem, sem reconstruir o histórico. Tentativas sem confirmação continuam usando o mesmo identificador ao reenviar; uma confirmação tardia não apaga um rascunho novo.
+
+Atualizações preservam imagens já carregadas, menus abertos e a posição de leitura. Reações não bloqueiam a primeira apresentação da conversa. Respostas atrasadas de outra conversa ou sessão são descartadas.
+
+Esta atualização é do Windows; o Android permanece na versão atual.
