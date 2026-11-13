@@ -1,3 +1,4 @@
+import {testNavigationMotion} from './navigation-motion-ui.mjs';
 import {testAppearance} from './appearance-ui.mjs';
 import {testSensitiveCovers} from './sensitive-covers-ui.mjs';
 import { chromium } from "playwright";
@@ -831,7 +832,8 @@ try {
   const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
-  if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  await testNavigationMotion(page);
   // Settings search only locates categories and preserves the currently open controls.
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('.settings-search-label input').fill('SENHA');
@@ -877,6 +879,7 @@ try {
   const feedbackSavedBefore=await page.evaluate(()=>window.saved.filter(x=>x.c==='save_item').length);
   await page.evaluate(async()=>{window.loadingFlashes=0;window.loadingObserver=new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)if(n.id==='navigationProgress')window.loadingFlashes++;});window.loadingObserver.observe(document.body,{childList:true,subtree:true});await navigate('library');await navigate('home');window.loadingObserver.disconnect();});
   assert.equal(await page.evaluate(()=>window.loadingFlashes),0,'quick tab switches never insert a loading panel');
+  await page.locator('#content').evaluate(async root=>await Promise.all(root.getAnimations().map(a=>a.finished.catch(()=>{}))));
   await page.evaluate(()=>{state.libraryCategory='jogos';window.holdLibraryPreparation=true;window.previousScreen=document.querySelector('.studio-welcome');window.previousHeroRect=document.querySelector('.home-hero').getBoundingClientRect().toJSON();void navigate('library')});
   assert.equal(await page.locator('#navigationProgress').count(),0,'fast transition does not immediately flash an indicator');
   assert.equal(await page.locator('#content').evaluate(root=>root.inert),true);
