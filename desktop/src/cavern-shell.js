@@ -47,10 +47,9 @@
  shell.append(rail);
  rail.insertAdjacentHTML('afterbegin',`<label class="rail-search">${svg(icons.search)}<input type="search" placeholder="Buscar amigos..." aria-label="Buscar amigos"></label>`);
  rail.querySelector('.rail-search input').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();rail.querySelectorAll('[data-sidebar-chat]').forEach(b=>b.hidden=!!q&&!b.textContent.toLowerCase().includes(q))});
- const sync=()=>{document.body.dataset.screen=state.current||'home';document.body.classList.toggle('rail-off',['chat','friends'].includes(state.current))};
+ const sync=()=>{if($('#content').classList.contains('navigation-reading'))return;document.body.dataset.screen=state.current||'home';document.body.classList.toggle('rail-off',['chat','friends'].includes(state.current))};
  const baseNavigate=navigate;
  navigate=async function(view){
-  document.body.dataset.screen=view;
   try{await baseNavigate(view)}finally{sync()}
  };
  const baseHome=renderHome;
@@ -209,8 +208,7 @@ function showPcDetection(owner,message){pcDetectionResult={owner,message};if(own
  }catch(error){toast(failure(error))}};
 };})();
 
-// Reveal the completed renderer chain together, including its final layout and signed media.
-(()=>{let generation=0;const content=()=>$('#content');const clear=()=>{content()?.classList.remove('view-preparing');content()?.removeAttribute('aria-busy');document.getElementById('viewPreparation')?.remove()};const previousNavigate=navigate;navigate=async function(...args){generation++;clear();return previousNavigate(...args)};const wrap=renderer=>async function(...args){const ticket=++generation,box=content();clear();box.classList.add('view-preparing');box.setAttribute('aria-busy','true');const pending=document.createElement('div');pending.id='viewPreparation';pending.setAttribute('role','status');pending.innerHTML='<span class="spinner"></span> Carregando…';box.before(pending);try{return await renderer(...args)}finally{if(ticket===generation)clear()}};renderProfile=wrap(renderProfile);renderDiscover=wrap(renderDiscover)})();
+// Full-screen read feedback is coordinated by navigation-feedback.js.
 
 function learnPcExecutable(mappings,row,detected){
  const current=Array.isArray(mappings)?mappings:[],process=String(detected?.process||'').replace(/\.exe$/i,'');

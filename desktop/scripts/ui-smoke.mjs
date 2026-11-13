@@ -326,6 +326,7 @@ try {
             };
           if (c === "journey_stats") throw "RPC ausente";
           if(c==="library"&&window.libraryFailure)throw Error("Falha temporária de conexão. Tente novamente.");
+          if(c==="library"&&window.holdLibraryPreparation)await new Promise(resolve=>{(window.pendingLibraryRequests||=[]).push(resolve);window.releaseLibraryPreparation=()=>{window.pendingLibraryRequests.splice(0).forEach(done=>done())};});
           if (c === "library" && window.delayLibrary)
             await new Promise((r) =>
               setTimeout(r, window.libraryDelay || 120),
@@ -871,15 +872,24 @@ try {
   assert.deepEqual(await page.locator('.studio-metrics strong').allTextContents(),dashboardCounts);
   // Read retries retain the collection context and never repeat a save.
   const feedbackSavedBefore=await page.evaluate(()=>window.saved.filter(x=>x.c==='save_item').length);
-  await page.evaluate(()=>{state.libraryCategory='jogos';window.delayLibrary=true;window.libraryDelay=900;void navigate('library')});
-  await page.locator('.library-loading').waitFor();
-  assert.equal(await page.locator('.screen-skeleton-card').count(),6);
-  assert.equal(await page.locator('.screen-skeleton-grid').getAttribute('aria-hidden'),'true');
+  await page.evaluate(async()=>{window.loadingFlashes=0;window.loadingObserver=new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)if(n.id==='navigationProgress')window.loadingFlashes++;});window.loadingObserver.observe(document.body,{childList:true,subtree:true});await navigate('library');await navigate('home');window.loadingObserver.disconnect();});
+  assert.equal(await page.evaluate(()=>window.loadingFlashes),0,'quick tab switches never insert a loading panel');
+  await page.evaluate(()=>{state.libraryCategory='jogos';window.holdLibraryPreparation=true;window.previousScreen=document.querySelector('.studio-welcome');window.previousHeroRect=document.querySelector('.home-hero').getBoundingClientRect().toJSON();void navigate('library')});
+  assert.equal(await page.locator('#navigationProgress').count(),0,'fast transition does not immediately flash an indicator');
+  assert.equal(await page.locator('#content').evaluate(root=>root.inert),true);
+  assert.equal(await page.locator('.studio-welcome').isVisible(),true,'previous screen is retained during the read');
+  await page.locator('#navigationProgress .library-loading').waitFor();
+  assert.equal(await page.evaluate(()=>document.querySelector('#content').classList.contains('reference-home')),true);
+  const retainedHero=await page.evaluate(()=>({before:window.previousHeroRect,after:document.querySelector('.home-hero').getBoundingClientRect().toJSON()}));for(const key of ['x','y','width','height'])assert.ok(Math.abs(retainedHero.before[key]-retainedHero.after[key])<1,'previous layout geometry stays intact');
+  assert.equal(await page.locator('.screen-skeleton-card').count(),0);
+  assert.equal(await page.locator('#content').getAttribute('aria-busy'),'true');
+  const loadingBox=await page.locator('#navigationProgress').boundingBox();assert.ok(loadingBox.height<100&&loadingBox.width<500,'loading feedback stays compact');
   await page.screenshot({path:'preview/library-loading-check.png',animations:'disabled'});
   await page.emulateMedia({reducedMotion:'reduce'});
-  assert.equal(await page.locator('.screen-skeleton-art').first().evaluate(el=>getComputedStyle(el).animationName),'none');
+  assert.equal(await page.locator('.screen-loading-mark').first().evaluate(el=>getComputedStyle(el).animationName),'none');
+  await page.evaluate(()=>{window.holdLibraryPreparation=false;window.releaseLibraryPreparation();});
   await page.locator('#librarySearch').waitFor();
-  await page.evaluate(()=>window.delayLibrary=false);
+  assert.equal(await page.locator('#content').evaluate(root=>root.inert),false);assert.equal(await page.locator('#navigationProgress').count(),0);
   await page.locator('#librarySearch').fill('Jogo');
   await page.locator('#librarySort').selectOption('hours');
   await page.evaluate(async()=>{window.libraryFailure=true;await navigate('library')});
@@ -1634,7 +1644,8 @@ try {
   await page.locator('[data-detail="1"]').click();
   await page.locator("#editInformation").waitFor();
   await page.waitForFunction(()=>document.querySelector('.progress-sync-status')?.textContent.includes('envio pendente'));
-  await page.evaluate(()=>window.holdProgressPending=false);
+  // Keep automatic background flushes from consuming the pending fixture before the actual retry click.
+  await page.evaluate(()=>document.querySelector('.progress-sync-status').addEventListener('click',()=>window.holdProgressPending=false,{capture:true,once:true}));
   await page.locator('.progress-sync-status button').click();
   await page.waitForFunction(()=>document.querySelector('.progress-sync-status')?.textContent.includes('Horas sincronizadas em'));
 
@@ -2166,11 +2177,21 @@ try {
   await page.locator("#profile-featured").waitFor();
   assert.equal(await page.locator("#profile-featured").isVisible(),true);
   await page.evaluate(()=>{window.holdProfilePreparation=true;window.profilePreparation=renderProfile()});
-  assert.equal(await page.locator('#content').evaluate(n=>getComputedStyle(n).visibility),'hidden');
-  await page.locator('#viewPreparation').waitFor();
+  assert.equal(await page.locator('#content').evaluate(n=>getComputedStyle(n).visibility),'visible');
+  assert.equal(await page.locator('#content').evaluate(n=>n.inert),true);
+  await page.locator('#navigationProgress').waitFor();
   await page.evaluate(()=>{window.holdProfilePreparation=false;window.releaseProfilePreparation()});
   await page.evaluate(()=>window.profilePreparation);
   assert.equal(await page.locator('#content').evaluate(n=>getComputedStyle(n).visibility),'visible');
+  await page.evaluate(()=>{window.holdProfilePreparation=true;window.oldProfileNavigation=navigate('profile');});
+  await page.waitForFunction(()=>window.pendingProfileRequests?.length>0);
+  await page.evaluate(()=>{window.holdLibraryPreparation=true;state.libraryCategory='jogos';window.newLibraryNavigation=navigate('library');});
+  await page.locator('#navigationProgress .library-loading').waitFor();
+  await page.evaluate(async()=>{window.holdProfilePreparation=false;window.releaseProfilePreparation();await window.oldProfileNavigation;});
+  assert.equal(await page.locator('#content').evaluate(root=>root.inert),true,'old completion does not unlock the newer read');
+  assert.equal(await page.locator('#navigationProgress .library-loading').count(),1);
+  await page.evaluate(async()=>{window.holdLibraryPreparation=false;window.releaseLibraryPreparation();await window.newLibraryNavigation;await navigate('profile');});
+  await page.locator('#profile-featured').waitFor();
   assert.equal(await page.locator("#appShell").evaluate((n) => n.classList.contains("profile-background-active")), true);
   assert.notEqual(
     await page.locator(".complete-profile").evaluate(

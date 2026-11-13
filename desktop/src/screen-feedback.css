@@ -5,26 +5,12 @@
 .screen-state p{font-size:13px;line-height:1.7;color:var(--muted);margin:0;max-width:520px;white-space:pre-line;overflow-wrap:anywhere}
 .screen-state button{min-height:44px;max-width:100%;white-space:normal;margin-top:6px}
 .screen-state-error{border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
-.screen-loading{max-width:var(--workspace-width,1480px);width:100%;margin:12px auto;min-width:0}
-.screen-loading-label{font-size:13px;color:var(--muted);margin:0 0 20px}
-.screen-skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:18px}
-.screen-skeleton-card{padding:10px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--panel)}
-.screen-skeleton-card span{display:block;border-radius:8px;background:color-mix(in srgb,var(--muted) 12%,var(--panel));animation:screen-breathe 1500ms ease-in-out infinite alternate}
-.screen-skeleton-art{aspect-ratio:16/9;width:100%}
-.library-loading[data-format=poster] .screen-skeleton-art{aspect-ratio:2/3}
-.screen-skeleton-title{width:76%;height:14px;margin:16px 4px 12px}
-.screen-skeleton-meta{width:45%;height:10px;margin:0 4px 10px}
-@keyframes screen-breathe{from{opacity:.5}to{opacity:1}}
-body.no-animations .screen-skeleton-card span{animation:none}
-@media(prefers-reduced-motion:reduce){.screen-skeleton-card span{animation:none}}
+.screen-loading{display:flex;align-items:center;gap:12px;width:fit-content;max-width:100%;margin:0;padding:12px 18px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 10px 30px #0003;color:var(--muted)}
+.screen-loading-label{font-size:13px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.screen-loading-mark{display:block;flex:0 0 16px;width:16px;height:16px;box-sizing:border-box;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:screen-loading-spin 900ms linear infinite}
+@keyframes screen-loading-spin{to{transform:rotate(360deg)}}
+body.no-animations .screen-loading-mark{animation:none}
+@media(prefers-reduced-motion:reduce){.screen-loading-mark{animation:none}}
 #toast[data-tone=success]{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--panel);color:var(--text)}
 #toast[data-tone=success]::before{content:'✓';color:var(--accent);margin-right:10px}
-@media(max-width:600px){.screen-skeleton-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.screen-state{padding:24px 16px}}
-/* Keep placeholders visible while the renderer chain prepares the final layout. */
-.reference-ui #content.screen-pending:has(>.screen-loading){visibility:visible!important;opacity:1;pointer-events:none}
-.content.view-enter>.screen-state,.content.view-enter>.screen-loading{animation:none!important}
-
-.screen-loading-list .screen-skeleton-grid{grid-template-columns:1fr}
-.screen-loading-list .screen-skeleton-card{display:grid;grid-template-columns:90px minmax(0,1fr);gap:10px 18px;align-items:center}
-.screen-loading-list .screen-skeleton-art{grid-row:1/3;max-height:120px}
-.screen-loading-list .screen-skeleton-title,.screen-loading-list .screen-skeleton-meta{margin:0;max-width:320px}
+@media(max-width:600px){.screen-state{padding:24px 16px}}
