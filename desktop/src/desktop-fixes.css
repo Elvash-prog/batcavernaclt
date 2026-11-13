@@ -181,33 +181,6 @@
 .sidebar-account:hover {
   background: var(--soft);
 }
-.profile-user-background {
-  position: relative;
-  isolation: isolate;
-}
-.app-shell.profile-background-active > .sidebar {
-  background: var(--bg);
-}
-.profile-user-background:before {
-  content: "";
-  position: fixed;
-  inset: 80px 0 0 var(--sidebar);
-  z-index: -2;
-  background-image:
-    linear-gradient(
-      rgba(5, 10, 16, var(--user-profile-dark, 0.65)),
-      rgba(5, 10, 16, var(--user-profile-dark, 0.65))
-    ),
-    var(--user-profile-background);
-  background-position: center;
-  background-size: cover;
-  filter: blur(var(--user-profile-blur, 0));
-  pointer-events: none;
-}
-.profile-user-background > [data-profile-page],
-.profile-user-background > .profile-tabs {
-  position: relative;
-}
 .profile-page {
   width: min(100%, 1800px);
   margin-inline: auto;

@@ -1,0 +1,9 @@
+BatCaverna CLT Windows 2.1.10 — temas consistentes e fundo unificado.
+
+O tema claro agora usa uma base clara também no conteúdo central, com campos, navegação, títulos e indicadores coerentes. As cores de todos os temas seguem a mesma estrutura; os botões adaptam a cor do texto ao destaque escolhido.
+
+O fundo do aplicativo e o fundo do perfil passam a ser uma única imagem, configurada em Aparência e usada em todas as abas. A imagem já escolhida para o programa é preservada; quando ela não existe, o fundo atual do perfil é utilizado. Novas imagens são enviadas e salvas na conta.
+
+Os painéis e as barras laterais ficam translúcidos sobre a imagem para deixá-la mais visível. As capas mantêm sua aparência normal. Falhas no envio ou na remoção preservam a imagem selecionada; a troca de conta limpa o fundo anterior.
+
+Esta atualização é do Windows. O Android permanece na versão atual.

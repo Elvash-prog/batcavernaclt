@@ -288,8 +288,6 @@ body.rail-off .cavern-rail { display: none; }
 .cavern-rail #sidebarCommunity b, .cavern-rail #sidebarCommunity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cavern-rail #sidebarCommunity small { color: var(--muted); font-size: 11px; }
 .cavern-rail #sidebarCommunity p { margin: 0; color: var(--muted); font-size: 12px; }
-.profile-user-background:before { right: var(--rail) !important; }
-body.rail-off .profile-user-background:before { right: 0 !important; }
 @media (max-width: 1180px) { .reference-ui .app-shell { --rail: 230px; } }
 @media (max-width: 820px) {
   .reference-ui .app-shell, body.rail-off.reference-ui .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr); }
@@ -353,7 +351,6 @@ body.reference-ui[data-card-format="landscape"] .cavern-library .reference-colle
 }
 
 /* Perfil: conquistas legíveis e em grade densa, fundo menos pesado */
-.profile-user-background { --user-profile-dark: .55; }
 .reference-ui .cavern-profile .achievement-grid {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
@@ -854,7 +851,6 @@ body.reference-ui.light-theme :is(input,select,textarea){background:#fff;color:#
 body.reference-ui.light-theme :is(input,textarea)::placeholder{color:#65748b}
 body.reference-ui.light-theme :is(.secondary,.recommend-tabs button,.tabs button,.toggle){background:#edf0f7;color:#28344b;border-color:#c7d0e0}
 body.reference-ui.light-theme :is(.primary,.tabs button.active,.recommend-tabs button.active){color:#fff}
-body.reference-ui.light-theme :is(.home-hero,.retro-profile,.profile-banner,.detail-hero,.detail-progress,.profile-hero) :is(h1,h2,h3,strong,b,p,small,span){color:#fff}
 body.reference-ui.light-theme .sidebar nav button.active{color:#5b21b6;background:#e9e0fc}
 body.reference-ui.light-theme :is(.reference-detail,.details-section,.profile-tabs,.journey-title-card,.statistics-summary article,.category-breakdown,.monthly-chart){background:#fff;color:#172033;border-color:#d9deea}
 body.reference-ui.light-theme .reference-detail :is(h2,h3,h4,p,small,label){color:inherit}

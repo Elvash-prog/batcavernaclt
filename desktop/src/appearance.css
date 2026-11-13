@@ -1,0 +1,107 @@
+/* A single theme canvas and one wallpaper underneath the whole workspace. */
+body.reference-ui {
+  --muted:color-mix(in srgb,var(--text) 85%,var(--bg));
+  --soft:color-mix(in srgb,var(--panel) 92%,var(--text));
+  --line:color-mix(in srgb,var(--text) 14%,transparent);
+  --line-strong:color-mix(in srgb,var(--text) 22%,transparent);
+  --surface-raised:color-mix(in srgb,var(--panel) 95%,var(--text));
+  --surface-hover:color-mix(in srgb,var(--accent) 12%,var(--panel));
+  --cavern-ink:var(--bg);--cavern-surface:var(--bg);--cavern-panel:var(--panel);
+  --surface-glass:var(--panel);--surface-chrome:var(--panel);--surface-section:var(--panel);
+  --control-bg:color-mix(in srgb,var(--panel) 94%,var(--text));
+  --home-panel:var(--panel);
+  color:var(--text);color-scheme:dark;background:var(--bg);isolation:isolate;
+}
+body.reference-ui.light-theme {color-scheme:light;--focus-ring:#6d28d9;--muted:color-mix(in srgb,var(--text) 85%,var(--bg))}
+body.reference-ui::before,body.reference-ui.light-theme::before {
+  background-image:var(--wallpaper,none);background-size:cover;background-position:center;
+  background-color:transparent;filter:none;
+}
+body.reference-ui.has-wallpaper {
+  --surface-glass:color-mix(in srgb,var(--panel) 72%,transparent);
+  --surface-chrome:color-mix(in srgb,var(--panel) 80%,transparent);
+  --surface-section:color-mix(in srgb,var(--panel) 72%,transparent);
+}
+body.reference-ui.has-wallpaper::before {
+  background-image:linear-gradient(color-mix(in srgb,var(--bg) 18%,transparent),color-mix(in srgb,var(--bg) 18%,transparent)),var(--wallpaper);
+}
+body.reference-ui #appShell,body.reference-ui #appShell>main,
+body.reference-ui #content {background:transparent}
+body.reference-ui #appShell>.sidebar,body.reference-ui #appShell>.cavern-rail,
+body.reference-ui .topbar {background:var(--surface-chrome);border-color:var(--line)}
+body.reference-ui .sidebar::after {display:none}
+body.reference-ui .sidebar-foot {background:transparent}
+body.reference-ui.has-wallpaper #appShell>.sidebar,
+body.reference-ui.has-wallpaper #appShell>.cavern-rail {backdrop-filter:blur(8px)}
+body.reference-ui :is(input,select,textarea,.cavern-rail .rail-search) {
+  background:var(--control-bg);color:var(--text);border-color:var(--line-strong);
+}
+body.reference-ui :is(input,textarea)::placeholder {color:var(--muted);opacity:1}
+body.reference-ui .cavern-rail .rail-search input {background:transparent;border:0;color:var(--text)}
+body.reference-ui :is(.secondary,.icon-button,.theme-modes button,.tabs button,.toggle,.cavern-view-toggle button,.recommend-tabs button) {
+  background:var(--control-bg);color:var(--text);border-color:var(--line-strong);
+}
+body.reference-ui :is(.primary,.tabs button.active,.recommend-tabs button.active,.theme-modes button.active,.cavern-view-toggle button.active) {color:var(--on-accent,#fff);background:var(--accent);border-color:var(--accent)}
+body.reference-ui .sidebar nav button {color:var(--text)}
+body.reference-ui .sidebar nav button.active {color:var(--text);background:color-mix(in srgb,var(--accent) 14%,var(--surface-chrome));border-color:color-mix(in srgb,var(--accent) 42%,var(--line))}
+body.reference-ui :is(.collection-overview,.library-controls,.collection-empty,.game-feed-head,.game-feed-guide,.game-feed-card,.reference-friend-list .friend-card,.complete-profile,.profile-feature,.level-card,.profile-tabs,.journey-list-card,.list-studio-card,.recommendation-card,.statistics-summary article,.category-breakdown,.monthly-chart,.pc-game-settings,.notification-popover,.friends-dock) {
+  background:var(--surface-glass);color:var(--text);border-color:var(--line);
+}
+body.reference-ui .cavern-library .collection-overview,
+body.reference-ui .reference-settings,.reference-ui .settings-studio .settings-nav,
+body.reference-ui #content.dashboard-studio .continuity {background:var(--surface-section);border-color:var(--line)}
+body.reference-ui .reference-settings #settingsPanel,body.reference-ui .reference-settings .settings {background:transparent;color:var(--text)}
+body.reference-ui #content.dashboard-studio .studio-metrics>article,
+body.reference-ui #content.dashboard-studio .continuity-card,
+body.reference-ui .cavern-library #libraryGroups .reference-card {background:var(--surface-glass);border-color:var(--line);color:var(--text)}
+body.reference-ui .cavern-library .reference-card .body {background:transparent;color:var(--text)}
+body.reference-ui .cavern-library :is(.collection-section h2,.collection-section h2 small,.reference-card h3) {color:var(--text)}
+body.reference-ui :is(.card-status,.status-tabs b,.library-status-tabs b) {color:var(--text)}
+body.reference-ui .card-status {background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
+body.reference-ui .playtime-badge,body.reference-ui .playtime-badge :is(b,strong,span) {color:var(--text)}
+body.reference-ui .playtime-badge small {color:var(--muted)}
+body.reference-ui #content.dashboard-studio .home-hero {background:var(--surface-glass);box-shadow:0 12px 32px #00000018}
+body.reference-ui #content.dashboard-studio .home-hero::after {background:linear-gradient(90deg,color-mix(in srgb,var(--panel) 97%,transparent),color-mix(in srgb,var(--panel) 80%,transparent) 45%,color-mix(in srgb,var(--panel) 16%,transparent))}
+body.reference-ui #content.dashboard-studio .home-hero-content :is(h2,p,strong,b,span) {color:var(--text)}
+body.reference-ui #content.dashboard-studio .home-hero-content .primary {color:var(--on-accent,#fff)}
+body.reference-ui #content.dashboard-studio .home-hero-content :is(.journey-progress,.journey-progress>span,.playtime-badge small) {color:var(--muted)}
+body.reference-ui .cavern-profile .complete-profile {background:var(--surface-glass);box-shadow:0 12px 32px #00000020}
+body.reference-ui .cavern-profile .complete-profile::after {background:linear-gradient(90deg,color-mix(in srgb,var(--panel) 96%,transparent),color-mix(in srgb,var(--panel) 84%,transparent) 48%,color-mix(in srgb,var(--panel) 24%,transparent)),linear-gradient(0deg,color-mix(in srgb,var(--panel) 90%,transparent),transparent)}
+body.reference-ui .cavern-profile .profile-body {background:transparent}
+body.reference-ui .cavern-profile :is(.profile-info h2,.profile-info p,.profile-info small,.profile-stats b) {color:var(--text);text-shadow:none}
+body.reference-ui .cavern-profile :is(.level-card,.profile-feature,.chart-card,.mission-period,.profile-library-card) {background:var(--surface-glass);border-color:var(--line)}
+body.reference-ui .game-feed-title {background:var(--surface-section);border-color:var(--line);color:var(--text)}
+body.reference-ui :is(.editor,.reference-detail,.notification-popover,.friends-dock-panel,.update-progress-modal) {background:var(--panel);color:var(--text);border-color:var(--line-strong)}
+body.reference-ui .profile-editor footer {background:var(--panel)}
+body.reference-ui .profile-editor :is(.image-crop-card,.highlight-pick label,.picks-row) {background:var(--control-bg);border-color:var(--line)}
+body.reference-ui .reference-detail :is(.details-section,.detail-body,.detail-facts article,.detail-tabs) {background:var(--panel);color:var(--text);border-color:var(--line)}
+body.reference-ui.light-theme :is(.retro-toolbar,.retro-library-item,.chat-studio .chat-sidebar,.chat-studio .chat-main,.chat-studio .chat-header,.chat-studio .chat-composer,.chat-studio .chat-messages,.offer-card) {background:var(--surface-glass);color:var(--text);border-color:var(--line)}
+body.reference-ui.light-theme :is(.reference-card,.continuity-card,.collection-overview,.studio-metrics>article,.game-feed-card) {box-shadow:0 5px 20px #2b17400b}
+body.reference-ui.light-theme .form-error {color:#b4233a}
+.wallpaper-help {font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 14px}
+.reference-ui .wallpaper-preview {background:var(--surface-section);border-color:var(--line);border-radius:14px;overflow:hidden}
+.reference-ui .wallpaper-preview img {width:100%;height:100%;object-fit:cover}
+.wallpaper-actions {display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#wallpaperStatus {font-size:12px;line-height:1.5;color:var(--muted)}
+.profile-background-link {margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.profile-background-link h3 {margin-top:0}
+@media (prefers-reduced-transparency:reduce) {body.reference-ui.has-wallpaper {--surface-glass:var(--panel);--surface-chrome:var(--panel);--surface-section:var(--panel)}}
+
+body.reference-ui.has-wallpaper :is(.reference-settings,.collection-overview,.game-feed-card,.game-feed-guide,.continuity) {backdrop-filter:blur(10px)}
+body.reference-ui #content.dashboard-studio .studio-welcome .hero-greeting {color:var(--text)}
+/* Readable labels over cover artwork and over any user-selected wallpaper. */
+body.reference-ui .cavern-profile .profile-cover::after {content:'';position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--panel) 96%,transparent),color-mix(in srgb,var(--panel) 84%,transparent) 52%,color-mix(in srgb,var(--panel) 25%,transparent))}
+body.reference-ui .cavern-stats {background:var(--surface-glass);border-color:var(--line)}
+body.reference-ui :is(.cavern-lib-tabs button,.profile-tabs button) {color:var(--text);background:var(--control-bg);border-color:var(--line-strong)}
+body.reference-ui :is(.cavern-lib-tabs button.active,.profile-tabs button.active) {color:var(--on-accent,#fff);background:var(--accent);border-color:var(--accent)}
+body.reference-ui .cavern-featured-card {background:var(--surface-glass);border-color:var(--line)}
+body.reference-ui .cavern-featured-card::after {background:none}
+body.reference-ui .cavern-featured-body {background:var(--surface-glass);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+body.reference-ui .cavern-featured-body :is(h3,small) {color:var(--text);text-shadow:none}
+body.reference-ui .mission-period {border-radius:16px;padding:18px;border:1px solid var(--line);margin-bottom:18px}
+body.reference-ui.has-wallpaper :is(.studio-welcome,#libraryCollectionHero,.journey-heading,.friends-heading,.statistics-heading) {padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--surface-glass);backdrop-filter:blur(10px)}
+body.reference-ui.has-wallpaper :is(.cavern-featured>header,.collection-section>h2,#profileMissions>.section-head) {padding:12px 16px;border-radius:12px;background:var(--surface-glass);backdrop-filter:blur(8px)}
+body.reference-ui.has-wallpaper .collection-result-count {display:table;padding:7px 12px;border-radius:10px;background:var(--surface-glass)}
+body.reference-ui {--cavern-violet:var(--accent);--cavern-violet-bright:var(--accent)}
+body.reference-ui .cavern-profile .profile-tabs {background:var(--surface-glass)}
+body.reference-ui .cavern-profile .profile-tabs button.active {background:var(--accent);color:var(--on-accent,#fff);border-color:var(--accent)}
