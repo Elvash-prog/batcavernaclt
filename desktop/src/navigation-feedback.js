@@ -3,7 +3,7 @@
 function createNavigationMotion({enabled,animate}){
  let current=null;
  const clear=()=>{const old=current;current=null;old?.cancel();};
- return {clear,reveal(root){clear();if(!enabled())return;let animation;try{animation=animate(root,[{opacity:.4,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)',fill:'none'});}catch{return;}current=animation;animation.id='navigation-reveal';const release=()=>{if(current===animation)current=null;};animation.finished.then(release,release);}};
+ return {clear,reveal(root){clear();if(!enabled())return;let animation;try{const chat=root.classList?.contains('conversation');animation=animate(root,[{opacity:chat? .8 : .4,transform:chat?'translateY(2px)':'translateY(6px)'},{opacity:1,transform:'none'}],{duration:chat?140:220,easing:'cubic-bezier(.22,1,.36,1)',fill:'none'});}catch{return;}current=animation;animation.id='navigation-reveal';const release=()=>{if(current===animation)current=null;};animation.finished.then(release,release);}};
 }
 // Only the newest navigation may show or dismiss its delayed read indicator.
 function createNavigationGate({start,pending,complete,owner,schedule=setTimeout,unschedule=clearTimeout,delay=180}){

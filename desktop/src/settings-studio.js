@@ -1,6 +1,6 @@
 const sections={
  account:{label:'Conta',group:'PESSOAL',description:'Acesso, perfil e sessão.',keywords:'email e-mail senha entrar sair nome perfil segurança'},
- appearance:{label:'Aparência',group:'PESSOAL',description:'Tema, cores, capas e tamanho da interface.',keywords:'tema claro escuro cores tamanho zoom animações fundo capas layout filtro pornografia hentai explícito sexual'},
+ appearance:{label:'Aparência',group:'PESSOAL',description:'Tema, cores, capas e tamanho da interface.',keywords:'fonte fontes letras tipografia tema claro escuro cores tamanho zoom animações fundo capas layout filtro pornografia hentai explícito sexual'},
  notifications:{label:'Notificações',group:'PESSOAL',description:'Alertas e preferências por categoria.',keywords:'avisos mensagens alertas som convites'},
  privacy:{label:'Privacidade',group:'PESSOAL',description:'Dados da conta, amizades e bloqueios.',keywords:'dados bloqueios amigos segurança'},
  integrations:{label:'Integrações',group:'CONEXÕES',description:'Steam, RetroAchievements e serviços da coleção.',keywords:'steam retroachievements retro conectar contas catálogos igdb tmdb anilist'},

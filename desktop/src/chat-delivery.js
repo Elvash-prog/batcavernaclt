@@ -19,10 +19,10 @@
    if(node!==cursor)old.insertBefore(node,cursor);cursor=node.nextElementSibling;children.delete(kind);
   }for(const node of children.values())node.remove();
  }
- function sync(box,html){const template=document.createElement('template');template.innerHTML=html;const existing=new Map([...box.children].map(node=>[key(node),node])),added=[];let cursor=box.firstElementChild;
-  for(const wanted of [...template.content.children]){const id=key(wanted);let node=existing.get(id);if(!node){node=wanted;if(node.dataset.message)added.push(node);}else if(node.dataset.message)patchMessage(node,wanted);else if(node.innerHTML!==wanted.innerHTML)node.innerHTML=wanted.innerHTML;
+ function sync(box,html){const template=document.createElement('template');template.innerHTML=html;const existing=new Map([...box.children].map(node=>[key(node),node])),added=[],changed=[];let cursor=box.firstElementChild;
+  for(const wanted of [...template.content.children]){const id=key(wanted),markup=wanted.outerHTML;let node=existing.get(id);if(!node){node=wanted;if(node.dataset.message)added.push(node);}else if(node._chatMarkup!==markup){if(node.dataset.message){patchMessage(node,wanted);changed.push(node);}else if(node.innerHTML!==wanted.innerHTML)node.innerHTML=wanted.innerHTML;}node._chatMarkup=markup;
    if(node!==cursor)box.insertBefore(node,cursor);cursor=node.nextElementSibling;existing.delete(id);
-  }for(const node of existing.values())node.remove();return added;
+  }for(const node of existing.values())node.remove();return {added,changed};
  }
  function capture(box){const top=box.getBoundingClientRect().top,first=[...box.querySelectorAll('[data-message]')].find(node=>node.getBoundingClientRect().bottom>top);return {id:first?.dataset.message,offset:first?first.getBoundingClientRect().top-top:0,top:box.scrollTop,tail:atEnd(box)};}
  function restore(box,position){if(position.tail){box.scrollTop=box.scrollHeight;return;}const anchor=[...box.querySelectorAll('[data-message]')].find(node=>node.dataset.message===position.id);box.scrollTop=anchor?box.scrollTop+anchor.getBoundingClientRect().top-box.getBoundingClientRect().top-position.offset:position.top;}

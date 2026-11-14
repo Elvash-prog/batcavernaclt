@@ -1,3 +1,4 @@
+import {testTypography} from './typography-ui.mjs';
 import {testChatFlow} from './chat-flow-ui.mjs';
 import {testNavigationMotion} from './navigation-motion-ui.mjs';
 import {testAppearance} from './appearance-ui.mjs';
@@ -834,9 +835,10 @@ try {
   const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
-  if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
   await testNavigationMotion(page);
   await testChatFlow(page);
+  await testTypography(page);
   // Settings search only locates categories and preserves the currently open controls.
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('.settings-search-label input').fill('SENHA');
@@ -2162,6 +2164,8 @@ try {
   await page.locator("#clearNotices").click();
   await page.locator("#notificationPopup .empty").waitFor();
   await page.locator("#closeNotifications").click();
+  assert.equal(await page.locator("#friendsDock").isVisible(),false);
+  await page.evaluate(async()=>await navigate('home'));
   await page.locator("#friendsDockToggle").click();
   await page.locator('[data-dock-status="ausente"]').click();
   await page.waitForFunction(() =>
@@ -2454,6 +2458,7 @@ try {
   await page.evaluate(()=>{const form=document.querySelector('#liveMessageForm');form.requestSubmit();form.requestSubmit();});
   await page.waitForFunction(()=>document.querySelector('#liveChatText').value==='');
   assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='group_send'&&x.p.text==='Mensagem de grupo sem duplicação').length),1);
+  await page.waitForFunction(()=>document.querySelector('#liveMessageForm').dataset.sending!=='true'&&[...document.querySelectorAll('#liveMessages [data-message]')].some(row=>row.querySelector('p')?.textContent==='Mensagem de grupo sem duplicação'&&!row.querySelector('time').dataset.delivery));
   for(const size of [{width:980,height:760},{width:1920,height:1080}]){await page.setViewportSize(size);const composer=await page.locator('#liveMessageForm').boundingBox(),content=await page.locator('#content').boundingBox();assert.ok(composer.x>=content.x&&composer.x+composer.width<=content.x+content.width+1);assert.ok(composer.y+composer.height<=size.height);}
 
 
@@ -2462,7 +2467,7 @@ try {
   assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='read_group').length),0);
   await page.evaluate(()=>{window.testGroupMessages.push({id:'latest-unread',remetente_id:'member-2',texto:'Chegou enquanto você lê',created_at:'2026-10-12T13:00:00Z'});window.listeners['desktop-change']({payload:{userId:'test',data:{table:'clt_chat_group_messages'}}})});
   await page.locator('[data-message="latest-unread"]').waitFor();assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='read_group').length),0);
-  await page.screenshot({path:'preview/chat-unread-check.png'});await page.locator('#chatUnreadJump').click();await page.waitForFunction(()=>window.saved.some(x=>x.c==='read_group'&&x.p.through==='2026-10-12T13:00:00Z'));
+  await page.screenshot({path:'preview/chat-unread-check.png'});await page.locator('#chatUnreadJump').click();await page.waitForFunction(()=>window.saved.some(x=>x.c==='read_group'&&x.p.through==='2026-10-12T13:00:00Z')).catch(async error=>{console.error('Unread diagnostics',await page.evaluate(()=>{const box=document.querySelector('#liveMessages');return {focused:document.hasFocus(),hidden:document.hidden,current:state.current,scroll:[box.scrollTop,box.scrollHeight,box.clientHeight],read:window.saved.filter(x=>x.c==='read_group'),last:[...box.querySelectorAll('[data-message]')].slice(-3).map(n=>n.dataset.message)};}));throw error;});
   await page.getByRole('button',{name:'⚙ Configurações do grupo'}).click();
   await page.locator('.group-settings-dialog [data-photo]').waitFor();
   assert.equal(await page.locator('.group-settings-dialog [data-remove="member-2"]').count(),1);

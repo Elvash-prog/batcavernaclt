@@ -1,0 +1,7 @@
+BatCaverna CLT Windows 2.1.16 — chat mais leve, fontes e ícone da marca.
+
+O chat tem espaçamento mais compacto, menos efeitos e transição mais curta entre conversas. O campo fica disponível para preparar o próximo rascunho enquanto um envio é confirmado. Falhas recuperam o texto anterior quando não existe um rascunho mais novo.
+
+Atualizações do histórico reutilizam formatadores de data e alteram somente mensagens modificadas, preservando imagens, menus e posição de leitura.
+
+Fonte da interface em Aparência: Sistema, Moderna, Clássica, Compacta e Monoespaçada, com prévia e preferência local separada por conta. O ícone nativo do aplicativo usa o PNG transparente da BatCaverna.

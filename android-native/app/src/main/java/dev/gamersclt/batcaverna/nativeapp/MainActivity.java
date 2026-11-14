@@ -48,7 +48,7 @@ public final class MainActivity extends Activity {
     }
 
     private void display(View view){
-        setContentView(view);AppUpdater.attach(this);
+        setContentView(view);FontPreferences.install(view);AppUpdater.attach(this);
         view.setOnApplyWindowInsetsListener((v,insets)->{
             if(Build.VERSION.SDK_INT>=30){android.graphics.Insets i=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout()|android.view.WindowInsets.Type.ime());v.setPadding(i.left,i.top,i.right,i.bottom);}
             else v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());

@@ -9,7 +9,7 @@ final class SettingsMenu extends LinearLayout {
  interface Choice {void open(int tab);}
  static final String[] LABELS={"Conta","Aparência","Notificações","Privacidade","Diagnóstico","Atualizações","Créditos e serviços","Integrações"};
  private static final String[] DESCRIPTIONS={"Acesso, e-mail e sessão.","Tema, imagens e opções da interface.","Alertas no aparelho e preferências da conta.","Amizades, bloqueios e seus dados.","Exportar ou limpar informações técnicas.","Consultar versões e atualizar o aplicativo.","Fornecedores e atribuições do aplicativo.","Steam, RetroAchievements e serviços da coleção."};
- private static final String[] KEYWORDS={"senha email entrar sair perfil segurança","cores fundo foto capa tema claro escuro tamanho cache filtro pornografia hentai explícito sexual","avisos mensagens som convites alertas","bloqueados amigos segurança dados","logs erro falhas suporte","versão instalar baixar atualizar","api licenças privacidade créditos fornecedor","steam retro retroachievements igdb tmdb anilist conectar"};
+ private static final String[] KEYWORDS={"senha email entrar sair perfil segurança","fonte fontes letras tipografia cores fundo foto capa tema claro escuro tamanho cache filtro pornografia hentai explícito sexual","avisos mensagens som convites alertas","bloqueados amigos segurança dados","logs erro falhas suporte","versão instalar baixar atualizar","api licenças privacidade créditos fornecedor","steam retro retroachievements igdb tmdb anilist conectar"};
  private final List<View> entries=new ArrayList<>(),groups=new ArrayList<>();private final TextView empty;
  SettingsMenu(Context c,Choice choice){super(c);setTag("settings-menu");setOrientation(VERTICAL);setFocusableInTouchMode(true);
 

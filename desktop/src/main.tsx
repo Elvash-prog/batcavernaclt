@@ -45,6 +45,8 @@ import './catalog-studio.css';
 import './catalog-studio.js';
 import './motion-feedback.js';
 import './appearance.css';
+import './typography.css';
+import typography from './typography.js?url';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';
 import homeHighlight from './home-highlight.js?url';
@@ -64,7 +66,7 @@ const modules:BootModule[]=[
  {name:'Ajustes de navegação',src:refinement},{name:'Acabamento visual',src:polish},
  {name:'Comunidade e conversas',src:redesign},{name:'Jornada e indicações',src:journey},
  {name:'Alinhamento da interface',src:alignment},{name:'Correções do desktop',src:fixes},
- {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity},{name:'Seleção de destaques',src:profileHighlights},{name:'Editor de imagens',src:profileImages},{name:'Contexto da biblioteca',src:libraryNavigation},{name:'Modelo do feed de jogos',src:gameFeedModel},{name:'Feed dos amigos',src:gameFeed},{name:'Transições entre abas',src:navigationFeedback}
+ {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity},{name:'Seleção de destaques',src:profileHighlights},{name:'Editor de imagens',src:profileImages},{name:'Contexto da biblioteca',src:libraryNavigation},{name:'Modelo do feed de jogos',src:gameFeedModel},{name:'Feed dos amigos',src:gameFeed},{name:'Transições entre abas',src:navigationFeedback},{name:'Fontes da interface',src:typography}
 ];
 
 function load(module:BootModule){return new Promise<void>((resolve,reject)=>{const script=document.createElement('script');script.src=module.src;script.dataset.bootModule=module.name;script.onload=()=>resolve();script.onerror=()=>reject(new Error(`O arquivo de ${module.name.toLowerCase()} não pôde ser carregado.`));document.body.append(script)})}

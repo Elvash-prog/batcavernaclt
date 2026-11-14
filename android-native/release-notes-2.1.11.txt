@@ -1,0 +1,5 @@
+BatCaverna CLT Android 2.1.11 — fontes e ícones transparentes.
+
+Fonte da interface em Aparência: Sistema, Moderna, Clássica, Compacta e Monoespaçada, com prévia. A escolha é mantida neste aparelho por conta, inclusive após sair e entrar novamente, preservando os estilos de texto e o tamanho definido no Android.
+
+Ícones do launcher e da abertura usam a marca em PNG com transparência. O ícone adaptativo recebe fundo transparente e enquadramento próprio para preservar a marca.
