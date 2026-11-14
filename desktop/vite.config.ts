@@ -12,7 +12,7 @@ export default defineConfig({
       name:'batcaverna-static-assets',
       closeBundle(){
         mkdirSync(resolve('dist'),{recursive:true});
-        for(const name of ['brand.jpg','icon.png','login-cave.jpg']){
+        for(const name of ['icon.png','login-cave.jpg']){
           const source=resolve('src',name);
           if(existsSync(source))copyFileSync(source,resolve('dist',name));
         }

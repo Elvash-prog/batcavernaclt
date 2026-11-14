@@ -1,0 +1,9 @@
+BatCaverna CLT Windows 2.1.18 — biblioteca e conta mais diretas.
+
+Vertical e Horizontal ficam ao lado de Lista e Grade nas bibliotecas de jogos, animes, filmes e séries. A orientação usa a preferência existente e sai das configurações de Aparência.
+
+O painel duplicado de amigos no rodapé foi removido. O avatar da barra esquerda abre Status e perfil, com Online, Jogando, Ausente, Não incomodar, Invisível e Ver perfil. O botão da conta também mantém seu acesso ao perfil.
+
+Os editores usam Mostrar conteúdo adulto como filtro de exibição. A classificação já salva da capa é preservada.
+
+O feed mostra capas inteiras. O destaque do início volta a preencher o card, mantendo proporções e buscando a maior resolução da mesma arte quando disponível. O símbolo roxo do atalho passa a ser a identidade dos ícones e das marcas internas do aplicativo.

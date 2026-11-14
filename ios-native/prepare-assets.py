@@ -1,6 +1,4 @@
-"""Reuse the actual Android identity assets without modifying their artwork."""
-import base64
-import hashlib
+"""Reuse the canonical application icon without modifying its artwork."""
 import json
 from pathlib import Path
 
@@ -10,10 +8,9 @@ catalog = root / "Resources" / "Images.xcassets"
 catalog.mkdir(parents=True, exist_ok=True)
 info = {"version": 1, "author": "xcode"}
 (catalog / "Contents.json").write_text(json.dumps({"info": info}))
-chunks = sorted((repo / "android-native/assets-source").glob("app_logo.png.b64.*"))
-logo = base64.b64decode("".join(p.read_text().strip() for p in chunks), validate=True)
-if hashlib.sha256(logo).hexdigest() != "708935a9bffc4b10c297a5819bb57bec5bdcc490d0bbcab9c6751c644f10a2d1":
-    raise ValueError("Android logo checksum mismatch")
+logo = (repo / "desktop/src/icon.png").read_bytes()
+if not logo.startswith(bytes([137,80,78,71,13,10,26,10])):
+    raise ValueError("Application icon must be PNG")
 assets = {
     "AppLogo": ("logo.png", logo),
     "LoginBackground": ("background.jpg", (repo / "desktop/src/login-cave.jpg").read_bytes()),

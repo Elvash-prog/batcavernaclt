@@ -1,0 +1,12 @@
+.cavern-library-display{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
+.cavern-cover-toggle{display:flex;align-items:center;gap:4px;padding:3px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 80%,transparent)}
+.cavern-cover-toggle button{min-height:38px;padding:8px 12px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:12px;white-space:nowrap}
+.cavern-cover-toggle button.active{background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--text)}
+.sidebar-account-controls{position:relative;min-width:0}.sidebar-account-controls .sidebar-account{width:100%}
+.account-status-toggle{position:absolute;inset:0 auto 0 0;width:52px;padding:0;border:0;border-radius:12px;background:transparent;cursor:pointer}
+.account-status-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.account-status-menu{position:fixed;z-index:3000;width:min(240px,calc(100vw - 24px));padding:7px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);box-shadow:0 14px 40px #0005}
+.account-status-menu button{display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:10px 12px;text-align:left;border:0;border-radius:9px;background:transparent;color:var(--text)}
+.account-status-menu button:hover,.account-status-menu button:focus-visible,.account-status-menu button[aria-checked=true]{background:color-mix(in srgb,var(--accent) 18%,var(--panel))}
+.account-menu-divider{height:1px;margin:6px;background:var(--line)}
+@media(max-width:1250px){.cavern-lib-bar{flex-wrap:wrap;gap:12px}.cavern-library-display{margin-left:auto}}

@@ -18,9 +18,9 @@ async function loadHomeHero(image,item){
  globalThis.window?.BatSensitive?.mount(image,item.capa_adulta===true);
  image.onerror=null;image.onload=null;
  const apply=source=>{if(!current())return;image.onload=()=>{if(!current())return;const layout=image.naturalWidth&&image.naturalHeight&&image.naturalWidth/image.naturalHeight<.9?'portrait':'landscape';(image.dataset||={}).artLayout=layout;const hero=image.closest?.('.home-hero');if(hero)hero.dataset.artLayout=layout;};image.src=source;};
- const fetchImage=url=>typeof loadPublicCover==='function'?loadPublicCover(url,10):api.coverImage(url);
+ const fetchImage=url=>typeof loadPublicCover==='function'?loadPublicCover(url,10,true):api.coverImage(url);
  if(item.capa){
-  const unavailable=()=>{if(current()){image.onerror=null;apply('brand.jpg');image.title='A capa escolhida está indisponível. Escolha outra em Editar informações.';}};
+  const unavailable=()=>{if(current()){image.onerror=null;apply('icon.png');image.title='A capa escolhida está indisponível. Escolha outra em Editar informações.';}};
   try{const url=coverUrl(item.capa);if(!url)throw Error('Capa inválida');(image.dataset||={}).coverSource=url;
    const source=requiresMediaSigning(url)?await signed(url):typeof publicCover==='function'&&publicCover(url)?await fetchImage(url):url;
    if(current()){image.onerror=unavailable;apply(source);}

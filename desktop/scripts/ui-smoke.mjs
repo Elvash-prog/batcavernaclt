@@ -1,3 +1,4 @@
+import {testLibraryProfilePolish} from './library-profile-polish-ui.mjs';
 import {testCoverQuality} from './cover-quality-ui.mjs';
 import {testTypography} from './typography-ui.mjs';
 import {testChatFlow} from './chat-flow-ui.mjs';
@@ -837,11 +838,12 @@ try {
   const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
-  if(process.env.BAT_COVER_QUALITY_ONLY){await testCoverQuality(page);}else if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  if(process.env.BAT_LIBRARY_PROFILE_ONLY){await testCoverQuality(page);await testLibraryProfilePolish(page);}else if(process.env.BAT_COVER_QUALITY_ONLY){await testCoverQuality(page);}else if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
   await testNavigationMotion(page);
   await testChatFlow(page);
   await testTypography(page);
   await testCoverQuality(page);
+  await testLibraryProfilePolish(page);
   // Settings search only locates categories and preserves the currently open controls.
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('.settings-search-label input').fill('SENHA');
@@ -1860,12 +1862,12 @@ try {
     "#29c4e0",
   );
   await page.locator('[data-theme-preset="Caverna"]').click();
-  await page.locator("#referenceCardFormat").selectOption("landscape");
-  assert.equal(
-    await page.evaluate(() => document.body.dataset.cardFormat),
-    "landscape",
-  );
-  await page.locator("#referenceCardFormat").selectOption("poster");
+  assert.equal(await page.locator('#referenceCardFormat').count(),0);
+  await page.evaluate(async()=>{state.libraryCategory='jogos';await navigate('library');});
+  await page.locator('[data-lib-format="landscape"]').click();
+  assert.equal(await page.evaluate(()=>document.body.dataset.cardFormat),'landscape');
+  await page.locator('[data-lib-format="poster"]').click();
+  await page.evaluate(async()=>{state.settingsTab='appearance';await navigate('settings');});
   await page.screenshot({ path: "preview/appearance-check.png" });
   assert.equal(await page.locator('[data-settings-tab="theme"]').count(), 0);
   await page.locator('[data-settings-tab="integrations"]').click();
@@ -2073,26 +2075,16 @@ try {
     await page.locator('#mainNav [data-view="chat"],#mainNav [data-view="friends"],#mainNav [data-view="profile"]').count(),
     0,
   );
-  await page.locator("#friendsDockToggle").click();
-  await page.locator("#friendsDockPanel").waitFor();
-  await page.locator("#friendsDockSearch").fill("inexistente");
-  assert.equal(
-    await page.locator("#friendsDockList [data-dock-friend]:visible").count(),
-    0,
-  );
-  await page.locator("#friendsDockSearch").fill("Amigo");
-  assert.equal(
-    await page.locator("#friendsDockList [data-dock-friend]:visible").count(),
-    1,
-  );
-  await page.locator("#friendsDockAdd").click();
+  assert.equal(await page.locator('#friendsDock').count(),0);
+  await page.evaluate(async()=>await navigate('friends'));
+  await page.locator('#unifiedAddFriend').click();
   await page.locator("#unifiedFriendSearch input").fill("Amigo");
   await page.locator("#unifiedFriendSearch button").click();
   await page.locator('[data-unified-invite="friend"]').waitFor();
   await page.locator(".friend-search-dialog [data-close]").click();
-  await page.locator("#friendsDockToggle").click();
-  await page.screenshot({ path: "preview/friends-reference.png" });
-  await page.locator('[data-dock-friend="friend"]').click();
+  await page.evaluate(async()=>await navigate('home'));
+  await page.screenshot({path:'preview/friends-reference.png'});
+  await page.locator('[data-sidebar-chat="friend"]').click();
   await page.locator('[data-message="m2"]').waitFor();
   await page.locator('[data-message="m2"] .message-media').click();await page.locator('.chat-image-viewer').waitFor();await page.evaluate(()=>{window.testPrivateMessages=[{id:'m1',remetente_id:'friend',texto:'Olá!',created_at:'2026-10-11T10:00:00Z',lida:false},{id:'m2',remetente_id:'test',texto:'Bom dia',midia_url:'test/image.webp',created_at:'2026-10-11T10:01:00Z'},{id:'viewer-unread',remetente_id:'friend',texto:'Chegou enquanto a imagem estava aberta',created_at:'2026-11-05T11:00:00Z',lida:false}];window.saved=window.saved.filter(x=>x.c!=='read_chat');window.listeners['desktop-change']({payload:{userId:'test',data:{table:'clt_chat_messages'}}});});await page.locator('[data-message="viewer-unread"]').waitFor({state:'attached'});assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='read_chat').length),0);await page.locator('.chat-image-viewer img').evaluate(image=>image.decode());await page.locator('[data-zoom="in"]').click();assert.equal(await page.locator('.chat-image-viewer output').textContent(),'125%');await page.locator('[data-zoom="reset"]').click();assert.equal(await page.locator('.chat-image-viewer output').textContent(),'100%');await page.locator('[data-save-image]').click();await page.waitForFunction(()=>window.saved.some(x=>x.c==='save_chat_image'&&x.p.messageId==='m2'&&!x.p.group));await page.screenshot({path:'preview/chat-image-viewer-check.png',animations:'disabled'});await page.locator('.chat-image-viewer [data-close]').click();await page.evaluate(()=>{window.testPrivateMessages=null;window.listeners['desktop-change']({payload:{userId:'test',data:{table:'clt_chat_messages'}}})});await page.locator('[data-message="viewer-unread"]').waitFor({state:'detached'});
   const imageBytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2EsAAAAASUVORK5CYII=','base64');await page.locator('#chatImageFile').setInputFiles({name:'Foto da partida.png',mimeType:'image/png',buffer:imageBytes});await page.locator('#chatAttachment img').waitFor();assert.match(await page.locator('#chatAttachment').innerText(),/Legenda opcional/);await page.locator('#chatAttachment button').click();assert.equal(await page.locator('#chatAttachment').isHidden(),true);await page.locator('#chatImageFile').setInputFiles({name:'Foto da partida.png',mimeType:'image/png',buffer:imageBytes});await page.locator('#chatAttachment img').waitFor();await page.locator('#liveChatText').fill('Legenda da partida');await page.screenshot({path:'preview/chat-image-preview-check.png',animations:'disabled'});await page.evaluate(()=>window.sendFailure='after');await page.locator('#liveMessageForm button.primary').click();await page.locator('#chatDeliveryState[data-state="failed"] button').waitFor();assert.equal(await page.locator('#chatAttachment').isVisible(),true);await page.locator('#chatDeliveryState button').click();await page.waitForFunction(()=>document.querySelector('#chatDeliveryState')?.dataset.state==='sent');const photoSend=await page.evaluate(()=>window.saved.filter(x=>x.c==='send_message'&&x.p.input.text==='Legenda da partida').map(x=>x.p.input));assert.equal(new Set(photoSend.map(x=>x.messageId)).size,1);assert.equal(new Set(photoSend.map(x=>x.media)).size,1);assert.equal(photoSend[0].media,'test/photo.png');assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='upload_chat_image').length),1);
@@ -2167,17 +2159,16 @@ try {
   await page.locator("#clearNotices").click();
   await page.locator("#notificationPopup .empty").waitFor();
   await page.locator("#closeNotifications").click();
-  assert.equal(await page.locator("#friendsDock").isVisible(),false);
+  assert.equal(await page.locator("#friendsDock").count(),0);
   await page.evaluate(async()=>await navigate('home'));
-  await page.locator("#friendsDockToggle").click();
-  await page.locator('[data-dock-status="ausente"]').click();
+  await page.locator("#accountStatusToggle").click();
+  await page.locator('[data-account-status="ausente"]').click();
   await page.waitForFunction(() =>
     window.saved.some(
       (s) => s.c === "update_profile" && s.p.input.status === "ausente",
     ),
   );
-  const friendsDockClose = page.locator("#friendsDockClose");
-  if (await friendsDockClose.isVisible()) await friendsDockClose.click();
+  assert.equal(await page.locator("#accountStatusMenu").count(),0);
   await page.locator("#sidebarAccount").click();
   await page.locator(".complete-profile").waitFor();
   await page.waitForFunction(()=>document.body.classList.contains("has-wallpaper"));

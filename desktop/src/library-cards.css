@@ -32,10 +32,10 @@
 .reference-ui .cavern-library #libraryGroups .card-bottom {gap:8px;flex-wrap:wrap;justify-content:flex-start}
 .reference-ui .cavern-library #libraryGroups .card-bottom .card-status {max-width:100%;font-size:11px;line-height:1.4}
 .reference-ui .cavern-library #libraryGroups .playtime-badge {min-width:0;max-width:100%}
-.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .cover-wrap:has(img[src$="brand.jpg"]) {
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .cover-wrap:has(img[src$="icon.png"]) {
   background:radial-gradient(ellipse at 50% 28%,color-mix(in srgb,var(--accent) 12%,var(--panel)),var(--bg));
 }
-.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .cover-wrap img[src$="brand.jpg"] {object-fit:contain;padding:20%;opacity:.5}
+.reference-ui .cavern-library #libraryGroups:not(.cavern-list) .cover-wrap img[src$="icon.png"] {object-fit:contain;padding:20%;opacity:.5}
 @media (hover:none), (pointer:coarse) {
   .reference-ui .cavern-library #libraryGroups .reference-card:hover {transform:none;box-shadow:0 4px 16px #0002}
 }
