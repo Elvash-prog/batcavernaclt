@@ -1,0 +1,5 @@
+BatCaverna CLT Android 2.1.12 — mais definição nas capas.
+
+O carregamento prioriza a maior resolução da mesma arte nos provedores compatíveis e mantém a imagem original como alternativa. Isso também beneficia capas já salvas, preservando sua escolha e as URLs personalizadas.
+
+A decodificação e o cache consideram o tamanho exibido: miniaturas usam imagens menores e detalhes podem preservar mais pixels, com limite de resolução. Uma miniatura em memória não substitui a versão maior dos detalhes.

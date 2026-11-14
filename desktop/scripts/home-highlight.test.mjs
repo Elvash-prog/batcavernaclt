@@ -18,3 +18,13 @@ test('time editor shows hours and minutes with carry',()=>{assert.equal(context.
 test('catalogue without known player progress does not invent zero percent',()=>assert.equal(context.homeAchievementProgress({}, {lista:[{got:null}],progressKnown:false},null),null));
 
 test('home artwork never replaces a saved cover, including when the image is unavailable',async()=>{for(const source of ['https://images.igdb.com/igdb/image/upload/t_cover_big/a.jpg','https://cdn2.steamgriddb.com/grid/a.png','https://example.test/custom.jpg'])for(const fail of [false,true]){const direct=source.includes('example.test'),calls=[],image={isConnected:true},item={nome:'Selected game',capa:source,steam_appid:42};context.api={coverImage:async url=>{calls.push(url);if(fail)throw Error('offline');return 'decoded'}};context.call=async()=>{throw Error('Unexpected metadata search')};context.coverUrl=x=>x;context.signed=async x=>x;context.requiresMediaSigning=()=>false;context.publicCover=()=>!direct;await context.loadHomeHero(image,item);if(direct&&fail)image.onerror();assert.deepEqual(calls,direct?[]:[source]);assert.equal(item.capa,source);assert.equal(image.src,fail?'brand.jpg':direct?source:'decoded');}});
+
+
+test('a late hero response cannot replace a newer choice on the same image',async()=>{
+ const pending=[],c=vm.createContext({window:{},state:{userId:'owner'},coverUrl:x=>x,requiresMediaSigning:()=>false,publicCover:()=>true,api:{coverImage:url=>new Promise(resolve=>pending.push({url,resolve}))}});vm.runInContext(readFileSync(new URL('../src/home-highlight.js',import.meta.url),'utf8'),c);
+ const image={isConnected:true},first=c.loadHomeHero(image,{capa:'first'}),second=c.loadHomeHero(image,{capa:'second'});pending[1].resolve('second pixels');await second;pending[0].resolve('first pixels');await first;assert.equal(image.src,'second pixels');assert.equal(image.dataset.coverSource,'second');
+ const third=c.loadHomeHero(image,{capa:'third'});c.state.userId='another';pending[2].resolve('private old result');await third;assert.equal(image.src,'second pixels');
+});
+test('portrait hero artwork is identified without substituting its source',async()=>{
+ const c=vm.createContext({window:{},coverUrl:x=>x,requiresMediaSigning:()=>false,publicCover:()=>false});vm.runInContext(readFileSync(new URL('../src/home-highlight.js',import.meta.url),'utf8'),c);const hero={dataset:{}},image={isConnected:true,naturalWidth:600,naturalHeight:900,closest:()=>hero};await c.loadHomeHero(image,{capa:'https://example.test/chosen.png'});image.onload();assert.equal(hero.dataset.artLayout,'portrait');assert.equal(image.src,'https://example.test/chosen.png');
+});

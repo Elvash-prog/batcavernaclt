@@ -1,0 +1,5 @@
+/* Portrait artwork remains a cover, instead of being enlarged into a cropped banner. */
+body[data-screen=home] #content.dashboard-studio .home-hero[data-art-layout=portrait] .home-hero-art{left:auto;right:0;width:44%;height:100%;object-fit:contain;object-position:center;opacity:1;filter:none;padding:18px 22px 18px 0}
+body[data-screen=home] #content.dashboard-studio .home-hero[data-art-layout=portrait] .home-hero-content{max-width:58%}
+body[data-screen=home] #content.dashboard-studio .home-hero[data-art-layout=portrait]::after{background:linear-gradient(90deg,var(--panel),color-mix(in srgb,var(--panel) 90%,transparent) 40%,transparent 58%);pointer-events:none}
+@container (max-width:620px){body[data-screen=home] #content.dashboard-studio .home-hero[data-art-layout=portrait] .home-hero-art{width:38%;padding:16px 12px 16px 0}body[data-screen=home] #content.dashboard-studio .home-hero[data-art-layout=portrait] .home-hero-content{max-width:64%;padding:22px}}
