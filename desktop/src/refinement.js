@@ -6,15 +6,16 @@ function savedCoverChoice(key,value){try{const name='bc-cover-choices-v2:'+state
 const emptyImage='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/%3E';
 function rememberFailedImage(key,title=''){failedImages.delete(key);failedImages.set(key,Date.now()+COVER_RETRY_MS);if(title)failedCoverTitles.add(`${state.userId}|${String(title).toLocaleLowerCase('pt-BR')}`);if(failedImages.size>160)failedImages.delete(failedImages.keys().next().value)}
 const mediaCoverKind=item=>item?.categoria==='jogos'||!item?.categoria?'game':/anime|🍥/i.test(item.tipo||'')?'anime':/serie|série|📺/i.test(item.tipo||'')?'series':'movie';
-const publicCover=value=>/^https:\/\/(?:images\.igdb\.com\/igdb\/image\/upload\/t_|cdn2?\.steamgriddb\.com\/(?:grid|hero|logo|icon)\/|(?:shared|cdn)\.cloudflare\.steamstatic\.com\/(?:store_item_assets\/steam\/apps|steam\/apps)\/|image\.tmdb\.org\/t\/p\/|s4\.anilist\.co\/file\/anilistcdn\/media\/|(?:media|cdn)\.retroachievements\.org\/)/i.test(String(value||''));
+const publicCover=value=>/^https:\/\/(?:images\.igdb\.com\/igdb\/image\/upload\/t_|cdn2?\.steamgriddb\.com\/(?:grid|hero|logo|icon)\/|(?:shared|cdn)\.(?:cloudflare|fastly|akamai)\.steamstatic\.com\/(?:store_item_assets\/steam\/apps|steam\/apps)\/|image\.tmdb\.org\/t\/p\/|s4\.anilist\.co\/file\/anilistcdn\/media\/|(?:media|cdn)\.retroachievements\.org\/)/i.test(String(value||''));
 function coverFitsFormat(source,orientation){
  try{const u=new URL(source);if(u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash)return false;
   if(u.hostname==='images.igdb.com')return (orientation==='poster'?/^\/igdb\/image\/upload\/t_cover_/:/^\/igdb\/image\/upload\/t_(?:screenshot|720p|1080p)_/).test(u.pathname);
   if(/^(?:shared|cdn)\.(?:cloudflare|fastly|akamai)\.steamstatic\.com$/.test(u.hostname))return (orientation==='poster'?/\/library_600x900\./:/\/(?:header|library_hero)\./).test(u.pathname);
  }catch{}return false;
 }
-function loadPublicCover(source,priority=0){
- let task=publicImageJobs.get(source);if(!task){task=queueCover(()=>globalThis.window?.BatCoverQuality?.load(source,url=>api.coverImage(url))||api.coverImage(source),priority).finally(()=>{if(publicImageJobs.get(source)===task)publicImageJobs.delete(source)});publicImageJobs.set(source,task)}return task;
+function loadPublicCover(source,priority=0,hero=false){
+ const jobKey=hero?"hero:"+source:source;
+ let task=publicImageJobs.get(jobKey);if(!task){task=queueCover(()=>globalThis.window?.BatCoverQuality?.load(source,url=>api.coverImage(url),hero)||api.coverImage(source),priority).finally(()=>{if(publicImageJobs.get(jobKey)===task)publicImageJobs.delete(jobKey)});publicImageJobs.set(jobKey,task)}return task;
 }
 const coverKey=(url,name,appid,format,kind='')=>JSON.stringify(kind&&kind!=='game'?[state.userId,url||'',name||'',appid||'',format||'',kind]:[state.userId,url||'',name||'',appid||'',format||'']);
 function cachedCover(item,format){const kind=mediaCoverKind(item),key=coverKey(coverUrl(item.capa),item.nome+(item.ano?':'+item.ano:''),String(item.steam_appid||''),format,kind);return readyImages.get(key)||(coverUrl(item.capa)?emptyImage:savedCoverChoice(key)||emptyImage);}
@@ -54,8 +55,8 @@ function installRefinement(env){
  }};
  const mediaURLs=new Map(),baseSigned=signed;
  signed=async function(url){const key=state.userId+':'+url,hit=mediaURLs.get(key);if(hit&&hit.until>Date.now())return hit.task;const task=baseSigned(url);mediaURLs.set(key,{task,until:Date.now()+300000});return task};
- const mediaReady=new Map();hydrateMedia=function(root=document){for(const n of root.querySelectorAll('[data-private-src]')){const url=String(n.dataset.privateSrc||'').trim(),key=state.userId+':'+url,cached=mediaReady.get(key);n.removeAttribute('data-private-src');if(!url){n.src='brand.jpg';continue}if(cached&&Date.now()-cached.at<240000){n.src=cached.src;continue}void (requiresMediaSigning(url)?signed(url):Promise.resolve(url)).then(src=>{if(src!=='brand.jpg')mediaReady.set(key,{src,at:Date.now()});if(n.isConnected)n.src=src}).catch(()=>{if(n.isConnected)n.src='brand.jpg'})}return Promise.resolve()};
- const baseCard=mediaCard;mediaCard=function(item){let html=baseCard(item);if(String(item.id).startsWith('rec-'))html=html.replace('data-cover-format=', 'data-auto-format="1" data-cover-format=');return html.replace('src="brand.jpg"',`src="${esc(cachedCover(item,format()))}"`)};
+ const mediaReady=new Map();hydrateMedia=function(root=document){for(const n of root.querySelectorAll('[data-private-src]')){const url=String(n.dataset.privateSrc||'').trim(),key=state.userId+':'+url,cached=mediaReady.get(key);n.removeAttribute('data-private-src');if(!url){n.src='icon.png';continue}if(cached&&Date.now()-cached.at<240000){n.src=cached.src;continue}void (requiresMediaSigning(url)?signed(url):Promise.resolve(url)).then(src=>{if(src!=='icon.png')mediaReady.set(key,{src,at:Date.now()});if(n.isConnected)n.src=src}).catch(()=>{if(n.isConnected)n.src='icon.png'})}return Promise.resolve()};
+ const baseCard=mediaCard;mediaCard=function(item){let html=baseCard(item);if(String(item.id).startsWith('rec-'))html=html.replace('data-cover-format=', 'data-auto-format="1" data-cover-format=');return html.replace('src="icon.png"',`src="${esc(cachedCover(item,format()))}"`)};
  // A single render keeps cached covers and status sections stable.
  let selecting=false,selected=new Set(),visible=[],collection=state.libraryCategory;
  const pageLimits=new Map(),cardSignatures=new WeakMap();let pageKey='',progressiveObserver=null;

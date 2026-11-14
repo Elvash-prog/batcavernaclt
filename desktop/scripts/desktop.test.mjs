@@ -209,12 +209,9 @@ test('instalador NSIS usa identidade BatCaverna e atalhos por usuário em portug
   assert.equal(nsis.languages[0],'PortugueseBR');
   assert.equal(nsis.displayLanguageSelector,false);
   assert.equal(nsis.startMenuFolder,'BatCaverna CLT');
-  for(const [key,width,height] of [['headerImage',150,57],['sidebarImage',164,314]]){
-    const bitmap=fs.readFileSync(new URL('../src-tauri/'+nsis[key],import.meta.url));
-    assert.equal(bitmap.toString('ascii',0,2),'BM');
-    assert.equal(bitmap.readInt32LE(18),width);
-    assert.equal(Math.abs(bitmap.readInt32LE(22)),height);
-  }
+  assert.equal(nsis.headerImage,undefined);assert.equal(nsis.sidebarImage,undefined);
+  const ico=fs.readFileSync(new URL('../src-tauri/'+nsis.installerIcon,import.meta.url));assert.equal(ico.readUInt16LE(2),1);
+
 });
 
 test('capas escolhidas manualmente permanecem fixas e ofertas preservam imagens oficiais', () => {
@@ -285,7 +282,7 @@ test('renderer usa somente comandos Tauri', () => {
   assert.match(script, /call\('save_item'/);
   assert.match(script, /call\('toggle_like'/);
   assert.match(script, /command!=='cover_image'/);
-  assert.match(script, /if\(!url\)\{n\.src='brand\.jpg'/);
+  assert.match(script, /if\(!url\)\{n\.src='icon\.png'/);
   assert.match(script, /stage:'SLOW_VIEW'/);
   assert.match(script, /stage:'SLOW_COMMAND'/);
   assert.match(script, /now-last>=60000/);
@@ -401,7 +398,7 @@ test('desktop 0.11 alinha perfil, biblioteca, comunidade, chat e presença',()=>
  const html=read('src/main.tsx'),script=read('src/alignment.js'),css=read('src/alignment.css'),rust=read('src-tauri/src/main.rs'),realtime=read('src-tauri/src/v06.rs');
  new vm.Script(script);
  assert.match(html,/alignment\.css/);assert.match(html,/alignment\.js/);
- assert.doesNotMatch(script,/category-library-card|renderCollectionHub|initialPatchNotes|Novidades da versão/);assert.match(script,/friends-compact/);assert.match(script,/community-reference-layout/);assert.match(script,/data-dock-status/);assert.match(script,/unifiedAddFriend/);
+ assert.doesNotMatch(script,/category-library-card|renderCollectionHub|initialPatchNotes|Novidades da versão/);assert.match(script,/friends-compact/);assert.match(script,/community-reference-layout/);assert.match(script,/data-account-status/);assert.match(script,/unifiedAddFriend/);
  assert.match(script,/data-profile-section="library"/);assert.match(script,/state\.settingsTab!==['"]appearance['"]/);
  assert.match(css,/grid-template-columns:\s*210px minmax\(420px,\s*760px\) 260px/);assert.match(css,/grid-template-columns:\s*230px minmax\(0,\s*1fr\)\s*!important/);
  const chatQuery=rust.match(/async fn chat_messages[\s\S]*?(?=async fn send_message)/)?.[0]||'';
@@ -496,11 +493,11 @@ test('presença mantém o último estado durante reconexões curtas',()=>{
  assert.doesNotMatch(script,/Presença indisponível/);
 });
 
-test('desktop 0.16 restaura pela bandeja e usa gaveta de amigos',()=>{
+test('desktop restaura pela bandeja e mantém perfil e status sem gaveta duplicada',()=>{
  const rust=read('src-tauri/src/main.rs'),alignment=read('src/alignment.js'),css=read('src/alignment.css');
  assert.match(rust,/on_tray_icon_event/);assert.match(rust,/MouseButton::Left/);assert.match(rust,/desktop_runtime::show_main\(tray\.app_handle\(\)\)/);
- assert.match(alignment,/chatNav\?\.remove\(\)/);assert.match(alignment,/id='friendsDock'/);assert.match(alignment,/id=\"friendsDockClose\"/);assert.match(alignment,/data-dock-friend/);
- assert.match(css,/\.friends-dock\s*\{/);assert.match(css,/profile-cover-complete \.profile-cover-art[^{]*\{[^}]*opacity:\s*1\s*!important/);assert.match(alignment,/Abrir meu perfil/);assert.match(alignment,/friendsDockStatuses/);
+ assert.match(alignment,/chatNav\?\.remove\(\)/);assert.doesNotMatch(alignment,/id='friendsDock'/);assert.match(alignment,/accountStatusToggle/);assert.match(alignment,/data-account-profile/);
+ assert.match(css,/\.friends-dock\s*\{/);assert.match(css,/profile-cover-complete \.profile-cover-art[^{]*\{[^}]*opacity:\s*1\s*!important/);assert.match(alignment,/Abrir meu perfil/);assert.match(alignment,/data-account-status/);
 });
 
 test('desktop 0.17 mantém XP, diversifica missões e combina ofertas Steam',()=>{
@@ -640,3 +637,6 @@ test('sessões fecham na troca de jogo e repetem o mesmo identificador após fal
  clock=120000;await tracker.update(null);assert.equal(calls.at(-1).seconds,60);
  tracker.reset();await tracker.update({id:1});assert.equal(calls.at(-1).seconds,0);assert.equal(calls.at(-1).session,'3');
 });
+
+
+test('desktop, Android and website share the canonical application PNG',()=>{const canonical=fs.readFileSync(new URL('../src/icon.png',import.meta.url));assert.equal(canonical.subarray(1,4).toString(),'PNG');for(const path of ['../../android-native/app/src/main/res/drawable-nodpi/app_icon.png','../../public/marketing/icon.png'])assert.deepEqual(fs.readFileSync(new URL(path,import.meta.url)),canonical);});

@@ -1,0 +1,5 @@
+BatCaverna CLT Android 2.1.13 — ícone padronizado e capas inteiras.
+
+O símbolo roxo do aplicativo desktop passa a ser usado no launcher, na abertura e nas marcas internas, com recursos gerados da mesma imagem PNG.
+
+Adicionar e editar títulos usam Mostrar conteúdo adulto como filtro de exibição, preservando a classificação existente da capa. As capas do feed são enquadradas por inteiro, inclusive quando a arte é vertical.

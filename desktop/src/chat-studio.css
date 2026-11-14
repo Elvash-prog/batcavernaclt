@@ -28,4 +28,3 @@
 
 .reference-ui .chat-studio #liveChatText:focus-visible{outline:0}
 .reference-ui .chat-studio #liveMessageForm:has(textarea:focus-visible){box-shadow:0 0 0 1px var(--accent)}
-body[data-screen=chat] #friendsDock{display:none!important}

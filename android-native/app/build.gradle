@@ -13,8 +13,8 @@ android { namespace 'dev.gamersclt.batcaverna.nativeapp'; compileSdk 36
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         minSdk 23
         targetSdk 36
-        versionCode 121
-        versionName '2.1.12'
+        versionCode 122
+        versionName '2.1.13'
         buildConfigField 'String', 'SUPABASE_URL', '"https://luoqlhgfmixvfqbfcdoc.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', groovy.json.JsonOutput.toJson(publicSupabaseKey)
     }
@@ -47,15 +47,8 @@ tasks.register('restoreLogo') {
         wallpaper.parentFile.mkdirs()
         wallpaper.bytes = rootProject.file('../desktop/src/login-cave.jpg').bytes
         def target = file('src/main/res/drawable-nodpi/app_logo.png')
-        if (!target.exists()) {
-            def chunks = rootProject.file('assets-source').listFiles()?.findAll { it.name.startsWith('app_logo.png.b64.') }?.sort { it.name }
-            if (!chunks) throw new GradleException('Logo source is missing')
-            byte[] bytes = Base64.decoder.decode(chunks.collect { it.getText('UTF-8').trim() }.join(''))
-            def hash = java.security.MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString()
-            if (hash != '708935a9bffc4b10c297a5819bb57bec5bdcc490d0bbcab9c6751c644f10a2d1') throw new GradleException('Logo source checksum mismatch')
-            target.parentFile.mkdirs()
-            target.bytes = bytes
-        }
+        target.parentFile.mkdirs()
+        target.bytes = rootProject.file('../desktop/src/icon.png').bytes
     }
 }
 tasks.named('preBuild').configure { dependsOn('restoreLogo') }
