@@ -1,0 +1,1 @@
+As capas do feed dos amigos agora esticam para ocupar toda a área da imagem, mostrando a capa inteira sem cortes nem faixas laterais.
