@@ -45,7 +45,7 @@ final class LibraryTabs extends HorizontalScrollView {
   for(int i=0;i<buttons.size();i++){
    Button button=buttons.get(i);boolean active=selected.equals(keys[i]);String text=labels[i]+(counts.containsKey(keys[i])?" ("+counts.get(keys[i])+")":"");
    if(!text.contentEquals(button.getText()))button.setText(text);
-   button.setSelected(active);button.setTextColor(active?NativeTheme.accent(getContext()):0xffbfc8d5);
+   button.setSelected(active);button.setTextColor(NativeTheme.textColor(button.getContext(),active?NativeTheme.accent(getContext()):0xffbfc8d5));
    button.setContentDescription(labels[i]+(counts.containsKey(keys[i])?", "+counts.get(keys[i])+" títulos":"")+(active?", selecionado":""));
   }
  }

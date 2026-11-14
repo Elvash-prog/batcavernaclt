@@ -22,9 +22,9 @@ public final class LoginView extends FrameLayout {
     private CheckBox remember;
     private boolean registering,busy;
     public LoginView(Context c){
-        super(c);setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{0xff302044,0xff151123,0xff34223e}));
+        super(c);setBackground(NativeTheme.light(c)?NativeTheme.background(c):new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{0xff302044,0xff151123,0xff34223e}));
         ImageView wallpaper=new ImageView(c);wallpaper.setScaleType(ImageView.ScaleType.CENTER_CROP);addView(wallpaper,new LayoutParams(-1,-1));
-        View shade=new View(c);shade.setBackgroundColor(0xb80d1019);addView(shade,new LayoutParams(-1,-1));
+        View shade=new View(c);shade.setBackgroundColor(NativeTheme.light(c)?0xeefaf9ff:0xb80d1019);addView(shade,new LayoutParams(-1,-1));
         scroll=new ScrollView(c);scroll.setFillViewport(true);scroll.setVerticalScrollBarEnabled(false);scroll.setClipToPadding(false);addView(scroll,new LayoutParams(-1,-1));
         LinearLayout outside=new LinearLayout(c);outside.setOrientation(LinearLayout.VERTICAL);outside.setGravity(Gravity.CENTER_HORIZONTAL);outside.setPadding(dp(24),dp(60),dp(24),dp(32));scroll.addView(outside,new ScrollView.LayoutParams(-1,-2));
         LinearLayout shell=new LinearLayout(c);shell.setOrientation(LinearLayout.VERTICAL);
@@ -34,7 +34,7 @@ public final class LoginView extends FrameLayout {
         brand.addView(label("BatCaverna",34,TEXT,true),params(-1,-2,0,22,0,12));
         brand.addView(label("Sua biblioteca. Suas conquistas.",16,0xffb1a7bf,false),params(-1,-2,0,0,0,22));
         form=new LinearLayout(c);form.setOrientation(LinearLayout.VERTICAL);shell.addView(form,new LinearLayout.LayoutParams(-1,-2));
-        showForm(false);new SupabaseAuthClient().loginBackground(wallpaper,dim->shade.setBackgroundColor((Math.round(Math.max(60,dim)*255f/100)<<24)|0x000d1019));
+        showForm(false);new SupabaseAuthClient().loginBackground(wallpaper,dim->shade.setBackgroundColor(NativeTheme.light(c)?0xeefaf9ff:(Math.round(Math.max(60,dim)*255f/100)<<24)|0x000d1019));
     }
     private void showForm(boolean registration){
         if(busy)return;registering=registration;form.removeAllViews();
@@ -46,7 +46,7 @@ public final class LoginView extends FrameLayout {
         if(registration)email=field("E-MAIL",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,254);
         password=field("SENHA",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD,0);password.setTransformationMethod(PasswordTransformationMethod.getInstance());
         if(registration){confirmation=field("CONFIRMAR SENHA",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD,0);confirmation.setTransformationMethod(PasswordTransformationMethod.getInstance());}
-        else {remember=new CheckBox(getContext());remember.setText("Permanecer logado neste aparelho");remember.setTextColor(MUTED);remember.setTextSize(13);remember.setButtonTintList(ColorStateList.valueOf(PURPLE));remember.setChecked(true);form.addView(remember,params(-1,-2,0,0,0,16));}
+        else {remember=new CheckBox(getContext());remember.setText("Permanecer logado neste aparelho");remember.setTextColor(NativeTheme.textColor(remember.getContext(),MUTED));remember.setTextSize(13);remember.setButtonTintList(ColorStateList.valueOf(PURPLE));remember.setChecked(true);form.addView(remember,params(-1,-2,0,0,0,16));}
         submit=new Button(getContext());submit.setText(registration?"Criar meu perfil":"Entrar");AppStyle.button(submit,true);form.addView(submit,params(-1,Math.max(52,ResponsivePolicy.controlHeight(getResources().getConfiguration().fontScale)),0,4,0,10));submit.setOnClickListener(v->submit());
         feedback=label("",13,MUTED,false);feedback.setGravity(Gravity.CENTER);feedback.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);form.addView(feedback,params(-1,-2,0,0,0,16));
         if(!registration){TextView recovery=link("Esqueci minha senha");form.addView(recovery,params(-1,48,0,0,0,4));recovery.setOnClickListener(v->{if(!busy)recovery();});
@@ -77,15 +77,15 @@ public final class LoginView extends FrameLayout {
     }
     private EditText field(String caption,int input,int max){
         if(fields.getChildCount()>0){View divider=new View(getContext());divider.setBackgroundColor(0x18ffffff);fields.addView(divider,params(-1,1,16,0,16,0));}
-        EditText field=new EditText(getContext());field.setSingleLine(true);field.setInputType(input);if(caption.contains("SENHA"))field.setSaveEnabled(false);field.setTextSize(16);field.setTextColor(TEXT);field.setHintTextColor(0xffa89bb9);field.setPadding(dp(16),0,dp(16),0);field.setContentDescription(caption);field.setHint(caption.equals("USUÁRIO")?"Usuário":caption.equals("SENHA")?"Senha":caption.equals("E-MAIL")?"E-mail":caption.equals("CONFIRMAR SENHA")?"Confirmar senha":"Nome do perfil");if(max>0)field.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(max)});
+        EditText field=new EditText(getContext());field.setSingleLine(true);field.setInputType(input);if(caption.contains("SENHA"))field.setSaveEnabled(false);field.setTextSize(16);field.setTextColor(NativeTheme.textColor(field.getContext(),TEXT));field.setHintTextColor(NativeTheme.muted(getContext()));field.setPadding(dp(16),0,dp(16),0);field.setContentDescription(caption);field.setHint(caption.equals("USUÁRIO")?"Usuário":caption.equals("SENHA")?"Senha":caption.equals("E-MAIL")?"E-mail":caption.equals("CONFIRMAR SENHA")?"Confirmar senha":"Nome do perfil");if(max>0)field.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(max)});
         field.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         if(android.os.Build.VERSION.SDK_INT>=26)field.setAutofillHints(caption.equals("USUÁRIO")?View.AUTOFILL_HINT_USERNAME:caption.equals("E-MAIL")?View.AUTOFILL_HINT_EMAIL_ADDRESS:caption.contains("SENHA")?View.AUTOFILL_HINT_PASSWORD:View.AUTOFILL_HINT_NAME);
         fields.addView(field,params(-1,Math.max(56,ResponsivePolicy.controlHeight(getResources().getConfiguration().fontScale)),0,0,0,0));return field;
     }
     private TextView link(String value){TextView v=label(value,13,PURPLE,true);v.setGravity(Gravity.CENTER);v.setBackgroundResource(android.R.drawable.list_selector_background);v.setClickable(true);v.setFocusable(true);return v;}
     private void pill(LinearLayout parent,String value){TextView v=label(value,12,0xffddd9ed,false);v.setPadding(dp(10),dp(7),dp(10),dp(7));v.setBackground(round(0x14ffffff,24,0x22ffffff));parent.addView(v,params(-2,-2,0,0,8,0));}
-    private TextView label(String value,int size,int color,boolean bold){TextView v=new TextView(getContext());v.setText(value);v.setTextSize(size);v.setTextColor(color);if(bold)v.setTypeface(null,Typeface.BOLD);return v;}
-    private GradientDrawable round(int color,int radius,int stroke){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));d.setStroke(dp(1),stroke);return d;}
+    private TextView label(String value,int size,int color,boolean bold){TextView v=new TextView(getContext());v.setText(value);v.setTextSize(size);v.setTextColor(NativeTheme.textColor(v.getContext(),color));if(bold)v.setTypeface(null,Typeface.BOLD);return v;}
+    private GradientDrawable round(int color,int radius,int stroke){GradientDrawable d=new GradientDrawable();d.setColor(NativeTheme.surfaceColor(getContext(),color));d.setCornerRadius(dp(radius));d.setStroke(dp(1),stroke);return d;}
     private LinearLayout.LayoutParams params(int width,int height,int left,int top,int right,int bottom){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(width<0?width:dp(width),height<0?height:dp(height));p.setMargins(dp(left),dp(top),dp(right),dp(bottom));return p;}
     private int dp(int value){return NativeSheet.dp(getContext(),value);}
 }

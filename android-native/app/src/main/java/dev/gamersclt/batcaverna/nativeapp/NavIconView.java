@@ -5,7 +5,7 @@ import android.view.View;
 final class NavIconView extends View {
  private final int type;private int color=0xff929caf;private final Paint p=new Paint(3);
  NavIconView(Context c,int type){super(c);this.type=type;setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
- void color(int c){color=c;invalidate();}
+ void color(int c){color=NativeTheme.textColor(getContext(),c);invalidate();}
  protected void onDraw(Canvas canvas){super.onDraw(canvas);canvas.save();canvas.translate((getWidth()-24*getResources().getDisplayMetrics().density)/2,(getHeight()-24*getResources().getDisplayMetrics().density)/2);canvas.scale(getResources().getDisplayMetrics().density,getResources().getDisplayMetrics().density);p.setColor(color);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(1.8f);p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeJoin(Paint.Join.ROUND);
  Path path=new Path();
  if(type==0){path.moveTo(3,11);path.lineTo(12,3);path.lineTo(21,11);path.moveTo(5,10);path.lineTo(5,21);path.lineTo(10,21);path.lineTo(10,15);path.lineTo(14,15);path.lineTo(14,21);path.lineTo(19,21);path.lineTo(19,10);canvas.drawPath(path,p);}

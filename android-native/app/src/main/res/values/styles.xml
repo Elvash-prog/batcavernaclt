@@ -8,4 +8,13 @@
         <item name="android:windowLightStatusBar">false</item>
     </style>
     <style name="AppTheme" parent="AppThemeBase"/>
+    <style name="AppThemeLightBase" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">#faf9ff</item>
+        <item name="android:colorAccent">#7142c6</item>
+        <item name="android:navigationBarColor">#f6f5fc</item>
+        <item name="android:statusBarColor">#faf9ff</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+    <style name="AppThemeLight" parent="AppThemeLightBase"/>
 </resources>

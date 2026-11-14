@@ -36,7 +36,7 @@ final class AppUpdater {
  static void show(Activity a){
   NativeSheet s=new NativeSheet(a,"Atualizações");
   s.body.addView(NativeSheet.text(a,"Versão instalada • "+BuildConfig.VERSION_NAME,16,0xfff3eafa));
-  Switch automatic=new Switch(a);automatic.setText("Verificar ao abrir o aplicativo");automatic.setTextColor(0xffdcd1e8);
+  Switch automatic=new Switch(a);automatic.setText("Verificar ao abrir o aplicativo");automatic.setTextColor(NativeTheme.textColor(automatic.getContext(),0xffdcd1e8));
   android.content.SharedPreferences p=SessionPreferences.get(a);automatic.setChecked(p.getBoolean("check_app_updates",true));
   automatic.setOnCheckedChangeListener((b,on)->p.edit().putBoolean("check_app_updates",on).apply());s.body.addView(automatic);
   Button b=button(a,"Verificar atualização");s.body.addView(b);b.setOnClickListener(v->{s.dialog.dismiss();check(a,false);});s.show();
