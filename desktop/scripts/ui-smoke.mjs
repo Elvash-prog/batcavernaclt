@@ -2164,6 +2164,8 @@ try {
   await page.locator("#clearNotices").click();
   await page.locator("#notificationPopup .empty").waitFor();
   await page.locator("#closeNotifications").click();
+  assert.equal(await page.locator("#friendsDock").isVisible(),false);
+  await page.evaluate(async()=>await navigate('home'));
   await page.locator("#friendsDockToggle").click();
   await page.locator('[data-dock-status="ausente"]').click();
   await page.waitForFunction(() =>
@@ -2464,7 +2466,7 @@ try {
   assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='read_group').length),0);
   await page.evaluate(()=>{window.testGroupMessages.push({id:'latest-unread',remetente_id:'member-2',texto:'Chegou enquanto você lê',created_at:'2026-10-12T13:00:00Z'});window.listeners['desktop-change']({payload:{userId:'test',data:{table:'clt_chat_group_messages'}}})});
   await page.locator('[data-message="latest-unread"]').waitFor();assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='read_group').length),0);
-  await page.screenshot({path:'preview/chat-unread-check.png'});await page.locator('#chatUnreadJump').click();await page.waitForFunction(()=>window.saved.some(x=>x.c==='read_group'&&x.p.through==='2026-10-12T13:00:00Z'));
+  await page.screenshot({path:'preview/chat-unread-check.png'});await page.locator('#chatUnreadJump').click();await page.waitForFunction(()=>window.saved.some(x=>x.c==='read_group'&&x.p.through==='2026-10-12T13:00:00Z')).catch(async error=>{console.error('Unread diagnostics',await page.evaluate(()=>{const box=document.querySelector('#liveMessages');return {focused:document.hasFocus(),hidden:document.hidden,current:state.current,scroll:[box.scrollTop,box.scrollHeight,box.clientHeight],read:window.saved.filter(x=>x.c==='read_group'),last:[...box.querySelectorAll('[data-message]')].slice(-3).map(n=>n.dataset.message)};}));throw error;});
   await page.getByRole('button',{name:'⚙ Configurações do grupo'}).click();
   await page.locator('.group-settings-dialog [data-photo]').waitFor();
   assert.equal(await page.locator('.group-settings-dialog [data-remove="member-2"]').count(),1);

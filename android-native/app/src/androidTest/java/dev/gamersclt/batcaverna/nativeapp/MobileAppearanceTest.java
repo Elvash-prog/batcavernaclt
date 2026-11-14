@@ -19,7 +19,11 @@ public final class MobileAppearanceTest {
   Intent intent=new Intent(getInstrumentation().getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
   Activity activity=getInstrumentation().startActivitySync(intent);
   try {
-   getInstrumentation().waitForIdleSync(); capture(activity,"login-android");
+   getInstrumentation().waitForIdleSync();
+   if(android.os.Build.VERSION.SDK_INT>=26){android.graphics.drawable.Drawable icon=activity.getDrawable(R.mipmap.ic_launcher);assertTrue(icon instanceof android.graphics.drawable.AdaptiveIconDrawable);android.graphics.drawable.Drawable background=((android.graphics.drawable.AdaptiveIconDrawable)icon).getBackground();assertTrue(background instanceof android.graphics.drawable.ColorDrawable);assertEquals(0,android.graphics.Color.alpha(((android.graphics.drawable.ColorDrawable)background).getColor()));}
+   if(android.os.Build.VERSION.SDK_INT>=31){android.content.res.TypedArray splash=activity.obtainStyledAttributes(new int[]{android.R.attr.windowSplashScreenIconBackgroundColor,android.R.attr.windowSplashScreenAnimatedIcon});assertEquals(0,android.graphics.Color.alpha(splash.getColor(0,android.graphics.Color.WHITE)));assertNotNull(splash.getDrawable(1));splash.recycle();}
+   android.graphics.Bitmap logo=android.graphics.BitmapFactory.decodeResource(activity.getResources(),R.drawable.app_icon);assertNotNull(logo);assertEquals(0,android.graphics.Color.alpha(logo.getPixel(0,0)));assertEquals(0,android.graphics.Color.alpha(logo.getPixel(logo.getWidth()-1,logo.getHeight()-1)));logo.recycle();
+   capture(activity,"login-android");
    final Button[] primary=new Button[1];
    getInstrumentation().runOnMainSync(()->{
     LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(24,48,24,24);body.setBackgroundColor(NativeTheme.backgroundEnd(activity));
