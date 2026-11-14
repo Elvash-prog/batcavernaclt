@@ -2458,6 +2458,7 @@ try {
   await page.evaluate(()=>{const form=document.querySelector('#liveMessageForm');form.requestSubmit();form.requestSubmit();});
   await page.waitForFunction(()=>document.querySelector('#liveChatText').value==='');
   assert.equal(await page.evaluate(()=>window.saved.filter(x=>x.c==='group_send'&&x.p.text==='Mensagem de grupo sem duplicação').length),1);
+  await page.waitForFunction(()=>document.querySelector('#liveMessageForm').dataset.sending!=='true'&&[...document.querySelectorAll('#liveMessages [data-message]')].some(row=>row.querySelector('p')?.textContent==='Mensagem de grupo sem duplicação'&&!row.querySelector('time').dataset.delivery));
   for(const size of [{width:980,height:760},{width:1920,height:1080}]){await page.setViewportSize(size);const composer=await page.locator('#liveMessageForm').boundingBox(),content=await page.locator('#content').boundingBox();assert.ok(composer.x>=content.x&&composer.x+composer.width<=content.x+content.width+1);assert.ok(composer.y+composer.height<=size.height);}
 
 
