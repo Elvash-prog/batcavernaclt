@@ -3,10 +3,10 @@
  const baseSettings=renderSettings;
  renderSettings=async function(){
   await baseSettings();if(state.settingsTab!=='app')return;
-  const panel=$('#settingsPanel');if(!panel)return;
+  const panel=$('#settingsPanel');if(!panel)return;const reads=await Promise.allSettled([call('diagnostic_status'),call('desktop_preferences',{input:null})]);if(!panel.isConnected)return;
   if(state.settingsTab==='app'){
    try{
-    const info=await call('diagnostic_status');if(!panel.isConnected)return;
+    if(reads[0].status==='rejected')throw reads[0].reason;const info=reads[0].value;if(!panel.isConnected)return;
     panel.insertAdjacentHTML('beforeend',`<section class="native-desktop-settings diagnostic-settings"><h3>Diagnóstico e estabilidade</h3><p class="muted">Relatório técnico sem senhas, tokens, conversas ou dados da biblioteca.</p><div class="diagnostic-summary"><span>Arquivo local</span><b>${Number(info.size||0).toLocaleString('pt-BR')} bytes</b></div><footer><button type="button" class="primary" id="exportDiagnostics">Exportar diagnóstico</button><button type="button" class="secondary" id="clearDiagnostics">Limpar histórico</button></footer><p role="status"></p></section>`);
     const section=panel.querySelector('.diagnostic-settings'),note=section.querySelector('[role=status]');
     section.querySelector('#exportDiagnostics').onclick=async event=>{const button=event.currentTarget;button.disabled=true;try{const result=await call('diagnostic_export');note.textContent=`Arquivo criado em ${result.path}`}catch(e){note.textContent=failure(e)}finally{button.disabled=false}};
@@ -14,7 +14,7 @@
    }catch(e){if(panel.isConnected)panel.insertAdjacentHTML('beforeend',`<p class="muted">Diagnóstico indisponível: ${esc(failure(e))}</p>`)}
   }
   try{
-   const prefs=await call('desktop_preferences',{input:null});if(!panel.isConnected)return;
+   if(reads[1].status==='rejected')throw reads[1].reason;const prefs=reads[1].value;if(!panel.isConnected)return;
    panel.insertAdjacentHTML('beforeend',`<section class="native-desktop-settings windows-preferences"><h3>Windows e segundo plano</h3><label><input id="desktopBackground" type="checkbox" ${prefs.background?'checked':''}>Continuar em segundo plano ao fechar</label><label><input id="desktopNotifications" type="checkbox" ${prefs.notifications?'checked':''}>Receber notificações do Windows</label><label><input id="desktopSound" type="checkbox" ${prefs.sound!==false?'checked':''}>Som de notificação</label><label><input id="desktopAutostart" type="checkbox" ${prefs.autostart?'checked':''}>Iniciar com o Windows</label><label><input id="desktopStartMinimized" type="checkbox" ${prefs.start_minimized?'checked':''}>Iniciar minimizado na bandeja</label><footer><button type="button" class="primary" id="saveDesktopPreferences">Salvar preferências do Windows</button><button type="button" class="secondary" id="testWindowsNotification">Testar notificação</button></footer><p role="status"></p></section>`);
    const section=panel.querySelector('.windows-preferences'),note=section.querySelector('[role=status]');
    section.querySelector('#saveDesktopPreferences').onclick=async event=>{const button=event.currentTarget;button.disabled=true;try{await call('desktop_preferences',{input:{background:section.querySelector('#desktopBackground').checked,notifications:section.querySelector('#desktopNotifications').checked,sound:section.querySelector('#desktopSound').checked,autostart:section.querySelector('#desktopAutostart').checked,start_minimized:section.querySelector('#desktopStartMinimized').checked}});note.textContent='Preferências salvas neste computador.'}catch(e){note.textContent=failure(e)}finally{button.disabled=false}};

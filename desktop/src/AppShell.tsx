@@ -1,4 +1,3 @@
-import {useEffect} from 'react';
 
 const nav=[
  ['home','⌂','Início'],['library','▦','Biblioteca'],['discover','◈','Minha Steam'],
@@ -16,12 +15,6 @@ function Login(){return <section id="loginScreen" className="login-screen">
  </section>}
 
 export default function AppShell(){
- useEffect(()=>{
-  const content=document.getElementById('content');if(!content)return;
-  const observer=new MutationObserver(()=>{content.classList.remove('view-enter');requestAnimationFrame(()=>content.classList.add('view-enter'))});
-  observer.observe(content,{childList:true});
-  const click=(event:MouseEvent)=>{const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button');if(!button)return;button.classList.remove('button-pop');requestAnimationFrame(()=>button.classList.add('button-pop'))};
-  document.addEventListener('click',click);return()=>{observer.disconnect();document.removeEventListener('click',click)};
- },[]);
+
  return <><Login/><div id="appShell" className="app-shell" hidden><aside className="sidebar"><div className="logo"><img src="icon.png" alt=""/><strong>BatCaverna</strong></div><nav id="mainNav">{nav.map(([view,icon,label])=><button key={view} data-view={view} className={view==='home'?'active':''}><span>{icon}</span>{label}{view==='notifications'&&<b id="navUnread" hidden/>}</button>)}</nav><div className="sidebar-foot"><small>Windows <span id="appVersion"/></small></div></aside><main><header className="topbar"><div><span id="pageEyebrow" className="eyebrow">VISÃO GERAL</span><h1 id="pageTitle">Início</h1></div><div className="account"><img id="accountAvatar" alt=""/><div><strong id="accountName">Minha conta</strong><small id="accountStatus">Online</small></div></div></header><div id="content" className="content" aria-live="polite"/></main></div><div id="toast" className="toast" role="status" hidden/></>;
 }

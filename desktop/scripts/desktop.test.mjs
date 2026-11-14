@@ -339,7 +339,7 @@ test('feed renderiza mídia e catálogo usa Supabase', () => {
   assert.match(rust,/functions\/v1\/bright-api/);
 });
 
-function rendererHelpers(){const source=read('src/app.js').split("$('#mainNav').onclick")[0];const ctx={window:{},document:{},URL,URLSearchParams,Date,Intl,Map,console};vm.createContext(ctx);vm.runInContext(source,ctx);return ctx}
+function rendererHelpers(){const source=read('src/app.js').split("$('#mainNav').onclick")[0];const ctx={window:{},document:{},URL,URLSearchParams,Date,Intl,Map,console};vm.createContext(ctx);vm.runInContext(read('src/screen-cache.js'),ctx);ctx.window.createScreenCache=ctx.createScreenCache;vm.runInContext(source,ctx);return ctx}
 test('categoriza os status existentes sem misturar platinas e zerados',()=>{const c=rendererHelpers();for(const [input,expected] of [['🏆 100% (Platina)','platinum'],['🎮 Em Progresso','progress'],['✅ Zerado','finished'],['✅ Assistido','finished'],['🟦 Biblioteca Steam','steam'],['⏸️ Pausado','paused'],['⭐ Favorito','favorite']])assert.equal(c.normalizedStatus(input),expected)});
 test('estatísticas usam data de conclusão e horas reais sem inventar meses',()=>{const c=rendererHelpers(),today=new Date().toISOString().slice(0,10),rows=[{categoria:'jogos',status:'🏆 Platina',horas:12,data:today},{categoria:'filmes',tipo:'anime',status:'✅ Concluído'},{categoria:'jogos',status:'Backlog',horas:3}];const s=c.statsFromRows(rows);assert.equal(s.total,3);assert.equal(s.concluidos,2);assert.equal(s.horas,15);assert.equal(s.animes,1);assert.equal(s.sem_data,1);assert.equal(s.months.reduce((a,m)=>a+m.jogos+m.midias,0),1)});
 test('banner preserva posição e zoom no formato usado pelo site',()=>{const c=rendererHelpers();const url=c.bannerSave('https://example.com/banner.jpg',20,80,150),data=c.bannerData(url);assert.equal(data.url,'https://example.com/banner.jpg');assert.equal(data.x,20);assert.equal(data.y,80);assert.equal(data.z,150);assert.equal(c.coverUrl('/poster.jpg'),'https://image.tmdb.org/t/p/w500/poster.jpg')});
@@ -426,7 +426,7 @@ test('desktop 0.13 usa React e respeita redução de movimento',()=>{
  assert.match(main,/createRoot/);assert.match(main,/flushSync\(\(\)=>root\.render/);assert.match(main,/void start\(\)/);
  assert.match(read('src/app.js'),/batcaverna:legacy-ready/);
  assert.match(main,/dispatchEvent\(new Event\('batcaverna:legacy-ready'\)\)/);
- assert.match(shell,/MutationObserver/);assert.match(shell,/view-enter/);
+ assert.doesNotMatch(shell,/MutationObserver|button-pop/);assert.match(read('src/navigation-feedback.js'),/createNavigationMotion/);
  assert.match(motion,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(motion,/@keyframes dialog-in/);assert.match(config,/@vitejs\/plugin-react/);
  assert.equal(tauri.build.frontendDist,'../dist');assert.equal(tauri.version,JSON.parse(read('package.json')).version);
@@ -520,7 +520,7 @@ test('perfil desktop centraliza conteúdo e inicia dados independentes em parale
  assert.match(refinement,/\.reference-ui #content\.screen-pending\{visibility:hidden!important;opacity:0;pointer-events:none\}/);
  assert.ok(profile.indexOf('Promise.all([loadStats(),api.library')<profile.indexOf('await api.profile'));
  assert.match(profile,/error=>\(\{error\}\)/);assert.match(profile,/Estatísticas indisponíveis/);
- assert.match(redesign,/Promise\.all\(\[api\.profile\(own\?null:id\),xapi\(\{op:'profile_bundle',id\}\)\]\)/);
+ assert.match(redesign,/Promise\.all\(\[own\?api\.profileView/);assert.match(redesign,/own-profile-bundle/);
  assert.match(rust,/tokio::try_join!\([\s\S]*clt_desktop_profile[\s\S]*perfil_detalhes_autorizado/);
  assert.match(rust,/tokio::try_join!\([\s\S]*let mut items=Vec::new\(\)[\s\S]*clt_progression_v2/);
  assert.doesNotMatch(rust,/ranking_clt"\),token\)\.await\.unwrap_or\(json!\(\[\]\)\)/);

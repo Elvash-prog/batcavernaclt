@@ -4,6 +4,7 @@ import {flushSync} from 'react-dom';
 import AppShell from './AppShell';
 import './appearance.js';
 import './card-layout.js';
+import './screen-cache.js';
 import './styles.css';import './visibility.css';import './phase03.css';import './redesign.css';import './reference.css';import './refinement.css';import './polish.css';import './catalog-library.css';import './journey.css';import './alignment.css';import './desktop-fixes.css';import './react-motion.css';import './professional.css';import './cavern-home.css';import './cavern-library.css';import './cavern-profile.css';import './cavern-social.css';import './cavern-community.css';import './cavern-shell.css';import './continuity.css';import './profile-editor.css';
 import './game-feed.css';
 import './sensitive-covers.css';
@@ -48,6 +49,7 @@ import './motion-feedback.js';
 import './appearance.css';
 import './typography.css';
 import typography from './typography.js?url';
+import navigationPreload from './navigation-preload.js?url';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';
 import coverQuality from './cover-quality.js?url';
@@ -71,7 +73,7 @@ const modules:BootModule[]=[
  {name:'Ajustes de navegação',src:refinement},{name:'Acabamento visual',src:polish},
  {name:'Comunidade e conversas',src:redesign},{name:'Jornada e indicações',src:journey},
  {name:'Alinhamento da interface',src:alignment},{name:'Correções do desktop',src:fixes},
- {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity},{name:'Seleção de destaques',src:profileHighlights},{name:'Editor de imagens',src:profileImages},{name:'Contexto da biblioteca',src:libraryNavigation},{name:'Modelo do feed de jogos',src:gameFeedModel},{name:'Feed dos amigos',src:gameFeed},{name:'Transições entre abas',src:navigationFeedback},{name:'Fontes da interface',src:typography}
+ {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity},{name:'Seleção de destaques',src:profileHighlights},{name:'Editor de imagens',src:profileImages},{name:'Contexto da biblioteca',src:libraryNavigation},{name:'Modelo do feed de jogos',src:gameFeedModel},{name:'Feed dos amigos',src:gameFeed},{name:'Transições entre abas',src:navigationFeedback},{name:'Fontes da interface',src:typography},{name:'Pré-carregamento das abas',src:navigationPreload}
 ];
 
 function load(module:BootModule){return new Promise<void>((resolve,reject)=>{const script=document.createElement('script');script.src=module.src;script.dataset.bootModule=module.name;script.onload=()=>resolve();script.onerror=()=>reject(new Error(`O arquivo de ${module.name.toLowerCase()} não pôde ser carregado.`));document.body.append(script)})}
@@ -82,5 +84,5 @@ function FatalError({failure}:{failure:BootFailure}){const [copied,setCopied]=us
 const root=createRoot(document.getElementById('root')!);
 window.addEventListener('error',event=>{void nativeLog('ERROR','WINDOW_ERROR',`${event.error?.name||'Error'}: ${event.message||event.error?.message||'Erro inesperado'} · ${String(event.filename||'').split('/').pop()}:${event.lineno||0}:${event.colno||0} · ${String(event.error?.stack||'').slice(0,700)}`)});
 window.addEventListener('unhandledrejection',event=>{const reason=event.reason,description=reason instanceof Error?`${reason.name}: ${reason.message}`:String(reason||'Falha assíncrona inesperada');void nativeLog('ERROR','UNHANDLED_REJECTION',description.slice(0,500))});
-async function start(){let stage='Preparação da interface';try{applyBootTheme();flushSync(()=>root.render(<AppShell/>));for(const module of modules){stage=module.name;await load(module);await nativeLog('INFO','BOOT_MODULE',module.name)}stage='Ativação da sessão';document.documentElement.dataset.reactShell='ready';window.dispatchEvent(new Event('batcaverna:legacy-ready'));await nativeLog('INFO','BOOT_READY','Interface e módulos carregados')}catch(error){const failure={stage,message:error instanceof Error?error.message:String(error||'Falha desconhecida.')};console.error('Falha na inicialização',failure,error);await nativeLog('ERROR','BOOT_FAILURE',`${stage}: ${failure.message}`);document.documentElement.classList.remove('booting');root.render(<FatalError failure={failure}/>);}}
+async function start(){let stage='Preparação da interface';try{applyBootTheme();flushSync(()=>root.render(<AppShell/>));const preloads=modules.map(module=>{const link=document.createElement('link');link.rel='preload';link.as='script';link.href=module.src;document.head.append(link);return link;});const loaded:string[]=[];try{for(const module of modules){stage=module.name;await load(module);loaded.push(module.name)}}finally{preloads.forEach(link=>link.remove());}void nativeLog('INFO','BOOT_MODULE',loaded.join(' → '));stage='Ativação da sessão';document.documentElement.dataset.reactShell='ready';window.dispatchEvent(new Event('batcaverna:legacy-ready'));await nativeLog('INFO','BOOT_READY','Interface e módulos carregados')}catch(error){const failure={stage,message:error instanceof Error?error.message:String(error||'Falha desconhecida.')};console.error('Falha na inicialização',failure,error);await nativeLog('ERROR','BOOT_FAILURE',`${stage}: ${failure.message}`);document.documentElement.classList.remove('booting');root.render(<FatalError failure={failure}/>);}}
 void start();
