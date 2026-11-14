@@ -32,7 +32,18 @@ public final class MobileAppearanceTest {
    });
    getInstrumentation().waitForIdleSync();
    assertTrue(primary[0].getHeight()>=Math.round(48*activity.getResources().getDisplayMetrics().density));
+   final String previousFontAccount=SessionPreferences.get(activity).getString("user_id","");
+   getInstrumentation().runOnMainSync(()->{
+    SessionPreferences.get(activity).edit().putString("user_id","visual-font-preview").commit();
+    LinearLayout body=(LinearLayout)((android.view.ViewGroup)activity.findViewById(android.R.id.content)).getChildAt(0);
+    FontPreferences.controls(activity,body);FontPreferences.install(body);
+    ((Spinner)body.findViewWithTag("interface-font")).setSelection(2);
+   });
+   getInstrumentation().waitForIdleSync();
+   assertEquals(2,FontPreferences.index(activity));
+   assertEquals(android.graphics.Typeface.create("serif",android.graphics.Typeface.NORMAL),primary[0].getTypeface());
    capture(activity,"controles-android");
+   getInstrumentation().runOnMainSync(()->{FontPreferences.select(activity,0);if(previousFontAccount.isEmpty())SessionPreferences.get(activity).edit().remove("user_id").commit();else SessionPreferences.get(activity).edit().putString("user_id",previousFontAccount).commit();});
    final HomeView[] home=new HomeView[1];
    getInstrumentation().runOnMainSync(()->{home[0]=new HomeView(activity);activity.setContentView(home[0]);home[0].navigate(12);});
    getInstrumentation().waitForIdleSync();
