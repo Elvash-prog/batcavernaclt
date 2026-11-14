@@ -13,3 +13,11 @@ O histórico usa reconciliação por chave de mensagem/dia. Mensagens inalterada
 Validação: `npm test` cobre identidade de tentativa, conciliação com confirmação remota, estados locais e separação de conta/tipo/destino. `npm run test:ui` inclui mensagens e figurinhas imediatas, resposta perdida antes/depois da gravação, uma leitura antiga após confirmação, estabilidade de imagem/menu/rolagem, troca rápida entre contatos com resposta fora de ordem, reações demoradas, rascunhos, confirmação tardia, grupos e logout. A suíte também cobre os fluxos existentes, seis temas e resoluções HD, Full HD e QHD com APIs simuladas. A publicação repete as verificações no Windows e os testes Rust.
 
 Android permanece em 2.1.8 (117).
+
+## Windows 2.1.16
+
+O compositor libera o campo de texto durante um envio, mantendo um envio por formulário em andamento. O envio limpa a prévia do compositor sem remover o rascunho persistido antes da confirmação. Digitar incrementa a revisão e mantém o novo texto protegido da confirmação anterior. Uma falha restaura texto, resposta e anexo quando a revisão não mudou; caso contrário, a mensagem com falha continua disponível no histórico para reenvio. A saída permanece em memória, sem reenvio automático.
+
+Os formatadores de dia, horário e data completa são criados uma vez. A reconciliação compara a marcação desejada por mensagem e retorna os nós novos/modificados para hidratação e eventos. Mensagens inalteradas não recebem mutações nem reinstalação de manipuladores. Uma atualização idêntica também evita capturar medidas de rolagem. A transição de conversa usa 140 ms e deslocamento de 2 px, mantendo as preferências de reduzir movimento.
+
+A preferência de fonte usa famílias locais de uma lista permitida, separada por conta e aparelho. Não altera o serviço de sincronização de layout ou o backend.

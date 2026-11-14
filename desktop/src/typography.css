@@ -1,0 +1,5 @@
+html:not([data-interface-font=system])[data-interface-font] body,
+html:not([data-interface-font=system])[data-interface-font] body :where(h1,h2,h3,h4,h5,h6,p,span,div,label,small,strong,b,em,a,button,input,textarea,select,option,summary,time,li,td,th,output){font-family:var(--interface-font)!important}
+.font-settings{margin-top:24px;padding-top:22px;border-top:1px solid var(--line)}
+.font-settings label{max-width:420px}.font-settings select{margin-top:6px}
+.font-preview{margin:16px 0 0;color:var(--text);font-size:18px;line-height:1.6;overflow-wrap:anywhere}
