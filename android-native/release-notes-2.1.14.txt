@@ -1,0 +1,5 @@
+Busca de dados do catálogo dentro da edição de jogos, filmes, séries e animes, com prévia e aplicação antes de salvar.
+Completar campos vazios, usar dados encontrados ou adicionar outra edição pela mesma busca. Progresso e capas escolhidas são preservados.
+Cinco novos temas: Claro, Meia-noite, Grafite, Sakura e Lavanda, com textos e controles adaptados às paletas claras.
+Removido o botão duplicado de configurações no perfil; o acesso permanece no menu superior.
+Horas do editor com leitura curta, preservando a precisão original quando o valor não é alterado.

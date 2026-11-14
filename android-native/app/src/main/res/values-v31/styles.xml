@@ -4,4 +4,9 @@
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/launcher_foreground</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
     </style>
+    <style name="AppThemeLight" parent="AppThemeLightBase">
+        <item name="android:windowSplashScreenBackground">#faf9ff</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+    </style>
 </resources>

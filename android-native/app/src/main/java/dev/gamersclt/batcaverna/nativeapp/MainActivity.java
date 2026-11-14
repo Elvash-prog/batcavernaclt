@@ -33,13 +33,14 @@ public final class MainActivity extends Activity {
     private final android.os.Handler updateHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable updateTick=new Runnable(){public void run(){if(!foreground)return;AppUpdater.automatic(MainActivity.this);updateHandler.postDelayed(this,60000);}};
     @Override public void onCreate(Bundle state) {
+        setTheme(NativeTheme.light(this)?R.style.AppThemeLight:R.style.AppTheme);
         super.onCreate(state);
         NativeDiagnostics.install(getApplicationContext());NativeDiagnostics.log(this,"INFO","APP_START","Inicialização nativa "+BuildConfig.VERSION_NAME);
         AppContextHolder.context=getApplicationContext();alerts=new NativeAlerts(this);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         applyWindowTheme();
         if(Build.VERSION.SDK_INT>=30) getWindow().setDecorFitsSystemWindows(true);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+
         SharedPreferences prefs=SessionPreferences.get(this);
         if(!prefs.getBoolean("remember_session",true)&&!SupabaseAuthClient.sessionInProcess)prefs.edit().remove("access_token").remove("refresh_token").remove("user_id").remove("user_email").remove("expires_at").putBoolean("authenticated",false).apply();
         if(prefs.getLong("expires_at",0)<=System.currentTimeMillis()&&prefs.getString("refresh_token","").isEmpty())prefs.edit().remove("access_token").putBoolean("authenticated",false).apply();
@@ -57,8 +58,8 @@ public final class MainActivity extends Activity {
         view.requestApplyInsets();
     }
     public void openProfile(){login=null;home=new HomeView(this);home.setForeground(foreground);display(home);handleNotificationIntent();}
-    private void applyWindowTheme(){getWindow().setStatusBarColor(NativeTheme.backgroundStart(this));getWindow().setNavigationBarColor(NativeTheme.backgroundEnd(this));}
-    public void applyTheme(){applyWindowTheme();if(home!=null)openProfile();else showLogin();}
+    private void applyWindowTheme(){getWindow().setStatusBarColor(NativeTheme.backgroundStart(this));getWindow().setNavigationBarColor(NativeTheme.backgroundEnd(this));int flags=NativeTheme.light(this)?View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR:0;if(Build.VERSION.SDK_INT>=26&&NativeTheme.light(this))flags|=View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;getWindow().getDecorView().setSystemUiVisibility(flags);}
+    public void applyTheme(){setTheme(NativeTheme.light(this)?R.style.AppThemeLight:R.style.AppTheme);applyWindowTheme();if(home!=null)openProfile();else showLogin();}
     @Override protected void onResume(){super.onResume();foreground=true;AppUpdater.automatic(this);AppUpdater.attach(this);updateHandler.removeCallbacks(updateTick);updateHandler.postDelayed(updateTick,60000);PushSetup.register(this);if(alerts!=null)alerts.foreground(true);if(home!=null)home.setForeground(true);}
     @Override protected void onPause(){foreground=false;updateHandler.removeCallbacks(updateTick);if(alerts!=null)alerts.foreground(false);if(home!=null)home.setForeground(false);super.onPause();}
     public void showLogin(){home=null;login=new LoginView(this);display(login);}
