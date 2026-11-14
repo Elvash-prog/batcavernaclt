@@ -1,0 +1,4 @@
+Configurações → Aparência: os ajustes de layout agora abrem uma janela com prévia ao vivo da coleção.
+Tamanhos Compactos, Equilibrados e Grandes, ajustes numéricos com botões de aumentar e diminuir, largura do conteúdo e escala da interface.
+Salvar layout aplica a escolha; cancelar ou fechar mantém o layout atual. Restaurar padrão também pode ser conferido antes de salvar.
+Janela adaptada aos temas claro e escuro e a clientes sem maximizar.

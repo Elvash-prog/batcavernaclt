@@ -1,3 +1,4 @@
+import {testCardLayout} from './card-layout-ui.mjs';
 import {testLibraryProfilePolish} from './library-profile-polish-ui.mjs';
 import {testCoverQuality} from './cover-quality-ui.mjs';
 import {testTypography} from './typography-ui.mjs';
@@ -838,12 +839,13 @@ try {
   const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
-  if(process.env.BAT_LIBRARY_PROFILE_ONLY){await testCoverQuality(page);await testLibraryProfilePolish(page);}else if(process.env.BAT_COVER_QUALITY_ONLY){await testCoverQuality(page);}else if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  if(process.env.BAT_CARD_LAYOUT_ONLY){await testCardLayout(page);}else if(process.env.BAT_LIBRARY_PROFILE_ONLY){await testCoverQuality(page);await testLibraryProfilePolish(page);}else if(process.env.BAT_COVER_QUALITY_ONLY){await testCoverQuality(page);}else if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
   await testNavigationMotion(page);
   await testChatFlow(page);
   await testTypography(page);
   await testCoverQuality(page);
   await testLibraryProfilePolish(page);
+  await testCardLayout(page);
   // Settings search only locates categories and preserves the currently open controls.
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('.settings-search-label input').fill('SENHA');
@@ -1840,10 +1842,9 @@ try {
   assert.equal(await page.evaluate(()=>window.saved.filter(s=>s.c==='save_item'&&s.p.item.nome==='Segundo da fila').length),1);
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('[data-settings-tab="appearance"]').click();
-  await page.locator('[data-theme-range="cardWidth"]').evaluate((el) => {
-    el.value = "420";
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  await page.locator("#editCardLayout").click();
+  await page.locator('[data-layout-value="cardWidth"]').fill("420");
+  await page.locator("[data-layout-save]").click();
   assert.equal(
     await page.evaluate(() =>
       getComputedStyle(document.documentElement)
