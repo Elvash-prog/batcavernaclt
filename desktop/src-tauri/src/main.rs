@@ -182,6 +182,27 @@ async fn get(client: &reqwest::Client, path: &str, token: &str) -> Result<Value,
     Err(last.unwrap_or("Consulta indisponível.").to_string())
 }
 
+fn library_page_complete(offset: usize, received: usize, total: Option<usize>) -> bool {
+    received == 0 || total.is_some_and(|total| offset.saturating_add(received) >= total)
+}
+
+async fn library_page(client: &reqwest::Client, path: &str, token: &str) -> Result<(Value, Option<usize>), String> {
+    for attempt in 0..2 {
+        match rest(client, path, token).header("prefer", "count=exact").send().await {
+            Ok(response) => {
+                if attempt == 0 && response.status().is_server_error() { tokio::time::sleep(Duration::from_millis(500)).await; continue; }
+                let total = response.headers().get("content-range").and_then(|v| v.to_str().ok()).and_then(|v| v.rsplit('/').next()).and_then(|v| v.parse::<usize>().ok());
+                return Ok((value(response).await?, total));
+            },
+            Err(error) => {
+                if attempt == 1 { return Err(if error.is_timeout() { "A consulta demorou demais. Tente novamente." } else { "Não foi possível conectar ao Supabase. Verifique sua conexão." }.into()); }
+                tokio::time::sleep(Duration::from_millis(400)).await;
+            }
+        }
+    }
+    Err("Consulta indisponível.".into())
+}
+
 async fn rpc(client: &reqwest::Client, function: &str, body: Value, token: &str) -> Result<Value, String> {
     value(client.post(format!("{SUPABASE_URL}/rest/v1/rpc/{function}"))
         .header("apikey", SUPABASE_KEY).bearer_auth(token).header("content-type", "application/json")
@@ -388,15 +409,22 @@ async fn dashboard(state: tauri::State<'_, AppState>) -> Result<Value, String> {
     let session = current(&state).await?; let user = &session.user.id; let token = &session.access_token;
     let games = format!("/rest/v1/itens?user_id=eq.{user}&categoria=eq.jogos");
     let media = format!("/rest/v1/itens?user_id=eq.{user}&categoria=eq.filmes");
-    let total_games = count(&state.client, &games, token).await?;
-    let playing = count(&state.client, &format!("{games}&or=(status.ilike.*progresso*,status.ilike.*jogando*)"), token).await?;
-    let finished = count(&state.client, &format!("{games}&or=(status.ilike.*zerado*,status.ilike.*platina*)"), token).await?;
-    let total_media = count(&state.client, &media, token).await?;
-    let unread = count(&state.client, &format!("/rest/v1/notificacoes?destinatario_id=eq.{user}&read=eq.false"), token).await?;
-    let profiles = get(&state.client, &format!("/rest/v1/perfis?select=id,nome,slug,avatar_url,banner_url,status_personalizado,bio,steam_id,retroachievements_user,retroachievements_ulid,fundo&id=eq.{user}&limit=1"), token).await?;
+    let playing_path = format!("{games}&or=(status.ilike.*progresso*,status.ilike.*jogando*)");
+    let finished_path = format!("{games}&or=(status.ilike.*zerado*,status.ilike.*platina*)");
+    // The same account-scoped reads, with at most four requests in flight.
+    let (total_games, playing, finished, total_media) = tokio::try_join!(
+        count(&state.client, &games, token), count(&state.client, &playing_path, token),
+        count(&state.client, &finished_path, token), count(&state.client, &media, token)
+    )?;
+    let unread_path = format!("/rest/v1/notificacoes?destinatario_id=eq.{user}&read=eq.false");
+    let profile_path = format!("/rest/v1/perfis?select=id,nome,slug,avatar_url,banner_url,status_personalizado,bio,steam_id,retroachievements_user,retroachievements_ulid,fundo&id=eq.{user}&limit=1");
+    let recent_path = format!("{games}&select=id,nome,status,capa_adulta,capa,horas,plataforma&order=updated_at.desc,id.desc&limit=8");
+    let updates_path = format!("/rest/v1/itens?select=id,nome,categoria,status,updated_at&user_id=eq.{user}&order=updated_at.desc,id.desc&limit=6");
+    let (unread, profiles, recent, updates) = tokio::try_join!(
+        count(&state.client, &unread_path, token), get(&state.client, &profile_path, token),
+        get(&state.client, &recent_path, token), get(&state.client, &updates_path, token)
+    )?;
     let profile = profiles.as_array().and_then(|v| v.first()).cloned().unwrap_or_else(|| json!({"id":user,"nome":"Minha BatCaverna"}));
-    let recent = get(&state.client, &format!("{games}&select=id,nome,status,capa_adulta,capa,horas,plataforma&order=updated_at.desc,id.desc&limit=8"), token).await?;
-    let updates = get(&state.client, &format!("/rest/v1/itens?select=id,nome,categoria,status,updated_at&user_id=eq.{user}&order=updated_at.desc,id.desc&limit=6"), token).await?;
     Ok(json!({"counts":{"totalGames":total_games,"playing":playing,"finished":finished,"totalMedia":total_media,"unread":unread},"profile":profile,"email":session.user.email,"recent":recent,"updates":updates}))
 }
 
@@ -464,10 +492,10 @@ async fn library(category: String, state: tauri::State<'_, AppState>) -> Result<
     let mut all = Vec::new();
     let mut offset = 0;
     loop {
-        let page = get(&state.client, &format!("/rest/v1/itens?select=*&user_id=eq.{user}&categoria=eq.{source}&order=id.asc&offset={offset}&limit=500"), &session.access_token).await?;
+        let (page, total) = library_page(&state.client, &format!("/rest/v1/itens?select=*&user_id=eq.{user}&categoria=eq.{source}&order=id.asc&offset={offset}&limit=500"), &session.access_token).await?;
         let batch = page.as_array().ok_or("A biblioteca retornou dados inválidos.")?;
         let count = batch.len(); all.extend(batch.iter().cloned());
-        if count == 0 { break; }
+        if library_page_complete(offset, count, total) { break; }
         offset += count;
     }
     let rows = Value::Array(all);
@@ -823,6 +851,14 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn library_pagination_respects_server_caps_and_unknown_totals() {
+        assert!(super::library_page_complete(0, 101, Some(101)));
+        assert!(!super::library_page_complete(0, 100, Some(701)));
+        assert!(super::library_page_complete(600, 101, Some(701)));
+        assert!(!super::library_page_complete(0, 101, None));
+        assert!(super::library_page_complete(101, 0, None));
+    }
     use super::*;
     #[test] fn media_paths_preserve_buckets_and_reject_invalid_paths() {
         assert_eq!(normalize_media_url("friend/avatar.webp").unwrap(), format!("{SUPABASE_URL}/storage/v1/object/public/avatars/friend/avatar.webp"));

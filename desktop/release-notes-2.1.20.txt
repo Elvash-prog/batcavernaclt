@@ -1,0 +1,5 @@
+Pré-carregamento das coleções em momentos ociosos e ao apontar ou focar nas abas, com uma tarefa de fundo por vez.
+Reabertura mais rápida das abas com cache curto em memória, separado por sessão e invalidado após edições e atualizações.
+Menu de notificações abre com a leitura recente e atualiza em segundo plano, sem reconstrução quando os dados não mudaram.
+Inicialização com arquivos locais preparados em paralelo, menos esperas de diagnóstico e remoção de animações duplicadas.
+Resumo do início consulta dados em paralelo, com até quatro requisições simultâneas. Paginação da biblioteca usa o total informado pelo servidor para evitar consultas vazias sem cortar a coleção.

@@ -1,3 +1,5 @@
+import {testPerformance} from './performance-ui.mjs';
+import {benchmarkNavigation} from './navigation-benchmark.mjs';
 import {testCardLayout} from './card-layout-ui.mjs';
 import {testLibraryProfilePolish} from './library-profile-polish-ui.mjs';
 import {testCoverQuality} from './cover-quality-ui.mjs';
@@ -58,6 +60,8 @@ try {
   await page.route("https://**", (r) => r.abort());
   await page.route('https://example.test/list-preview-*.jpg',route=>{const warm=route.request().url().includes('-2.');return route.fulfill({status:200,contentType:'image/svg+xml',body:`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450"><defs><linearGradient id="a" x2="1" y2="1"><stop stop-color="${warm?'#642c62':'#164658'}"/><stop offset="1" stop-color="${warm?'#db8c63':'#253c5e'}"/></linearGradient></defs><rect width="600" height="450" fill="url(#a)"/><circle cx="440" cy="100" r="85" fill="#e7b677" opacity=".6"/><path d="M0 450 170 160 300 350 440 200 600 450Z" fill="#101925"/></svg>`});});
   await page.addInitScript(() => {
+    // Loading/error fixtures deliberately make navigation cold. Real refreshes and writes invalidate the cache separately.
+    for(const key of ['holdLibraryPreparation','libraryFailure','libraryQueryRows','catalogLibraryRows','largeLibrary','delayLibrary','holdProfilePreparation']){let value;Object.defineProperty(window,key,{configurable:true,get:()=>value,set:next=>{value=next;window.batcavernaScreenCache?.invalidate();}});}
     const image =
       "data:image/svg+xml;base64," +
       btoa(
@@ -232,6 +236,8 @@ try {
       core: {
         Channel: class { onmessage() {} },
         invoke: async (c, p) => {
+        if(window.navPerformanceTrack)(window.navPerformanceCalls||=[]).push({command:c,category:p?.category});
+        if(window.navPerformanceDelay&&["library","dashboard","journey_stats","profile","notifications"].includes(c))await new Promise(resolve=>setTimeout(resolve,window.navPerformanceDelay));
         if(window.savedCoverProbe&&["cover_image","catalog","bright_api"].includes(c))window.savedCoverProbe.push({c,p});
         if(c==='desktop_layout'){window.layoutAccounts=window.layoutAccounts||{};const account=p.input?.owner||'test',layout=window.layoutAccounts[account]||{};if(p.input?.patch){for(const [key,value] of Object.entries(p.input.patch)){if(value===null)delete layout[key];else layout[key]=value;}window.layoutAccounts[account]=layout;window.saved.push({c,p});}return {layout:structuredClone(layout)};}
         if(c==='pc_game_preferences'){window.nativePcPreferences=window.nativePcPreferences||{};if(p.input.preferences){if(window.failNativePcPreferences)throw Error('disk full');window.nativePcPreferences[p.input.owner]=structuredClone(p.input.preferences);window.saved.push({c,p});}return window.nativePcPreferences[p.input.owner]||null;}
@@ -417,7 +423,7 @@ try {
             if(c==='save_item'&&window.delayItemSave)await new Promise(r=>setTimeout(r,800));
             if(c==='save_item'&&window.failCatalogSave)throw Error('Falha simulada de conexão');
             if(c==='update_profile'&&p.input.status)profile.status_personalizado=p.input.status;
-            if(c==='save_item'&&window.libraryQueryRows){const row=window.libraryQueryRows.find(row=>String(row.id)===String(p.item.id));if(row)Object.assign(row,p.item,{updated_at:new Date().toISOString()});}
+            if(c==='save_item'){const row=(window.libraryQueryRows||rows).find(row=>String(row.id)===String(p.item.id));if(row)Object.assign(row,p.item,{updated_at:new Date().toISOString()});}
             window.saved.push({ c, p });
             return {};
           }
@@ -839,7 +845,8 @@ try {
   const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
-  if(process.env.BAT_CARD_LAYOUT_ONLY){await testCardLayout(page);}else if(process.env.BAT_LIBRARY_PROFILE_ONLY){await testCoverQuality(page);await testLibraryProfilePolish(page);}else if(process.env.BAT_COVER_QUALITY_ONLY){await testCoverQuality(page);}else if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  if(process.env.BAT_PERFORMANCE_ONLY){await testPerformance(page);}else if(process.env.BAT_NAV_PERF_BENCHMARK){await benchmarkNavigation(page,process.env.BAT_NAV_PERF_BENCHMARK,performance.now()-benchmarkBoot);}else if(process.env.BAT_CARD_LAYOUT_ONLY){await testCardLayout(page);}else if(process.env.BAT_LIBRARY_PROFILE_ONLY){await testCoverQuality(page);await testLibraryProfilePolish(page);}else if(process.env.BAT_COVER_QUALITY_ONLY){await testCoverQuality(page);}else if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  await testPerformance(page);
   await testNavigationMotion(page);
   await testChatFlow(page);
   await testTypography(page);
@@ -930,7 +937,7 @@ try {
   await page.locator('.screen-state-empty button').click();
   await page.locator('.item-editor-modern').waitFor();
   await page.locator('.item-editor-modern [data-close]').first().click();
-  await page.evaluate(async()=>{delete window.catalogLibraryRows;state.librarySort='recent';await navigate('home')});
+  await page.evaluate(async()=>{window.catalogLibraryRows=null;state.librarySort='recent';await navigate('home')});
   await page.emulateMedia({reducedMotion:'no-preference'});
   assert.equal(await page.locator('.journey-progress progress').getAttribute('value'),'25');
   assert.match(await page.locator('.journey-progress').innerText(),/25%/);
