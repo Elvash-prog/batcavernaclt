@@ -1,5 +1,5 @@
 // Public presentation/downloads only. The Windows and Android apps use Supabase.
-const presentation = new Set(['/', '/index.html', '/privacidade', '/privacidade.html', '/marketing/privacy.css', '/marketing/site.css', '/marketing/site.js', '/marketing/cave.jpg', '/marketing/brand.jpg']);
+const presentation = new Set(['/', '/index.html', '/privacidade', '/privacidade.html', '/marketing/privacy.css', '/marketing/site.css', '/marketing/site.js', '/marketing/cave.jpg', '/marketing/brand.jpg', '/marketing/icon.png']);
 const security = {
   'Strict-Transport-Security': 'max-age=31536000',
   'X-Content-Type-Options': 'nosniff',
