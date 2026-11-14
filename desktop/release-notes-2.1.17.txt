@@ -1,0 +1,5 @@
+BatCaverna CLT Windows 2.1.17 — capas mais nítidas e destaque fiel à sua escolha.
+
+Animes adicionados pelo AniList usam extraLarge quando disponível. Capas já salvas podem carregar a maior resolução da mesma arte no AniList, IGDB e TMDB; a URL original permanece como alternativa se a versão maior falhar. A escolha salva, inclusive SteamGridDB e URLs personalizadas, permanece preservada.
+
+O destaque do início volta a usar seu carregador específico, com proteção contra respostas atrasadas e prioridade para a capa escolhida. Artes verticais aparecem inteiras em um enquadramento próprio, evitando a ampliação excessiva como banner.

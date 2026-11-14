@@ -24,21 +24,30 @@ final class AccountImageLoader {
  static void loadMobile(ImageView view,String source,String appid,boolean vertical,Runnable onFailure){loadCandidates(view,MobileCoverPolicy.candidates(AccountMediaSource.normalize(source,BuildConfig.SUPABASE_URL),appid,vertical),onFailure);}
  private static void loadCandidates(ImageView view,String[] candidates){loadCandidates(view,candidates,null);}
  private static void loadCandidates(ImageView view,String[] candidates,Runnable onFailure){
-  Object oldTicket=view.getTag();Object ticket=new Object();view.setTag(ticket);if(oldTicket!=null)view.setImageResource(R.drawable.app_logo);if(candidates.length==0){if(onFailure!=null)MAIN.post(()->{if(view.getTag()==ticket&&view.isAttachedToWindow())onFailure.run();});return;}
-  android.content.Context context=view.getContext().getApplicationContext();android.content.SharedPreferences prefs=SessionPreferences.get(context);
-  String owner=prefs.getString("user_id","");String key=owner+":"+java.util.Arrays.toString(candidates);WeakReference<ImageView> target=new WeakReference<>(view);
+  java.util.LinkedHashSet<String> quality=new java.util.LinkedHashSet<>();for(String candidate:candidates)for(String variant:CoverPolicy.qualityCandidates(candidate))quality.add(variant);final String[] sources=quality.toArray(new String[0]);
+  Object oldTicket=view.getTag();Object ticket=new Object();view.setTag(ticket);if(oldTicket!=null)view.setImageResource(R.drawable.app_logo);if(sources.length==0){if(onFailure!=null)MAIN.post(()->{if(view.getTag()==ticket&&view.isAttachedToWindow())onFailure.run();});return;}
+  android.content.Context context=view.getContext().getApplicationContext();android.content.SharedPreferences prefs=SessionPreferences.get(context);String owner=prefs.getString("user_id","");
+  if(sources.length>0&&CoverPolicy.publicUrl(sources[0])&&view.getWidth()==0){
+   view.addOnLayoutChangeListener(new android.view.View.OnLayoutChangeListener(){public void onLayoutChange(android.view.View changed,int left,int top,int right,int bottom,int oldLeft,int oldTop,int oldRight,int oldBottom){if(view.getTag()!=ticket||right>left){view.removeOnLayoutChangeListener(this);if(view.getTag()==ticket)startSources(view,sources,ticket,owner,onFailure);}}});return;
+  }
+  startSources(view,sources,ticket,owner,onFailure);
+ }
+ private static void startSources(ImageView view,String[] sources,Object ticket,String owner,Runnable onFailure){
+  android.content.Context context=view.getContext().getApplicationContext();android.content.SharedPreferences prefs=SessionPreferences.get(context);if(!owner.equals(prefs.getString("user_id","")))return;
+  final int decodeEdge=CoverPolicy.publicUrl(sources[0])?CoverPolicy.decodeEdge(view.getWidth(),view.getHeight()):1024;
+  String key=owner+":"+decodeEdge+":"+java.util.Arrays.toString(sources);WeakReference<ImageView> target=new WeakReference<>(view);
   Bitmap hit=CACHE.get(key);if(hit!=null){view.setImageBitmap(hit);return;}
   IO.execute(()->{Bitmap bitmap=null;boolean privateResult=false;String usedToken="";
-   for(String candidate:candidates){ImageView live=target.get();if(live==null||live.getTag()!=ticket||!owner.equals(prefs.getString("user_id","")))return;boolean storage=candidate.startsWith(BuildConfig.SUPABASE_URL+"/storage/");String token="";
-    try{if(storage)token=AuthSession.token(context);if(!owner.equals(prefs.getString("user_id","")))return;for(int attempt=0;attempt<(storage?1:2);attempt++){try{bitmap=download(candidate,token,prefs.getLong("expires_at",0),context);break;}catch(IOException failure){bitmap=null;}}if(bitmap!=null){privateResult=storage;usedToken=token;break;}}catch(Exception ignored){}
+   for(String candidate:sources){ImageView live=target.get();if(live==null||live.getTag()!=ticket||!owner.equals(prefs.getString("user_id","")))return;boolean storage=candidate.startsWith(BuildConfig.SUPABASE_URL+"/storage/");String token="";
+    try{if(storage)token=AuthSession.token(context);if(!owner.equals(prefs.getString("user_id","")))return;for(int attempt=0;attempt<(storage?1:2);attempt++){try{bitmap=download(candidate,token,prefs.getLong("expires_at",0),context,decodeEdge);break;}catch(IOException failure){bitmap=null;}}if(bitmap!=null){privateResult=storage;usedToken=token;break;}}catch(Exception ignored){}
 
    }
    if(bitmap==null&&onFailure!=null)MAIN.post(()->{ImageView image=target.get();if(image!=null&&image.getTag()==ticket&&image.isAttachedToWindow()&&owner.equals(prefs.getString("user_id","")))onFailure.run();});
    Bitmap result=bitmap;boolean secure=privateResult;String requestToken=usedToken;if(result!=null)MAIN.post(()->{ImageView image=target.get();if(!ImageSessionPolicy.accepts(owner,prefs.getString("user_id",""),secure,requestToken,prefs.getString("access_token","")))return;CACHE.put(key,result);if(image!=null&&image.getTag()==ticket)image.setImageBitmap(result);});
   });
  }
- private static Bitmap download(String source,String token,long expiry,android.content.Context context)throws Exception{
-  String original=source;Bitmap cached=PublicCoverDiskCache.get(context,source);if(cached!=null)return cached;
+ private static Bitmap download(String source,String token,long expiry,android.content.Context context,int decodeEdge)throws Exception{
+  String original=source;Bitmap cached=PublicCoverDiskCache.get(context,source,decodeEdge);if(cached!=null)return cached;
   URI uri=new URI(source);if(!"https".equals(uri.getScheme())||uri.getUserInfo()!=null||(uri.getPort()!=-1&&uri.getPort()!=443))return null;
   boolean publicBackground=new URI(BuildConfig.SUPABASE_URL).getHost().equals(uri.getHost())&&uri.getRawPath().startsWith("/storage/v1/object/public/login-backgrounds/")&&!uri.getRawPath().contains("..")&&!uri.getRawPath().toLowerCase(java.util.Locale.ROOT).contains("%2e");
   boolean storage=!publicBackground&&new URI(BuildConfig.SUPABASE_URL).getHost().equals(uri.getHost());
@@ -49,7 +58,7 @@ final class AccountImageLoader {
     if(status!=200)return null;String mime=conn.getContentType();if(mime==null||!mime.toLowerCase(java.util.Locale.ROOT).startsWith("image/"))return null;
     File file=File.createTempFile("cover-",".tmp",context.getCacheDir());
     try{long size=0;try(InputStream in=conn.getInputStream();OutputStream out=new FileOutputStream(file)){byte[] chunk=new byte[8192];int n;while((n=in.read(chunk))!=-1){size+=n;if(size>12*1024*1024)return null;out.write(chunk,0,n);}}
-     BitmapFactory.Options options=new BitmapFactory.Options();options.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.getAbsolutePath(),options);if(options.outWidth<=0||options.outHeight<=0)return null;options.inJustDecodeBounds=false;options.inSampleSize=1;while(options.outWidth/options.inSampleSize>1024||options.outHeight/options.inSampleSize>1024)options.inSampleSize*=2;Bitmap result=BitmapFactory.decodeFile(file.getAbsolutePath(),options);if(result!=null&&original.equals(source))PublicCoverDiskCache.put(context,original,file);return result;
+     BitmapFactory.Options options=new BitmapFactory.Options();options.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.getAbsolutePath(),options);if(options.outWidth<=0||options.outHeight<=0)return null;options.inJustDecodeBounds=false;options.inSampleSize=CoverPolicy.sampleSize(options.outWidth,options.outHeight,decodeEdge);Bitmap result=BitmapFactory.decodeFile(file.getAbsolutePath(),options);if(result!=null&&original.equals(source))PublicCoverDiskCache.put(context,original,file);return result;
     }finally{file.delete();}
 
    }finally{conn.disconnect();}

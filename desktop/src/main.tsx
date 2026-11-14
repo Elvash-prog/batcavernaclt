@@ -49,6 +49,8 @@ import './typography.css';
 import typography from './typography.js?url';
 import profileImages from './profile-images.js?url';
 import profileHighlights from './profile-highlights.js?url';
+import coverQuality from './cover-quality.js?url';
+import './cover-quality.css';
 import homeHighlight from './home-highlight.js?url';
 import layoutSync from './layout-sync.js?url';import app from './app.js?url';import reference from './reference.js?url';import refinement from './refinement.js?url';import polish from './polish.js?url';import redesign from './redesign.js?url';import journey from './journey.js?url';import alignment from './alignment.js?url';import fixes from './desktop-fixes.js?url';import retro from './retro.js?url';import shell from './cavern-shell.js?url';import continuity from './continuity.js?url';
 
@@ -62,7 +64,7 @@ function nativeLog(level:string,stage:string,message:string){const invoke=(windo
 const modules:BootModule[]=[
  {name:'Avisos de capas adultas',src:sensitiveCovers},
  {name:'Preferências locais de jogos',src:pcPreferences},
- {name:'Preferências da conta',src:layoutSync},{name:'Destaque do início',src:homeHighlight},{name:'Seletor de capas',src:coverPicker},{name:'Presença dos amigos',src:friendPresence},{name:'Apresentação das conversas',src:chatPresentation},{name:'Envio e leitura das conversas',src:chatDelivery},{name:'Imagens das conversas',src:chatImages},{name:'Busca na biblioteca',src:libraryQuery},{name:'Núcleo do aplicativo',src:app},{name:'Interface da biblioteca',src:reference},
+ {name:'Preferências da conta',src:layoutSync},{name:'Qualidade das capas',src:coverQuality},{name:'Destaque do início',src:homeHighlight},{name:'Seletor de capas',src:coverPicker},{name:'Presença dos amigos',src:friendPresence},{name:'Apresentação das conversas',src:chatPresentation},{name:'Envio e leitura das conversas',src:chatDelivery},{name:'Imagens das conversas',src:chatImages},{name:'Busca na biblioteca',src:libraryQuery},{name:'Núcleo do aplicativo',src:app},{name:'Interface da biblioteca',src:reference},
  {name:'Ajustes de navegação',src:refinement},{name:'Acabamento visual',src:polish},
  {name:'Comunidade e conversas',src:redesign},{name:'Jornada e indicações',src:journey},
  {name:'Alinhamento da interface',src:alignment},{name:'Correções do desktop',src:fixes},

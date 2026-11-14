@@ -13,13 +13,25 @@ async function resolveHomeHighlight(games){
 }
 function rememberHomeGame(row){if(!row||!state.userId)return;const prefs=homeHighlightPreferences();prefs.recent=Object.fromEntries(Object.entries({...prefs.recent,[String(row.id)]:Date.now()}).sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,128));writeLocalPreference(localStorage,'bc-home-highlight:'+state.userId,JSON.stringify(prefs));}
 async function loadHomeHero(image,item){
+ const ticket=image._homeCoverTicket={},owner=typeof state==='undefined'?'':state.userId;
+ const current=()=>image.isConnected&&image._homeCoverTicket===ticket&&(typeof state==='undefined'||state.userId===owner);
  globalThis.window?.BatSensitive?.mount(image,item.capa_adulta===true);
- if(item.capa){const unavailable=()=>{if(image.isConnected){image.onerror=null;image.src='brand.jpg';image.title='A capa escolhida está indisponível. Escolha outra em Editar informações.';}};image.onerror=unavailable;try{const url=coverUrl(item.capa);if(!url)throw Error('Capa inválida');const source=requiresMediaSigning(url)?await signed(url):typeof publicCover==='function'&&publicCover(url)?await (typeof loadPublicCover==='function'?loadPublicCover(url,10):api.coverImage(url)):url;if(image.isConnected)image.src=source;}catch{unavailable();}return;}
+ image.onerror=null;image.onload=null;
+ const apply=source=>{if(!current())return;image.onload=()=>{if(!current())return;const layout=image.naturalWidth&&image.naturalHeight&&image.naturalWidth/image.naturalHeight<.9?'portrait':'landscape';(image.dataset||={}).artLayout=layout;const hero=image.closest?.('.home-hero');if(hero)hero.dataset.artLayout=layout;};image.src=source;};
+ const fetchImage=url=>typeof loadPublicCover==='function'?loadPublicCover(url,10):api.coverImage(url);
+ if(item.capa){
+  const unavailable=()=>{if(current()){image.onerror=null;apply('brand.jpg');image.title='A capa escolhida está indisponível. Escolha outra em Editar informações.';}};
+  try{const url=coverUrl(item.capa);if(!url)throw Error('Capa inválida');(image.dataset||={}).coverSource=url;
+   const source=requiresMediaSigning(url)?await signed(url):typeof publicCover==='function'&&publicCover(url)?await fetchImage(url):url;
+   if(current()){image.onerror=unavailable;apply(source);}
+  }catch{unavailable();}return;
+ }
  const urls=[];if(/^[1-9][0-9]*$/.test(String(item.steam_appid||''))){for(const host of ['shared.akamai.steamstatic.com','shared.fastly.steamstatic.com'])urls.push(`https://${host}/store_item_assets/steam/apps/${item.steam_appid}/library_hero.jpg`);}
- for(const url of urls){try{const source=await api.coverImage(url);if(image.isConnected)image.src=source;return;}catch{}}
- try{const data=await call('community',{input:{op:'steam_details',appid:Number(item.steam_appid)||null,query:item.nome}});for(const shot of data.screenshots||[]){if(!shot.path_full)continue;try{const source=await api.coverImage(shot.path_full);if(image.isConnected)image.src=source;return;}catch{}}}catch{}
- if(item.capa){try{const source=await api.coverImage(await signed(coverUrl(item.capa)));if(image.isConnected)image.src=source;}catch{}}
+ for(const url of urls){if(!current())return;try{const source=await fetchImage(url);apply(source);return;}catch{}}
+ if(!current())return;
+ try{const data=await call('community',{input:{op:'steam_details',appid:Number(item.steam_appid)||null,query:item.nome}});for(const shot of data.screenshots||[]){if(!current())return;if(!shot.path_full)continue;try{const source=await fetchImage(shot.path_full);apply(source);return;}catch{}}}catch{}
 }
+
 function homeAchievementProgress(item,official,local){
  const rows=official?.lista||[],total=Math.max(rows.length,Number(local?.total)||0),unlocked=Math.min(total,Math.max(rows.filter(a=>a.got===true).length,Number(local?.unlocked)||0));
  if(total>0&&(rows.some(a=>typeof a.got==='boolean')||Number(local?.total)>0&&local?.unlocked!=null))return {percent:unlocked/total*100,label:`${unlocked} de ${total} · ${Math.round(unlocked/total*100)}%`};

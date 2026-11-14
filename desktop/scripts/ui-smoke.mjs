@@ -1,3 +1,4 @@
+import {testCoverQuality} from './cover-quality-ui.mjs';
 import {testTypography} from './typography-ui.mjs';
 import {testChatFlow} from './chat-flow-ui.mjs';
 import {testNavigationMotion} from './navigation-motion-ui.mjs';
@@ -800,7 +801,8 @@ try {
                         title: { english: "Anime de teste" },
                         startDate: { year: 2024 },
                         coverImage: {
-                          large: "https://s4.anilist.co/anime.jpg",
+                          large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx-anime-test.jpg",
+                          extraLarge: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx-anime-test.jpg",
                         },
                         genres: ["Action"],
                         description: "Anime",
@@ -835,10 +837,11 @@ try {
   const benchmarkBoot=performance.now();
   await page.goto(origin);
   await page.locator(".home-hero-content h2").waitFor();
-  if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
+  if(process.env.BAT_COVER_QUALITY_ONLY){await testCoverQuality(page);}else if(process.env.BAT_TYPOGRAPHY_ONLY){await testTypography(page);}else if(process.env.BAT_CHAT_FLOW_ONLY){await testChatFlow(page);}else if(process.env.BAT_NAVIGATION_ONLY){await testNavigationMotion(page);}else if(process.env.BAT_APPEARANCE_ONLY){await testAppearance(page);}else if(process.env.BAT_LIBRARY_BENCHMARK){await benchmarkLibrary(page,process.env.BAT_LIBRARY_BENCHMARK,performance.now()-benchmarkBoot);}else{
   await testNavigationMotion(page);
   await testChatFlow(page);
   await testTypography(page);
+  await testCoverQuality(page);
   // Settings search only locates categories and preserves the currently open controls.
   await page.locator('#mainNav [data-view="settings"]').click();
   await page.locator('.settings-search-label input').fill('SENHA');
@@ -2565,7 +2568,7 @@ try {
     const traffic=window.savedCoverProbe=[];
     const add=()=>{const image=document.createElement('img');image.style.width='10px';Object.assign(image.dataset,{cover:source,coverName:name,coverYear:'2020',coverGame:'1',coverFormat:'poster',coverVisible:'1',steamAppid:'424242'});document.querySelector('#content').append(image);hydrateCovers({querySelectorAll:()=>[image]});return image};
     const wait=image=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Saved artwork did not load')),5000);const ready=()=>{if(image.naturalWidth>1&&image.src.startsWith('data:image')){clearTimeout(timer);resolve()}};image.addEventListener('load',ready);ready()});
-    try{const first=add();await wait(first);first.remove();const second=add();await wait(second);second.remove();const choices=JSON.parse(localStorage.getItem('bc-cover-choices-v2:'+state.userId)||'{}');return {lookups:traffic.filter(x=>x.p?.input?.query===name||x.p?.input?.nomes?.includes(name)).length,downloads:traffic.filter(x=>x.c==='cover_image'&&x.p.url===source).length,persistedPayloads:Object.values(choices).some(v=>String(v).startsWith('data:'))};}
+    try{const first=add();await wait(first);first.remove();const second=add();await wait(second);second.remove();const choices=JSON.parse(localStorage.getItem('bc-cover-choices-v2:'+state.userId)||'{}');return {lookups:traffic.filter(x=>x.p?.input?.query===name||x.p?.input?.nomes?.includes(name)).length,downloads:traffic.filter(x=>x.c==='cover_image'&&window.BatCoverQuality.candidates(source).includes(x.p.url)).length,persistedPayloads:Object.values(choices).some(v=>String(v).startsWith('data:'))};}
     finally{window.savedCoverProbe=null;}
   });
   assert.equal(savedCoverPerformance.lookups,0);assert.equal(savedCoverPerformance.downloads,1);assert.equal(savedCoverPerformance.persistedPayloads,false);
@@ -2583,7 +2586,7 @@ try {
     }finally{window.savedCoverProbe=null;window.failCoverImage=false;}
   });
   assert.equal(fixedCoverChoices.frames,6);assert.equal(oldHintRequests,0);
-  assert.ok(fixedCoverChoices.healthy.every(x=>x.c==='cover_image'&&['https://images.igdb.com/igdb/image/upload/t_cover_big/pinned-choice.jpg','https://cdn2.steamgriddb.com/grid/pinned-choice.png'].includes(x.p.url)));
+  assert.ok(fixedCoverChoices.healthy.every(x=>x.c==='cover_image'&&['https://images.igdb.com/igdb/image/upload/t_1080p/pinned-choice.jpg','https://cdn2.steamgriddb.com/grid/pinned-choice.png'].includes(x.p.url)));
   assert.ok(fixedCoverChoices.failed.length>0&&fixedCoverChoices.failed.every(x=>x.c==='cover_image'&&x.p.url.endsWith('/pinned-offline.jpg')));
   await page.evaluate(() => showLogin());
   await page.locator("#loginScreen").waitFor({ state: "visible" });
