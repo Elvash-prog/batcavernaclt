@@ -27,7 +27,12 @@ assert.match(landing.headers.get('Content-Security-Policy'), /connect-src 'none'
 assert.equal((await site.fetch(new Request('https://presentation.test/', {method:'POST'}), assets)).status, 410);
 const html = fs.readFileSync('public/index.html', 'utf8');
 assert.doesNotMatch(html, /supabase|config\.js|app\.js|manifest\.webmanifest/i);
-for (const match of html.matchAll(/(?:src|href)="(\/marketing\/[^"#]+)"/g)) assert.ok(fs.existsSync('public' + match[1]), match[1]);
+for (const route of new Set([...html.matchAll(/(?:src|href)="(\/marketing\/[^"#]+)"/g)].map(match=>match[1]))) {
+ assert.ok(fs.existsSync('public' + route), route);
+ const response = await site.fetch(new Request('https://presentation.test' + route), assets);
+ assert.equal(response.status, 200, route + ' must be served by the public asset allowlist');
+ assert.equal(served, route);
+}
 const downloads=[...html.matchAll(/<a class="download-option(?: android)?" href="([^"]+)"/g)].map(match=>new URL(match[1].replaceAll('&amp;','&')));
 assert.equal(downloads.length,2,'Windows and Android downloads must remain available');
 const officialFiles=['1tWVxsv3OJj_6HYZNcPPjcKT0MjEb_uT-','1_8zuBmrjxylWpMGSFDpDriu5axgvLvAe'];
