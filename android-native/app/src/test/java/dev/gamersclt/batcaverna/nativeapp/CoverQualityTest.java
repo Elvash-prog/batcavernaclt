@@ -21,8 +21,12 @@ public class CoverQualityTest {
  @Test public void decodedArtworkRetainsUsefulPixelsAndRemainsBounded(){
   assertEquals(512,CoverPolicy.decodeEdge(240,360));assertEquals(1024,CoverPolicy.decodeEdge(500,750));assertEquals(2048,CoverPolicy.decodeEdge(1100,1650));assertEquals(1,CoverPolicy.sampleSize(1200,1800));assertEquals(2,CoverPolicy.sampleSize(2000,3000));assertEquals(4,CoverPolicy.sampleSize(6000,4000));
  }
+ @Test public void largerSourceDoesNotBecomeSmallerThanTheOldPoster()throws Exception{
+  android.content.Context context=RuntimeEnvironment.getApplication();File file=File.createTempFile("quality-rounding-",".png",context.getCacheDir());Bitmap original=Bitmap.createBitmap(1600,2400,Bitmap.Config.ARGB_8888);original.eraseColor(Color.BLUE);
+  try{try(OutputStream out=new FileOutputStream(file)){assertTrue(original.compress(Bitmap.CompressFormat.PNG,100,out));}Bitmap decoded=PublicCoverDiskCache.decode(file,1024);assertNotNull(decoded);assertTrue(decoded.getWidth()>500);assertEquals(1024,decoded.getHeight());assertEquals(683,decoded.getWidth());decoded.recycle();}finally{original.recycle();file.delete();}
+ }
  @Test public void diskCacheDoesNotReduceAUsefulPosterToHalfWidth()throws Exception{
   android.content.Context context=RuntimeEnvironment.getApplication();String url="https://image.tmdb.org/t/p/original/quality-regression.jpg";File input=File.createTempFile("quality-",".png",context.getCacheDir());Bitmap original=Bitmap.createBitmap(1200,1800,Bitmap.Config.ARGB_8888);original.eraseColor(Color.CYAN);
-  try{try(OutputStream out=new FileOutputStream(input)){assertTrue(original.compress(Bitmap.CompressFormat.PNG,100,out));}PublicCoverDiskCache.put(context,url,input);Bitmap decoded=PublicCoverDiskCache.get(context,url,2048);assertNotNull(decoded);assertEquals(1200,decoded.getWidth());assertEquals(1800,decoded.getHeight());decoded.recycle();Bitmap thumbnail=PublicCoverDiskCache.get(context,url,512);assertNotNull(thumbnail);assertEquals(300,thumbnail.getWidth());assertEquals(450,thumbnail.getHeight());thumbnail.recycle();}finally{original.recycle();input.delete();}
+  try{try(OutputStream out=new FileOutputStream(input)){assertTrue(original.compress(Bitmap.CompressFormat.PNG,100,out));}PublicCoverDiskCache.put(context,url,input);Bitmap decoded=PublicCoverDiskCache.get(context,url,2048);assertNotNull(decoded);assertEquals(1200,decoded.getWidth());assertEquals(1800,decoded.getHeight());decoded.recycle();Bitmap thumbnail=PublicCoverDiskCache.get(context,url,512);assertNotNull(thumbnail);assertEquals(341,thumbnail.getWidth());assertEquals(512,thumbnail.getHeight());thumbnail.recycle();}finally{original.recycle();input.delete();}
  }
 }
