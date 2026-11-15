@@ -8,7 +8,7 @@
    if(hero&&url.hostname==='images.igdb.com'&&/^\/igdb\/image\/upload\/t_[A-Za-z0-9_]+\/[A-Za-z0-9_-]+\.(?:jpg|png|webp)$/.test(url.pathname))out.push(original.replace(/\/t_[^/]+\//,'/t_original/'));
    if(url.hostname==='images.igdb.com'&&/^\/igdb\/image\/upload\/t_(?:thumb|cover_small|cover_big|screenshot_med|screenshot_big|screenshot_huge)\/[A-Za-z0-9_-]+\.(?:jpg|png|webp)$/.test(url.pathname))out.push(original.replace(/\/t_[^/]+\//,'/t_1080p/'));
    if(url.hostname==='image.tmdb.org'&&/^\/t\/p\/w(?:92|154|185|342|500|780)\/[A-Za-z0-9_.-]+$/.test(url.pathname))out.push(original.replace(/\/w[0-9]+\//,'/original/'));
-   if(/^(?:shared|cdn)\.(?:akamai|cloudflare|fastly)\.steamstatic\.com$/.test(url.hostname)&&/^\/(?:store_item_assets\/steam\/apps|steam\/apps)\/[1-9][0-9]*(?:\/[A-Za-z0-9_-]+)?\/header\.jpg$/.test(url.pathname))out.push(original.replace(/\/header\.jpg$/,'/header_2x.jpg'));
+   if((/^(?:shared|cdn)\.(?:akamai|cloudflare|fastly)\.steamstatic\.com$/.test(url.hostname)||url.hostname==='steamcdn-a.akamaihd.net')&&/^\/(?:store_item_assets\/steam\/apps|steam\/apps)\/[1-9][0-9]*(?:\/[A-Za-z0-9_-]+)?\/header\.jpg$/.test(url.pathname))out.push(original.replace(/\/header\.jpg$/,'/header_2x.jpg'));
   }catch{}
   return [...new Set([...out,original])];
  }

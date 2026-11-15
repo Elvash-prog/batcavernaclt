@@ -4,7 +4,7 @@ O catálogo IGDB usa cache compartilhado no Supabase: buscas por 6 horas, detalh
 
 Capas públicas de images.igdb.com ficam no cache privado do aplicativo por até 7 dias, limitadas a 64 MiB no Windows e 32 MiB no Android. O sistema pode limpar esse cache. Avatares, mensagens, imagens privadas e credenciais não entram nele.
 
-A aparência do Windows fica em clt_desktop_layout, protegida por RLS e vinculada ao UUID da conta: cores, tema, largura, escala, formato e tamanho de cards, fundo e redução de animações. Alterações são mescladas por chave. A cópia local e as alterações ainda não enviadas são separadas por conta. Reconexão, novo login e novas alterações retomam a sincronização.
+A aparência do Windows fica em clt_desktop_layout, protegida por RLS e vinculada ao UUID da conta: cores, tema, largura, escala, formato e tamanho de cards, fundo, redução de animações e títulos personalizados das coleções. Alterações são mescladas por chave. A cópia local e as alterações ainda não enviadas são separadas por conta. Reconexão, novo login e novas alterações retomam a sincronização.
 
 O refresh token do Windows é protegido pelo Windows Credential Manager. A renovação é serializada e o token renovado substitui o anterior imediatamente. Erros de conexão não apagam a credencial. A atualização interna preserva a sessão inclusive quando Manter conectado está desmarcado, usando uma credencial temporária de transição que é removida após restauração; falhas na instalação removem essa transição. Sair remove ambas as credenciais.
 

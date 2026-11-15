@@ -4,7 +4,7 @@ O feed de jogos substitui o bloco de atividades na tela inicial. No Windows, fic
 
 A timeline mostra a própria atividade e a de amigos autorizados: mudanças de status e publicações manuais sobre um jogo da biblioteca (comecei, recomendo, zerei). Não há texto livre, upload de mídia ou publicações globais nesse recurso. Os posts antigos da comunidade permanecem preservados nas rotas de notificações existentes.
 
-Os cartões têm autor, capa, atividade, data e curtidas. Capa e botão de detalhes abrem a consulta do título. Adicionar abre o cadastro na própria biblioteca, com revisão antes de salvar e verificação de duplicatas. Identificador do item de outra pessoa, horas, nota, preço, comentários pessoais e progresso nunca são copiados. O autor pode excluir suas publicações manuais.
+Os cartões têm autor, capa, atividade, data e curtidas. As capas usam o formato padrão de pôster, preservam a arte salva e tentam variantes de maior resolução dos provedores reconhecidos. Capa e botão de detalhes abrem a consulta do título. Adicionar abre o cadastro na própria biblioteca, com revisão antes de salvar e verificação de duplicatas. Identificador do item de outra pessoa, horas, nota, preço, comentários pessoais e progresso nunca são copiados. O autor pode excluir suas publicações manuais.
 
 ## Banco e permissões
 

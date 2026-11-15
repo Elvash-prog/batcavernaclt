@@ -1,6 +1,6 @@
 // Account scoped local recovery, small atomic cloud patches, and serialized writes.
 (function(root){
- const keys=['preset','bg','panel','accent','text','width','cardWidth','scale','cardFormat','background','compact','noAnimations'];
+ const keys=['preset','bg','panel','accent','text','width','cardWidth','scale','cardFormat','background','compact','noAnimations','collectionTitles'];
  const merge=(base,patch)=>{const next={...base};for(const [k,v] of Object.entries(patch))if(keys.includes(k)){if(v===null)delete next[k];else next[k]=v;}return next;};
  root.createLayoutSync=function({storage,request,changed=()=>{}}){
   let owner='',epoch=0,theme={},pending={},flight=null,sending=null,timer=null,status='';
