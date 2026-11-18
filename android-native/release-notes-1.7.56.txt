@@ -1,3 +1,0 @@
-Adição de títulos com contagem de selecionados junto à ação de adicionar, destaque dos resultados selecionados e nomes de edições completos.
-
-Revisão simplificada com campos opcionais recolhidos. Os valores são preservados ao recolher e abrir a seção; erros de validação ficam próximos à ação de confirmar. Layout adaptado a fontes ampliadas.

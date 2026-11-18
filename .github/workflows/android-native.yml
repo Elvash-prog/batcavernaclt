@@ -1,7 +1,7 @@
 name: Android nativo
 on:
   push:
-    branches: [main, codex/android-1.3.0, release-desktop-0.17.36, codex/retro-steam-0.17.36, codex/desktop-0.17.38-fixes]
+    branches: [main]
     paths: ['android-native/**', '.github/workflows/android-native.yml']
   pull_request:
     paths: ['android-native/**', '.github/workflows/android-native.yml']

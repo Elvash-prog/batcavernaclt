@@ -54,7 +54,7 @@ Migração executada em PostgreSQL via PGlite com 66 verificações: acesso por 
 
 Não houve validação em aparelho Android ou sessão Supabase de produção. A aplicação da migração no banco de produção continua sendo necessária.
 
-Testes: `npm install --prefix tests` e, da raiz do repositório, `node tests/journey-database.mjs` / `node tests/journey-ui.mjs`.
+Testes: `npm install --prefix tests` e, da raiz do repositório, `node tests/journey-database.mjs`.
 
 ---
 
