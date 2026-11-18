@@ -323,6 +323,20 @@
   font-size: clamp(24px, 2.2vw, 34px);
   letter-spacing: -0.04em;
 }
+.library-hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.library-hero-title-row h2 {
+  overflow-wrap: anywhere;
+}
+.library-hero-title-row .icon-button {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+}
 .library-hero-copy p {
   max-width: 660px;
   margin: 0;

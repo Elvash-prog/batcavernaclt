@@ -29,9 +29,37 @@
   if($('#libraryCollectionHero'))return;
   const rows=state.libraryRows||[],game=state.libraryCategory==='jogos';
   const meta={jogos:['🎮','Biblioteca de jogos','Acompanhe jornadas, horas, conquistas e tudo que ainda quer zerar.'],filmes:['🎬','Seus filmes','Organize o que quer assistir, favoritos e histórias já concluídas.'],series:['📺','Suas séries','Continue temporadas, acompanhe episódios e guarde seus destaques.'],animes:['🌸','Seus animes','Temporadas, episódios e favoritos reunidos em uma coleção só.']}[state.libraryCategory]||['▦','Sua biblioteca','Toda a sua coleção em um só lugar.'];
+  const category=state.libraryCategory,defaultTitle=meta[1],sync=window.batcavernaLayoutSync;
+  const storedTitles=sync?.get()?.collectionTitles;
+  const titles=storedTitles&&typeof storedTitles==='object'&&!Array.isArray(storedTitles)?storedTitles:{};
+  const title=typeof titles[category]==='string'&&titles[category].trim()?titles[category]:defaultTitle;
   const done=rows.filter(x=>['finished','platinum','favorite'].includes(normalizedStatus(x.status))).length,active=rows.filter(x=>normalizedStatus(x.status)==='progress').length;
   const hero=document.createElement('section');hero.id='libraryCollectionHero';hero.className=`library-collection-hero collection-${state.libraryCategory}`;
-  hero.innerHTML=`<div class="library-hero-icon">${meta[0]}</div><div class="library-hero-copy"><span class="eyebrow">SUA COLEÇÃO</span><h2>${meta[1]}</h2></div><div class="library-hero-metrics"><article><strong>${rows.length}</strong><span>${rows.length===1?'título':'títulos'}</span></article><article><strong>${active}</strong><span>${game?'jogando':'assistindo'}</span></article><article><strong>${done}</strong><span>concluídos</span></article></div>`;
+  hero.innerHTML=`<div class="library-hero-icon">${meta[0]}</div><div class="library-hero-copy"><span class="eyebrow">SUA COLEÇÃO</span><div class="library-hero-title-row"><h2 data-collection-title>${esc(title)}</h2>${sync?'<button type="button" class="icon-button" data-customize-collection-title aria-label="Personalizar título da coleção" title="Personalizar título">✎</button>':''}</div></div><div class="library-hero-metrics"><article><strong>${rows.length}</strong><span>${rows.length===1?'título':'títulos'}</span></article><article><strong>${active}</strong><span>${game?'jogando':'assistindo'}</span></article><article><strong>${done}</strong><span>concluídos</span></article></div>`;
+  hero.querySelector('[data-customize-collection-title]')?.addEventListener('click',()=>{
+   const owner=state.userId,dialog=window.batcavernaPopup(`<header><div><span class="eyebrow">SUA COLEÇÃO</span><h2>Personalizar título</h2></div><button class="icon-button" data-close aria-label="Fechar">×</button></header><p>Escolha um nome para esta coleção. Deixe em branco para restaurar o padrão.</p><label>Novo título<input type="text" data-collection-title-input maxlength="80" autocomplete="off" placeholder="${esc(defaultTitle)}"></label><p data-collection-title-status role="status"></p><footer><button type="button" class="primary" data-save-collection-title>Salvar título</button></footer>`,'collection-title-editor');
+   const input=dialog.querySelector('[data-collection-title-input]'),status=dialog.querySelector('[data-collection-title-status]'),save=dialog.querySelector('[data-save-collection-title]');
+   input.value=typeof titles[category]==='string'?titles[category]:'';
+   input.focus();
+   save.onclick=async()=>{
+    if(owner!==state.userId||!sync){status.textContent='A conta mudou. Abra a coleção novamente.';return}
+    const value=input.value.trim();
+    if([...value].length>80){status.textContent='O título deve ter até 80 caracteres.';return}
+    const existing=sync.get().collectionTitles;
+    const nextTitles=existing&&typeof existing==='object'&&!Array.isArray(existing)?{...existing}:{};
+    if(value)nextTitles[category]=value;else delete nextTitles[category];
+    save.disabled=true;dialog.dataset.busy='1';status.textContent='Salvando na sua conta…';
+    try{
+     sync.save({...sync.get(),collectionTitles:nextTitles});
+     await sync.flush();
+     if(owner!==state.userId)return;
+     const activeTitle=hero.querySelector('[data-collection-title]');
+     if(activeTitle?.isConnected)activeTitle.textContent=value||defaultTitle;
+     dialog.remove();toast(sync.status()||'Título salvo na sua conta.');
+    }catch(error){status.textContent=failure(error);save.disabled=false}
+    finally{dialog.dataset.busy='0'}
+   };
+  });
   $('#content').insertBefore(hero,$('#content').firstChild);
  };
 

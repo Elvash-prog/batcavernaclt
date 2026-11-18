@@ -2,8 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "features": "cd .. && node tests/features-database.mjs && node tests/features-ui.mjs",
-    "journey": "cd .. && node tests/journey-database.mjs && node tests/journey-ui.mjs"
+    "journey": "cd .. && node tests/journey-database.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

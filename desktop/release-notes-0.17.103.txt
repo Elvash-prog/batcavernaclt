@@ -1,3 +1,0 @@
-Animações próprias da BatCaverna: marcador que acompanha a seleção do menu, confirmação visual ao salvar um favorito e indicador indeterminado ao salvar imagens do perfil.
-
-A confirmação ocorre após o salvamento e o indicador não inventa porcentagens de envio. Os efeitos respeitam a preferência de movimento reduzido e a opção interna de desativar animações.

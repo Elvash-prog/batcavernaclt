@@ -690,7 +690,7 @@ async fn catalog(input: Value, state: tauri::State<'_, AppState>) -> Result<Valu
     value(response).await
 }
 fn image_host(host: &str)->bool {
-    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || host=="cdn2.steamgriddb.com" || host=="cdn.steamgriddb.com" || ["igdb.com","steamstatic.com","tmdb.org","anilist.co","retroachievements.org"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
+    host=="luoqlhgfmixvfqbfcdoc.supabase.co" || host=="cdn2.steamgriddb.com" || host=="cdn.steamgriddb.com" || host=="steamcdn-a.akamaihd.net" || ["igdb.com","steamstatic.com","tmdb.org","anilist.co","retroachievements.org"].iter().any(|d|host==*d||host.ends_with(&format!(".{d}")))
 }
 #[tauri::command]
 async fn cover_image(app:tauri::AppHandle,url: String) -> Result<String,String> {
