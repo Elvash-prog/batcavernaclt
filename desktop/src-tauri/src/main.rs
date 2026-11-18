@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod error_reports;
 mod home_resume;
 mod update_install;
 mod pc_preferences;

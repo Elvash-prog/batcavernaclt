@@ -40,7 +40,11 @@ fn append_diagnostic(app: &tauri::AppHandle, level: &str, stage: &str, message: 
 }
 
 #[tauri::command]
-pub fn client_log(input: DiagnosticInput, app: tauri::AppHandle) -> Result<(), String> { append_diagnostic(&app, &input.level, &input.stage, &input.message) }
+pub async fn client_log(input: DiagnosticInput, app: tauri::AppHandle, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    append_diagnostic(&app, &input.level, &input.stage, &input.message)?;
+    if input.level.eq_ignore_ascii_case("ERROR") { crate::error_reports::send(&state, &clean_log(&input.stage, 80), &clean_log(&input.message, 900)).await; }
+    Ok(())
+}
 #[tauri::command]
 pub fn diagnostic_status(app: tauri::AppHandle) -> Result<Value, String> {
     let path = diagnostic_path(&app)?; let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
