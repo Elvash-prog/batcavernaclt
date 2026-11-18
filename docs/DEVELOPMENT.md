@@ -33,13 +33,12 @@ O `wrangler.toml` define o Worker `batcavernaclt`, o entrypoint `worker.js` e os
 Na raiz do repositório:
 
 ```bash
-node tests/native-dependencies.mjs
-node tests/igdb.mjs
-node tests/native-api.mjs
-node tests/bright-api-security.mjs
+npm install --prefix tests && npm ci --prefix desktop
+pip install -r tools/operations/requirements-recovery.txt
+npm test
 ```
 
-A interface Windows tem verificações adicionais em `desktop/` e os builds Windows e Android são executados pelos workflows de `.github/workflows/`.
+`npm test` executa todas as suítes: os testes Node de `tests/`, `npm test` do desktop e os testes Python de `tools/`. Para os testes de navegador usarem um Chromium já instalado, defina `CHROMIUM_PATH`. Os builds Windows e Android são executados pelos workflows de `.github/workflows/`.
 
 ## Segurança
 

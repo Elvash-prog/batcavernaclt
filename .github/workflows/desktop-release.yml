@@ -14,7 +14,7 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: version
         shell: bash
         run: |
@@ -29,7 +29,7 @@ jobs:
     env:
       RELEASE_TAG: ${{ needs.release-metadata.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Create version tag
         shell: bash
         run: |
@@ -48,8 +48,8 @@ jobs:
     env:
       RELEASE_TAG: ${{ needs.release-metadata.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
       - uses: dtolnay/rust-toolchain@stable
@@ -91,7 +91,7 @@ jobs:
         run: npm run test:ui
       - name: UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Release-UI-diagnostics
           path: desktop/preview/
@@ -152,7 +152,7 @@ jobs:
       - name: Authenticate with Google Drive
         if: vars.GDRIVE_UPLOAD_ENABLED == 'true'
         id: google-auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
           token_format: access_token

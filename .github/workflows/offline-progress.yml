@@ -9,8 +9,8 @@ jobs:
   playtime-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
       - run: npm install --prefix tests --ignore-scripts --no-package-lock --no-audit --no-fund
@@ -20,7 +20,7 @@ jobs:
     needs: playtime-tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb
         with:
           version: latest

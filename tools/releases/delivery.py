@@ -264,10 +264,15 @@ def update_site(document, report):
     return updated
 
 
-def prepare(client, file_ids, document):
+def prepare(client, file_ids, document, expected=None):
     releases = client.releases()
     report = {platform: verify_release(client, choose(releases, platform), platform, file_ids)
               for platform in PREFIX}
+    # The release that triggered this run can take a few seconds to appear in
+    # the listing after it leaves draft; wait for it instead of keeping the old one.
+    for platform, wanted in (expected or {}).items():
+        if wanted and version(report[platform]['version']) < version(wanted):
+            raise DeliveryError(f'{platform}: release {wanted} is not listed yet')
     older = [row for row in releases if re.fullmatch('android-v' + VERSION, row.get('tag_name', ''))
              and not row.get('draft') and not row.get('prerelease')
              and version(row['tag_name'][9:]) < version(report['android']['version'])]
@@ -317,7 +322,9 @@ def main():
         ids = {key: os.environ.get(env, '') for key, env in
                [('windows', 'GDRIVE_WINDOWS_FILE_ID'), ('signature', 'GDRIVE_WINDOWS_SIG_FILE_ID'),
                 ('android', 'GDRIVE_APK_FILE_ID')]}
-        report, document = retry(lambda: prepare(client, ids, args.site_file.read_text()), args.retry_seconds)
+        expected = {'windows': os.environ.get('EXPECTED_WINDOWS', '').strip(),
+                    'android': os.environ.get('EXPECTED_ANDROID', '').strip()}
+        report, document = retry(lambda: prepare(client, ids, args.site_file.read_text(), expected), args.retry_seconds)
         args.site_file.write_text(document)
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
