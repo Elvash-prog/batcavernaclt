@@ -10,6 +10,7 @@ Recognized public variants retain the same asset filename and host, with the ori
 | IGDB | `t_1080p`, retaining the image ID |
 | TMDB | `original`, retaining the image filename |
 | Steam headers | `header_2x.jpg`, retaining the app and asset directory |
+| Legacy Steam CDN headers | `header_2x.jpg`, retaining the app and asset directory |
 
 AniList API field names differ from CDN paths: `extraLarge` is `/large/`, `large` is `/medium/`, and `medium` is `/small/`. Do not invent an `/extraLarge/` CDN path.
 
