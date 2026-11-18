@@ -1,2 +1,0 @@
-Personalize o título das coleções de jogos, filmes, séries e animes por conta, com sincronização entre dispositivos.
-Capas no Feed dos amigos no formato padrão e com melhor resolução para imagens do Steam CDN antigo.
