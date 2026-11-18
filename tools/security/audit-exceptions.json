@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "GHSA-fc5q-39xc-vjpf",
+    "expires": "2026-12-18",
+    "reason": "picomatch is used only at build time by vite/tinyglobby with globs from the repository, not user input, and is not shipped in the Windows app. 4.0.7 is the latest published release; upgrade as soon as a fixed version is available.",
+    "packages": [{"ecosystem": "npm", "name": "picomatch", "version": "4.0.7"}]
+  },
+  {
+    "id": "RUSTSEC-2026-0543",
+    "expires": "2026-12-18",
+    "reason": "Unmaintained notice, not a vulnerability. chrono is also required transitively by Tauri (serde_with); replace it once upstream migrates or move the app's own date handling to the time crate.",
+    "packages": [{"ecosystem": "crates.io", "name": "chrono", "version": "0.4.45"}]
+  }
+]
