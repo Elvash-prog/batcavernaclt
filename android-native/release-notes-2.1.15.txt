@@ -1,2 +1,0 @@
-Desempenho: consultas de biblioteca, amigos, chat e notificações mais rápidas no servidor.
-Segurança e manutenção: remoção de componentes antigos sem uso e revisão das dependências.

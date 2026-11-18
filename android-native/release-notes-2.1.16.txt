@@ -1,0 +1,1 @@
+Diagnóstico: quando ocorre um erro com a conta conectada, o aplicativo envia um relato protegido para ajudar a corrigir falhas. Detalhes no aviso de privacidade.
