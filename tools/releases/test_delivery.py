@@ -129,6 +129,17 @@ class DeliveryTests(unittest.TestCase):
         with self.assertRaisesRegex(d.DeliveryError, 'incomplete release'):
             d.prepare(f, IDS, DOC)
 
+    def test_waits_for_the_release_that_triggered_the_run(self):
+        f = Fixture()
+        with self.assertRaisesRegex(d.DeliveryError, 'release 0.17.114 is not listed yet'):
+            d.prepare(f, IDS, DOC, {'windows': '0.17.114', 'android': ''})
+        with self.assertRaisesRegex(d.DeliveryError, 'release 1.7.59 is not listed yet'):
+            d.prepare(Fixture(), IDS, DOC, {'android': '1.7.59'})
+        report, _ = d.prepare(Fixture(), IDS, DOC, {'windows': '0.17.113', 'android': '1.7.58'})
+        self.assertEqual(report['windows']['version'], '0.17.113')
+        with self.assertRaises(d.DeliveryError):
+            d.prepare(Fixture(), IDS, DOC, {'windows': '../etc'})
+
     def test_android_version_code_cannot_go_backwards(self):
         f = Fixture()
         url = f'https://github.com/{f.repository}/releases/download/android-v1.7.57/android-update.json'
@@ -223,6 +234,10 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn('ref: main', official)
         self.assertIn('cancel-in-progress: false', official)
         self.assertIn('https://www.googleapis.com/auth/drive.readonly', official)
+        self.assertIn('EXPECTED_WINDOWS: ${{ steps.expected.outputs.windows }}', official)
+        # Untrusted branch names reach the shell only through env, never inline.
+        step = official.split('id: expected')[1].split('- name:')[0]
+        self.assertNotIn('${{', step.split('run: |')[1])
 
 
 if __name__ == '__main__':

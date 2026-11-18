@@ -54,9 +54,29 @@ jobs:
           credentials_json: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
           token_format: access_token
           access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+      - name: Versões esperadas pelo evento
+        id: expected
+        env:
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          windows=''; android=''
+          case "$RUN_NAME" in
+            'Release desktop Windows')
+              case "$RUN_BRANCH" in
+                release-desktop-*) windows="${RUN_BRANCH#release-desktop-}" ;;
+                desktop-v*) windows="${RUN_BRANCH#desktop-v}" ;;
+              esac ;;
+            'Android nativo')
+              android=$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" android-native/app/build.gradle) ;;
+          esac
+          echo "windows=$windows" >> "$GITHUB_OUTPUT"
+          echo "android=$android" >> "$GITHUB_OUTPUT"
       - name: Conferir releases, feeds, assinaturas e arquivos do Drive
         id: delivery
         env:
+          EXPECTED_WINDOWS: ${{ steps.expected.outputs.windows }}
+          EXPECTED_ANDROID: ${{ steps.expected.outputs.android }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GDRIVE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
           GDRIVE_WINDOWS_FILE_ID: ${{ vars.GDRIVE_WINDOWS_FILE_ID }}
