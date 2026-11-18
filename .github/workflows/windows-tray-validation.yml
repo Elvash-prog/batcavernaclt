@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install published Windows 0.17.57
         shell: pwsh
         run: |
@@ -25,7 +25,7 @@ jobs:
           if (!$entry.InstallLocation) { throw 'Pasta do aplicativo instalado não encontrada.' }
           $exe = Join-Path $entry.InstallLocation.Trim('"') 'batcaverna-clt-desktop.exe'
           ./scripts/test-tray-startup.ps1 -ExecutablePath $exe
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: Installed-tray-validation

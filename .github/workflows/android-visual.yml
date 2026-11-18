@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -62,7 +62,7 @@ jobs:
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/editor-claro-android.png > build/mobile-previews/editor-claro-android.png
             adb exec-out run-as dev.gamersclt.batcaverna.nativeapp.preview.debug cat files/mobile-previews/catalogo-revisao-claro-android.png > build/mobile-previews/catalogo-revisao-claro-android.png
             python3 -c "from pathlib import Path; files=list(Path('build/mobile-previews').glob('*.png')); assert len(files)==18 and all(p.read_bytes().startswith(bytes([137,80,78,71,13,10,26,10])) for p in files)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: Android-mobile-previews

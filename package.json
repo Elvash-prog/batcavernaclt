@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "deploy": "npx wrangler@4 deploy"
+    "deploy": "npx wrangler@4 deploy",
+    "test": "node tests/run-all.mjs"
   }
 }

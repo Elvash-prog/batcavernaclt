@@ -14,7 +14,7 @@ jobs:
   presence-policy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify rolling presence quota without application dependencies
         shell: bash
@@ -24,8 +24,8 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - uses: dtolnay/rust-toolchain@stable
@@ -46,7 +46,7 @@ jobs:
         run: set -o pipefail; npm run test:ui 2>&1 | tee ui-smoke.log
       - name: Publicar log da interface
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: desktop-ui-smoke-log
           path: desktop/ui-smoke.log
@@ -55,7 +55,7 @@ jobs:
         run: exit 1
       - name: Disponibilizar prévias da interface
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BatCaverna-CLT-Windows-Previews
           path: desktop/preview/*.png
@@ -99,7 +99,7 @@ jobs:
         run: ./scripts/test-tray-startup.ps1
       - name: Publicar log do smoke Tauri
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BatCaverna-Tauri-Smoke
           path: |
@@ -107,7 +107,7 @@ jobs:
             desktop/tauri-tray-smoke.log
           if-no-files-found: warn
       - name: Disponibilizar instalador
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BatCaverna-CLT-Windows-EXE
           path: desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
