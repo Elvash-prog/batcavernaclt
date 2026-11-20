@@ -1,0 +1,3 @@
+Visual refinado: o painel de amigos virou uma gaveta aberta pelo botão Amigos, na lateral, e o conteúdo usa a largura inteira da janela.
+Início mais limpo: números da coleção em uma linha, abas para Continuar de onde parei e papel de parede em destaque só no topo.
+Correção: a versão no rodapé aparecia como vv.

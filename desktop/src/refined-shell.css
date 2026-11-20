@@ -1,0 +1,84 @@
+/* Caverna refinada (conceito A). Última camada visual: ajusta estrutura e superfícies
+   sem trocar cores; tudo vem das variáveis do tema escolhido em Aparência. */
+
+/* Painel de amigos como gaveta: o conteúdo ocupa a largura toda. */
+body.refined-ui.reference-ui .app-shell,
+body.refined-ui.rail-off.reference-ui .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr) !important; }
+body.refined-ui .app-shell > .cavern-rail {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 60;
+  width: min(340px, 92vw); box-sizing: border-box; padding-top: 22px;
+  transform: translateX(100%); visibility: hidden;
+  transition: transform .22s ease, visibility 0s linear .22s;
+  background: color-mix(in srgb, var(--panel) 97%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  box-shadow: -24px 0 48px rgba(0, 0, 0, .35);
+}
+body.refined-ui.friends-open .app-shell > .cavern-rail { transform: none; visibility: visible; transition: transform .22s ease; }
+body.refined-ui.rail-off .friends-toggle { display: none; }
+
+/* Sem o painel fixo a tela fica mais larga: o conteúdo inteiro respeita a largura de
+   trabalho de Aparência e fica centralizado, para todos os blocos começarem na mesma borda. */
+body.refined-ui.reference-ui:not(.rail-off) #content {
+  width: 100%; max-width: min(1880px, var(--workspace-width, 1480px)) !important;
+  margin-inline: auto !important; box-sizing: border-box;
+}
+
+.friends-toggle {
+  display: flex; align-items: center; gap: 10px; height: 40px; margin: 0 0 8px; padding: 0 12px; width: 100%; box-sizing: border-box;
+  border-radius: 10px; border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  background: color-mix(in srgb, var(--panel) 82%, transparent); color: var(--text);
+  font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
+}
+.friends-toggle:hover { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.friends-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.friends-toggle[aria-expanded="true"] { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.friends-toggle b { margin-left: auto; font-size: 12px; font-weight: 600; color: #4ade80; }
+body.sidebar-compact .friends-toggle { justify-content: center; padding: 0; }
+body.sidebar-compact .friends-toggle :is(span, b) { display: none; }
+
+/* O papel de parede aparece forte só no topo e escurece para a cor do tema,
+   para o texto que não está mais dentro de caixas continuar legível. */
+body.refined-ui.reference-ui #appShell > main {
+  background-image: linear-gradient(180deg,
+    color-mix(in srgb, var(--bg) 38%, transparent) 0,
+    color-mix(in srgb, var(--bg) 78%, transparent) 260px,
+    color-mix(in srgb, var(--bg) 94%, transparent) 560px) !important;
+}
+
+/* Início: um nível de superfície só. Saudação e números deixam de ser caixas. */
+body.refined-ui #content .studio-welcome {
+  background: none !important; border: 0 !important; box-shadow: none !important;
+  backdrop-filter: none !important; padding-inline: 0 !important;
+}
+body.refined-ui #content .studio-metrics { display: flex !important; flex-wrap: wrap; gap: 12px 44px !important; }
+body.refined-ui #content .studio-metrics > * {
+  background: none !important; border: 0 !important; box-shadow: none !important;
+  backdrop-filter: none !important; padding: 0 !important; min-height: 0 !important;
+}
+body.refined-ui #content .studio-metrics .studio-metric-icon { display: none !important; }
+body.refined-ui #content .continuity {
+  background: none !important; border: 0 !important; box-shadow: none !important;
+  backdrop-filter: none !important; padding-inline: 0 !important;
+}
+
+/* Filtros de "Continuar" como abas sublinhadas: o roxo marca só a aba ativa. */
+body.refined-ui #content .continuity-filters {
+  gap: 24px !important; border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+body.refined-ui #content .continuity-filters button.secondary {
+  background: none !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  padding: 0 0 10px !important; min-height: 0 !important; color: var(--muted) !important;
+  border-bottom: 2px solid transparent !important; margin-bottom: -1px;
+}
+body.refined-ui #content .continuity-filters button.secondary[aria-pressed="true"] {
+  color: var(--text) !important; border-bottom-color: var(--accent) !important;
+}
+
+/* Tempo jogado como texto, sem caixa dentro do card. */
+body.refined-ui #content .playtime-badge {
+  background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.refined-ui .app-shell > .cavern-rail { transition: none !important; }
+}
