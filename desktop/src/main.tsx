@@ -56,6 +56,8 @@ import coverQuality from './cover-quality.js?url';
 import './cover-quality.css';
 import './library-profile-polish.css';
 import './card-layout.css';
+import './refined-shell.css';
+import refinedShell from './refined-shell.js?url';
 import homeHighlight from './home-highlight.js?url';
 import layoutSync from './layout-sync.js?url';import app from './app.js?url';import reference from './reference.js?url';import refinement from './refinement.js?url';import polish from './polish.js?url';import redesign from './redesign.js?url';import journey from './journey.js?url';import alignment from './alignment.js?url';import fixes from './desktop-fixes.js?url';import retro from './retro.js?url';import shell from './cavern-shell.js?url';import continuity from './continuity.js?url';
 
@@ -73,7 +75,7 @@ const modules:BootModule[]=[
  {name:'Ajustes de navegação',src:refinement},{name:'Acabamento visual',src:polish},
  {name:'Comunidade e conversas',src:redesign},{name:'Jornada e indicações',src:journey},
  {name:'Alinhamento da interface',src:alignment},{name:'Correções do desktop',src:fixes},
- {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity},{name:'Seleção de destaques',src:profileHighlights},{name:'Editor de imagens',src:profileImages},{name:'Contexto da biblioteca',src:libraryNavigation},{name:'Modelo do feed de jogos',src:gameFeedModel},{name:'Feed dos amigos',src:gameFeed},{name:'Transições entre abas',src:navigationFeedback},{name:'Fontes da interface',src:typography},{name:'Pré-carregamento das abas',src:navigationPreload}
+ {name:'Integração RetroAchievements',src:retro},{name:'Layout principal',src:shell},{name:'Continuidade e detalhes',src:continuity},{name:'Seleção de destaques',src:profileHighlights},{name:'Editor de imagens',src:profileImages},{name:'Contexto da biblioteca',src:libraryNavigation},{name:'Modelo do feed de jogos',src:gameFeedModel},{name:'Feed dos amigos',src:gameFeed},{name:'Transições entre abas',src:navigationFeedback},{name:'Fontes da interface',src:typography},{name:'Pré-carregamento das abas',src:navigationPreload},{name:'Visual refinado',src:refinedShell}
 ];
 
 function load(module:BootModule){return new Promise<void>((resolve,reject)=>{const script=document.createElement('script');script.src=module.src;script.dataset.bootModule=module.name;script.onload=()=>resolve();script.onerror=()=>reject(new Error(`O arquivo de ${module.name.toLowerCase()} não pôde ser carregado.`));document.body.append(script)})}

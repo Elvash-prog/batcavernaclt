@@ -1357,7 +1357,8 @@ try {
   await page.locator('[data-settings-tab="notifications"]').click();
   await page.locator("#openNotificationPreferences").click();
   await page.locator("#preferenceForm").waitFor();
-  await page.locator('#preferenceForm [name="social"]').uncheck();
+  // Clica no interruptor visível, como o usuário; a caixa real fica escondida sob ele.
+  await page.locator('#preferenceForm label:has([name="social"]) > i').click();
   await page.locator("#preferenceForm button.primary").click();
   await page.locator("#preferenceForm").waitFor();
   assert.equal(
@@ -2091,6 +2092,7 @@ try {
   await page.locator('[data-unified-invite="friend"]').waitFor();
   await page.locator(".friend-search-dialog [data-close]").click();
   await page.evaluate(async()=>await navigate('home'));
+  await page.locator('#friendsToggle').click();
   await page.screenshot({path:'preview/friends-reference.png'});
   await page.locator('[data-sidebar-chat="friend"]').click();
   await page.locator('#profileAction').click();
