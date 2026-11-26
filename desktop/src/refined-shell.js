@@ -36,4 +36,21 @@
  rail.addEventListener('click',event=>{if(event.target.closest('[data-sidebar-chat]'))set(false)});
  let initial=false;try{initial=localStorage.getItem(KEY)==='1'}catch{}
  set(initial,false);
+ // Trocar de seção nas Configurações redesenha a tela em várias etapas; a transição
+ // de visualização mantém a imagem anterior até a nova estar pronta, sem piscar.
+ if(typeof renderSettings==='function'&&document.startViewTransition){
+  const base=renderSettings;let navAt=-1e9;
+  // Só a troca de seção pelo menu usa a transição; outros redesenhos seguem imediatos.
+  document.addEventListener('click',event=>{if(event.target.closest?.('.settings-nav button'))navAt=performance.now()},true);
+  renderSettings=function(...args){
+   if(state.current!=='settings'||!document.querySelector('#settingsPanel')||performance.now()-navAt>400)return base.apply(this,args);
+   const scroll=document.querySelector('#appShell > main')?.scrollTop;
+   let done;
+   // A imagem anterior fica no máximo 600 ms; se a seção demorar, ela termina de carregar à vista.
+   const t=document.startViewTransition(()=>{done=Promise.resolve(base.apply(this,args)).then(()=>{const m=document.querySelector('#appShell > main');if(m&&scroll!=null)m.scrollTop=scroll});return Promise.race([done,new Promise(r=>setTimeout(r,600))])});
+   t.ready.catch(()=>{});t.finished.catch(()=>{});
+   window.__settingsSwap=t.updateCallbackDone.catch(()=>{}).then(()=>done).catch(()=>{});
+   return window.__settingsSwap;
+  };
+ }
 })();
