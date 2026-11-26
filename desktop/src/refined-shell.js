@@ -36,4 +36,15 @@
  rail.addEventListener('click',event=>{if(event.target.closest('[data-sidebar-chat]'))set(false)});
  let initial=false;try{initial=localStorage.getItem(KEY)==='1'}catch{}
  set(initial,false);
+ // Trocar de seção nas Configurações redesenha a tela em várias etapas; a transição
+ // de visualização mantém a imagem anterior até a nova estar pronta, sem piscar.
+ if(typeof renderSettings==='function'&&document.startViewTransition){
+  const base=renderSettings;
+  renderSettings=function(...args){
+   if(state.current!=='settings'||!document.querySelector('#settingsPanel'))return base.apply(this,args);
+   const scroll=document.querySelector('#appShell > main')?.scrollTop;
+   let done;const t=document.startViewTransition(()=>done=Promise.resolve(base.apply(this,args)).then(()=>{const m=document.querySelector('#appShell > main');if(m&&scroll!=null)m.scrollTop=scroll}));
+   return t.updateCallbackDone.then(()=>done);
+  };
+ }
 })();
