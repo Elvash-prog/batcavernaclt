@@ -18,8 +18,11 @@ body.refined-ui.rail-off .friends-toggle { display: none; }
 
 /* Sem o painel fixo o conteúdo ocupa a janela inteira. Os blocos internos que tinham
    largura máxima própria passam a acompanhar a tela, para todos começarem na mesma borda. */
-body.refined-ui.reference-ui:not(.rail-off) #content { width: 100%; max-width: none !important; margin-inline: 0 !important; box-sizing: border-box; }
-body.refined-ui.reference-ui:not(.rail-off) #content > * { max-width: none !important; margin-inline: 0 !important; }
+body.refined-ui.reference-ui #content.cavern-library { width: 100%; max-width: none !important; margin-inline: 0 !important; box-sizing: border-box; }
+body.refined-ui.reference-ui #content.cavern-library > * { max-width: none !important; margin-inline: 0 !important; }
+/* Telas de leitura ficam centralizadas numa largura confortável. */
+body.refined-ui[data-screen="game-feed"] #content { max-width: 980px !important; margin-inline: auto !important; }
+body.refined-ui[data-screen="settings"] #content .settings-studio { max-width: 1280px !important; margin-inline: auto !important; }
 
 .friends-toggle {
   display: flex; align-items: center; gap: 10px; height: 40px; margin: 0 0 8px; padding: 0 12px; width: 100%; box-sizing: border-box;
@@ -31,8 +34,8 @@ body.refined-ui.reference-ui:not(.rail-off) #content > * { max-width: none !impo
 .friends-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .friends-toggle[aria-expanded="true"] { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .friends-toggle b { margin-left: auto; font-size: 12px; font-weight: 600; color: #4ade80; }
-body.sidebar-compact .friends-toggle { justify-content: center; padding: 0; }
-body.sidebar-compact .friends-toggle :is(span, b) { display: none; }
+.sidebar-compact .friends-toggle { justify-content: center; padding: 0; }
+.sidebar-compact .friends-toggle :is(span, b) { display: none; }
 
 /* O papel de parede aparece forte só no topo e escurece para a cor do tema,
    para o texto que não está mais dentro de caixas continuar legível. */
