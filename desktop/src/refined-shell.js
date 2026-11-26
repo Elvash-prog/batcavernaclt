@@ -39,9 +39,11 @@
  // Trocar de seção nas Configurações redesenha a tela em várias etapas; a transição
  // de visualização mantém a imagem anterior até a nova estar pronta, sem piscar.
  if(typeof renderSettings==='function'&&document.startViewTransition){
-  const base=renderSettings;
+  const base=renderSettings;let navAt=-1e9;
+  // Só a troca de seção pelo menu usa a transição; outros redesenhos seguem imediatos.
+  document.addEventListener('click',event=>{if(event.target.closest?.('.settings-nav button'))navAt=performance.now()},true);
   renderSettings=function(...args){
-   if(state.current!=='settings'||!document.querySelector('#settingsPanel'))return base.apply(this,args);
+   if(state.current!=='settings'||!document.querySelector('#settingsPanel')||performance.now()-navAt>400)return base.apply(this,args);
    const scroll=document.querySelector('#appShell > main')?.scrollTop;
    let done;const t=document.startViewTransition(()=>done=Promise.resolve(base.apply(this,args)).then(()=>{const m=document.querySelector('#appShell > main');if(m&&scroll!=null)m.scrollTop=scroll}));
    return t.updateCallbackDone.then(()=>done);
