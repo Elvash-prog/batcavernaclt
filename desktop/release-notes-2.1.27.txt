@@ -1,0 +1,1 @@
+Cards repaginados: capa em destaque com o texto logo abaixo, sem moldura, e botões secundários mais discretos.

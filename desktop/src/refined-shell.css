@@ -103,3 +103,17 @@ body.refined-ui #content .cavern-lib-tabs button {
   border-bottom: 2px solid transparent !important; margin-bottom: -1px;
 }
 body.refined-ui #content .cavern-lib-tabs button.active { color: var(--text) !important; border-bottom-color: var(--accent) !important; }
+
+/* Cards (etapa 3): capa em destaque e texto logo abaixo, sem moldura em volta. */
+body.refined-ui #content :is(.reference-card, .cavern-featured-card) {
+  background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important;
+}
+body.refined-ui #content :is(.reference-card, .cavern-featured-card) :is(.cover-wrap, img:first-child) { border-radius: 12px; overflow: hidden; }
+body.refined-ui #content :is(.reference-card .body, .cavern-featured-body) { background: none !important; padding-inline: 2px !important; }
+body.refined-ui #content :is(.reference-card, .cavern-featured-card, .continuity-card) button.secondary {
+  background: color-mix(in srgb, var(--text) 7%, transparent) !important; border-color: transparent !important;
+}
+body.refined-ui #content .continuity-card {
+  background: color-mix(in srgb, var(--panel) 55%, transparent) !important;
+  border-color: color-mix(in srgb, var(--text) 6%, transparent) !important; box-shadow: none !important;
+}
