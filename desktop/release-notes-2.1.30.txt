@@ -1,3 +1,0 @@
-Biblioteca aproveita melhor telas 2K e 4K, com os cards perto das bordas.
-Configurações ocupam a tela inteira.
-Trocar de seção nas Configurações não pisca mais.
