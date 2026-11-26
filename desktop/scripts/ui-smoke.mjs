@@ -859,7 +859,8 @@ try {
   assert.equal(await page.locator('.settings-menu-group button:visible').count(),1);
   assert.equal(await page.locator('[data-settings-tab="account"]').isVisible(),true);
   await page.locator('[data-settings-tab="account"]').click();
-  assert.equal(await page.locator('.settings-section-heading h2').innerText(),'Conta');
+  // A troca de seção pelo menu termina numa transição; espera a tela nova.
+  await page.waitForFunction(()=>document.querySelector('.settings-section-heading h2')?.innerText==='Conta');
   await page.locator('[data-settings-tab="integrations"]').click();
   await page.locator('#steamConnection input').fill('76561198000000001');
   await page.locator('.settings-search-label input').fill('NOTIFICAÇÕES');
