@@ -1,6 +1,6 @@
 [package]
 name = "batcaverna-clt-desktop"
-version = "2.1.30"
+version = "2.1.31"
 edition = "2021"
 
 [build-dependencies]

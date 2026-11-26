@@ -23,11 +23,17 @@ body.refined-ui.reference-ui #content.cavern-library > * { max-width: none !impo
 /* Em telas grandes (2K/4K) a margem lateral não cresce: os cards chegam perto das bordas. */
 body.refined-ui.reference-ui #content.cavern-library { padding-inline: 24px !important; }
 body.refined-ui.reference-ui #content.cavern-library > * { padding-inline: 0 !important; }
+/* Início segue a Biblioteca: largura toda com a mesma margem fixa. */
+body.refined-ui.reference-ui[data-screen="home"] #content { width: 100%; max-width: none !important; margin-inline: 0 !important; padding-inline: 24px !important; box-sizing: border-box; }
+body.refined-ui.reference-ui[data-screen="home"] #content > * { max-width: none !important; margin-inline: 0 !important; }
 /* Telas de leitura ficam centralizadas numa largura confortável. */
 body.refined-ui[data-screen="game-feed"] #content { max-width: 980px !important; margin-inline: auto !important; }
 /* Configurações ocupam a área toda; o painel acompanha a altura da lista de seções. */
 body.refined-ui[data-screen="settings"] #content { max-width: none !important; }
-body.refined-ui[data-screen="settings"] #content .settings-studio { max-width: none !important; width: 100%; margin-inline: 0 !important; align-items: stretch !important; }
+body.refined-ui[data-screen="settings"] #content .settings-studio { max-width: none !important; width: 100%; margin-inline: 0 !important; align-items: stretch !important;
+  min-height: calc(100vh - 48px); box-sizing: border-box; }
+/* O painel acompanha a altura da tela, sem ficar achatado. */
+body.refined-ui[data-screen="settings"] #content .settings-studio > #settingsPanel { min-height: 100%; }
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 
 .friends-toggle {

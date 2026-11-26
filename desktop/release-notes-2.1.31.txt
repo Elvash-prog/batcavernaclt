@@ -1,0 +1,2 @@
+Início usa a largura toda da tela, sem bordas vazias.
+Configurações ocupam a altura da janela, sem ficar achatadas.
