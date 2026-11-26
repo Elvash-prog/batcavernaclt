@@ -46,17 +46,11 @@ body.refined-ui.reference-ui #appShell > main {
     color-mix(in srgb, var(--bg) 94%, transparent) 560px) !important;
 }
 
-/* Início: um nível de superfície só. Saudação e números deixam de ser caixas. */
+/* Início: um nível de superfície só. Saudação sem caixa; os números do jogo atual seguem em caixinhas. */
 body.refined-ui #content .studio-welcome {
   background: none !important; border: 0 !important; box-shadow: none !important;
   backdrop-filter: none !important; padding-inline: 0 !important;
 }
-body.refined-ui #content .studio-metrics { display: flex !important; flex-wrap: wrap; gap: 12px 44px !important; }
-body.refined-ui #content .studio-metrics > * {
-  background: none !important; border: 0 !important; box-shadow: none !important;
-  backdrop-filter: none !important; padding: 0 !important; min-height: 0 !important;
-}
-body.refined-ui #content .studio-metrics .studio-metric-icon { display: none !important; }
 body.refined-ui #content .continuity {
   background: none !important; border: 0 !important; box-shadow: none !important;
   backdrop-filter: none !important; padding-inline: 0 !important;
