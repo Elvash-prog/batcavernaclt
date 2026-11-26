@@ -1,0 +1,1 @@
+Biblioteca repaginada: cabeçalho, números, filtros e títulos de seção sem caixas, e abas sublinhadas para os status.

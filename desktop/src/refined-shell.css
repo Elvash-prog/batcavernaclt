@@ -82,3 +82,24 @@ body.refined-ui #content .playtime-badge {
 @media (prefers-reduced-motion: reduce) {
   body.refined-ui .app-shell > .cavern-rail { transition: none !important; }
 }
+
+/* Biblioteca (etapa 2): cabeçalho, filtros e títulos de seção sem caixas. */
+body.refined-ui #content .library-collection-hero,
+body.refined-ui #content .library-controls,
+body.refined-ui #content .cavern-featured > :first-child,
+body.refined-ui #content .collection-status-heading {
+  background: none !important; border: 0 !important; box-shadow: none !important;
+  backdrop-filter: none !important; padding-inline: 0 !important;
+}
+body.refined-ui #content .library-hero-metrics { gap: 28px !important; }
+body.refined-ui #content .library-hero-metrics > * {
+  background: none !important; border: 0 !important; box-shadow: none !important;
+  padding: 0 !important; min-width: 0 !important;
+}
+body.refined-ui #content .cavern-lib-tabs { gap: 22px !important; border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
+body.refined-ui #content .cavern-lib-tabs button {
+  background: none !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  padding: 0 0 10px !important; color: var(--muted) !important;
+  border-bottom: 2px solid transparent !important; margin-bottom: -1px;
+}
+body.refined-ui #content .cavern-lib-tabs button.active { color: var(--text) !important; border-bottom-color: var(--accent) !important; }
