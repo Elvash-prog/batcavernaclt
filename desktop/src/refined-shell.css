@@ -16,12 +16,10 @@ body.refined-ui .app-shell > .cavern-rail {
 body.refined-ui.friends-open .app-shell > .cavern-rail { transform: none; visibility: visible; transition: transform .22s ease; }
 body.refined-ui.rail-off .friends-toggle { display: none; }
 
-/* Sem o painel fixo a tela fica mais larga: o conteúdo inteiro respeita a largura de
-   trabalho de Aparência e fica centralizado, para todos os blocos começarem na mesma borda. */
-body.refined-ui.reference-ui:not(.rail-off) #content {
-  width: 100%; max-width: min(1880px, var(--workspace-width, 1480px)) !important;
-  margin-inline: auto !important; box-sizing: border-box;
-}
+/* Sem o painel fixo o conteúdo ocupa a janela inteira. Os blocos internos que tinham
+   largura máxima própria passam a acompanhar a tela, para todos começarem na mesma borda. */
+body.refined-ui.reference-ui:not(.rail-off) #content { width: 100%; max-width: none !important; margin-inline: 0 !important; box-sizing: border-box; }
+body.refined-ui.reference-ui:not(.rail-off) #content > * { max-width: none !important; margin-inline: 0 !important; }
 
 .friends-toggle {
   display: flex; align-items: center; gap: 10px; height: 40px; margin: 0 0 8px; padding: 0 12px; width: 100%; box-sizing: border-box;
