@@ -858,10 +858,10 @@ try {
   await page.locator('.settings-search-label input').fill('SENHA');
   assert.equal(await page.locator('.settings-menu-group button:visible').count(),1);
   assert.equal(await page.locator('[data-settings-tab="account"]').isVisible(),true);
-  await page.locator('[data-settings-tab="account"]').click();
+  await page.locator('[data-settings-tab="account"]').click();await page.evaluate(()=>window.__settingsSwap);
   // A troca de seção pelo menu termina numa transição; espera a tela nova.
   await page.waitForFunction(()=>document.querySelector('.settings-section-heading h2')?.innerText==='Conta');
-  await page.locator('[data-settings-tab="integrations"]').click();
+  await page.locator('[data-settings-tab="integrations"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.locator('#steamConnection input').fill('76561198000000001');
   await page.locator('.settings-search-label input').fill('NOTIFICAÇÕES');
   assert.equal(await page.locator('[data-settings-tab="notifications"]').isVisible(),true);
@@ -870,10 +870,10 @@ try {
   await page.locator('.settings-search-empty').waitFor();
   assert.equal(await page.locator('#steamConnection input').inputValue(),'76561198000000001');
   await page.locator('.settings-search-label input').fill('');
-  await page.locator('[data-settings-tab="privacy"]').click();
+  await page.locator('[data-settings-tab="privacy"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.waitForFunction(t=>document.querySelector('.settings-section-heading h2')?.innerText===t,'Privacidade');
   await page.locator('#goFriends').waitFor();
-  await page.locator('[data-settings-tab="app"]').click();
+  await page.locator('[data-settings-tab="app"]').click();await page.evaluate(()=>window.__settingsSwap);
   assert.equal(await page.locator('.settings-section-links button').count(),4);
   const settingsViewport=page.viewportSize();
   await page.locator('.list-mosaic img').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));
@@ -1355,7 +1355,7 @@ try {
   await page.locator('#librarySearch').waitFor();
   await page.evaluate(()=>delete window.statisticsFixture);
   await page.locator('#mainNav [data-view="settings"]').click();
-  await page.locator('[data-settings-tab="notifications"]').click();
+  await page.locator('[data-settings-tab="notifications"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.locator("#openNotificationPreferences").click();
   await page.locator("#preferenceForm").waitFor();
   // Clica no interruptor visível, como o usuário; a caixa real fica escondida sob ele.
@@ -1850,7 +1850,7 @@ try {
   assert.equal(await page.evaluate(()=>window.saved.filter(s=>s.c==='save_item'&&s.p.item.nome==='Primeiro da fila').length),1);
   assert.equal(await page.evaluate(()=>window.saved.filter(s=>s.c==='save_item'&&s.p.item.nome==='Segundo da fila').length),1);
   await page.locator('#mainNav [data-view="settings"]').click();
-  await page.locator('[data-settings-tab="appearance"]').click();
+  await page.locator('[data-settings-tab="appearance"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.locator("#editCardLayout").click();
   await page.locator('[data-layout-value="cardWidth"]').fill("420");
   await page.locator("[data-layout-save]").click();
@@ -1880,7 +1880,7 @@ try {
   await page.evaluate(async()=>{state.settingsTab='appearance';await navigate('settings');});
   await page.screenshot({ path: "preview/appearance-check.png" });
   assert.equal(await page.locator('[data-settings-tab="theme"]').count(), 0);
-  await page.locator('[data-settings-tab="integrations"]').click();
+  await page.locator('[data-settings-tab="integrations"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.locator("#steamConnection input").fill("76561198000000001");
   await page.locator("#steamConnection button").click();
   await page.waitForFunction(() =>
@@ -1934,7 +1934,7 @@ try {
   await page.getByText('Primeira jornada').waitFor();
   await page.locator('.reference-detail .detail-close').click();
   await page.evaluate(async () => await navigate("settings"));
-  await page.locator('[data-settings-tab="app"]').click();
+  await page.locator('[data-settings-tab="app"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.locator('[data-pc-map]').click();
   await page.locator('.pc-game-dialog').waitFor();
   await page.locator('[name="gameSearch"]').fill('zerado');
@@ -2034,9 +2034,9 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "diagnostic_export"),
   );
-  await page.locator('[data-settings-tab="account"]').click();
+  await page.locator('[data-settings-tab="account"]').click();await page.evaluate(()=>window.__settingsSwap);
   assert.equal(await page.locator(".launcher-admin").count(), 0);
-  await page.locator('[data-settings-tab="app"]').click();
+  await page.locator('[data-settings-tab="app"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.locator("#desktopBackground").uncheck();
   await page.locator("#desktopSound").uncheck();
   await page.locator("#desktopAutostart").check();
@@ -2051,7 +2051,7 @@ try {
   await page.waitForFunction(() =>
     window.saved.some((s) => s.c === "test_windows_notification"),
   );
-  await page.locator('[data-settings-tab="account"]').click();
+  await page.locator('[data-settings-tab="account"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.locator("#changeEmail").click();
   await page.locator('#emailForm [name="email"]').fill("novo@exemplo.com");
   await page.locator('#emailForm [name="current"]').fill("mock");
@@ -2072,7 +2072,7 @@ try {
   await page.screenshot({path:'preview/email-change-check.png'});
   await page.locator('#emailChangeProof [data-close]').click();
   await page.evaluate(() => (window.adminMode = true));
-  await page.locator('[data-settings-tab="appearance"]').click();
+  await page.locator('[data-settings-tab="appearance"]').click();await page.evaluate(()=>window.__settingsSwap);
   await page.locator(".launcher-admin").waitFor();
   const explicitSetting=page.locator('#settingsPanel [data-explicit-filter]');await explicitSetting.waitFor();await explicitSetting.check();assert.equal(await page.locator('html').getAttribute('data-explicit-content'),'show');await explicitSetting.uncheck();
   assert.equal(await page.locator(".launcher-admin").count(), 1);

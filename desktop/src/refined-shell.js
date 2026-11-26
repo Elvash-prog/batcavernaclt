@@ -46,7 +46,8 @@
    if(state.current!=='settings'||!document.querySelector('#settingsPanel')||performance.now()-navAt>400)return base.apply(this,args);
    const scroll=document.querySelector('#appShell > main')?.scrollTop;
    let done;const t=document.startViewTransition(()=>done=Promise.resolve(base.apply(this,args)).then(()=>{const m=document.querySelector('#appShell > main');if(m&&scroll!=null)m.scrollTop=scroll}));
-   return t.updateCallbackDone.then(()=>done);
+   window.__settingsSwap=t.updateCallbackDone.then(()=>done).catch(()=>{});
+   return window.__settingsSwap;
   };
  }
 })();
