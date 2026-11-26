@@ -871,7 +871,7 @@ try {
   assert.equal(await page.locator('#steamConnection input').inputValue(),'76561198000000001');
   await page.locator('.settings-search-label input').fill('');
   await page.locator('[data-settings-tab="privacy"]').click();
-  assert.equal(await page.locator('.settings-section-heading h2').innerText(),'Privacidade');
+  await page.waitForFunction(t=>document.querySelector('.settings-section-heading h2')?.innerText===t,'Privacidade');
   await page.locator('#goFriends').waitFor();
   await page.locator('[data-settings-tab="app"]').click();
   assert.equal(await page.locator('.settings-section-links button').count(),4);
