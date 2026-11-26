@@ -116,7 +116,14 @@ body.refined-ui #content :is(.reference-card, .cavern-featured-card) {
   background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important;
 }
 body.refined-ui #content :is(.reference-card, .cavern-featured-card) :is(.cover-wrap, img:first-child) { border-radius: 12px; overflow: hidden; }
-body.refined-ui #content :is(.reference-card .body, .cavern-featured-body) { background: none !important; padding-inline: 2px !important; }
+body.refined-ui #content .reference-card .body { background: none !important; padding-inline: 2px !important; }
+/* No destaque o texto fica sobre a capa: um degradê escuro garante a leitura, sem desfocar a arte. */
+body.refined-ui #content .cavern-featured-body {
+  backdrop-filter: none !important; border-top: 0 !important;
+  background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--bg) 72%, transparent) 38%, color-mix(in srgb, var(--bg) 94%, transparent) 100%) !important;
+  padding-top: 48px !important;
+}
+body.refined-ui #content .cavern-featured-card { overflow: hidden; }
 body.refined-ui #content :is(.reference-card, .cavern-featured-card, .continuity-card) button.secondary {
   background: color-mix(in srgb, var(--text) 7%, transparent) !important; border-color: transparent !important;
 }
