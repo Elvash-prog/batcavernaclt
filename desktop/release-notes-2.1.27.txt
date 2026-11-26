@@ -1,0 +1,2 @@
+Cards repaginados: capa em destaque com o texto logo abaixo, sem moldura, e botões secundários mais discretos.
+Melhor uso da tela: o conteúdo agora ocupa a janela inteira, sem faixas vazias nas laterais em monitores largos.

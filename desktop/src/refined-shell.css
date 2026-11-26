@@ -16,12 +16,10 @@ body.refined-ui .app-shell > .cavern-rail {
 body.refined-ui.friends-open .app-shell > .cavern-rail { transform: none; visibility: visible; transition: transform .22s ease; }
 body.refined-ui.rail-off .friends-toggle { display: none; }
 
-/* Sem o painel fixo a tela fica mais larga: o conteúdo inteiro respeita a largura de
-   trabalho de Aparência e fica centralizado, para todos os blocos começarem na mesma borda. */
-body.refined-ui.reference-ui:not(.rail-off) #content {
-  width: 100%; max-width: min(1880px, var(--workspace-width, 1480px)) !important;
-  margin-inline: auto !important; box-sizing: border-box;
-}
+/* Sem o painel fixo o conteúdo ocupa a janela inteira. Os blocos internos que tinham
+   largura máxima própria passam a acompanhar a tela, para todos começarem na mesma borda. */
+body.refined-ui.reference-ui:not(.rail-off) #content { width: 100%; max-width: none !important; margin-inline: 0 !important; box-sizing: border-box; }
+body.refined-ui.reference-ui:not(.rail-off) #content > * { max-width: none !important; margin-inline: 0 !important; }
 
 .friends-toggle {
   display: flex; align-items: center; gap: 10px; height: 40px; margin: 0 0 8px; padding: 0 12px; width: 100%; box-sizing: border-box;
@@ -103,3 +101,17 @@ body.refined-ui #content .cavern-lib-tabs button {
   border-bottom: 2px solid transparent !important; margin-bottom: -1px;
 }
 body.refined-ui #content .cavern-lib-tabs button.active { color: var(--text) !important; border-bottom-color: var(--accent) !important; }
+
+/* Cards (etapa 3): capa em destaque e texto logo abaixo, sem moldura em volta. */
+body.refined-ui #content :is(.reference-card, .cavern-featured-card) {
+  background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important;
+}
+body.refined-ui #content :is(.reference-card, .cavern-featured-card) :is(.cover-wrap, img:first-child) { border-radius: 12px; overflow: hidden; }
+body.refined-ui #content :is(.reference-card .body, .cavern-featured-body) { background: none !important; padding-inline: 2px !important; }
+body.refined-ui #content :is(.reference-card, .cavern-featured-card, .continuity-card) button.secondary {
+  background: color-mix(in srgb, var(--text) 7%, transparent) !important; border-color: transparent !important;
+}
+body.refined-ui #content .continuity-card {
+  background: color-mix(in srgb, var(--panel) 55%, transparent) !important;
+  border-color: color-mix(in srgb, var(--text) 6%, transparent) !important; box-shadow: none !important;
+}
