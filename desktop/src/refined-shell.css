@@ -20,6 +20,9 @@ body.refined-ui.rail-off .friends-toggle { display: none; }
    largura máxima própria passam a acompanhar a tela, para todos começarem na mesma borda. */
 body.refined-ui.reference-ui #content.cavern-library { width: 100%; max-width: none !important; margin-inline: 0 !important; box-sizing: border-box; }
 body.refined-ui.reference-ui #content.cavern-library > * { max-width: none !important; margin-inline: 0 !important; }
+/* Em telas grandes (2K/4K) a margem lateral não cresce: os cards chegam perto das bordas. */
+body.refined-ui.reference-ui #content.cavern-library { padding-inline: 24px !important; }
+body.refined-ui.reference-ui #content.cavern-library > * { padding-inline: 0 !important; }
 /* Telas de leitura ficam centralizadas numa largura confortável. */
 body.refined-ui[data-screen="game-feed"] #content { max-width: 980px !important; margin-inline: auto !important; }
 /* Configurações ocupam a área toda; o painel acompanha a altura da lista de seções. */
