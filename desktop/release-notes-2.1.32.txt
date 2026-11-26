@@ -1,0 +1,1 @@
+Cards em destaque: o texto sobre a capa volta a ficar legível, sem o desfoque da arte.
