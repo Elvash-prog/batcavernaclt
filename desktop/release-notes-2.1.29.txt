@@ -1,0 +1,4 @@
+Feed dos amigos centralizado, sem espaço vazio dos lados.
+Configurações centralizadas na tela.
+Com o menu compacto, o botão Amigos mostra só o ícone.
+Início volta à largura de antes.
