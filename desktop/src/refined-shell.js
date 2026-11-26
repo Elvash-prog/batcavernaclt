@@ -45,8 +45,11 @@
   renderSettings=function(...args){
    if(state.current!=='settings'||!document.querySelector('#settingsPanel')||performance.now()-navAt>400)return base.apply(this,args);
    const scroll=document.querySelector('#appShell > main')?.scrollTop;
-   let done;const t=document.startViewTransition(()=>done=Promise.resolve(base.apply(this,args)).then(()=>{const m=document.querySelector('#appShell > main');if(m&&scroll!=null)m.scrollTop=scroll}));
-   window.__settingsSwap=t.updateCallbackDone.then(()=>done).catch(()=>{});
+   let done;
+   // A imagem anterior fica no máximo 600 ms; se a seção demorar, ela termina de carregar à vista.
+   const t=document.startViewTransition(()=>{done=Promise.resolve(base.apply(this,args)).then(()=>{const m=document.querySelector('#appShell > main');if(m&&scroll!=null)m.scrollTop=scroll});return Promise.race([done,new Promise(r=>setTimeout(r,600))])});
+   t.ready.catch(()=>{});t.finished.catch(()=>{});
+   window.__settingsSwap=t.updateCallbackDone.catch(()=>{}).then(()=>done).catch(()=>{});
    return window.__settingsSwap;
   };
  }
