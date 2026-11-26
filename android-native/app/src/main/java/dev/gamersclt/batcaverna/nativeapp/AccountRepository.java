@@ -210,7 +210,7 @@ public final class AccountRepository {
         String description=android.text.Html.fromHtml(steam.optString("descricao")).toString().trim();
         return new JSONArray().put(new JSONObject().put("source","igdb").put("description_raw",description).put("background_image",steam.optString("capa")));
     },cb);}
-    private static void validateSteamId(JSONObject draft){String id=draft.optString("steam_appid","");if(!id.isEmpty()&&(!id.matches("[1-9][0-9]{0,9}")||Long.parseLong(id)>4294967295L))throw new IllegalArgumentException("Steam App ID inválido.");}
+    private static void validateSteamId(JSONObject draft){SteamAppId.normalize(draft);}
     private static String catalogTitleKey(String value){return java.text.Normalizer.normalize(value,java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]","");}
     public void gameDescription(long id,Callback callback){if(id<=0){callback.done(null,"Jogo inválido.");return;}execute((user,token,config)->new JSONArray().put(catalogObject("igdb/games/"+id+"?include_sensitive=1",token)),callback);}
     public void searchGameArtwork(JSONObject item,boolean vertical,Callback callback){
