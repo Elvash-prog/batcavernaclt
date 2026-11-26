@@ -210,8 +210,7 @@ public final class AccountRepository {
         String description=android.text.Html.fromHtml(steam.optString("descricao")).toString().trim();
         return new JSONArray().put(new JSONObject().put("source","igdb").put("description_raw",description).put("background_image",steam.optString("capa")));
     },cb);}
-    // Jogos fora da Steam chegam do catálogo sem App ID (null, vazio ou 0): o título é salvo sem ele.
-    static void validateSteamId(JSONObject draft){Object raw=draft.opt("steam_appid");String id=raw==null||raw==JSONObject.NULL?"":String.valueOf(raw).trim();if(id.isEmpty()||!id.matches("[1-9][0-9]{0,9}")||Long.parseLong(id)>4294967295L)draft.remove("steam_appid");}
+    private static void validateSteamId(JSONObject draft){SteamAppId.normalize(draft);}
     private static String catalogTitleKey(String value){return java.text.Normalizer.normalize(value,java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]","");}
     public void gameDescription(long id,Callback callback){if(id<=0){callback.done(null,"Jogo inválido.");return;}execute((user,token,config)->new JSONArray().put(catalogObject("igdb/games/"+id+"?include_sensitive=1",token)),callback);}
     public void searchGameArtwork(JSONObject item,boolean vertical,Callback callback){
