@@ -115,3 +115,21 @@ body.refined-ui #content .continuity-card {
   background: color-mix(in srgb, var(--panel) 55%, transparent) !important;
   border-color: color-mix(in srgb, var(--text) 6%, transparent) !important; box-shadow: none !important;
 }
+
+/* Perfil e Configurações (etapa 4): números, abas e títulos sem caixas. */
+body.refined-ui #content :is(.cavern-stats, .cavern-stat, .profile-tabs, #profileMissions > .section-head, .settings-section-heading) {
+  background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important;
+}
+body.refined-ui #content .cavern-stats { gap: 8px 40px !important; padding-inline: 0 !important; }
+body.refined-ui #content .cavern-stat { padding-inline: 0 !important; }
+body.refined-ui #content :is(.profile-tabs, .settings-section-heading, #profileMissions > .section-head) { padding-inline: 0 !important; }
+body.refined-ui #content .profile-tabs { gap: 24px !important; border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent) !important; border-radius: 0 !important; }
+body.refined-ui #content .profile-tabs button {
+  background: none !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  padding: 0 0 10px !important; color: var(--muted) !important; border-bottom: 2px solid transparent !important; margin-bottom: -1px;
+}
+body.refined-ui #content .profile-tabs button.active { color: var(--text) !important; border-bottom-color: var(--accent) !important; }
+body.refined-ui #content :is(.profile-feature, .mission-period, .settings-nav) {
+  background: color-mix(in srgb, var(--panel) 55%, transparent) !important;
+  border-color: color-mix(in srgb, var(--text) 6%, transparent) !important; box-shadow: none !important;
+}
