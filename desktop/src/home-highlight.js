@@ -12,6 +12,15 @@ async function resolveHomeHighlight(games){
  return chooseHomeHighlight(games,prefs.pinned,prefs.recent||{},steam);
 }
 function rememberHomeGame(row){if(!row||!state.userId)return;const prefs=homeHighlightPreferences();prefs.recent=Object.fromEntries(Object.entries({...prefs.recent,[String(row.id)]:Date.now()}).sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,128));writeLocalPreference(localStorage,'bc-home-highlight:'+state.userId,JSON.stringify(prefs));}
+// A capa escolhida costuma ser um pôster pequeno, que fica borrado no destaque largo.
+// Se ela carregar em pé (pôster) e o jogo for da Steam, o destaque usa a
+// arte larga oficial (library_hero); a capa salva continua a mesma no resto do app.
+function upgradeHomeHero(image,item,current,apply,fetchImage){
+ if(!/^[1-9][0-9]*$/.test(String(item.steam_appid||''))||typeof image.addEventListener!=='function')return;
+ const check=async()=>{if(!current())return;const w=image.naturalWidth,h=image.naturalHeight;if(!w||!h||w/h>=.9)return;
+  for(const host of ['shared.akamai.steamstatic.com','shared.fastly.steamstatic.com']){if(!current())return;try{const wide=await fetchImage(`https://${host}/store_item_assets/steam/apps/${item.steam_appid}/library_hero.jpg`);if(current())apply(wide);return;}catch{}}};
+ image.addEventListener('load',()=>void check(),{once:true});
+}
 async function loadHomeHero(image,item){
  const ticket=image._homeCoverTicket={},owner=typeof state==='undefined'?'':state.userId;
  const current=()=>image.isConnected&&image._homeCoverTicket===ticket&&(typeof state==='undefined'||state.userId===owner);
@@ -23,7 +32,7 @@ async function loadHomeHero(image,item){
   const unavailable=()=>{if(current()){image.onerror=null;apply('icon.png');image.title='A capa escolhida está indisponível. Escolha outra em Editar informações.';}};
   try{const url=coverUrl(item.capa);if(!url)throw Error('Capa inválida');(image.dataset||={}).coverSource=url;
    const source=requiresMediaSigning(url)?await signed(url):typeof publicCover==='function'&&publicCover(url)?await fetchImage(url):url;
-   if(current()){image.onerror=unavailable;apply(source);}
+   if(current()){image.onerror=unavailable;apply(source);upgradeHomeHero(image,item,current,apply,fetchImage);}
   }catch{unavailable();}return;
  }
  const urls=[];if(/^[1-9][0-9]*$/.test(String(item.steam_appid||''))){for(const host of ['shared.akamai.steamstatic.com','shared.fastly.steamstatic.com'])urls.push(`https://${host}/store_item_assets/steam/apps/${item.steam_appid}/library_hero.jpg`);}
