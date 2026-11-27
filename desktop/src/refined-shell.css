@@ -12,6 +12,14 @@ body.refined-ui.friends-open .app-shell > .cavern-rail {
   display: flex !important; position: sticky; top: 0; height: 100vh; width: auto; box-sizing: border-box; padding-top: 22px;
   border-left: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
 }
+/* Janela estreita: o painel abre por cima, sem apertar o conteúdo. */
+@media (max-width: 1279px) {
+  body.refined-ui.friends-open .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr) !important; }
+  body.refined-ui.friends-open .app-shell > .cavern-rail {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 60; width: min(320px, 92vw);
+    background: color-mix(in srgb, var(--panel) 97%, transparent); box-shadow: -24px 0 48px rgba(0, 0, 0, .35);
+  }
+}
 body.refined-ui.rail-off .friends-toggle { display: none; }
 
 /* Sem o painel fixo o conteúdo ocupa a janela inteira. Os blocos internos que tinham
