@@ -43,6 +43,7 @@ export async function testAppearance(page){
   await settings();
  }
  // Media headers use the selected palette even when their cover is applied inline.
+ await page.locator('[data-theme-preset="Claro"]').click();await paint();
  await page.evaluate(async()=>{state.discoverTab='retro';await navigate('discover');});
  const retro=await page.locator('.retro-profile').evaluate(n=>({background:getComputedStyle(n).backgroundImage,color:getComputedStyle(n.querySelector('h2')).color}));
  assert.match(retro.background,/color\(srgb 1 1 1 \/ 0\.96\)/,'retro cover overlay follows the light panel token');assert.equal(retro.color,'rgb(23, 32, 51)');
