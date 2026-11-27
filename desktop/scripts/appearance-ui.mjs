@@ -28,7 +28,7 @@ export async function testAppearance(page){
  await page.locator('[data-setting-section="wallpaper"]').waitFor();
  assert.equal(await page.locator('.profile-editor').count(),0);
  // Every preset uses the same canvas and controls; accent labels retain contrast.
- for(const preset of ['Caverna','Oceano','Esmeralda','Rubi','Âmbar','Claro']){
+ for(const preset of await page.evaluate(()=>[...document.querySelectorAll('[data-theme-preset]')].map(b=>b.dataset.themePreset))){
   await page.locator(`[data-theme-preset="${preset}"]`).click();await paint();
   await page.evaluate(async()=>await navigate('home'));
   const colors=await page.evaluate(()=>{
@@ -75,5 +75,5 @@ export async function testAppearance(page){
  await settings();await page.locator('#themeBackground').setInputFiles(fixture);await page.waitForFunction(()=>document.body.classList.contains('has-wallpaper'));
  await page.waitForFunction(()=>!document.querySelector('#chooseWallpaper')?.disabled);
  await page.locator('[data-theme-preset="Caverna"]').click();await paint();
- console.log('Appearance UI: all six palettes, light canvas, contrast, shared wallpaper, translucency, profile shortcut and upload/removal failures passed');
+ console.log('Appearance UI: all sixteen palettes, light canvas, contrast, shared wallpaper, translucency, profile shortcut and upload/removal failures passed');
 }

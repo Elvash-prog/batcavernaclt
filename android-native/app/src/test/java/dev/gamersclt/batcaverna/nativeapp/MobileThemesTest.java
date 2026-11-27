@@ -12,7 +12,7 @@ import static org.junit.Assert.*;
 public class MobileThemesTest {
  @Test public void lightPalettesKeepControlsReadableAndDarkChoicesRemainAvailable(){
   Activity a=Robolectric.buildActivity(Activity.class).setup().get();assertEquals(NativeTheme.KEYS.length,NativeTheme.LABELS.length);
-  for(String key:new String[]{"claro","sakura","lavanda"}){int i=java.util.Arrays.asList(NativeTheme.KEYS).indexOf(key);assertTrue(i>=0);NativeTheme.select(a,i);assertTrue(NativeTheme.light(a));
+  for(String key:new String[]{"claro","sakura","lavanda","perola","menta"}){int i=java.util.Arrays.asList(NativeTheme.KEYS).indexOf(key);assertTrue(i>=0);NativeTheme.select(a,i);assertTrue(NativeTheme.light(a));
    TextView title=NativeSheet.text(a,"Título",20,0xfff3effa);assertTrue(NativeTheme.contrast(title.getCurrentTextColor(),NativeTheme.panel(a))>=4.5);
    TextView muted=NativeSheet.text(a,"Legenda",14,0xffbba7df);assertTrue(NativeTheme.contrast(muted.getCurrentTextColor(),NativeTheme.panel(a))>=4.5);
    EditText input=NativeSheet.input(a,"Nome",100);assertTrue(NativeTheme.contrast(input.getCurrentTextColor(),NativeTheme.panelDark(a))>=4.5);assertTrue(NativeTheme.contrast(input.getCurrentHintTextColor(),NativeTheme.panelDark(a))>=4.5);
@@ -20,6 +20,11 @@ public class MobileThemesTest {
    Button secondary=new Button(a);AppStyle.button(secondary,false);assertTrue(NativeTheme.contrast(secondary.getCurrentTextColor(),NativeTheme.panelDark(a))>=4.5);assertEquals(NativeTheme.panel(a),NativeTheme.surfaceColor(a,0xff211b2d));
   }
   for(int i=0;i<6;i++){NativeTheme.select(a,i);assertFalse(NativeTheme.light(a));assertEquals(0xfff3effa,NativeTheme.textColor(a,0xfff3effa));assertEquals(0xff211b2d,NativeTheme.surfaceColor(a,0xff211b2d));}
+  a.finish();
+ }
+ @Test public void darkPalettesKeepAccentButtonsReadable(){
+  Activity a=Robolectric.buildActivity(Activity.class).setup().get();assertTrue(NativeTheme.KEYS.length>=21);
+  for(int i=0;i<NativeTheme.KEYS.length;i++){NativeTheme.select(a,i);assertTrue(NativeTheme.KEYS[i],NativeTheme.contrast(NativeTheme.onAccent(a),NativeTheme.accent(a))>=4.5);assertTrue(NativeTheme.KEYS[i],NativeTheme.contrast(NativeTheme.text(a),NativeTheme.panel(a))>=7);}
   a.finish();
  }
 }

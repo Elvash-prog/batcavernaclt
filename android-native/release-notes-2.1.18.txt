@@ -1,1 +1,0 @@
-Correção: jogos que não estão na Steam, como lançamentos de console, agora são adicionados direto, sem o aviso de Steam App ID inválido.
