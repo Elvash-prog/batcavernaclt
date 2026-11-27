@@ -6,7 +6,8 @@ export async function testCoverQuality(page){
  assert.equal(await hero.getAttribute('data-cover-source'),selected);
  const requests=await page.evaluate(()=>window.savedCoverProbe.filter(x=>x.c==='cover_image').map(x=>x.p.url));
  assert.ok(requests.includes(selected.replace('/t_cover_big/','/t_original/')));
- assert.ok(!requests.some(url=>url.includes('library_hero')),'a saved cover must not trigger a different Steam artwork');
+ // Capa salva em pé no destaque largo: busca a arte larga oficial da Steam (a capa salva não muda).
+ await page.waitForFunction(()=>window.savedCoverProbe.some(x=>x.c==='cover_image'&&x.p.url.includes('/42/library_hero.jpg')));
  assert.equal(await hero.evaluate(n=>getComputedStyle(n).objectFit),'cover');
  for(const size of [{width:980,height:760},{width:1920,height:1080}]){await page.setViewportSize(size);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:`preview/cover-quality-home-${size.width}.png`,animations:'disabled'});}
  await page.route('https://example.test/quality-custom.jpg',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#307b74"/></svg>'}));
