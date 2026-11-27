@@ -1,0 +1,3 @@
+Feed dos amigos: a barra de rolagem fica na borda da janela.
+Meu Retrô mostra "Abrindo Meu Retrô" ao carregar.
+Fundo do aplicativo enviado em até 3840 px e maior qualidade (reenvie a imagem para aproveitar).

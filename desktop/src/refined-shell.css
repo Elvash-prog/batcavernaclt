@@ -27,7 +27,9 @@ body.refined-ui.reference-ui #content.cavern-library > * { padding-inline: 0 !im
 body.refined-ui.reference-ui[data-screen="home"] #content { width: 100%; max-width: none !important; margin-inline: 0 !important; padding-inline: 24px !important; box-sizing: border-box; }
 body.refined-ui.reference-ui[data-screen="home"] #content > * { max-width: none !important; margin-inline: 0 !important; }
 /* Telas de leitura ficam centralizadas numa largura confortável. */
-body.refined-ui[data-screen="game-feed"] #content { max-width: 980px !important; margin-inline: auto !important; }
+/* A área de rolagem ocupa a largura toda (barra na borda); só o conteúdo fica em 980 px. */
+body.refined-ui[data-screen="game-feed"] #content { max-width: none !important; margin-inline: 0 !important; }
+body.refined-ui[data-screen="game-feed"] #content > * { max-width: 980px !important; margin-inline: auto !important; box-sizing: border-box; }
 /* Configurações ocupam a área toda; o painel acompanha a altura da lista de seções. */
 body.refined-ui[data-screen="settings"] #content { max-width: none !important; }
 body.refined-ui[data-screen="settings"] #content .settings-studio { max-width: none !important; width: 100%; margin-inline: 0 !important; align-items: stretch !important;
