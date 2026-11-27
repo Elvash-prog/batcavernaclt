@@ -1,5 +1,5 @@
-// Caverna refinada (conceito A): o painel de amigos vira uma gaveta aberta pelo botão
-// "Amigos" da lateral, para o conteúdo usar a largura inteira. A escolha fica salva no PC.
+// Caverna refinada (conceito A): o botão "Amigos" da lateral fixa ou recolhe o painel de
+// amigos como uma coluna à direita; o conteúdo se ajusta. A escolha fica salva no PC.
 (()=>{
  const KEY='bc-friends-drawer-v1';
  const shell=document.getElementById('appShell');
@@ -28,12 +28,9 @@
   button.setAttribute('aria-expanded',String(open));
   rail.toggleAttribute('inert',!open);
   try{localStorage.setItem(KEY,open?'1':'0')}catch{}
-  if(open&&focus)rail.querySelector('.rail-search input')?.focus({preventScroll:true});
+  if(open&&focus&&!rail.contains(document.activeElement))rail.querySelector('.rail-search input')?.focus({preventScroll:true});
  };
  button.addEventListener('click',()=>set(!isOpen(),true));
- document.addEventListener('keydown',event=>{if(event.key==='Escape'&&isOpen()){set(false);button.focus()}});
- document.addEventListener('pointerdown',event=>{if(isOpen()&&!rail.contains(event.target)&&!button.contains(event.target))set(false)});
- rail.addEventListener('click',event=>{if(event.target.closest('[data-sidebar-chat]'))set(false)});
  let initial=false;try{initial=localStorage.getItem(KEY)==='1'}catch{}
  set(initial,false);
  // Minha Steam sem perfil conectado: botão que abre direto a seção Integrações.
