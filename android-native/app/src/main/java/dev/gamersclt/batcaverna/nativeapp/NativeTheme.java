@@ -5,8 +5,8 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 
 final class NativeTheme {
- static final String[] KEYS={"caverna","oceano","esmeralda","rubi","ambar","aurora","claro","meia-noite","grafite","sakura","lavanda"};
- static final String[] LABELS={"Caverna","Oceano","Esmeralda","Rubi","Âmbar","Aurora","Claro","Meia-noite","Grafite","Sakura","Lavanda"};
+ static final String[] KEYS={"caverna","oceano","esmeralda","rubi","ambar","aurora","claro","meia-noite","grafite","sakura","lavanda","neon","floresta","vulcao","gelo","cafe","vinho","oliva","cobalto","perola","menta"};
+ static final String[] LABELS={"Caverna","Oceano","Esmeralda","Rubi","Âmbar","Aurora","Claro","Meia-noite","Grafite","Sakura","Lavanda","Neon","Floresta","Vulcão","Gelo","Café","Vinho","Oliva","Cobalto","Pérola","Menta"};
  private static final int[][] COLORS={
   {0xff9869f4,0xff6e44c8,0xff181225,0xff0d1019,0xff2c263c},
   {0xff39bff5,0xff2379c9,0xff071923,0xff09111b,0xff17313e},
@@ -18,8 +18,19 @@ final class NativeTheme {
   {0xffa98cff,0xff7560d4,0xff08090f,0xff030408,0xff171821},
   {0xffa8c6e8,0xff647c9e,0xff1c2026,0xff12161b,0xff2b313a},
   {0xffa92f65,0xff84244f,0xfffff8fb,0xfffff2f7,0xffffffff},
-  {0xff6444b5,0xff4d3193,0xfffaf8ff,0xfff2edff,0xffffffff}
+  {0xff6444b5,0xff4d3193,0xfffaf8ff,0xfff2edff,0xffffffff},
+  {0xff22d3ee,0xff0e8fa6,0xff07070f,0xff050510,0xff141428},
+  {0xff84cc16,0xff4d7c0f,0xff0b130b,0xff070d07,0xff172417},
+  {0xfff97316,0xffc2410c,0xff160a07,0xff0d0605,0xff2a1510},
+  {0xff93c5fd,0xff4f86c6,0xff0a1320,0xff060c15,0xff142335},
+  {0xffd4a373,0xff9c6b3f,0xff15100c,0xff0c0907,0xff261d17},
+  {0xffe0607e,0xff9f2f4c,0xff1a0a10,0xff0f0609,0xff2d1520},
+  {0xffb5c46a,0xff7c8a38,0xff12140b,0xff0b0c07,0xff22261a},
+  {0xff6c8cff,0xff3f5fd6,0xff080c1c,0xff050713,0xff141b33},
+  {0xff7a4a1c,0xff5e3815,0xfffbf8f3,0xfff4efe6,0xffffffff},
+  {0xff0f766e,0xff0b5a54,0xfff4fbf9,0xffe9f6f2,0xffffffff}
  };
+ private static final java.util.Set<String> LIGHT=new java.util.HashSet<>(java.util.Arrays.asList("claro","sakura","lavanda","perola","menta"));
  private NativeTheme(){}
  static int index(Context c){String key=SessionPreferences.get(c).getString("native_theme","caverna");for(int i=0;i<KEYS.length;i++)if(KEYS[i].equals(key))return i;return 0;}
  static void select(Context c,int index){int safe=Math.max(0,Math.min(KEYS.length-1,index));SessionPreferences.get(c).edit().putString("native_theme",KEYS[safe]).apply();}
@@ -28,7 +39,9 @@ final class NativeTheme {
  static int backgroundStart(Context c){return COLORS[index(c)][2];}
  static int backgroundEnd(Context c){return COLORS[index(c)][3];}
  static int panel(Context c){return COLORS[index(c)][4];}
- static boolean light(Context c){int i=index(c);return i==6||i==9||i==10;}
+ static boolean light(Context c){return light(index(c));}
+ static boolean light(int i){return LIGHT.contains(KEYS[Math.max(0,Math.min(KEYS.length-1,i))]);}
+ static int[] colors(int i){return COLORS[Math.max(0,Math.min(COLORS.length-1,i))].clone();}
  static int panelDark(Context c){return light(c)?blend(panel(c),backgroundEnd(c),.55f):blend(panel(c),Color.BLACK,.24f);}
  static int soft(Context c){return blend(panel(c),accent(c),light(c)?.09f:.18f);}
  static int text(Context c){return light(c)?0xff242033:0xfff3effa;}

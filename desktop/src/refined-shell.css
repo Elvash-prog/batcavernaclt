@@ -9,7 +9,7 @@ body.refined-ui.rail-off.reference-ui .app-shell { grid-template-columns: var(--
 body.refined-ui .app-shell > .cavern-rail { display: none !important; }
 body.refined-ui.friends-open .app-shell { grid-template-columns: var(--sidebar) minmax(0, 1fr) min(320px, 30vw) !important; }
 body.refined-ui.friends-open .app-shell > .cavern-rail {
-  display: flex !important; position: sticky; top: 0; height: 100vh; width: auto; box-sizing: border-box; padding-top: 22px;
+  display: flex !important; position: sticky; top: 0; height: auto; min-height: 100%; align-self: stretch; width: auto; box-sizing: border-box; padding-top: 22px;
   border-left: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
 }
 /* Janela estreita: o painel abre por cima, sem apertar o conteúdo. */
