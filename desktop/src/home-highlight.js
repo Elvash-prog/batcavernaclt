@@ -13,11 +13,11 @@ async function resolveHomeHighlight(games){
 }
 function rememberHomeGame(row){if(!row||!state.userId)return;const prefs=homeHighlightPreferences();prefs.recent=Object.fromEntries(Object.entries({...prefs.recent,[String(row.id)]:Date.now()}).sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,128));writeLocalPreference(localStorage,'bc-home-highlight:'+state.userId,JSON.stringify(prefs));}
 // A capa escolhida costuma ser um pôster pequeno, que fica borrado no destaque largo.
-// Se ela carregar estreita ou com menos de 1600 px e o jogo for da Steam, o destaque usa a
+// Se ela carregar em pé (pôster) e o jogo for da Steam, o destaque usa a
 // arte larga oficial (library_hero); a capa salva continua a mesma no resto do app.
 function upgradeHomeHero(image,item,current,apply,fetchImage){
  if(!/^[1-9][0-9]*$/.test(String(item.steam_appid||''))||typeof image.addEventListener!=='function')return;
- const check=async()=>{if(!current())return;const w=image.naturalWidth,h=image.naturalHeight;if(!w||!h||(w>=1600&&w/h>=1.6))return;
+ const check=async()=>{if(!current())return;const w=image.naturalWidth,h=image.naturalHeight;if(!w||!h||w/h>=.9)return;
   for(const host of ['shared.akamai.steamstatic.com','shared.fastly.steamstatic.com']){if(!current())return;try{const wide=await fetchImage(`https://${host}/store_item_assets/steam/apps/${item.steam_appid}/library_hero.jpg`);if(current())apply(wide);return;}catch{}}};
  image.addEventListener('load',()=>void check(),{once:true});
 }
