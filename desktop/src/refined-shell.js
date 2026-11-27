@@ -36,6 +36,16 @@
  rail.addEventListener('click',event=>{if(event.target.closest('[data-sidebar-chat]'))set(false)});
  let initial=false;try{initial=localStorage.getItem(KEY)==='1'}catch{}
  set(initial,false);
+ // Minha Steam sem perfil conectado: botão que abre direto a seção Integrações.
+ const content=document.getElementById('content');
+ if(content)new MutationObserver(()=>{
+  const empty=[...content.querySelectorAll(':scope > div > .empty, :scope > .empty')].find(e=>/Conecte seu perfil Steam/.test(e.textContent));
+  if(!empty||empty.querySelector('.steam-connect'))return;
+  empty.classList.add('steam-connect-empty');
+  const go=document.createElement('button');go.type='button';go.className='primary steam-connect';go.textContent='Conectar Steam';
+  go.addEventListener('click',()=>{try{if(typeof ui!=='undefined')ui.configSection='integrations';state.settingsTab='integrations'}catch{}document.querySelector('#mainNav [data-view="settings"]')?.click()});
+  empty.append(go);
+ }).observe(content,{childList:true,subtree:true});
  // Trocar de seção nas Configurações redesenha a tela em várias etapas; a transição
  // de visualização mantém a imagem anterior até a nova estar pronta, sem piscar.
  if(typeof renderSettings==='function'&&document.startViewTransition){
