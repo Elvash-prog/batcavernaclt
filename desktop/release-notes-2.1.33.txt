@@ -1,4 +1,4 @@
 Listas, Indicações e Minha Steam usam a largura toda da tela.
 Minha Steam sem conta conectada mostra o botão Conectar Steam.
-Feed dos amigos com a capa em pé, preenchendo o card.
+Feed dos amigos com a capa em pé e cards mais baixos.
 Com o painel de amigos aberto, o resto da tela escurece levemente.

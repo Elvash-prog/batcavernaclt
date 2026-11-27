@@ -169,10 +169,9 @@ body.refined-ui #content .recommendation-card .journey-cover {
 body.refined-ui #content .empty.steam-connect-empty {
   display: grid; justify-items: center; gap: 14px; padding: 72px 24px !important; margin-top: 24px; text-align: center; font-size: 15px;
 }
-/* Feed: capa em pé preenchendo a altura, card mais baixo. */
+/* Feed: capa em pé (2:3) e card mais baixo; a arte aparece inteira, sem corte. */
 body.refined-ui #content .game-feed-title { grid-template-columns: 200px minmax(0, 1fr) !important; }
 body.refined-ui #content .game-feed-art { aspect-ratio: 2 / 3; max-height: 300px !important; }
-body.refined-ui #content .game-feed-art img { object-fit: cover !important; }
 /* Painel de amigos aberto escurece levemente o resto da tela. */
 body.refined-ui .app-shell::after {
   content: ""; position: fixed; inset: 0; z-index: 59; background: rgba(0, 0, 0, .35);
