@@ -1,0 +1,3 @@
+Botão Amigos fixa o painel de amigos à direita e o conteúdo se ajusta; apertar de novo recolhe.
+Menu compacto: tocar na foto abre o perfil; o status fica no pontinho do canto.
+Recomendados para você usam as capas da IGDB.
