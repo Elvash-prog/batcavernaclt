@@ -149,3 +149,33 @@ body.refined-ui #content :is(.profile-feature, .mission-period, .settings-nav) {
   background: color-mix(in srgb, var(--panel) 55%, transparent) !important;
   border-color: color-mix(in srgb, var(--text) 6%, transparent) !important; box-shadow: none !important;
 }
+
+/* Etapa 5: Listas, Indicações e Minha Steam seguem o Início — largura toda, margem fixa, cabeçalho sem caixa. */
+body.refined-ui.reference-ui:is([data-screen="lists"],[data-screen="recommendations"],[data-screen="discover"]) #content {
+  width: 100%; max-width: none !important; margin-inline: 0 !important; padding-inline: 24px !important; box-sizing: border-box;
+}
+body.refined-ui.reference-ui:is([data-screen="lists"],[data-screen="recommendations"],[data-screen="discover"]) #content > *,
+body.refined-ui.reference-ui #content .journey-page > * { max-width: none !important; margin-inline: 0 !important; }
+body.refined-ui #content :is(.journey-heading, .lists-controls) {
+  background: none !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; padding-inline: 0 !important;
+}
+/* Cards de listas e indicações crescem para preencher a linha. */
+body.refined-ui #content .lists-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important; }
+body.refined-ui #content .recommendation-list { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 16px; }
+body.refined-ui #content .recommendation-card .journey-cover {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 35%, var(--panel)), var(--panel)) !important;
+}
+/* Minha Steam sem conta: aviso centralizado com atalho para conectar. */
+body.refined-ui #content .empty.steam-connect-empty {
+  display: grid; justify-items: center; gap: 14px; padding: 72px 24px !important; margin-top: 24px; text-align: center; font-size: 15px;
+}
+/* Feed: capa em pé (2:3) e card mais baixo; a arte aparece inteira, sem corte. */
+body.refined-ui #content .game-feed-title { grid-template-columns: 200px minmax(0, 1fr) !important; }
+body.refined-ui #content .game-feed-art { aspect-ratio: 2 / 3; max-height: 300px !important; }
+/* Painel de amigos aberto escurece levemente o resto da tela. */
+body.refined-ui .app-shell::after {
+  content: ""; position: fixed; inset: 0; z-index: 59; background: rgba(0, 0, 0, .35);
+  opacity: 0; pointer-events: none; transition: opacity .22s ease;
+}
+body.refined-ui.friends-open .app-shell::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { body.refined-ui .app-shell::after { transition: none; } }
